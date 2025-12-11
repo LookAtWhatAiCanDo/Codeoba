@@ -1,0 +1,64 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Android
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+captures/
+.externalNativeBuild
+.cxx
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# macOS
+.DS_Store
+
+# Kotlin
+*.kotlin_module
+
+# Compose
+.compose/
+
+# Local configuration
+config.properties
+secrets.properties
+*.env
+
+# Build outputs
+*.log
+
+# Dependency directories
+node_modules/
+
+# iOS
+*.xcodeproj
+*.xcworkspace
+Pods/
+Podfile.lock
+.swiftpm/
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# API Keys (prevent committing secrets)
+*apikey*
+*api-key*
+*secret*
+!**/src/**/Secret*.kt.example
