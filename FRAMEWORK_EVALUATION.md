@@ -450,8 +450,8 @@ Teams comfortable with Angular or Vue wanting more native access than Ionic/Cord
 - **Learning curve** - Requires learning Kotlin and Compose paradigm
 - **iOS tooling** - Requires Xcode and macOS for iOS development
 - **Library maturity** - Some cross-platform libraries still in development
-- **Web support** - Still experimental (Kotlin/Wasm is cutting edge)
-- **Mobile focus** - Desktop and web are newer additions
+- **Web support** - Still maturing, experimental Kotlin/Wasm (not production-ready for all use cases)
+- **Mobile focus** - Desktop and web are newer, less mature additions
 - **Build times** - Can be longer than some alternatives
 - **Debugging complexity** - Debugging across platforms can be challenging
 
@@ -462,9 +462,9 @@ Teams prioritizing modern declarative UI with Kotlin, wanting true cross-platfor
 - **WebRTC Support**: ★★★★★ - **Excellent** - Full native WebRTC library access on all platforms, can use platform-specific implementations
 - **Audio Handling**: ★★★★★ - **Excellent** - Direct access to native audio APIs on each platform
 - **API Integration**: ★★★★★ - Kotlin has excellent coroutines and networking libraries (Ktor), perfect for async API calls
-- **Wearable Support**: ★★★★★ - **Best-in-class** - Native Wear OS support with Compose for Wear OS, Apple Watch requires companion native Swift/SwiftUI app (can share business logic via KMP)
+- **Wearable Support**: ★★★★☆ - **Excellent** - Native Wear OS support with Compose for Wear OS; Apple Watch requires companion native Swift/SwiftUI app but can share business logic via KMP (not as seamless as Kotlin MP but better than Flutter/RN)
 - **MCP Integration**: ★★★★★ - Kotlin's type-safe serialization and coroutines are ideal for protocol implementations
-- **Overall Fit**: **Excellent** - Combines the best of both worlds: shared UI like Flutter, native capabilities like KMP, with superior wearable support
+- **Overall Fit**: **Excellent** - Combines shared UI and business logic with native capabilities, strong wearable support, ideal for Codeoba's requirements
 
 ---
 
@@ -474,7 +474,7 @@ Teams prioritizing modern declarative UI with Kotlin, wanting true cross-platfor
 |-----------|--------|---------|-----|----------|-------------|----------------|-----------|
 | Flutter | ★★★★★ | ★★★★☆ | ★★★☆☆ | Dart | ★★★★★ | ★★★☆☆ | ★★★★☆ |
 | Kotlin MP | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
-| Compose MP | ★★★★★ | ★★★★★ | ★★★☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
+| Compose MP | ★★★★★ | ★★★★★ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
 | Qt | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | C++/QML | ★★★★★ | ★★★★☆ | ★★★★☆ |
 | React Native | ★★★★★ | ★★☆☆☆ | ★★★★☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★★★ |
 | Electron | ☆☆☆☆☆ | ★★★★★ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ |
@@ -490,9 +490,9 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 
 | Framework | WebRTC | Audio | API/MCP | Wearable | Overall Fit |
 |-----------|--------|-------|---------|----------|-------------|
-| **Compose MP** | ★★★★★ | ★★★★★ | ★★★★★ | ★★★★★ | **Excellent** |
-| **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
+| **Compose MP** | ★★★★★ | ★★★★★ | ★★★★★ | ★★★★☆ | **Excellent** |
 | **Kotlin MP** | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★★★ | **Excellent** |
+| **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
 | **Flutter** | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ | **Strong** |
 | Ionic | ★★★★☆ | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | Moderate |
 | .NET MAUI | ★★★☆☆ | ★★★★☆ | ★★★★★ | ★★☆☆☆ | Moderate |
@@ -504,11 +504,11 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 
 ### Top 3 Recommendations for Codeoba
 
-**1. Compose Multiplatform** - Best overall fit combining shared UI and logic with Kotlin, excellent WebRTC/audio through native APIs, best-in-class wearable support (Wear OS + Apple Watch), perfect for MCP with Kotlin coroutines. Trade-off: Newer ecosystem, requires learning Kotlin/Compose.
+**1. Compose Multiplatform** - Best overall fit combining shared UI and logic with Kotlin, excellent WebRTC/audio through native APIs, strong wearable support (native Wear OS, Apple Watch via companion app with shared logic), perfect for MCP with Kotlin coroutines. Trade-off: Newer ecosystem, requires learning Kotlin/Compose, Apple Watch needs separate UI.
 
-**2. React Native** - Best overall WebRTC support with `react-native-webrtc`, excellent JavaScript ecosystem for API/MCP integration, strong mobile foundation. Trade-off: Limited wearable support.
+**2. Kotlin Multiplatform** - Best-in-class wearable support (fully native Wear OS and Apple Watch), excellent WebRTC through native libraries, full native capabilities. Trade-off: Steeper learning curve, requires native development skills, separate UI per platform.
 
-**3. Kotlin Multiplatform** - Best wearable support (native Wear OS and Apple Watch), excellent WebRTC through native libraries, full native capabilities. Trade-off: Steeper learning curve, requires native development skills, separate UI per platform.
+**3. React Native** - Best overall WebRTC support with `react-native-webrtc`, excellent JavaScript ecosystem for API/MCP integration, strong mobile foundation. Trade-off: Limited wearable support.
 
 ## Decision Framework
 
@@ -625,24 +625,24 @@ Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime
 - **Best overall fit** - Combines shared UI and business logic in a single Kotlin codebase
 - Excellent WebRTC support through native library integration on all platforms
 - Superior audio handling via direct access to platform APIs
-- Best-in-class wearable support (native Wear OS with Compose, Apple Watch via Swift)
+- Strong wearable support (native Wear OS with Compose, Apple Watch via companion app sharing business logic)
 - Perfect for MCP protocol implementation with Kotlin's coroutines and type-safe serialization
 - Modern declarative UI framework (Jetpack Compose) proven on Android, now cross-platform
-- **Best choice for teams willing to invest in the Kotlin ecosystem for maximum capability**
+- **Best choice for teams willing to invest in Kotlin ecosystem, prioritizing shared UI with strong (but not perfect) wearable support**
 
-#### Alternative #1: **React Native**
+#### Alternative #1: **Kotlin Multiplatform**
+- Best-in-class native wearable support (fully native Wear OS and Apple Watch with platform-specific UIs)
+- Full native WebRTC integration capabilities
+- Superior audio handling through native APIs
+- Share business logic while maintaining platform-specific UIs
+- **Best choice if wearable support is absolutely critical and team has native development experience**
+
+#### Alternative #2: **React Native**
 - Industry-leading WebRTC support via `react-native-webrtc`
 - Excellent JavaScript/TypeScript ecosystem for API and MCP integration
 - Strong audio recording and playback capabilities
 - Large community and mature libraries
 - **Best choice if JavaScript expertise is primary and wearable support is not critical**
-
-#### Alternative #2: **Kotlin Multiplatform**
-- Best-in-class native wearable support (Wear OS and Apple Watch)
-- Full native WebRTC integration capabilities
-- Superior audio handling through native APIs
-- Share business logic while maintaining platform-specific UIs
-- **Best choice if native UI quality is paramount and team has native development experience**
 
 #### Fallback: **Flutter**
 - Good balance of WebRTC support and cross-platform development
@@ -653,9 +653,9 @@ Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime
 
 ### Decision Path
 
-1. **If you want the best overall solution**: Choose **Compose Multiplatform** - shared UI + logic, excellent wearables, native capabilities
-2. **If you have strong JavaScript/React expertise**: Choose **React Native** for mature WebRTC ecosystem and rapid development
-3. **If you prioritize native UI quality over shared UI**: Choose **Kotlin Multiplatform** for native UIs with shared logic
+1. **If you want shared UI with strong wearable support**: Choose **Compose Multiplatform** - shared UI + logic, excellent WebRTC/audio/MCP, strong wearables (native Wear OS, Apple Watch companion)
+2. **If wearable support is absolutely critical**: Choose **Kotlin Multiplatform** - best-in-class native wearables (both Wear OS and Apple Watch), shared logic, platform-specific UIs
+3. **If you have strong JavaScript/React expertise**: Choose **React Native** for mature WebRTC ecosystem and rapid development
 4. **If you want simplicity and have Dart/Flutter experience**: Choose **Flutter** for balanced cross-platform approach
 
-The name synergy with **Cordova** is delightful, but it's unsuitable for Codeoba's real-time requirements due to WebView performance limitations and declining ecosystem support. Modern alternatives like Compose Multiplatform, React Native, or Flutter provide better WebRTC performance, audio handling, and long-term viability.
+The name synergy with **Cordova** is delightful, but it's unsuitable for Codeoba's real-time requirements due to WebView performance limitations and declining ecosystem support. Modern alternatives like Compose Multiplatform, Kotlin Multiplatform, or React Native provide better WebRTC performance, audio handling, and long-term viability.
