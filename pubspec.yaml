@@ -1,0 +1,48 @@
+name: codeoba
+description: Cross-platform Voice WebRTC AI Programmer with OpenAI Realtime API, MCP, and GitHub Copilot integration
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # WebRTC for microphone streaming
+  flutter_webrtc: ^0.9.48
+  
+  # Network and WebSocket support
+  web_socket_channel: ^2.4.0
+  http: ^1.1.0
+  
+  # Permissions
+  permission_handler: ^11.0.1
+  
+  # State management
+  provider: ^6.1.1
+  
+  # GitHub API
+  github: ^9.19.0
+  
+  # Storage and file system
+  path_provider: ^2.1.1
+  shared_preferences: ^2.2.2
+  
+  # JSON serialization
+  json_annotation: ^4.8.1
+  
+  # Logging
+  logger: ^2.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.6
+  json_serializable: ^6.7.1
+  mockito: ^5.4.4
+
+flutter:
+  uses-material-design: true
