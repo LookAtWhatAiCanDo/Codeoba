@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme using Material3 -->
+    <style name="Theme.Codeoba" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/ic_launcher_background</item>
+    </style>
+</resources>

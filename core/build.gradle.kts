@@ -1,10 +1,20 @@
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
     id("org.jetbrains.compose")
 }
 
 kotlin {
+    // Android target
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
+    
     // JVM Desktop target - fully implemented
     jvm("desktop") {
         compilations.all {
@@ -14,9 +24,7 @@ kotlin {
         }
     }
     
-    // Note: Android and iOS targets are temporarily disabled in MVP
-    // - Android: Code is complete but disabled due to Android Gradle Plugin dependency issues
-    //   See docs/android-status.md for re-enabling instructions
+    // Note: iOS target temporarily disabled in MVP
     // - iOS: Stub implementations exist, full AVAudioEngine integration planned for future release
     //   iOS requires Kotlin/Native which has network access issues in current CI environment
     
@@ -41,10 +49,30 @@ kotlin {
             }
         }
         
+        val androidMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-okhttp:2.3.7")
+            }
+        }
+        
         val desktopMain by getting {
             dependencies {
                 implementation("io.ktor:ktor-client-cio:2.3.7")
             }
         }
+    }
+}
+
+android {
+    namespace = "com.codeoba.core"
+    compileSdk = 34
+    
+    defaultConfig {
+        minSdk = 24
+    }
+    
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 }
