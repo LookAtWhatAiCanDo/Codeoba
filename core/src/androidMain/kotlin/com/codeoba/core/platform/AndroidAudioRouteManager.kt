@@ -1,8 +1,11 @@
 package com.codeoba.core.platform
 
+import android.Manifest
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
+import androidx.annotation.RequiresPermission
 import com.codeoba.core.domain.AudioRoute
 import com.codeoba.core.domain.AudioRouteManager
 import com.codeoba.core.domain.AudioRouteType
@@ -97,6 +100,12 @@ class AndroidAudioRouteManager(
         }
     }
     
+    @RequiresPermission(
+        allOf = [
+            Manifest.permission.BLUETOOTH,
+            Manifest.permission.MODIFY_AUDIO_SETTINGS
+        ]
+    )
     override suspend fun selectRoute(route: AudioRoute) {
         // Basic implementation - in production, use AudioManager.setMode and routing APIs
         _activeRoute.value = route

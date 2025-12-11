@@ -1,9 +1,11 @@
 package com.codeoba.core.platform
 
+import android.Manifest
 import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import androidx.annotation.RequiresPermission
 import com.codeoba.core.domain.AudioCaptureService
 import com.codeoba.core.domain.AudioCaptureState
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +47,7 @@ class AndroidAudioCaptureService(
         }
     }
     
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override suspend fun start() {
         if (_state.value is AudioCaptureState.Capturing) return
         
