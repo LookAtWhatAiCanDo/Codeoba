@@ -2,6 +2,24 @@
 
 This document provides a comprehensive evaluation of various cross-platform framework options for the Codeoba project.
 
+## Project Requirements
+
+Codeoba is a cross-platform application with the following specific requirements:
+
+- **OpenAI Realtime API integration** (WebRTC mode)
+- **MCP (Model Context Protocol) calls to GitHub** for controlling GitHub Copilot
+- **Real-time conversational voice commands** with progress reports
+- **WebRTC support** for real-time communication
+- **Audio recording and playback** capabilities
+- **Stretch goal**: Companion device support (WearOS, Apple Watch) for proxying communication and notifications
+
+These requirements prioritize frameworks with:
+- Strong WebRTC library support
+- Robust API integration capabilities
+- Native audio handling
+- Cross-platform mobile support (iOS/Android)
+- Potential for wearable extensions
+
 ## Executive Summary
 
 Each framework has unique strengths and trade-offs. The right choice depends on:
@@ -10,6 +28,7 @@ Each framework has unique strengths and trade-offs. The right choice depends on:
 - **Performance requirements** (native performance vs. development speed)
 - **UI/UX needs** (native look-and-feel vs. custom branding)
 - **Ecosystem maturity** (libraries, tooling, community support)
+- **Real-time communication capabilities** (WebRTC, audio handling)
 
 ## Framework Evaluations
 
@@ -42,6 +61,14 @@ Each framework has unique strengths and trade-offs. The right choice depends on:
 #### Best For
 Projects requiring beautiful, custom UIs across mobile and desktop with high performance requirements.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★☆ - Excellent via `flutter_webrtc` package with active development
+- **Audio Handling**: ★★★★★ - Native audio recording/playback via platform channels and packages like `flutter_sound`
+- **API Integration**: ★★★★★ - Strong HTTP/WebSocket support, easy to integrate OpenAI API
+- **Wearable Support**: ★★★☆☆ - Limited direct WearOS support, no official Apple Watch support (requires companion native apps)
+- **MCP Integration**: ★★★★★ - Excellent for custom protocol implementations via Dart
+- **Overall Fit**: **Strong** - WebRTC and audio support are mature, but wearable support is a limitation
+
 ---
 
 ### 2. Kotlin Multiplatform (KMP)
@@ -72,6 +99,14 @@ Projects requiring beautiful, custom UIs across mobile and desktop with high per
 
 #### Best For
 Teams with native mobile development experience wanting to share business logic while maintaining native UI quality.
+
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★★ - Excellent native library integration on both iOS and Android
+- **Audio Handling**: ★★★★★ - Full native audio API access on each platform
+- **API Integration**: ★★★★★ - Ktor for shared networking, native libraries available
+- **Wearable Support**: ★★★★★ - **Best-in-class** - Native WearOS and watchOS development fully supported
+- **MCP Integration**: ★★★★☆ - Good, can share business logic while using platform-specific implementations
+- **Overall Fit**: **Excellent** - Best choice for wearable integration, full native capabilities
 
 ---
 
@@ -104,6 +139,14 @@ Teams with native mobile development experience wanting to share business logic 
 
 #### Best For
 Desktop-first applications, embedded systems, or projects requiring deep hardware integration and native performance.
+
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★☆☆ - Available but less mature than web-focused frameworks
+- **Audio Handling**: ★★★★★ - Excellent low-level audio support via Qt Multimedia
+- **API Integration**: ★★★★☆ - Good networking support via Qt Network
+- **Wearable Support**: ★☆☆☆☆ - Very limited mobile/wearable ecosystem
+- **MCP Integration**: ★★★★☆ - C++ provides flexibility for custom protocols
+- **Overall Fit**: **Poor** - Not ideal for mobile-first real-time communication apps
 
 ---
 
@@ -138,6 +181,14 @@ Desktop-first applications, embedded systems, or projects requiring deep hardwar
 #### Best For
 Teams with React/JavaScript expertise building mobile-first applications with web-like UX.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★★ - **Excellent** - `react-native-webrtc` is industry-standard, very mature
+- **Audio Handling**: ★★★★☆ - Good support via native modules and libraries like `react-native-audio`
+- **API Integration**: ★★★★★ - JavaScript excels at API integration, abundant libraries
+- **Wearable Support**: ★★★☆☆ - Limited WearOS support, Apple Watch requires native code
+- **MCP Integration**: ★★★★★ - JavaScript/TypeScript perfect for protocol implementations
+- **Overall Fit**: **Excellent** - Best WebRTC support, strong JavaScript ecosystem for APIs
+
 ---
 
 ### 5. Electron
@@ -169,6 +220,14 @@ Teams with React/JavaScript expertise building mobile-first applications with we
 #### Best For
 Desktop applications where development speed is prioritized over resource efficiency, or adapting existing web apps to desktop.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★★ - Built on Chromium, native WebRTC support
+- **Audio Handling**: ★★★★★ - Full web audio API access
+- **API Integration**: ★★★★★ - JavaScript excels at API integration
+- **Wearable Support**: ☆☆☆☆☆ - Desktop-only, no mobile/wearable support
+- **MCP Integration**: ★★★★★ - Node.js perfect for protocol implementations
+- **Overall Fit**: **Poor** - Desktop-only, doesn't meet mobile/wearable requirements
+
 ---
 
 ### 6. Cordova (Apache Cordova)
@@ -199,6 +258,14 @@ Desktop applications where development speed is prioritized over resource effici
 
 #### Best For
 Simple mobile apps or MVPs where time-to-market is critical and web development expertise exists, though modern alternatives (Flutter, React Native) are generally recommended.
+
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★☆☆ - Possible via plugins but less reliable than native
+- **Audio Handling**: ★★★☆☆ - Available via plugins but performance can be limited
+- **API Integration**: ★★★★☆ - Good JavaScript support for APIs
+- **Wearable Support**: ★☆☆☆☆ - Very limited, not a focus of the platform
+- **MCP Integration**: ★★★★☆ - JavaScript works well for protocols
+- **Overall Fit**: **Poor** - Name synergy is fun, but WebRTC/audio performance concerns and declining ecosystem make this unsuitable
 
 ---
 
@@ -232,6 +299,14 @@ Simple mobile apps or MVPs where time-to-market is critical and web development 
 #### Best For
 Content-focused applications, web-first products, or projects requiring maximum distribution with minimal friction.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★★ - Native browser WebRTC support, excellent
+- **Audio Handling**: ★★★★☆ - Web Audio API is powerful but limited compared to native
+- **API Integration**: ★★★★★ - JavaScript excels at API integration
+- **Wearable Support**: ☆☆☆☆☆ - No native wearable support
+- **MCP Integration**: ★★★★★ - JavaScript perfect for protocol work
+- **Overall Fit**: **Poor** - Great for web prototyping but lacks native mobile/wearable capabilities
+
 ---
 
 ### 8. Xamarin / .NET MAUI
@@ -262,6 +337,14 @@ Content-focused applications, web-first products, or projects requiring maximum 
 
 #### Best For
 Teams with .NET/C# expertise, enterprise applications requiring Microsoft ecosystem integration.
+
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★☆☆ - Limited, requires custom native implementations
+- **Audio Handling**: ★★★★☆ - Good via platform-specific APIs
+- **API Integration**: ★★★★★ - Excellent C# libraries for HTTP/WebSocket
+- **Wearable Support**: ★★☆☆☆ - Limited WearOS support, no Apple Watch support
+- **MCP Integration**: ★★★★☆ - C# well-suited for protocol implementations
+- **Overall Fit**: **Moderate** - Good if team has .NET expertise, but WebRTC support is weak
 
 ---
 
@@ -294,6 +377,14 @@ Teams with .NET/C# expertise, enterprise applications requiring Microsoft ecosys
 #### Best For
 Web developers building mobile apps with focus on rapid development and code reuse with web applications.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★☆ - Good web-based support via browser APIs
+- **Audio Handling**: ★★★☆☆ - Web Audio API available but performance limited
+- **API Integration**: ★★★★★ - JavaScript/Angular/React/Vue all excellent for APIs
+- **Wearable Support**: ★☆☆☆☆ - Very limited wearable support
+- **MCP Integration**: ★★★★★ - JavaScript excellent for protocol implementations
+- **Overall Fit**: **Moderate** - Good for web developers but WebView limitations hurt real-time performance
+
 ---
 
 ### 10. NativeScript
@@ -324,6 +415,14 @@ Web developers building mobile apps with focus on rapid development and code reu
 #### Best For
 Teams comfortable with Angular or Vue wanting more native access than Ionic/Cordova provide.
 
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★☆☆ - Possible via native libraries but less mature
+- **Audio Handling**: ★★★★☆ - Native API access provides good capabilities
+- **API Integration**: ★★★★★ - JavaScript excellent for API integration
+- **Wearable Support**: ★★☆☆☆ - Limited support, not a platform focus
+- **MCP Integration**: ★★★★☆ - JavaScript works well for protocols
+- **Overall Fit**: **Moderate** - Native access is good but smaller ecosystem is a concern
+
 ---
 
 ## Comparison Matrix
@@ -340,6 +439,31 @@ Teams comfortable with Angular or Vue wanting more native access than Ionic/Cord
 | .NET MAUI | ★★★★☆ | ★★★★☆ | ★★★☆☆ | C# | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
 | Ionic | ★★★★☆ | ★★★☆☆ | ★★★★☆ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★☆ |
 | NativeScript | ★★★★☆ | ☆☆☆☆☆ | ★★★☆☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ |
+
+## Codeoba-Specific Comparison
+
+Based on the project's requirements for WebRTC, real-time voice, MCP integration, and wearable support:
+
+| Framework | WebRTC | Audio | API/MCP | Wearable | Overall Fit |
+|-----------|--------|-------|---------|----------|-------------|
+| **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
+| **Kotlin MP** | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★★★ | **Excellent** |
+| **Flutter** | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ | **Strong** |
+| Ionic | ★★★★☆ | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | Moderate |
+| .NET MAUI | ★★★☆☆ | ★★★★☆ | ★★★★★ | ★★☆☆☆ | Moderate |
+| NativeScript | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★☆☆☆ | Moderate |
+| Cordova | ★★★☆☆ | ★★★☆☆ | ★★★★☆ | ★☆☆☆☆ | Poor |
+| PWA | ★★★★★ | ★★★★☆ | ★★★★★ | ☆☆☆☆☆ | Poor |
+| Qt | ★★★☆☆ | ★★★★★ | ★★★★☆ | ★☆☆☆☆ | Poor |
+| Electron | ★★★★★ | ★★★★★ | ★★★★★ | ☆☆☆☆☆ | Poor |
+
+### Top 3 Recommendations for Codeoba
+
+**1. React Native** - Best overall WebRTC support with `react-native-webrtc`, excellent JavaScript ecosystem for API/MCP integration, strong mobile foundation. Trade-off: Limited wearable support.
+
+**2. Kotlin Multiplatform** - Best wearable support (native WearOS and watchOS), excellent WebRTC through native libraries, full native capabilities. Trade-off: Steeper learning curve, requires native development skills.
+
+**3. Flutter** - Strong cross-platform mobile with good WebRTC and audio support, excellent for custom UIs, single codebase. Trade-off: Limited wearable ecosystem.
 
 ## Decision Framework
 
@@ -440,6 +564,35 @@ There is no one-size-fits-all solution. The best framework depends on:
 5. **Long-term maintenance** - Consider ecosystem maturity and community
 6. **UI/UX requirements** - Custom vs. native look and feel
 
-For Codeoba specifically, without knowing the exact requirements, **Flutter** or **React Native** would be recommended for general cross-platform development, with **Qt** for desktop-focused or embedded applications, and **Kotlin Multiplatform** for teams prioritizing native quality with shared logic.
+### For Codeoba Specifically
 
-The name synergy with **Cordova** is delightful, but modern alternatives like Flutter or React Native would provide better long-term viability while achieving similar goals with superior performance and developer experience.
+Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime API integration**, **MCP protocol support**, **voice/audio handling**, and **potential wearable companion devices**, the recommended frameworks are:
+
+#### Primary Recommendation: **React Native**
+- Industry-leading WebRTC support via `react-native-webrtc`
+- Excellent JavaScript/TypeScript ecosystem for API and MCP integration
+- Strong audio recording and playback capabilities
+- Large community and mature libraries
+- **Best choice if wearable support is not critical**
+
+#### Alternative: **Kotlin Multiplatform** 
+- Best-in-class native wearable support (WearOS and Apple Watch)
+- Full native WebRTC integration capabilities
+- Superior audio handling through native APIs
+- **Best choice if WearOS/Apple Watch integration is a priority**
+- Requires native development expertise
+
+#### Fallback: **Flutter**
+- Good balance of WebRTC support and cross-platform development
+- Excellent audio capabilities
+- Strong API integration
+- Single codebase with high performance
+- **Best choice for teams without native mobile experience**
+
+### Decision Path
+
+1. **If wearable support is essential**: Choose **Kotlin Multiplatform** for native WearOS/watchOS development
+2. **If rapid development with best WebRTC is priority**: Choose **React Native** for mature libraries and ecosystem
+3. **If single codebase simplicity is most important**: Choose **Flutter** for balanced cross-platform approach
+
+The name synergy with **Cordova** is delightful, but it's unsuitable for Codeoba's real-time requirements due to WebView performance limitations and declining ecosystem support. Modern alternatives like React Native or Flutter provide better WebRTC performance, audio handling, and long-term viability.
