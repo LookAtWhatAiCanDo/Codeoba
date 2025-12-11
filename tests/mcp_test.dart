@@ -1,7 +1,7 @@
 /// Tests for MCP client
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:codeoba/src/mcp/mcp_client.dart';
+import 'package:codeoba/mcp/mcp_client.dart';
 
 void main() {
   group('MCPClient', () {

@@ -1,7 +1,7 @@
 /// Tests for WebRTC service
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:codeoba/src/webrtc/webrtc_service.dart';
+import 'package:codeoba/webrtc/webrtc_service.dart';
 
 void main() {
   group('WebRTCService', () {

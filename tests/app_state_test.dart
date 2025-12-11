@@ -1,7 +1,7 @@
 /// Tests for app state manager
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:codeoba/src/ui/app_state.dart';
+import 'package:codeoba/ui/app_state.dart';
 
 void main() {
   group('AppStateManager', () {

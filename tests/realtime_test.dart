@@ -1,7 +1,7 @@
 /// Tests for Realtime API client
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:codeoba/src/realtime/realtime_api_client.dart';
+import 'package:codeoba/realtime/realtime_api_client.dart';
 
 void main() {
   group('RealtimeAPIClient', () {

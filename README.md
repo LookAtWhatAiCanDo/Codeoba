@@ -45,7 +45,7 @@ Built with **Flutter** (selected after comprehensive framework evaluation - see 
 
 ```
 Codeoba/
-├── src/
+├── lib/
 │   ├── webrtc/          # Microphone streaming and audio processing
 │   │   ├── webrtc_service.dart
 │   │   └── audio_processor.dart
@@ -58,15 +58,16 @@ Codeoba/
 │   ├── github/          # GitHub Copilot integration
 │   │   ├── copilot_service.dart
 │   │   └── code_generator.dart
-│   └── ui/              # User interface components
-│       ├── main_ui.dart
-│       ├── app_state.dart
-│       └── widgets/
-│           ├── connection_panel.dart
-│           ├── microphone_button.dart
-│           ├── log_viewer.dart
-│           ├── repository_selector.dart
-│           └── status_indicator.dart
+│   ├── ui/              # User interface components
+│   │   ├── main_ui.dart
+│   │   ├── app_state.dart
+│   │   └── widgets/
+│   │       ├── connection_panel.dart
+│   │       ├── microphone_button.dart
+│   │       ├── log_viewer.dart
+│   │       ├── repository_selector.dart
+│   │       └── status_indicator.dart
+│   └── main.dart        # Application entry point
 ├── tests/               # Test files
 │   ├── webrtc_test.dart
 │   ├── realtime_test.dart
@@ -78,8 +79,6 @@ Codeoba/
 │   └── workflows/       # CI/CD pipelines
 │       ├── ci-cd.yml
 │       └── code-quality.yml
-├── lib/
-│   └── main.dart        # Application entry point
 ├── pubspec.yaml         # Flutter dependencies
 └── README.md
 ```
