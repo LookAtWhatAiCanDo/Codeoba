@@ -1,6 +1,7 @@
 package com.codeoba.core.domain
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface RealtimeClient {
     val connectionState: StateFlow<ConnectionState>
-    val events: Flow<RealtimeEvent>
+    val events: SharedFlow<RealtimeEvent>
     
     suspend fun connect(config: RealtimeConfig)
     suspend fun disconnect()

@@ -27,7 +27,9 @@ class DesktopAudioCaptureService : AudioCaptureService {
         false    // little-endian
     )
     
-    override val audioFrames: Flow<ByteArray> = emptyFlow() // TODO: Implement audio frame streaming
+    // TODO: Implement audio frame streaming for Desktop MVP
+    // For now, return empty flow to indicate not yet implemented
+    override val audioFrames: Flow<ByteArray> = emptyFlow()
     
     override suspend fun start() {
         if (_state.value is AudioCaptureState.Capturing) return
@@ -45,7 +47,9 @@ class DesktopAudioCaptureService : AudioCaptureService {
             targetDataLine?.open(audioFormat)
             targetDataLine?.start()
             
-            _state.value = AudioCaptureState.Capturing
+            // Note: Audio frames collection not implemented in MVP
+            // Full implementation would read from targetDataLine and emit via audioFrames Flow
+            _state.value = AudioCaptureState.Error("Desktop audio streaming not yet implemented in MVP")
         } catch (e: Exception) {
             _state.value = AudioCaptureState.Error(e.message ?: "Failed to start audio capture")
         }

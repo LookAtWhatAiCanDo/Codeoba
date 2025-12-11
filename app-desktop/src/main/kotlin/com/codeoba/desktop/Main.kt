@@ -34,10 +34,17 @@ fun main() = application {
     ) {
         MaterialTheme {
             Surface {
-                // TODO: Load API key from config/environment
+                // API key must be provided via environment variable or config file
+                // See docs/dev-setup.md for configuration instructions
+                val apiKey = System.getenv("OPENAI_API_KEY") 
+                    ?: System.getProperty("openai.api.key")
+                    ?: error("OPENAI_API_KEY not configured. Set environment variable or system property. See docs/dev-setup.md for details.")
+                
                 val config = RealtimeConfig(
-                    apiKey = "your-api-key-here", // TODO: Load from config file
-                    endpoint = "wss://api.openai.com/v1/realtime"
+                    apiKey = apiKey,
+                    endpoint = System.getenv("REALTIME_ENDPOINT") 
+                        ?: System.getProperty("realtime.endpoint")
+                        ?: "wss://api.openai.com/v1/realtime"
                 )
                 
                 CodeobaUI(app = codeobaApp, config = config)

@@ -60,10 +60,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface {
-                    // TODO: Load API key from config/environment
+                    // API key must be provided via BuildConfig or environment
+                    // For development, can be set via gradle.properties or local.properties
+                    // See docs/dev-setup.md for configuration instructions
+                    val apiKey = System.getProperty("openai.api.key")
+                        ?: error("OPENAI_API_KEY not configured. See docs/dev-setup.md for configuration instructions.")
+                    
                     val config = RealtimeConfig(
-                        apiKey = "your-api-key-here", // TODO: Load from secure storage
-                        endpoint = "wss://api.openai.com/v1/realtime"
+                        apiKey = apiKey,
+                        endpoint = System.getProperty("realtime.endpoint")
+                            ?: "wss://api.openai.com/v1/realtime"
                     )
                     
                     CodeobaUI(app = codeobaApp, config = config)

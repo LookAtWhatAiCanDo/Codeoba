@@ -5,6 +5,7 @@ plugins {
 }
 
 kotlin {
+    // JVM Desktop target - fully implemented
     jvm("desktop") {
         compilations.all {
             kotlinOptions {
@@ -12,6 +13,12 @@ kotlin {
             }
         }
     }
+    
+    // Note: Android and iOS targets are temporarily disabled in MVP
+    // - Android: Code is complete but disabled due to Android Gradle Plugin dependency issues
+    //   See docs/android-status.md for re-enabling instructions
+    // - iOS: Stub implementations exist, full AVAudioEngine integration planned for future release
+    //   iOS requires Kotlin/Native which has network access issues in current CI environment
     
     sourceSets {
         val commonMain by getting {
