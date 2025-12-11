@@ -1,0 +1,92 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Create index page
+      run: |
+        mkdir -p _site
+        cp README.md _site/index.md
+        cp -r docs _site/
+        
+        # Create a simple HTML index
+        cat > _site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Codeoba Documentation</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+                h1 { color: #333; }
+                ul { line-height: 1.8; }
+                a { color: #0366d6; text-decoration: none; }
+                a:hover { text-decoration: underline; }
+            </style>
+        </head>
+        <body>
+            <h1>Codeoba Documentation</h1>
+            <p>Cross-platform voice-based AI programming assistant built with Compose Multiplatform</p>
+            <h2>Documentation</h2>
+            <ul>
+                <li><a href="docs/architecture.md">Architecture Overview</a></li>
+                <li><a href="docs/dev-setup.md">Development Setup</a></li>
+                <li><a href="docs/android-status.md">Android Module Status</a></li>
+                <li><a href="docs/mvp-summary.md">MVP Implementation Summary</a></li>
+            </ul>
+            <h2>Project Files</h2>
+            <ul>
+                <li><a href="README.md">README</a></li>
+                <li><a href="FRAMEWORK_EVALUATION.md">Framework Evaluation</a></li>
+            </ul>
+        </body>
+        </html>
+        EOF
+        
+        # Copy framework evaluation
+        cp FRAMEWORK_EVALUATION.md _site/
+        
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+
+  deploy-docs:
+    name: Deploy Documentation
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

@@ -1,5 +1,9 @@
 # Codeoba
 
+[![CI Build](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/ci.yml/badge.svg)](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/ci.yml)
+[![Security](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/security.yml/badge.svg)](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/security.yml)
+[![Documentation](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/docs.yml/badge.svg)](https://github.com/LookAtWhatAiCanDo/Codeoba/actions/workflows/docs.yml)
+
 **Codeoba** is a cross-platform voice-based AI programming assistant that lets you talk to your development environment and have AI (via OpenAI Realtime API + MCP + GitHub/Copilot tooling) perform real actions on your repositories.
 
 Built with **Compose Multiplatform** and **Kotlin**, Codeoba targets:
