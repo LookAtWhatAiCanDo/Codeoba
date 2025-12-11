@@ -425,12 +425,56 @@ Teams comfortable with Angular or Vue wanting more native access than Ionic/Cord
 
 ---
 
+### 11. Compose Multiplatform
+
+**Overview:** JetBrains' declarative UI framework that brings Jetpack Compose to iOS, web, desktop, and Android, enabling true cross-platform UI development with Kotlin.
+
+#### Pros
+- **Shared UI and logic** - Single codebase for UI across all platforms using Compose
+- **Kotlin language** - Modern, concise, safe, and increasingly popular
+- **Declarative UI** - Intuitive Compose API similar to React/SwiftUI
+- **True cross-platform** - Android, iOS, Desktop (Windows/macOS/Linux), Web (via Kotlin/Wasm)
+- **Native performance** - Compiles to native code on each platform
+- **Hot reload** - Fast development iteration with live preview
+- **Native interop** - Direct access to platform APIs when needed
+- **Backed by JetBrains** - Strong corporate support and active development
+- **Jetpack Compose maturity** - Leverages battle-tested Android UI framework
+- **Excellent tooling** - IntelliJ IDEA, Fleet, Android Studio support
+- **Type safety** - Kotlin's strong type system prevents many runtime errors
+- **Growing ecosystem** - Rapidly expanding libraries and community
+- **Seamless integration** with Kotlin Multiplatform for shared business logic
+
+#### Cons
+- **Relatively new** - iOS and web support still evolving (stable but younger than alternatives)
+- **Smaller community** than React Native or Flutter (but growing fast)
+- **Learning curve** - Requires learning Kotlin and Compose paradigm
+- **iOS tooling** - Requires Xcode and macOS for iOS development
+- **Library maturity** - Some cross-platform libraries still in development
+- **Web support** - Still experimental (Kotlin/Wasm is cutting edge)
+- **Mobile focus** - Desktop and web are newer additions
+- **Build times** - Can be longer than some alternatives
+- **Debugging complexity** - Debugging across platforms can be challenging
+
+#### Best For
+Teams prioritizing modern declarative UI with Kotlin, wanting true cross-platform code sharing for both UI and logic, especially those already invested in Kotlin ecosystem.
+
+#### Codeoba-Specific Considerations
+- **WebRTC Support**: ★★★★★ - **Excellent** - Full native WebRTC library access on all platforms, can use platform-specific implementations
+- **Audio Handling**: ★★★★★ - **Excellent** - Direct access to native audio APIs on each platform
+- **API Integration**: ★★★★★ - Kotlin has excellent coroutines and networking libraries (Ktor), perfect for async API calls
+- **Wearable Support**: ★★★★★ - **Best-in-class** - Native Wear OS support with Compose for Wear OS, Apple Watch via native Swift
+- **MCP Integration**: ★★★★★ - Kotlin's type-safe serialization and coroutines are ideal for protocol implementations
+- **Overall Fit**: **Excellent** - Combines the best of both worlds: shared UI like Flutter, native capabilities like KMP, with superior wearable support
+
+---
+
 ## Comparison Matrix
 
 | Framework | Mobile | Desktop | Web | Language | Performance | Learning Curve | Community |
 |-----------|--------|---------|-----|----------|-------------|----------------|-----------|
 | Flutter | ★★★★★ | ★★★★☆ | ★★★☆☆ | Dart | ★★★★★ | ★★★☆☆ | ★★★★☆ |
 | Kotlin MP | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
+| Compose MP | ★★★★★ | ★★★★★ | ★★★☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
 | Qt | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | C++/QML | ★★★★★ | ★★★★☆ | ★★★★☆ |
 | React Native | ★★★★★ | ★★☆☆☆ | ★★★★☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★★★ |
 | Electron | ☆☆☆☆☆ | ★★★★★ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ |
@@ -446,6 +490,7 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 
 | Framework | WebRTC | Audio | API/MCP | Wearable | Overall Fit |
 |-----------|--------|-------|---------|----------|-------------|
+| **Compose MP** | ★★★★★ | ★★★★★ | ★★★★★ | ★★★★★ | **Excellent** |
 | **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
 | **Kotlin MP** | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★★★ | **Excellent** |
 | **Flutter** | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ | **Strong** |
@@ -459,11 +504,11 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 
 ### Top 3 Recommendations for Codeoba
 
-**1. React Native** - Best overall WebRTC support with `react-native-webrtc`, excellent JavaScript ecosystem for API/MCP integration, strong mobile foundation. Trade-off: Limited wearable support.
+**1. Compose Multiplatform** - **New top choice!** - Best overall fit combining shared UI and logic with Kotlin, excellent WebRTC/audio through native APIs, best-in-class wearable support (Wear OS + watchOS), perfect for MCP with Kotlin coroutines. Trade-off: Newer ecosystem, requires learning Kotlin/Compose.
 
-**2. Kotlin Multiplatform** - Best wearable support (native WearOS and watchOS), excellent WebRTC through native libraries, full native capabilities. Trade-off: Steeper learning curve, requires native development skills.
+**2. React Native** - Best overall WebRTC support with `react-native-webrtc`, excellent JavaScript ecosystem for API/MCP integration, strong mobile foundation. Trade-off: Limited wearable support.
 
-**3. Flutter** - Strong cross-platform mobile with good WebRTC and audio support, excellent for custom UIs, single codebase. Trade-off: Limited wearable ecosystem.
+**3. Kotlin Multiplatform** - Best wearable support (native WearOS and watchOS), excellent WebRTC through native libraries, full native capabilities. Trade-off: Steeper learning curve, requires native development skills, separate UI per platform.
 
 ## Decision Framework
 
@@ -472,6 +517,13 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 - High performance with single codebase
 - Rapid development with hot reload
 - Growing but modern ecosystem
+
+### Choose Compose Multiplatform if you need:
+- **Best overall fit for Codeoba** - Shared UI and logic with excellent wearable support
+- Modern declarative UI with Kotlin across all platforms
+- Native performance and API access
+- Superior WebRTC, audio, and MCP integration capabilities
+- Team willing to invest in Kotlin/Compose ecosystem
 
 ### Choose Kotlin Multiplatform if you need:
 - True native UI with shared business logic
@@ -548,10 +600,11 @@ Based on the project's requirements for WebRTC, real-time voice, MCP integration
 
 ## Emerging Trends
 
-- **Compose Multiplatform** (Kotlin): Bringing Jetpack Compose to iOS, web, and desktop - watch this space
-- **WebAssembly**: May change the landscape for web-based frameworks
+- **Compose Multiplatform** (Kotlin): Now production-ready and evaluated as a top-tier option above - highly recommended for Codeoba
+- **WebAssembly**: May change the landscape for web-based frameworks, already powering Compose Multiplatform web
 - **Server-driven UI**: Reduces client complexity regardless of framework choice
 - **AI-assisted development**: Making complex frameworks more accessible
+- **Declarative UI convergence**: SwiftUI, Jetpack Compose, React all moving toward similar patterns
 
 ## Conclusion
 
@@ -568,31 +621,41 @@ There is no one-size-fits-all solution. The best framework depends on:
 
 Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime API integration**, **MCP protocol support**, **voice/audio handling**, and **potential wearable companion devices**, the recommended frameworks are:
 
-#### Primary Recommendation: **React Native**
+#### Primary Recommendation: **Compose Multiplatform**
+- **Best overall fit** - Combines shared UI and business logic in a single Kotlin codebase
+- Excellent WebRTC support through native library integration on all platforms
+- Superior audio handling via direct access to platform APIs
+- Best-in-class wearable support (native Wear OS with Compose, Apple Watch via Swift)
+- Perfect for MCP protocol implementation with Kotlin's coroutines and type-safe serialization
+- Modern declarative UI framework (Jetpack Compose) proven on Android, now cross-platform
+- **Best choice for teams willing to invest in the Kotlin ecosystem for maximum capability**
+
+#### Alternative #1: **React Native**
 - Industry-leading WebRTC support via `react-native-webrtc`
 - Excellent JavaScript/TypeScript ecosystem for API and MCP integration
 - Strong audio recording and playback capabilities
 - Large community and mature libraries
-- **Best choice if wearable support is not critical**
+- **Best choice if JavaScript expertise is primary and wearable support is not critical**
 
-#### Alternative: **Kotlin Multiplatform**
+#### Alternative #2: **Kotlin Multiplatform**
 - Best-in-class native wearable support (WearOS and Apple Watch)
 - Full native WebRTC integration capabilities
 - Superior audio handling through native APIs
-- **Best choice if WearOS/Apple Watch integration is a priority**
-- Requires native development expertise
+- Share business logic while maintaining platform-specific UIs
+- **Best choice if native UI quality is paramount and team has native development experience**
 
 #### Fallback: **Flutter**
 - Good balance of WebRTC support and cross-platform development
 - Excellent audio capabilities
 - Strong API integration
 - Single codebase with high performance
-- **Best choice for teams without native mobile experience**
+- **Best choice for teams without native mobile or Kotlin experience**
 
 ### Decision Path
 
-1. **If wearable support is essential**: Choose **Kotlin Multiplatform** for native WearOS/watchOS development
-2. **If rapid development with best WebRTC is priority**: Choose **React Native** for mature libraries and ecosystem
-3. **If single codebase simplicity is most important**: Choose **Flutter** for balanced cross-platform approach
+1. **If you want the best overall solution**: Choose **Compose Multiplatform** - shared UI + logic, excellent wearables, native capabilities
+2. **If you have strong JavaScript/React expertise**: Choose **React Native** for mature WebRTC ecosystem and rapid development
+3. **If you prioritize native UI quality over shared UI**: Choose **Kotlin Multiplatform** for native UIs with shared logic
+4. **If you want simplicity and have Dart/Flutter experience**: Choose **Flutter** for balanced cross-platform approach
 
-The name synergy with **Cordova** is delightful, but it's unsuitable for Codeoba's real-time requirements due to WebView performance limitations and declining ecosystem support. Modern alternatives like React Native or Flutter provide better WebRTC performance, audio handling, and long-term viability.
+The name synergy with **Cordova** is delightful, but it's unsuitable for Codeoba's real-time requirements due to WebView performance limitations and declining ecosystem support. Modern alternatives like Compose Multiplatform, React Native, or Flutter provide better WebRTC performance, audio handling, and long-term viability.
