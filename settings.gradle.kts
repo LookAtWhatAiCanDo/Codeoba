@@ -19,6 +19,6 @@ dependencyResolutionManagement {
 
 include(":core")
 // Android temporarily disabled due to AGP dependency issues - will be re-enabled after fixing
-// include(":app-android")
+include(":app-android")
 include(":app-desktop")
 // iOS and Web will be added after basic structure is working
