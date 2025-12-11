@@ -575,7 +575,7 @@ Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime
 - Large community and mature libraries
 - **Best choice if wearable support is not critical**
 
-#### Alternative: **Kotlin Multiplatform** 
+#### Alternative: **Kotlin Multiplatform**
 - Best-in-class native wearable support (WearOS and Apple Watch)
 - Full native WebRTC integration capabilities
 - Superior audio handling through native APIs
