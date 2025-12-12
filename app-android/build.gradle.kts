@@ -19,8 +19,8 @@ android {
         
         // Load API key from local.properties for development
         // This provides a default value that can be overridden at runtime
-        val localProperties = gradleLocalProperties(rootDir, providers)
-        val dangerousOpenAiKey = localProperties.getProperty("DANGEROUS_OPENAI_API_KEY", "")
+        val localProperties = gradleLocalProperties(rootDir)
+        val dangerousOpenAiKey = localProperties.getProperty("DANGEROUS_OPENAI_API_KEY") ?: ""
         buildConfigField("String", "DANGEROUS_OPENAI_API_KEY", "\"$dangerousOpenAiKey\"")
     }
     
