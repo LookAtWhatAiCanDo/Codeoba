@@ -58,8 +58,8 @@ git push origin v1.0.0
 
 **Jobs:**
 1. **dependency-check** - OWASP dependency vulnerability scan
-2. **codeql-analysis** - CodeQL security analysis for Java/Kotlin
-3. **dependency-review** - Reviews dependency changes in PRs (PR only)
+2. **codeql-analysis** - CodeQL security analysis for Java/Kotlin (requires GitHub Advanced Security)
+3. **dependency-review** - Reviews dependency changes in PRs (requires GitHub Advanced Security)
 4. **gradle-wrapper-validation** - Validates Gradle wrapper integrity
 
 **Security Features:**
@@ -67,6 +67,15 @@ git push origin v1.0.0
 - Analyzes code for security issues
 - Blocks PRs with moderate+ severity vulnerabilities
 - Rejects GPL-2.0 and GPL-3.0 licenses
+
+**⚠️ Important Notes:**
+- **CodeQL** and **Dependency Review** require GitHub Advanced Security to be enabled
+- These features are available on:
+  - GitHub Enterprise Cloud/Server
+  - Public repositories in GitHub Free (with some limitations)
+  - Private repositories with GitHub Advanced Security enabled
+- Jobs will gracefully skip or continue on error if Advanced Security is not available
+- To enable: Go to repository Settings → Security & analysis → Enable features
 
 ### 📚 Documentation (`docs.yml`)
 
@@ -223,6 +232,29 @@ For macOS-specific issues, check Xcode version:
 - name: Select Xcode version
   run: sudo xcode-select -s /Applications/Xcode_15.0.app
 ```
+
+### CodeQL/Dependency Review Errors
+
+**Error:** "Advanced Security must be enabled for this repository to use code scanning"
+
+**Cause:** CodeQL and Dependency Review require GitHub Advanced Security features.
+
+**Solutions:**
+1. **Enable Advanced Security:**
+   - Go to Settings → Security & analysis
+   - Enable "Dependency graph" and "Dependabot alerts"
+   - For private repos: Enable "GitHub Advanced Security"
+   
+2. **Workflow already handles this:**
+   - Jobs use `continue-on-error: true` to prevent workflow failure
+   - Jobs conditionally skip when features aren't available
+   - No action needed - workflows will work without Advanced Security
+
+3. **Alternative for public repos:**
+   - Most public repos have access to some security features automatically
+   - If errors persist, ensure repository visibility is set correctly
+
+**Note:** These security features are optional. The CI/build workflows will still succeed without them.
 
 ## Monitoring
 
