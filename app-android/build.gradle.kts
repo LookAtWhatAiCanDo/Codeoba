@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     kotlin("android")
     id("com.android.application")
@@ -17,10 +20,10 @@ android {
         
         // Load API key from local.properties for development
         // This provides a default value that can be overridden at runtime
-        val properties = java.util.Properties()
+        val properties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")
         if (localPropertiesFile.exists()) {
-            properties.load(localPropertiesFile.inputStream())
+            properties.load(FileInputStream(localPropertiesFile))
         }
         val dangerousOpenAiKey = properties.getProperty("DANGEROUS_OPENAI_API_KEY", "")
         buildConfigField("String", "DANGEROUS_OPENAI_API_KEY", "\"$dangerousOpenAiKey\"")
