@@ -54,25 +54,49 @@ cd Codeoba
 
 Codeoba requires an OpenAI API key for the Realtime API. **Never commit API keys to the repository.**
 
-#### Option 1: Environment Variables (Recommended)
+#### Configuration Methods
+
+**Android:**
+- API keys are stored securely using Android Keystore encryption
+- Default key can be provided via `local.properties` (see below)
+- Keys are encrypted in SharedPreferences using AES/GCM
+
+**Desktop:**
+- Environment variable: `OPENAI_API_KEY`
+- System property: `-Dopenai.api.key=sk-...`
+- local.properties file: `DANGEROUS_OPENAI_API_KEY=sk-...`
+
+#### Setting Up local.properties
 
 Create a `local.properties` file in the project root (this file is gitignored):
 
 ```properties
 # local.properties
-openai.api.key=sk-your-api-key-here
+# For Android: Provides default API key (stored encrypted on first run)
+DANGEROUS_OPENAI_API_KEY=sk-your-api-key-here
+
+# Optional: Custom Realtime endpoint
 realtime.endpoint=wss://api.openai.com/v1/realtime
 ```
 
-#### Option 2: Code Configuration (Development Only)
+**Why "DANGEROUS"?**
+The prefix reminds developers that this is a development convenience. In production:
+- Android: Users should enter their own API key through the app UI
+- Desktop: Use environment variables or secure configuration management
 
-For quick testing, you can temporarily hardcode the API key in the main activity/entry point, but **do not commit this change**:
+#### Alternative: Environment Variables (Desktop/CI)
 
-```kotlin
-val config = RealtimeConfig(
-    apiKey = "sk-your-api-key-here",
-    endpoint = "wss://api.openai.com/v1/realtime"
-)
+For desktop or CI environments:
+
+```bash
+export OPENAI_API_KEY=sk-your-api-key-here
+export REALTIME_ENDPOINT=wss://api.openai.com/v1/realtime  # optional
+```
+
+Or use system properties:
+
+```bash
+./gradlew :app-desktop:run -Dopenai.api.key=sk-your-api-key-here
 ```
 
 #### Getting an OpenAI API Key
@@ -83,6 +107,14 @@ val config = RealtimeConfig(
 4. Copy and save it securely (you won't be able to see it again)
 
 > **Note:** OpenAI Realtime API may have specific pricing and availability. Check [OpenAI's pricing page](https://openai.com/pricing) for current details.
+
+#### Security Best Practices
+
+- ✅ Use `local.properties` for local development (gitignored)
+- ✅ Android encrypts keys using Android Keystore
+- ✅ Use environment variables in CI/production
+- ❌ Never hardcode API keys in source files
+- ❌ Never commit `local.properties` to git
 
 ---
 

@@ -15,6 +15,8 @@ import com.codeoba.core.ui.CodeobaUI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.io.File
+import java.util.Properties
 
 fun main() = application {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -34,11 +36,11 @@ fun main() = application {
     ) {
         MaterialTheme {
             Surface {
-                // API key must be provided via environment variable or config file
-                // See docs/dev-setup.md for configuration instructions
-                val apiKey = System.getenv("OPENAI_API_KEY") 
-                    ?: System.getProperty("openai.api.key")
-                    ?: error("OPENAI_API_KEY not configured. Set environment variable or system property. See docs/dev-setup.md for details.")
+                // API key priority:
+                // 1. Environment variable OPENAI_API_KEY
+                // 2. System property openai.api.key
+                // 3. local.properties file
+                val apiKey = getApiKey()
                 
                 val config = RealtimeConfig(
                     apiKey = apiKey,
@@ -51,4 +53,30 @@ fun main() = application {
             }
         }
     }
+}
+
+/**
+ * Gets the API key from various sources in priority order:
+ * 1. OPENAI_API_KEY environment variable
+ * 2. openai.api.key system property  
+ * 3. DANGEROUS_OPENAI_API_KEY from local.properties
+ */
+private fun getApiKey(): String {
+    // Check environment variable
+    System.getenv("OPENAI_API_KEY")?.let { return it }
+    
+    // Check system property
+    System.getProperty("openai.api.key")?.let { return it }
+    
+    // Check local.properties file
+    val localPropertiesFile = File("local.properties")
+    if (localPropertiesFile.exists()) {
+        val properties = Properties()
+        localPropertiesFile.inputStream().use { properties.load(it) }
+        properties.getProperty("DANGEROUS_OPENAI_API_KEY")?.let { 
+            if (it.isNotBlank()) return it 
+        }
+    }
+    
+    error("OPENAI_API_KEY not configured. Set OPENAI_API_KEY environment variable or add DANGEROUS_OPENAI_API_KEY to local.properties. See docs/dev-setup.md")
 }
