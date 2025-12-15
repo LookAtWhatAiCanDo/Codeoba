@@ -50,7 +50,7 @@ All platform-specific functionality is abstracted behind interfaces:
 - `McpClient` - MCP/GitHub integration
 - `CompanionProxy` - Future wearable device support
 
-See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture documentation.
 
 ---
 
@@ -91,20 +91,16 @@ iOS support is stubbed in the MVP. Full implementation coming in future releases
 
 ### Configuration
 
-Before running, you need to configure your OpenAI API key. See [docs/dev-setup.md](docs/dev-setup.md) for details.
+Before running, you need to configure your OpenAI API key. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for details.
 
 ---
 
 ## 📚 Documentation
 
-### Core Documentation
 - **[Implementation Status](docs/IMPLEMENTATION_STATUS.md)** - ⭐ **START HERE** - Complete status of what's done and what's next
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and module structure
-- [Development Setup](docs/SETUP.md) - Setup instructions and configuration
+- [Development Setup](docs/DEVELOPMENT.md) - Setup instructions and configuration
 - [Framework Evaluation](FRAMEWORK_EVALUATION.md) - Why Compose Multiplatform was chosen
-
-### Additional Resources
-- [Android Implementation Details](docs/android-status.md) - Android-specific notes
 - [GitHub Workflows](.github/workflows/README.md) - CI/CD documentation
 
 ---
@@ -121,10 +117,6 @@ Before running, you need to configure your OpenAI API key. See [docs/dev-setup.m
 | Realtime API | 🔴 Stub (10%) |
 | MCP Client | 🔴 Stub (10%) |
 | iOS App | 🔴 Stub (5%) |
-
-**This PR delivers:** Solid architecture, working Desktop UI, production-ready Android code, comprehensive documentation.
-
-**Next PR:** Enhanced UI (push-to-talk, text input), OpenAI Realtime WebSocket integration, end-to-end voice flow.
 
 ---
 
