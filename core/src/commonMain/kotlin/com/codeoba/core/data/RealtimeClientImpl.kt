@@ -9,32 +9,16 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Stub implementation of RealtimeClient for MVP.
- * Future: Implement with Ktor WebSocket connection to OpenAI Realtime API.
+ * Implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
+ * 
+ * OpenAI Realtime API uses WebRTC for low-latency bidirectional audio streaming.
+ * This requires platform-specific WebRTC implementations.
  */
-class RealtimeClientImpl : RealtimeClient {
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+expect class RealtimeClientImpl() : RealtimeClient {
+    override val connectionState: StateFlow<ConnectionState>
+    override val events: SharedFlow<RealtimeEvent>
     
-    // Use SharedFlow for events as they are a stream of occurrences, not a single state
-    private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
-    override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
-    
-    override suspend fun connect(config: RealtimeConfig) {
-        _connectionState.value = ConnectionState.Connecting
-        // TODO: Implement WebSocket connection
-        // For MVP, simulate connection
-        kotlinx.coroutines.delay(1000)
-        _connectionState.value = ConnectionState.Connected
-        _events.emit(RealtimeEvent.Connected)
-    }
-    
-    override suspend fun disconnect() {
-        _connectionState.value = ConnectionState.Disconnected
-        _events.emit(RealtimeEvent.Disconnected)
-    }
-    
-    override suspend fun sendAudioFrame(frame: ByteArray) {
-        // TODO: Send audio frame via WebSocket
-    }
+    override suspend fun connect(config: RealtimeConfig)
+    override suspend fun disconnect()
+    override suspend fun sendAudioFrame(frame: ByteArray)
 }
