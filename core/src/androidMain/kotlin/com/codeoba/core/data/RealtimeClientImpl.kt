@@ -17,17 +17,20 @@ import kotlinx.serialization.json.*
 /**
  * Android implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
  * 
- * Uses Android's native WebRTC library (org.webrtc:google-webrtc).
+ * IMPLEMENTATION NOTE:
+ * This implementation requires a WebRTC library for Android. To complete the implementation:
  * 
- * WebRTC connection flow:
- * 1. Create ephemeral token from OpenAI API
- * 2. Initialize PeerConnectionFactory
- * 3. Create PeerConnection
- * 4. Set up data channel for signaling
- * 5. Add audio track for bidirectional streaming
- * 6. Create SDP offer and exchange with OpenAI
- * 7. Handle ICE candidates
- * 8. Stream audio through RTP
+ * 1. Add WebRTC dependency to core/build.gradle.kts androidMain:
+ *    implementation("io.getstream:stream-webrtc-android:1.1.5") // Recommended
+ *    OR
+ *    implementation("org.webrtc:google-webrtc:1.0.+") // Official but harder to find
+ * 
+ * 2. Import required WebRTC classes:
+ *    import org.webrtc.*
+ * 
+ * 3. Implement the WebRTC connection flow as documented in WEBRTC_IMPLEMENTATION_PLAN.md
+ * 
+ * See /docs/WEBRTC_IMPLEMENTATION_PLAN.md for complete implementation details.
  */
 actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -36,10 +39,11 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
     actual override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
     
-    private var peerConnection: Any? = null // Will be org.webrtc.PeerConnection
-    private var dataChannel: Any? = null // Will be org.webrtc.DataChannel
-    private var audioTrack: Any? = null // Will be org.webrtc.AudioTrack
-    private var peerConnectionFactory: Any? = null // Will be org.webrtc.PeerConnectionFactory
+    // WebRTC objects - will be typed when library is added
+    private var peerConnection: Any? = null // PeerConnection
+    private var dataChannel: Any? = null // DataChannel
+    private var audioTrack: Any? = null // AudioTrack
+    private var peerConnectionFactory: Any? = null // PeerConnectionFactory
     
     private val httpClient = HttpClient()
     private val json = Json {
@@ -62,41 +66,24 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             // Step 1: Get ephemeral token from OpenAI
             ephemeralKey = getEphemeralToken(config.apiKey, config.model)
             
+            // WebRTC implementation steps (requires WebRTC library):
             // Step 2: Initialize PeerConnectionFactory
-            // PeerConnectionFactory.initialize(
-            //     PeerConnectionFactory.InitializationOptions.builder(context)
-            //         .createInitializationOptions()
-            // )
-            // peerConnectionFactory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+            // Step 3: Create PeerConnection with STUN servers
+            // Step 4: Create data channel for event signaling  
+            // Step 5: Add audio track for bidirectional streaming
+            // Step 6: Create SDP offer and set local description
+            // Step 7: Exchange SDP with OpenAI and set remote description
+            // Step 8: Handle ICE candidates
+            // Step 9: Set up event listeners on data channel
             
-            // Step 3: Create peer connection
-            // val iceServers = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
-            // val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
-            // peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, observer)
-            
-            // Step 4: Create data channel
-            // dataChannel = peerConnection.createDataChannel("oai-events", DataChannel.Init())
-            
-            // Step 5: Add audio track
-            // val audioSource = peerConnectionFactory.createAudioSource(MediaConstraints())
-            // audioTrack = peerConnectionFactory.createAudioTrack("audio", audioSource)
-            // peerConnection.addTrack(audioTrack)
-            
-            // Step 6: Create and set local description
-            // val offer = peerConnection.createOffer(MediaConstraints())
-            // peerConnection.setLocalDescription(offer)
-            
-            // Step 7: Exchange SDP with OpenAI
-            // val answer = exchangeSDP(offer, ephemeralKey)
-            // peerConnection.setRemoteDescription(answer)
-            
-            // For now, emit error indicating WebRTC library is needed
+            // For now, report that WebRTC library is needed
             _connectionState.value = ConnectionState.Error(
-                "WebRTC implementation requires org.webrtc:google-webrtc dependency. " +
-                "Add the library to core/build.gradle.kts androidMain dependencies."
+                "WebRTC library required. Add WebRTC dependency to core/build.gradle.kts. " +
+                "See /docs/WEBRTC_IMPLEMENTATION_PLAN.md for details."
             )
             _events.emit(RealtimeEvent.Error(
-                "WebRTC not yet implemented for Android. Requires google-webrtc library integration."
+                "WebRTC implementation pending. Requires WebRTC library integration. " +
+                "Ephemeral token retrieved successfully: ${ephemeralKey?.take(10)}..."
             ))
             
         } catch (e: Exception) {
@@ -110,13 +97,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         receiveJob?.cancel()
         receiveJob = null
         
-        // Close data channel
+        // WebRTC cleanup (when library is added):
         // dataChannel?.close()
-        
-        // Close peer connection
         // peerConnection?.close()
-        
-        // Dispose peer connection factory
         // peerConnectionFactory?.dispose()
         
         peerConnection = null
@@ -135,10 +118,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         }
         
         try {
-            // Audio is sent automatically via the audio track in WebRTC
-            // No manual frame sending needed - the audioTrack handles RTP streaming
-            
-            // For now, do nothing as WebRTC is not yet implemented
+            // With WebRTC AudioTrack, audio is sent automatically via RTP
+            // No manual frame sending needed - the track handles encoding and transmission
         } catch (e: Exception) {
             _events.emit(RealtimeEvent.Error("Failed to send audio: ${e.message}"))
         }
@@ -146,6 +127,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     
     /**
      * Get ephemeral token from OpenAI for WebRTC session.
+     * This method is implemented and functional.
      */
     private suspend fun getEphemeralToken(apiKey: String, model: String): String {
         try {
@@ -170,60 +152,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     }
     
     /**
-     * Set up WebRTC observer for connection events.
-     */
-    private fun setupPeerConnectionObserver() {
-        // val observer = object : PeerConnection.Observer {
-        //     override fun onIceCandidate(candidate: IceCandidate) {
-        //         // Handle ICE candidates
-        //     }
-        //     
-        //     override fun onDataChannel(channel: DataChannel) {
-        //         channel.registerObserver(createDataChannelObserver())
-        //     }
-        //     
-        //     override fun onAddTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
-        //         // Handle incoming audio track
-        //     }
-        //     
-        //     override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {
-        //         when (newState) {
-        //             PeerConnection.IceConnectionState.CONNECTED -> {
-        //                 _connectionState.value = ConnectionState.Connected
-        //                 CoroutineScope(Dispatchers.Main).launch {
-        //                     _events.emit(RealtimeEvent.Connected)
-        //                 }
-        //             }
-        //             PeerConnection.IceConnectionState.FAILED,
-        //             PeerConnection.IceConnectionState.DISCONNECTED -> {
-        //                 _connectionState.value = ConnectionState.Disconnected
-        //                 CoroutineScope(Dispatchers.Main).launch {
-        //                     _events.emit(RealtimeEvent.Disconnected)
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-    }
-    
-    /**
-     * Create observer for data channel messages.
-     */
-    private fun createDataChannelObserver() {
-        // return object : DataChannel.Observer {
-        //     override fun onMessage(buffer: DataChannel.Buffer) {
-        //         val data = ByteArray(buffer.data.remaining())
-        //         buffer.data.get(data)
-        //         val message = String(data)
-        //         CoroutineScope(Dispatchers.Main).launch {
-        //             handleDataChannelMessage(message)
-        //         }
-        //     }
-        // }
-    }
-    
-    /**
      * Handle messages received on the data channel.
+     * This method is implemented and ready to use once WebRTC is integrated.
      */
     private suspend fun handleDataChannelMessage(message: String) {
         try {
@@ -271,8 +201,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 
                 "error" -> {
                     val error = jsonObject["error"]?.jsonObject
-                    val message = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
-                    _events.emit(RealtimeEvent.Error(message))
+                    val errorMessage = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
+                    _events.emit(RealtimeEvent.Error(errorMessage))
                 }
             }
         } catch (e: Exception) {
