@@ -129,9 +129,3 @@ Contributions are welcome! This is part of the N-project series. See the [main i
 ## 📄 License
 
 See [LICENSE](LICENSE) for details.
-
----
-
-## Framework Evaluation
-
-See [FRAMEWORK_EVALUATION.md](docs/FRAMEWORK_EVALUATION.md) for a comprehensive analysis of various cross-platform framework options and why Compose Multiplatform was selected.
