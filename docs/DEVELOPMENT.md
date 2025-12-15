@@ -18,7 +18,7 @@ This guide covers setting up your development environment for Codeoba across all
 
 ### Android Development
 
-- **Android Studio** - Arctic Fox (2020.3.1) or newer
+- **Android Studio** - Otter 2025.2.2 or newer
   - Download from [developer.android.com](https://developer.android.com/studio)
   - Includes Android SDK and emulator
 
@@ -105,7 +105,9 @@ Or use system properties:
 
 1. Sign up at [platform.openai.com](https://platform.openai.com/)
 2. Navigate to API Keys section
-3. Create a new API key
+3. Create a new API key with the following permissions:
+   - **List models** = Read
+   - **Model capabilities/Realtime** = Request
 4. Copy and save it securely (you won't be able to see it again)
 
 > **Note:** OpenAI Realtime API may have specific pricing and availability. Check [OpenAI's pricing page](https://openai.com/pricing) for current details.

@@ -1,6 +1,6 @@
 # Codeoba Implementation Status
 
-**Last Updated:** December 15, 2024
+**Last Updated:** December 15, 2025
 
 This document tracks the **current implementation status and roadmap** for Codeoba features.
 
@@ -125,9 +125,9 @@ This section outlines the planned implementation sequence for remaining features
 **Goal:** End-to-end voice → transcript → tool call flow
 
 **Tasks:**
-1. **OpenAI Realtime WebSocket Client** 
-   - Implement Ktor WebSocket connection
-   - Handle JSON event protocol
+1. **OpenAI Realtime WebRTC Client** 
+   - Implement WebRTC connection
+   - Handle signaling and media streams
    - Audio frame encoding and streaming
    - Effort: ~2-3 days
 
@@ -143,14 +143,16 @@ This section outlines the planned implementation sequence for remaining features
 
 **AI Prompt for Phase 1:**
 ```
-Implement OpenAI Realtime API WebSocket client in RealtimeClientImpl.kt:
-1. Use Ktor WebSocket to connect to wss://api.openai.com/v1/realtime
-2. Send session.update with model configuration
-3. Stream audio frames as input_audio_buffer.append events
-4. Parse response events: session.created, response.audio.delta, conversation.item
-5. Emit RealtimeEvent.Transcript and RealtimeEvent.ToolCall
-6. Handle reconnection and error recovery
-7. Test with actual microphone input on Desktop
+Implement OpenAI Realtime API WebRTC client in RealtimeClientImpl.kt:
+1. Use WebRTC to connect to OpenAI Realtime API endpoint
+2. Establish peer connection with proper signaling
+3. Configure audio tracks for bidirectional streaming
+4. Send session.update with model configuration
+5. Stream PCM audio frames to the peer connection
+6. Parse response events: session.created, response.audio.delta, conversation.item
+7. Emit RealtimeEvent.Transcript and RealtimeEvent.ToolCall
+8. Handle reconnection and error recovery
+9. Test with actual microphone input on Desktop
 ```
 
 ### Phase 2: MCP Protocol Implementation
@@ -289,7 +291,7 @@ These components have interface definitions but stub implementations:
 ### 1. OpenAI Realtime API (`RealtimeClientImpl.kt`)
 - Simulated connection state changes
 - Mock transcript events
-- No actual WebSocket connection
+- No actual WebRTC connection
 - **Location:** `core/src/commonMain/kotlin/com/codeoba/core/data/RealtimeClientImpl.kt`
 
 ### 2. MCP Client (`McpClientImpl.kt`)
@@ -336,7 +338,7 @@ Track progress by updating this table as features are completed:
 
 | Phase | Feature | Status | Notes |
 |-------|---------|--------|-------|
-| 1 | OpenAI Realtime WebSocket | 🔴 Not Started | See Phase 1 AI prompt above |
+| 1 | OpenAI Realtime WebRTC | ~0% | See Phase 1 AI prompt above |
 | 1 | Desktop Audio Streaming | 🔴 Not Started | JavaSound configured |
 | 1 | Integration Testing | 🔴 Not Started | - |
 | 2 | MCP Protocol | 🔴 Not Started | See Phase 2 AI prompt above |
