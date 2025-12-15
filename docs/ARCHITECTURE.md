@@ -1,5 +1,9 @@
 # Architecture Overview
 
+> **📘 Quick Links:**
+> - **Implementation Status** → [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
+> - **Development Setup** → [SETUP.md](SETUP.md)
+
 This document provides a comprehensive overview of Codeoba's architecture, module structure, and design decisions.
 
 ---

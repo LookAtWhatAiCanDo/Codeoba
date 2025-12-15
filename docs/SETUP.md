@@ -1,5 +1,7 @@
 # Development Setup
 
+> **Note:** For current implementation status, see [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
+
 This guide covers setting up your development environment for Codeoba across all supported platforms.
 
 ---

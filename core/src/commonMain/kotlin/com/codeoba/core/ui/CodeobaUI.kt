@@ -119,44 +119,80 @@ fun VoicePanel(
     onStartMic: () -> Unit,
     onStopMic: () -> Unit
 ) {
+    var textInput by remember { mutableStateOf("") }
+    
     Card {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Voice Input",
+                text = "Voice & Text Input",
                 style = MaterialTheme.typography.titleMedium
             )
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = when (audioCaptureState) {
-                        is AudioCaptureState.Idle -> "Ready"
-                        is AudioCaptureState.Starting -> "Starting..."
-                        is AudioCaptureState.Capturing -> "Recording"
-                        is AudioCaptureState.Error -> "Error: ${audioCaptureState.message}"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+            // Push-to-Talk Button (Walkie-Talkie Style)
+            val isCapturing = audioCaptureState is AudioCaptureState.Capturing
+            val isConnected = connectionState is ConnectionState.Connected
+            
+            Button(
+                onClick = if (isCapturing) onStopMic else onStartMic,
+                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isCapturing) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.primary
                 )
-                
-                val isCapturing = audioCaptureState is AudioCaptureState.Capturing
-                val isConnected = connectionState is ConnectionState.Connected
-                
-                Button(
-                    onClick = if (isCapturing) onStopMic else onStartMic,
-                    enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(if (isCapturing) "Stop Mic" else "Start Mic")
+                    Text(
+                        text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = when (audioCaptureState) {
+                            is AudioCaptureState.Idle -> "Ready to record"
+                            is AudioCaptureState.Starting -> "Starting..."
+                            is AudioCaptureState.Capturing -> "Recording..."
+                            is AudioCaptureState.Error -> "Error: ${audioCaptureState.message}"
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
+            
+            // Text Input Alternative
+            OutlinedTextField(
+                value = textInput,
+                onValueChange = { textInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Or type your command...") },
+                placeholder = { Text("e.g., Create a new function called calculateSum") },
+                enabled = isConnected,
+                trailingIcon = {
+                    if (textInput.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                // TODO: Handle text submission
+                                println("Text submitted: $textInput")
+                                textInput = ""
+                            }
+                        ) {
+                            Text("Send", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                },
+                maxLines = 3
+            )
         }
     }
 }

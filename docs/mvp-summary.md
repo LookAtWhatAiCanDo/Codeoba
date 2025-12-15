@@ -1,5 +1,11 @@
 # MVP Implementation Summary
 
+> **⚠️ DEPRECATED:** This file is superseded by [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) which provides current, accurate status.
+> 
+> Kept for historical reference only.
+
+---
+
 ## Overview
 
 This MVP implementation delivers the foundational architecture for **Codeoba**, a cross-platform voice-based AI programming assistant built with Compose Multiplatform and Kotlin.
