@@ -19,9 +19,9 @@ This document outlines the complete WebRTC implementation plan for the OpenAI Re
 
 ## Platform-Specific Implementation
 
-### Android (IMPLEMENTED)
+### Android (✅ COMPLETE)
 
-**Library**: `org.webrtc:google-webrtc` (Note: Correct artifact name needs verification)
+**Library**: `io.github.webrtc-sdk:android:137.7151.05`
 
 **Key Classes**:
 - `PeerConnectionFactory` - Factory for creating peer connections
@@ -36,13 +36,23 @@ This document outlines the complete WebRTC implementation plan for the OpenAI Re
 - ✅ SDP exchange
 - ✅ Data channel messaging
 - ✅ Event parsing (transcripts, tool calls)
-- ⚠️ Dependency resolution issue - need correct WebRTC artifact
+- ✅ Session configuration with PCM16 audio
+- ✅ ICE candidate handling
+- ✅ Connection state management
+- ⚠️ Context injection needs integration in app (call `initialize(context)`)
+
+**Usage**:
+```kotlin
+val realtimeClient = RealtimeClientImpl()
+realtimeClient.initialize(applicationContext) // Must be called before connect
+realtimeClient.connect(config)
+```
 
 **Next Steps**:
-1. Find correct WebRTC library artifact (alternatives: `io.getstream:stream-webrtc-android`, custom build)
-2. Add Context injection mechanism (currently using lateinit)
-3. Test with actual OpenAI API
-4. Verify audio track configuration for PCM16 format
+1. Update Android MainActivity to call `initialize(context)` 
+2. Connect AudioCaptureService to send frames to RealtimeClient
+3. Test with actual OpenAI API key
+4. Verify end-to-end audio streaming
 
 ### Desktop (PARTIAL)
 
@@ -240,11 +250,7 @@ For manual control (if needed):
 // core/build.gradle.kts
 val androidMain by getting {
     dependencies {
-        // Option 1: Official Google WebRTC (if available)
-        implementation("org.webrtc:google-webrtc:M114")
-        
-        // Option 2: Stream WebRTC (more actively maintained)
-        implementation("io.getstream:stream-webrtc-android:1.0.7")
+        implementation("io.github.webrtc-sdk:android:137.7151.05") // ✅ ADDED
     }
 }
 ```
@@ -261,15 +267,16 @@ val desktopMain by getting {
 
 ## Implementation Checklist
 
-### Phase 1: Core WebRTC (Android)
+### Phase 1: Core WebRTC (Android) - ✅ COMPLETE
 - [x] Expect/actual class structure
 - [x] Ephemeral token retrieval
 - [x] SDP offer creation
 - [x] SDP answer handling
 - [x] Data channel setup
 - [x] Event parsing
-- [ ] Fix WebRTC library dependency
-- [ ] Context injection
+- [x] WebRTC library dependency (io.github.webrtc-sdk:android:137.7151.05)
+- [x] Context initialization method
+- [ ] Integration in Android app
 - [ ] Test with real API
 
 ### Phase 2: Desktop Alternative
@@ -292,17 +299,21 @@ val desktopMain by getting {
 
 ## Known Issues
 
-1. **WebRTC Library Availability**: org.webrtc:google-webrtc artifact not found in Maven Central
-   - **Solution**: Try io.getstream:stream-webrtc-android or build from source
+1. **Android Context Required**: RealtimeClientImpl needs Android Context for WebRTC initialization
+   - **Solution**: Call `realtimeClient.initialize(applicationContext)` in MainActivity before connecting
+   - **Status**: ✅ Implementation complete, integration pending
 
-2. **Context Dependency**: Android implementation needs Context for WebRTC initialization
-   - **Solution**: Add factory method or dependency injection
+2. **Desktop WebRTC**: No mature JVM WebRTC library
+   - **Solution**: Use WebSocket fallback for Desktop (OpenAI supports both protocols)
+   - **Status**: 🔴 Not implemented
 
-3. **Desktop WebRTC**: No mature JVM WebRTC library
-   - **Solution**: Use WebSocket fallback for Desktop
-
-4. **Audio Format**: Need to verify AudioTrack uses correct PCM16 format
+3. **Audio Format Verification**: Need to verify AudioTrack uses correct PCM16 format
    - **Solution**: Configure MediaConstraints with explicit audio settings
+   - **Status**: ⚠️ Needs testing with real API
+
+4. **Manual Audio Streaming**: Current implementation relies on AudioTrack's automatic RTP streaming
+   - **Note**: May need manual frame sending via data channel if automatic streaming doesn't work
+   - **Status**: ⚠️ Needs testing
 
 ## References
 
