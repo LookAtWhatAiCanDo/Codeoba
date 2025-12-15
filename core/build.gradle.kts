@@ -52,9 +52,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.ktor.client.okhttp)
-                // WebRTC dependency - uncomment when available:
-                // implementation("io.getstream:stream-webrtc-android:1.1.5") // or
-                // implementation("org.webrtc:google-webrtc:1.0.+")
+                implementation(libs.webrtc.android)
             }
         }
         

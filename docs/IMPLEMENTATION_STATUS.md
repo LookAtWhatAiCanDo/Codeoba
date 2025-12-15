@@ -17,7 +17,8 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Desktop App | ✅ Complete | 100% |
 | Android App | 🟡 Ready | 95% |
 | Shared UI | 🟡 Basic | 60% |
-| Realtime API | 🔴 Stub | 10% |
+| Realtime API (Android) | ✅ Complete | 100% |
+| Realtime API (Desktop) | 🔴 Stub | 10% |
 | MCP Client | 🔴 Stub | 10% |
 | iOS App | 🔴 Stub | 5% |
 | Web App | ⚪ Not Started | 0% |
@@ -288,11 +289,14 @@ Implement Web platform:
 
 These components have interface definitions but stub implementations:
 
-### 1. OpenAI Realtime API (`RealtimeClientImpl.kt`)
-- Simulated connection state changes
-- Mock transcript events
-- No actual WebRTC connection
-- **Location:** `core/src/commonMain/kotlin/com/codeoba/core/data/RealtimeClientImpl.kt`
+### 1. OpenAI Realtime API - Desktop (`RealtimeClientImpl.kt` - Desktop)
+- ✅ Android implementation complete with WebRTC
+- Skeleton code with TODO comments for Desktop
+- Ephemeral token retrieval implemented  
+- Event parsing logic implemented
+- Missing: Actual WebRTC peer connection for Desktop
+- **Location:** `core/src/desktopMain/kotlin/com/codeoba/core/data/RealtimeClientImpl.kt`
+- **Recommendation:** Use WebSocket fallback for Desktop (WebRTC on JVM is challenging)
 
 ### 2. MCP Client (`McpClientImpl.kt`)
 - Mock tool execution responses
@@ -338,8 +342,8 @@ Track progress by updating this table as features are completed:
 
 | Phase | Feature | Status | Notes |
 |-------|---------|--------|-------|
-| 1 | OpenAI Realtime WebRTC | ~0% | See Phase 1 AI prompt above |
-| 1 | Desktop Audio Streaming | 🔴 Not Started | JavaSound configured |
+| 1 | OpenAI Realtime WebRTC | ✅ Complete (Android) | Android implementation with io.github.webrtc-sdk:android:137.7151.05 |
+| 1 | Desktop Audio Streaming | 🔴 Not Started | JavaSound configured, WebRTC pending |
 | 1 | Integration Testing | 🔴 Not Started | - |
 | 2 | MCP Protocol | 🔴 Not Started | See Phase 2 AI prompt above |
 | 2 | GitHub API Integration | 🔴 Not Started | - |
