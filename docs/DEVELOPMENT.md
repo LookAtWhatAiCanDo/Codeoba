@@ -319,7 +319,7 @@ While not officially supported, you can use VS Code with:
 
 - Read [Architecture Overview](architecture.md) to understand the codebase
 - Check the [main README](../README.md) for current MVP status
-- Review [FRAMEWORK_EVALUATION.md](../FRAMEWORK_EVALUATION.md) for technical decisions
+- Review [FRAMEWORK_EVALUATION.md](FRAMEWORK_EVALUATION.md) for technical decisions
 
 ---
 

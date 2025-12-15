@@ -100,7 +100,7 @@ Before running, you need to configure your OpenAI API key. See [docs/DEVELOPMENT
 - **[Implementation Status](docs/IMPLEMENTATION_STATUS.md)** - ⭐ **START HERE** - Complete status of what's done and what's next
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and module structure
 - [Development Setup](docs/DEVELOPMENT.md) - Setup instructions and configuration
-- [Framework Evaluation](FRAMEWORK_EVALUATION.md) - Why Compose Multiplatform was chosen
+- [Framework Evaluation](docs/FRAMEWORK_EVALUATION.md) - Why Compose Multiplatform was chosen
 - [GitHub Workflows](.github/workflows/README.md) - CI/CD documentation
 
 ---
@@ -129,9 +129,3 @@ Contributions are welcome! This is part of the N-project series. See the [main i
 ## 📄 License
 
 See [LICENSE](LICENSE) for details.
-
----
-
-## Framework Evaluation
-
-See [FRAMEWORK_EVALUATION.md](FRAMEWORK_EVALUATION.md) for a comprehensive analysis of various cross-platform framework options and why Compose Multiplatform was selected.

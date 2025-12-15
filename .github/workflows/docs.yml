@@ -57,22 +57,22 @@ jobs:
             <p>Cross-platform voice-based AI programming assistant built with Compose Multiplatform</p>
             <h2>Documentation</h2>
             <ul>
-                <li><a href="docs/architecture.md">Architecture Overview</a></li>
-                <li><a href="docs/dev-setup.md">Development Setup</a></li>
-                <li><a href="docs/android-status.md">Android Module Status</a></li>
-                <li><a href="docs/mvp-summary.md">MVP Implementation Summary</a></li>
+                <li><a href="docs/ARCHITECTURE.md">Architecture Overview</a></li>
+                <li><a href="docs/DEVELOPMENT.md">Development Setup</a></li>
+                <li><a href="docs/IMPLEMENTATION_STATUS.md">Implementation Status</a></li>
+                <li><a href="docs/FRAMEWORK_EVALUATION.md">Framework Evaluation</a></li>
             </ul>
             <h2>Project Files</h2>
             <ul>
                 <li><a href="README.md">README</a></li>
-                <li><a href="FRAMEWORK_EVALUATION.md">Framework Evaluation</a></li>
+                <li><a href="AGENTS.md">AI Agent Instructions</a></li>
             </ul>
         </body>
         </html>
         EOF
         
-        # Copy framework evaluation
-        cp FRAMEWORK_EVALUATION.md _site/
+        # Copy AGENTS.md to site root
+        cp AGENTS.md _site/
         
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
