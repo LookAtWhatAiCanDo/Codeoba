@@ -20,7 +20,8 @@ Created a centralized version catalog containing:
    - Dependencies use `libs.*` references instead of string literals
    
 3. **`app-desktop/build.gradle.kts`**
-   - Plugins use version catalog aliases
+   - Compose plugin uses version catalog alias
+   - **Note**: Kotlin JVM plugin uses `kotlin("jvm")` without version to avoid conflicts with the Kotlin Multiplatform plugin from the core module dependency
    
 4. **`app-android/build.gradle.kts`**
    - Plugins use version catalog aliases
@@ -62,6 +63,11 @@ dependencies {
     implementation(libs.ktor.client.core)
 }
 ```
+
+## Special Cases
+
+### Kotlin JVM Plugin in app-desktop
+The `app-desktop` module uses `kotlin("jvm")` without specifying a version via the catalog. This is intentional to avoid version conflicts - since `app-desktop` depends on the `core` module which applies the Kotlin Multiplatform plugin, the Kotlin version is already on the classpath. Using `kotlin("jvm")` without a version allows it to use the same version from the classpath, preventing the "plugin already on classpath with unknown version" error.
 
 ## Testing Notes
 
