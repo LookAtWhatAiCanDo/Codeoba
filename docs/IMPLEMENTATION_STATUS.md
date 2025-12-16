@@ -47,7 +47,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Android App | 🟡 Basic Structure | 75% |
 | Shared UI | 🟡 Basic | 60% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
-| Phase 2: Android Audio & Playback | 🔴 Not Started | 0% |
+| Phase 2: Android Audio & Playback | 🟡 In Progress | 25% |
 | Phase 3: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 4: MCP Protocol | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
@@ -214,19 +214,24 @@ This section outlines the planned implementation sequence for remaining features
 - `core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt`
 - `app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt`
 
-### Phase 2: Android Audio Streaming & Playback 🔴 NOT STARTED
+### Phase 2: Android Audio Streaming & Playback 🟡 IN PROGRESS
 
 **Goal:** Enable audio input/output for Android platform
 
-**Status:** 🔴 Not Started
+**Status:** 🟡 In Progress (as of December 16, 2025)
 
-**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
+**Completion:** 25% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
 
 **Tasks:**
-1. 🔴 **Android Audio Streaming Integration** (~2 days) → See Issue #TBD
-   - Connect AudioCaptureService to RealtimeClient
-   - Stream microphone audio via WebRTC AudioTrack
-   - Test with real microphone input
+1. 🟡 **Android Audio Streaming Integration** (~2 days) → IN PROGRESS
+   - ✅ Implemented sendAudioFrame() to send PCM16 audio via data channel
+   - ✅ Audio frames are base64-encoded and sent with `input_audio_buffer.append` event
+   - ✅ Connected AudioCaptureService to RealtimeClient via CodeobaApp pipeline
+   - ✅ Added comprehensive logging (capture, transmission, streaming status)
+   - ✅ Enhanced error handling (permissions, network, state checking)
+   - ✅ Build verification successful
+   - 🔴 TODO: Manual testing with real Android device
+   - 🔴 TODO: Verify audio reaches OpenAI (check for transcription responses)
    
 2. 🔴 **Android Audio Playback** (~1-2 days) → See Issue #TBD
    - Implement AudioTrack playback for received PCM audio frames
@@ -234,9 +239,9 @@ This section outlines the planned implementation sequence for remaining features
    - Volume control
    
 3. 🔴 **Android PTT & Text Input** (~1 day) → See Issue #TBD
-   - Connect PTT button to AudioCaptureService start/stop
+   - PTT button already connected to AudioCaptureService start/stop
    - Implement text input sending over data channel
-   - Visual feedback for recording state
+   - Visual feedback for recording state (already implemented)
    
 4. 🔴 **Integration Testing** (~1 day) → See Issue #TBD
    - End-to-end flow validation for Android
@@ -464,7 +469,7 @@ Track progress by updating this table as features are completed:
 | Phase | Feature | Status | Notes |
 |-------|---------|--------|-------|
 | 1 | OpenAI Realtime WebRTC (Android) | ✅ Complete | Successfully connects to API, SDP exchange working. Completed Dec 15-16, 2025 |
-| 2 | Android Audio Streaming | 🔴 Not Started | See PHASE_2_ISSUES.md |
+| 2 | Android Audio Streaming | 🟡 In Progress | Audio frames captured and sent via data channel. Started Dec 16, 2025 |
 | 2 | Android Audio Playback | 🔴 Not Started | See PHASE_2_ISSUES.md |
 | 2 | Android PTT & Text Input | 🔴 Not Started | See PHASE_2_ISSUES.md |
 | 2 | Android Integration Testing | 🔴 Not Started | See PHASE_2_ISSUES.md |
