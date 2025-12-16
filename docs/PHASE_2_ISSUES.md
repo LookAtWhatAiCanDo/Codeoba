@@ -70,14 +70,13 @@ This feature is part of **Phase 2: Android Audio Streaming & Playback** and is n
 
 ### AI Implementation Prompt
 
-```
-Connect audio capture to Realtime client for Android:
+**Task:** Connect audio capture to Realtime client for Android
 
-Files to modify:
+**Files to modify:**
 - app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt
 - core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt
 
-Implementation steps:
+**Implementation steps:**
 1. In RealtimeClientImpl, add method to configure WebRTC AudioTrack:
    - Create AudioTrack from peer connection
    - Set audio source as microphone input
@@ -113,10 +112,9 @@ Implementation steps:
    - Mark "Android Audio Streaming Integration" as ✅ Complete
    - Update Phase 2 completion percentage
 
-Reference:
+**Reference:**
 - Existing AudioCaptureService: core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/platform/AndroidAudioCaptureService.kt
 - Existing RealtimeClient: core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt
-```
 
 ### Testing Plan
 1. Run app on Android device
@@ -171,46 +169,23 @@ This feature is part of **Phase 2: Complete Phase 1 Features** and is needed to 
 
 ### AI Implementation Prompt
 
-```
-Implement audio playback for received audio frames on Android:
+**Task:** Implement audio playback for received audio frames on Android
 
-Files to modify:
+**Files to modify:**
 - core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt
 - app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt (if needed)
 
-Implementation steps:
+**Implementation steps:**
 1. In RealtimeClientImpl or separate playback service:
    - Import android.media.AudioTrack, AudioFormat, AudioAttributes
-   - Create AudioTrack instance:
-     ```kotlin
-     private val audioTrack = AudioTrack.Builder()
-         .setAudioAttributes(
-             AudioAttributes.Builder()
-                 .setUsage(AudioAttributes.USAGE_MEDIA)
-                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                 .build()
-         )
-         .setAudioFormat(
-             AudioFormat.Builder()
-                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                 .setSampleRate(16000)
-                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                 .build()
-         )
-         .setBufferSizeInBytes(bufferSize)
-         .setTransferMode(AudioTrack.MODE_STREAM)
-         .build()
-     ```
+   - Create AudioTrack instance with these settings:
+     - AudioAttributes: USAGE_MEDIA, CONTENT_TYPE_SPEECH
+     - AudioFormat: ENCODING_PCM_16BIT, 16000 Hz sample rate, CHANNEL_OUT_MONO
+     - Transfer mode: MODE_STREAM
    
 2. Collect audioFrames flow and write to AudioTrack:
-   ```kotlin
-   audioFrames.collect { frameBytes ->
-       audioTrack.write(frameBytes, 0, frameBytes.size)
-       if (audioTrack.playState != AudioTrack.PLAYSTATE_PLAYING) {
-           audioTrack.play()
-       }
-   }
-   ```
+   - Use audioTrack.write(frameBytes, 0, frameBytes.size)
+   - Start playback if not already playing
    
 3. Add lifecycle management:
    - Start playback when connection established
@@ -237,10 +212,9 @@ Implementation steps:
    - Mark "Android Audio Playback" as ✅ Complete
    - Update Phase 2 completion percentage
 
-Reference:
+**Reference:**
 - Android AudioTrack documentation: https://developer.android.com/reference/android/media/AudioTrack
 - Existing audio route manager for device selection
-```
 
 ### Testing Plan
 1. Run app on Android device
@@ -299,33 +273,20 @@ This feature is part of **Phase 2: Complete Phase 1 Features** and completes the
 
 ### AI Implementation Prompt
 
-```
-Implement PTT button and text input functionality for Android:
+**Task:** Implement PTT button and text input functionality for Android
 
-Files to modify:
+**Files to modify:**
 - core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/CodeobaUI.kt
 - app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt
 
-Implementation steps:
+**Implementation steps:**
 1. PTT Button (in CodeobaUI.kt or MainActivity):
-   - Add onPTTPressed callback:
-     ```kotlin
-     onPTTPressed = {
-         scope.launch {
-             audioCaptureService.start()
-             // Update UI state to show recording
-         }
-     }
-     ```
-   - Add onPTTReleased callback:
-     ```kotlin
-     onPTTReleased = {
-         scope.launch {
-             audioCaptureService.stop()
-             // Update UI state to show not recording
-         }
-     }
-     ```
+   - Add onPTTPressed callback that:
+     - Launches coroutine to start audioCaptureService
+     - Updates UI state to show recording
+   - Add onPTTReleased callback that:
+     - Launches coroutine to stop audioCaptureService
+     - Updates UI state to show not recording
    
 2. Visual feedback for PTT:
    - Use state flow to track isRecording: Boolean
@@ -333,29 +294,13 @@ Implementation steps:
    - Optional: add recording indicator animation
    
 3. Text input (in CodeobaUI.kt or MainActivity):
-   - Add onTextSubmit callback:
-     ```kotlin
-     onTextSubmit = { text ->
-         scope.launch {
-             realtimeClient.sendTextMessage(text)
-             // Clear input field
-             textInputState.value = ""
-         }
-     }
-     ```
+   - Add onTextSubmit callback that:
+     - Launches coroutine to send text via realtimeClient.sendTextMessage(text)
+     - Clears input field after sending
    
 4. Implement sendTextMessage in RealtimeClient:
-   - Format as JSON event for data channel:
-     ```json
-     {
-       "type": "conversation.item.create",
-       "item": {
-         "type": "message",
-         "role": "user",
-         "content": [{"type": "input_text", "text": "..."}]
-       }
-     }
-     ```
+   - Format as JSON event for data channel (type: "conversation.item.create")
+   - Include message with role: "user", content type: "input_text"
    - Send via WebRTC data channel
    
 5. Error handling:
@@ -373,10 +318,9 @@ Implementation steps:
    - Mark "Android PTT & Text Input" as ✅ Complete
    - Update Phase 2 completion percentage
 
-Reference:
+**Reference:**
 - Existing UI: core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/CodeobaUI.kt
 - OpenAI Realtime API events: https://platform.openai.com/docs/guides/realtime
-```
 
 ### Testing Plan
 1. Run app on Android device
@@ -444,10 +388,9 @@ This feature is part of **Phase 2: Android Audio Streaming & Playback** and vali
 
 ### AI Implementation Prompt
 
-```
-Perform comprehensive integration testing for Phase 2:
+**Task:** Perform comprehensive integration testing for Phase 2
 
-Testing approach:
+**Testing approach:**
 1. Review all Phase 2 issues are closed and merged
 2. Pull latest main branch
 3. Build both Android and Desktop apps
@@ -456,7 +399,7 @@ Testing approach:
 6. Fix any critical issues discovered
 7. Update IMPLEMENTATION_STATUS.md
 
-Test scenarios:
+**Test scenarios:**
 - Happy path: connect → voice input → hear response
 - Text alternative: connect → text input → hear response
 - Error paths: no permission, no network, etc.
@@ -464,7 +407,7 @@ Test scenarios:
 - Audio quality: verify clarity on various devices
 - Performance: monitor CPU/memory usage
 
-Deliverables:
+**Deliverables:**
 1. Test report documenting:
    - Test environment (devices, OS versions)
    - Test results (pass/fail for each scenario)
@@ -474,11 +417,10 @@ Deliverables:
    - Phase 1: ✅ Complete (with completion date)
    - Phase 2: ✅ Complete (with completion date)
    - Updated completion percentages
-3. Recommendations for Phase 2
+3. Recommendations for Phase 3
 
-Reference:
-- IMPLEMENTATION_STATUS.md for all Phase 1/1.5 features
-```
+**Reference:**
+- IMPLEMENTATION_STATUS.md for all Phase 2 features
 
 ### Related Documentation
 - IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
@@ -487,23 +429,23 @@ Reference:
 
 ## Summary
 
-**Total Parent Issues:** 6
+**Total Parent Issues:** 4 (Android-focused)
 - 3 Android features (high priority)
-- 2 Desktop features (high/medium priority)
 - 1 Integration testing (high priority)
+
+**Note:** Desktop features moved to Phase 5 for mobile-first approach
 
 **Recommended Order:**
 1. Issue #1: Android Audio Streaming (blocks other Android features)
-2. Issue #4: Desktop WebSocket Client (independent, parallel work)
-3. Issue #2: Android Audio Playback (depends on #1)
-4. Issue #3: Android PTT & Text Input (depends on #1)
-5. Issue #5: Desktop Audio Playback (depends on #4)
-6. Issue #6: Integration Testing (depends on all above)
+2. Issue #2: Android Audio Playback (depends on #1)
+3. Issue #3: Android PTT & Text Input (depends on #1)
+4. Issue #4: Integration Testing (depends on all above)
 
-**Estimated Timeline:** 8-10 days for full Phase 2 completion
+**Estimated Timeline:** 5-6 days for Android-only Phase 2 completion
 
 **Next Steps:**
-1. Create these 6 issues in GitHub
-2. Assign to @copilot
-3. Start with Issues #1 and #4 in parallel
-4. Track progress in GitHub Project board
+1. Create these 4 issues in GitHub
+2. Label with `phase-2`
+3. Assign to @copilot
+4. Start with Issue #1
+5. Track progress in GitHub Project board
