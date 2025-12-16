@@ -265,6 +265,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      */
     private suspend fun getEphemeralToken(apiKey: String, model: String): String {
         try {
+            Log.d(TAG, "Requesting ephemeral token for model: $model")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime/sessions") {
                 header(HttpHeaders.Authorization, "Bearer $apiKey")
                 header(HttpHeaders.ContentType, ContentType.Application.Json)
@@ -275,12 +276,27 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
+            Log.d(TAG, "Ephemeral token response status: ${response.status}")
+            
+            // Check HTTP status
+            if (response.status.value !in 200..299) {
+                Log.e(TAG, "Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
+                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
+            }
+            
             val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
             
-            return jsonResponse["client_secret"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                ?: throw IllegalStateException("No ephemeral key in response")
+            val ephemeralKey = jsonResponse["client_secret"]?.jsonObject?.get("value")?.jsonPrimitive?.content
+            if (ephemeralKey == null) {
+                Log.e(TAG, "No ephemeral key in response. Response body: $responseBody")
+                throw IllegalStateException("No ephemeral key in response")
+            }
+            
+            Log.d(TAG, "Ephemeral token received: ${ephemeralKey.take(10)}...")
+            return ephemeralKey
                 
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to get ephemeral token", e)
             throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
         }
     }
@@ -290,6 +306,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      */
     private suspend fun exchangeSDP(sdpOffer: String, ephemeralToken: String): String {
         try {
+            Log.d(TAG, "Exchanging SDP offer with OpenAI...")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime") {
                 header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
                 header(HttpHeaders.ContentType, ContentType.Application.Json)
@@ -300,12 +317,33 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
+            Log.d(TAG, "SDP exchange response status: ${response.status}")
+            Log.d(TAG, "SDP exchange response body: ${responseBody.take(500)}...")
+            
+            // Check HTTP status
+            if (response.status.value !in 200..299) {
+                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
+            }
+            
             val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
             
-            return jsonResponse["sdp"]?.jsonPrimitive?.content
-                ?: throw IllegalStateException("No SDP in response")
+            // Verify response type
+            val responseType = jsonResponse["type"]?.jsonPrimitive?.content
+            if (responseType != "answer") {
+                throw IllegalStateException("Expected type 'answer', got '$responseType'. Response: $responseBody")
+            }
+            
+            // Extract SDP
+            val sdpAnswer = jsonResponse["sdp"]?.jsonPrimitive?.content
+            if (sdpAnswer == null) {
+                throw IllegalStateException("No SDP in response. Response keys: ${jsonResponse.keys}. Body: $responseBody")
+            }
+            
+            Log.d(TAG, "SDP answer received successfully (${sdpAnswer.length} chars)")
+            return sdpAnswer
                 
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to exchange SDP", e)
             throw IllegalStateException("Failed to exchange SDP: ${e.message}", e)
         }
     }
