@@ -65,9 +65,8 @@ Decimal phase numbers (e.g., Phase 1.5, 1.8, 1.11) create confusion and clutter.
 
 1. **Always use whole integers**: Phase 1, 2, 3, 4, 5, etc.
 2. **Renumber freely**: Future unstarted phases can be renumbered as new work is discovered
-3. **Document changes**: When renumbering, note "formerly Phase X" in documentation
-4. **Update labels**: If using GitHub labels like `phase-2`, update them when phases are renumbered
-5. **It's acceptable**: Renumbering future phases is NOT confusing because they haven't started yet
+3. **Update labels**: If using GitHub labels like `phase-2`, update them when phases are renumbered
+4. **It's acceptable**: Renumbering future phases is NOT confusing because they haven't started yet
 
 ## Commit & Pull Request Guidelines
 - Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.

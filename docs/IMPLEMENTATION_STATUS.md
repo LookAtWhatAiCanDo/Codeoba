@@ -89,12 +89,6 @@ This document tracks the **current implementation status and roadmap** for Codeo
 - ✅ API key configuration (env vars, system properties, local.properties)
 - ✅ Builds and runs successfully
 
-**Still Needed:**
-- 🔴 Realtime API client implementation (WebSocket recommended)
-- 🔴 Audio streaming to API
-- 🔴 Audio playback from API
-- 🔴 End-to-end testing
-
 **Build Command:**
 ```bash
 ./gradlew :app-desktop:run
@@ -133,13 +127,6 @@ This document tracks the **current implementation status and roadmap** for Codeo
 - ✅ Data channel established for event signaling
 - ✅ Peer connection established successfully
 - ✅ Comprehensive logcat logging
-
-**Still Needed:**
-- 🔴 Audio capture integration (connect AudioCaptureService → RealtimeClient)
-- 🔴 Audio playback implementation (play received audio frames)
-- 🔴 PTT (Push-to-Talk) button functionality
-- 🔴 Text input functionality
-- 🔴 End-to-end testing with real conversations
 
 ### 5. Shared UI (Compose Multiplatform)
 
