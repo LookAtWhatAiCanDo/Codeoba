@@ -344,7 +344,6 @@ This feature is part of **Phase 2: Complete Phase 1 Features** and completes the
 
 ---
 
-## Parent Issue #4: Implement Desktop WebSocket Realtime Client
 ## Parent Issue #4: Phase 2 Integration Testing
 
 **Labels:** `feature`, `phase-2`, `testing`, `priority-high`
