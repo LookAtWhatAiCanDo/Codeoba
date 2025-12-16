@@ -13,7 +13,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 ## Table of Contents
 
 - [📊 Overall Progress](#-overall-progress)
-- [✅ What's Implemented (Merge-Ready)](#-whats-implemented-merge-ready)
+- [✅ What's Implemented](#-whats-implemented)
   - [1. Project Foundation](#1-project-foundation)
   - [2. Core Architecture](#2-core-architecture-core-module)
   - [3. Desktop Platform](#3-desktop-platform-app-desktop)
@@ -57,7 +57,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 ---
 
-## ✅ What's Implemented (Merge-Ready)
+## ✅ What's Implemented
 
 ### 1. Project Foundation
 - ✅ Gradle build system with Kotlin Multiplatform
