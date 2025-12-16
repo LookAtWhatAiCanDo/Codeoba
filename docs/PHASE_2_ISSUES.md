@@ -1,8 +1,8 @@
-# Phase 1.5 GitHub Issues
+# Phase 2 GitHub Issues
 
-This document contains the **GitHub Issue content for Phase 1.5 tasks**.
+This document contains the **GitHub Issue content for Phase 2 tasks**.
 
-> **Historical Note:** This document uses "Phase 1.5" and label `phase-1.5` as it was created during the transition period. Going forward, the project adopts a **whole integer phase numbering convention** (Phase 1, 2, 3, etc.). Future phases will use labels like `phase-2`, `phase-3`, etc., and unstarted phases may be renumbered. See AGENTS.md for the complete phase numbering convention.
+> **Historical Note:** This document was originally created as "Phase 1.5" but has been renumbered to Phase 2 as part of adopting a **whole integer phase numbering convention** (Phase 1, 2, 3, etc.). Future phases will use labels like `phase-3`, `phase-4`, etc., and unstarted phases may be renumbered. See AGENTS.md for the complete phase numbering convention.
 
 ## Purpose
 
@@ -10,9 +10,9 @@ While GitHub Copilot can create issues directly, this document serves as:
 
 1. **Review & Approval** - Provides the issue content for human review before creation
 2. **Version Control** - Tracks issue definitions in git history alongside code changes
-3. **Batch Reference** - Allows reviewing all Phase 1.5 issues together for planning
+3. **Batch Reference** - Allows reviewing all Phase 2 issues together for planning
 4. **Reusability** - Can be used as templates for similar issues in future phases
-5. **Documentation** - Permanent record of what Phase 1.5 entails, even after issues are closed
+5. **Documentation** - Permanent record of what Phase 2 entails, even after issues are closed
 
 ## Usage
 
@@ -24,13 +24,13 @@ While GitHub Copilot can create issues directly, this document serves as:
 **Option 2: Copilot Creation** (Preferred)
 - Ask GitHub Copilot to create these issues
 - Reference this document for content
-- Example: "@copilot create the 6 issues defined in docs/PHASE_1.5_ISSUES.md"
+- Example: "@copilot create the 6 issues defined in docs/PHASE_2_ISSUES.md"
 
 ---
 
 ## Parent Issue #1: Implement Android Audio Streaming Integration
 
-**Labels:** `feature`, `phase-1.5`, `android`, `priority-high`
+**Labels:** `feature`, `phase-2`, `android`, `priority-high`
 
 **Assignee:** @copilot
 
@@ -38,7 +38,7 @@ While GitHub Copilot can create issues directly, this document serves as:
 Integrate audio capture with the Realtime API client on Android to enable real-time voice streaming to OpenAI.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and is needed to enable actual voice input in the Android app.
+This feature is part of **Phase 2: Complete Phase 1 Features** and is needed to enable actual voice input in the Android app.
 
 **Current State:**
 - ✅ WebRTC connection established successfully
@@ -111,7 +111,7 @@ Implementation steps:
    
 6. Update docs/IMPLEMENTATION_STATUS.md:
    - Mark "Android Audio Streaming Integration" as ✅ Complete
-   - Update Phase 1.5 completion percentage
+   - Update Phase 2 completion percentage
 
 Reference:
 - Existing AudioCaptureService: core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/platform/AndroidAudioCaptureService.kt
@@ -127,14 +127,14 @@ Reference:
 6. Verify OpenAI receives audio (check for response events)
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 - ARCHITECTURE.md: [Audio Capture Service](../ARCHITECTURE.md#audio-capture-abstraction)
 
 ---
 
 ## Parent Issue #2: Implement Android Audio Playback
 
-**Labels:** `feature`, `phase-1.5`, `android`, `priority-high`
+**Labels:** `feature`, `phase-2`, `android`, `priority-high`
 
 **Assignee:** @copilot
 
@@ -142,7 +142,7 @@ Reference:
 Implement audio playback on Android to play voice responses received from OpenAI Realtime API.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and is needed to enable users to hear AI responses.
+This feature is part of **Phase 2: Complete Phase 1 Features** and is needed to enable users to hear AI responses.
 
 **Current State:**
 - ✅ WebRTC connection receives audio frames
@@ -235,7 +235,7 @@ Implementation steps:
    
 7. Update docs/IMPLEMENTATION_STATUS.md:
    - Mark "Android Audio Playback" as ✅ Complete
-   - Update Phase 1.5 completion percentage
+   - Update Phase 2 completion percentage
 
 Reference:
 - Android AudioTrack documentation: https://developer.android.com/reference/android/media/AudioTrack
@@ -255,13 +255,13 @@ Reference:
 7. Verify audio quality (clear, no distortion)
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 
 ---
 
 ## Parent Issue #3: Implement Android PTT & Text Input
 
-**Labels:** `feature`, `phase-1.5`, `android`, `priority-medium`
+**Labels:** `feature`, `phase-2`, `android`, `priority-medium`
 
 **Assignee:** @copilot
 
@@ -269,7 +269,7 @@ Reference:
 Wire up Push-to-Talk (PTT) button and text input field to enable user interaction with the Realtime API.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and completes the user interface for voice and text interaction.
+This feature is part of **Phase 2: Complete Phase 1 Features** and completes the user interface for voice and text interaction.
 
 **Current State:**
 - ✅ PTT button UI component exists
@@ -371,7 +371,7 @@ Implementation steps:
    
 7. Update docs/IMPLEMENTATION_STATUS.md:
    - Mark "Android PTT & Text Input" as ✅ Complete
-   - Update Phase 1.5 completion percentage
+   - Update Phase 2 completion percentage
 
 Reference:
 - Existing UI: core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/CodeobaUI.kt
@@ -395,14 +395,14 @@ Reference:
    - Try to send while disconnected
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 - OpenAI Realtime API: https://platform.openai.com/docs/guides/realtime
 
 ---
 
 ## Parent Issue #4: Implement Desktop WebSocket Realtime Client
 
-**Labels:** `feature`, `phase-1.5`, `desktop`, `priority-high`
+**Labels:** `feature`, `phase-2`, `desktop`, `priority-high`
 
 **Assignee:** @copilot
 
@@ -410,7 +410,7 @@ Reference:
 Implement WebSocket-based Realtime API client for Desktop platform to enable voice interaction on JVM.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and brings Desktop platform to feature parity with Android.
+This feature is part of **Phase 2: Complete Phase 1 Features** and brings Desktop platform to feature parity with Android.
 
 **Current State:**
 - ✅ Desktop app has stub RealtimeClientImpl
@@ -544,7 +544,7 @@ Implementation steps:
    
 8. Update docs/IMPLEMENTATION_STATUS.md:
    - Mark "Desktop Realtime Client" as ✅ Complete
-   - Update Phase 1.5 completion percentage
+   - Update Phase 2 completion percentage
 
 Reference:
 - Ktor WebSocket docs: https://ktor.io/docs/websocket-client.html
@@ -562,14 +562,14 @@ Reference:
 7. Test reconnection by simulating network interruption
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 - ARCHITECTURE.md: [Realtime Client](../ARCHITECTURE.md)
 
 ---
 
 ## Parent Issue #5: Implement Desktop Audio Playback
 
-**Labels:** `feature`, `phase-1.5`, `desktop`, `priority-medium`
+**Labels:** `feature`, `phase-2`, `desktop`, `priority-medium`
 
 **Assignee:** @copilot
 
@@ -577,7 +577,7 @@ Reference:
 Implement audio playback on Desktop using JavaSound to play voice responses from OpenAI.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and completes audio functionality for Desktop platform.
+This feature is part of **Phase 2: Complete Phase 1 Features** and completes audio functionality for Desktop platform.
 
 **Current State:**
 - ✅ Desktop Realtime client receives audio frames (after Issue #4)
@@ -655,7 +655,7 @@ Implementation steps:
    
 7. Update docs/IMPLEMENTATION_STATUS.md:
    - Mark "Desktop Audio Playback" as ✅ Complete
-   - Update Phase 1.5 completion percentage
+   - Update Phase 2 completion percentage
 
 Reference:
 - JavaSound docs: https://docs.oracle.com/javase/tutorial/sound/
@@ -671,24 +671,24 @@ Reference:
 6. Verify audio quality
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 
 ---
 
-## Parent Issue #6: Phase 1.5 Integration Testing
+## Parent Issue #6: Phase 2 Integration Testing
 
-**Labels:** `feature`, `phase-1.5`, `testing`, `priority-high`
+**Labels:** `feature`, `phase-2`, `testing`, `priority-high`
 
 **Assignee:** @copilot
 
 ### Summary
-Comprehensive end-to-end testing of Phase 1.5 features to ensure all components work together correctly.
+Comprehensive end-to-end testing of Phase 2 features to ensure all components work together correctly.
 
 ### Context
-This feature is part of **Phase 1.5: Complete Phase 1 Features** and validates that all Phase 1 features are production-ready.
+This feature is part of **Phase 2: Complete Phase 1 Features** and validates that all Phase 1 features are production-ready.
 
 **Dependencies:**
-- Depends on all other Phase 1.5 issues being complete
+- Depends on all other Phase 2 issues being complete
 
 ### Acceptance Criteria
 - [ ] End-to-end voice flow works on Android
@@ -729,10 +729,10 @@ This feature is part of **Phase 1.5: Complete Phase 1 Features** and validates t
 ### AI Implementation Prompt
 
 ```
-Perform comprehensive integration testing for Phase 1.5:
+Perform comprehensive integration testing for Phase 2:
 
 Testing approach:
-1. Review all Phase 1.5 issues are closed and merged
+1. Review all Phase 2 issues are closed and merged
 2. Pull latest main branch
 3. Build both Android and Desktop apps
 4. Execute test scenarios on both platforms
@@ -756,7 +756,7 @@ Deliverables:
    - Performance metrics
 2. Updated IMPLEMENTATION_STATUS.md:
    - Phase 1: ✅ Complete (with completion date)
-   - Phase 1.5: ✅ Complete (with completion date)
+   - Phase 2: ✅ Complete (with completion date)
    - Updated completion percentages
 3. Recommendations for Phase 2
 
@@ -765,7 +765,7 @@ Reference:
 ```
 
 ### Related Documentation
-- IMPLEMENTATION_STATUS.md: [Phase 1.5 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
+- IMPLEMENTATION_STATUS.md: [Phase 2 section](../IMPLEMENTATION_STATUS.md#phase-15-complete-phase-1-features-next)
 
 ---
 
@@ -784,7 +784,7 @@ Reference:
 5. Issue #5: Desktop Audio Playback (depends on #4)
 6. Issue #6: Integration Testing (depends on all above)
 
-**Estimated Timeline:** 8-10 days for full Phase 1.5 completion
+**Estimated Timeline:** 8-10 days for full Phase 2 completion
 
 **Next Steps:**
 1. Create these 6 issues in GitHub

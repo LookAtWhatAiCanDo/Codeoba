@@ -189,7 +189,7 @@ Part of #XXX (link to parent)
 
 ### 1. Planning Phase Features
 
-When starting a new phase (e.g., Phase 1.5):
+When starting a new phase (e.g., Phase 2):
 
 1. Review IMPLEMENTATION_STATUS.md for the phase roadmap
 2. Create Parent Issues for each major feature
@@ -408,7 +408,7 @@ Reference: See existing Android WebRTC implementation pattern in core/src/androi
 
 **Example:**
 ```markdown
-### Phase 1.5: Complete Phase 1 Features
+### Phase 2: Complete Phase 1 Features
 
 **Goal:** Finish Phase 1 by implementing audio streaming, playback, PTT, text input
 
@@ -480,7 +480,7 @@ To transition from the old approach:
 
 1. ✅ Create this ISSUE_TRACKING.md document
 2. ✅ Update IMPLEMENTATION_STATUS.md to reference issues
-3. Create parent issues for Phase 1.5 tasks
+3. Create parent issues for Phase 2 tasks
 4. Create sub-issues for complex features
 5. Update AGENTS.md to reference this workflow
 6. Add issue templates to `.github/ISSUE_TEMPLATE/`

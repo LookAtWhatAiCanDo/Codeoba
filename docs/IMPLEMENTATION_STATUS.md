@@ -22,11 +22,11 @@ This document tracks the **current implementation status and roadmap** for Codeo
   - [6. Security & Configuration](#6-security--configuration)
 - [🎯 Implementation Roadmap](#-implementation-roadmap)
   - [Phase 1: Core Realtime Integration](#phase-1-core-realtime-integration--in-progress)
-  - [Phase 1.5: Complete Phase 1 Features](#phase-15-complete-phase-1-features-next)
-  - [Phase 2: MCP Protocol Implementation](#phase-2-mcp-protocol-implementation)
-  - [Phase 3: iOS Implementation](#phase-3-ios-implementation)
-  - [Phase 4: Web Platform](#phase-4-web-platform)
-  - [Phase 5: Polish & Production](#phase-5-polish--production)
+  - [Phase 2: Complete Phase 1 Features](#phase-2-complete-phase-1-features-next)
+  - [Phase 3: MCP Protocol Implementation](#phase-3-mcp-protocol-implementation)
+  - [Phase 4: iOS Implementation](#phase-4-ios-implementation)
+  - [Phase 5: Web Platform](#phase-5-web-platform)
+  - [Phase 6: Polish & Production](#phase-6-polish--production)
 - [🚧 What's Currently Stubbed](#-whats-currently-stubbed)
 - [🔍 Known Limitations](#-known-limitations-intentional-for-current-phase)
 - [📊 Progress Tracking](#-progress-tracking)
@@ -246,13 +246,13 @@ This section outlines the planned implementation sequence for remaining features
 - `core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt`
 - `app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt`
 
-### Phase 1.5: Complete Phase 1 Features (Next)
+### Phase 2: Complete Phase 1 Features (Next)
 
 **Goal:** Finish Phase 1 by implementing audio streaming, playback, PTT, text input, and Desktop client
 
 **Status:** 🔴 Not Started
 
-**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-1.5) for detailed tracking)
+**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
 
 **Priority Features:**
 1. **Android Audio Streaming Integration** (~2 days) → See Issue #TBD
@@ -283,7 +283,7 @@ This section outlines the planned implementation sequence for remaining features
    - Connection resilience testing
    - Error recovery validation
 
-> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-1.5
+> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2
 
 ---
 
@@ -291,7 +291,7 @@ This section outlines the planned implementation sequence for remaining features
 
 This section contains reusable prompts for AI agents implementing features. For specific work items, see the corresponding GitHub Issues.
 
-### Phase 1.5 Prompts
+### Phase 2 Prompts
 
 **Desktop WebSocket Client:**
 ```
@@ -352,7 +352,7 @@ Connect audio capture to Realtime client:
 ```
 
 
-### Phase 2: MCP Protocol Implementation
+### Phase 3: MCP Protocol Implementation
 
 **Goal:** Execute actual GitHub operations from voice commands
 
@@ -374,7 +374,7 @@ Connect audio capture to Realtime client:
    - Error handling
    - Effort: ~1 day
 
-**AI Prompt for Phase 2:**
+**AI Prompt for Phase 3:**
 ```
 Implement MCP protocol in McpClientImpl.kt:
 1. Establish JSON-RPC connection to MCP server
@@ -386,7 +386,7 @@ Implement MCP protocol in McpClientImpl.kt:
 7. Test full flow: voice → transcript → tool call → GitHub action
 ```
 
-### Phase 3: iOS Implementation
+### Phase 4: iOS Implementation
 
 **Goal:** iOS app with AVAudioEngine integration
 
@@ -419,7 +419,7 @@ Implement iOS audio capture:
 7. Test on iOS simulator and device
 ```
 
-### Phase 4: Web Platform
+### Phase 5: Web Platform
 
 **Goal:** Browser-based Codeoba with Web Audio API
 
@@ -439,7 +439,7 @@ Implement iOS audio capture:
    - GitHub Pages deployment
    - Effort: ~1 day
 
-**AI Prompt for Phase 4:**
+**AI Prompt for Phase 5:**
 ```
 Implement Web platform:
 1. Add Kotlin/JS target to core module
@@ -451,7 +451,7 @@ Implement Web platform:
 7. Deploy to GitHub Pages
 ```
 
-### Phase 5: Polish & Production
+### Phase 6: Polish & Production
 
 **Goal:** Production-ready release
 
@@ -545,14 +545,16 @@ Track progress by updating this table as features are completed:
 | 1 | Desktop Audio Streaming | 🔴 Not Started | JavaSound configured, capture loop pending |
 | 1 | Audio Playback | 🔴 Not Started | Needs implementation for received audio frames |
 | 1 | Integration Testing | 🔴 Not Started | End-to-end flow verification pending |
-| 2 | MCP Protocol | 🔴 Not Started | See Phase 2 AI prompt above |
-| 2 | GitHub API Integration | 🔴 Not Started | - |
-| 3 | iOS Audio Capture | 🔴 Not Started | See Phase 3 AI prompt above |
-| 3 | iOS Build Setup | 🔴 Not Started | - |
-| 4 | Web Platform Setup | 🔴 Not Started | See Phase 4 AI prompt above |
-| 4 | Web Audio API | 🔴 Not Started | - |
-| 5 | Testing Suite | 🔴 Not Started | - |
-| 5 | Production Polish | 🔴 Not Started | - |
+| 2 | Complete Phase 1 Features | 🔴 Not Started | See Phase 2 prompts above |
+| 3 | MCP Protocol | 🔴 Not Started | See Phase 3 AI prompt above |
+| 3 | GitHub API Integration | 🔴 Not Started | - |
+| 4 | iOS Platform | 🔴 Not Started | See Phase 4 AI prompt above |
+| 4 | iOS Audio Capture | 🔴 Not Started | See Phase 4 AI prompt above |
+| 4 | iOS Build Setup | 🔴 Not Started | - |
+| 5 | Web Platform Setup | 🔴 Not Started | See Phase 5 AI prompt above |
+| 5 | Web Audio API | 🔴 Not Started | - |
+| 6 | Testing Suite | 🔴 Not Started | - |
+| 6 | Production Polish | 🔴 Not Started | - |
 
 **Legend:** ✅ Complete | 🟡 In Progress | 🔴 Not Started
 
