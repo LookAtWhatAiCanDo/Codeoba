@@ -61,9 +61,11 @@ class CodeobaApp(
             realtimeClient.connect(config)
             // Connection state changes are reported via events flow
         } catch (e: IllegalStateException) {
-            addEventLogEntry(EventLogEntry.Error("Connection failed: ${e.message}"))
+            // IllegalStateException indicates initialization or state issues
+            addEventLogEntry(EventLogEntry.Error("Setup error: ${e.message}"))
         } catch (e: Exception) {
-            addEventLogEntry(EventLogEntry.Error("Connection error: ${e.message}"))
+            // Other exceptions are typically network-related
+            addEventLogEntry(EventLogEntry.Error("Network error: ${e.message}"))
         }
     }
     
@@ -78,7 +80,8 @@ class CodeobaApp(
         addEventLogEntry(EventLogEntry.Info("Starting microphone..."))
         try {
             audioCaptureService.start()
-            // Check if start failed by checking state after a brief moment
+            // Brief delay to allow async initialization before checking state
+            // AudioCaptureService changes state asynchronously during start()
             kotlinx.coroutines.delay(100)
             when (val currentState = audioCaptureState.value) {
                 is AudioCaptureState.Error -> {

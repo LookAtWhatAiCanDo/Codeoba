@@ -289,6 +289,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         }
     }
     
+    private var lastLogTime = 0L
+    
     actual override suspend fun sendAudioFrame(frame: ByteArray) {
         if (_connectionState.value != ConnectionState.Connected) {
             return
@@ -316,9 +318,11 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             
             dataChannel?.send(DataChannel.Buffer(buffer, false))
             
-            // Log first frame for debugging, then reduce logging frequency
-            if (System.currentTimeMillis() % 1000 < 100) { // Log roughly once per second
+            // Log once per second to avoid spam
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - lastLogTime >= 1000) {
                 Log.d(TAG, "sendAudioFrame: Sent audio frame: ${frame.size} bytes (base64: ${base64Audio.length} chars)")
+                lastLogTime = currentTime
             }
         } catch (e: Exception) {
             Log.e(TAG, "sendAudioFrame: Failed to send audio frame: ${e.message}", e)
