@@ -1,8 +1,52 @@
-# AI Agent Responsibilities
+# Repository Guidelines
 
-This document defines responsibilities and guidelines for AI agents (GitHub Copilot, coding assistants, etc.) maintaining this codebase.
+## Project Structure & Module Organization
+- `core/` holds shared Kotlin Multiplatform logic
+  - `commonMain` platform agnostic contracts.
+  - Keep platform specific code out of `commonMain`.
+  - Abstract out any platform specific code.
+  - Platform specific implementations under `androidMain`/`desktopMain`/....
+- Platform apps:
+  - `app-android/` (Android entry/resources)
+  - `app-desktop/` (JVM desktop)
+  - `app-ios/` (stubbed)
+- `docs/` contains architecture, development, and implementation status; Gradle settings and root scripts live at the repo root.
 
-## Core Responsibilities
+## Build, Test, and Development Commands
+- Shared build smoke: `./gradlew :core:build` (required before commit).
+- Android: `./gradlew :app-android:assembleDebug` then `:app-android:installDebug` for device/emulator.
+- Desktop: `./gradlew :app-desktop:run` for local run, or `:app-desktop:packageDistributionForCurrentOS` for installers.
+- Full CI-style check: `./gradlew build` (runs available unit tests across modules).
+
+## Coding Style & Naming Conventions
+- Kotlin style with 4-space indent; prefer small, single-purpose functions and meaningful names (verbs for actions, nouns for data).
+- Define interfaces in `core/src/commonMain`; implement per platform sourceset; keep platform code out of `commonMain`; Preserve platform abstraction boundaries.
+- Use StateFlow for state and SharedFlow for events; suffix flows with `State`/`Events`.
+- Add KDoc on public APIs and keep code comments aligned with docs.
+
+## Testing Guidelines
+- Place unit tests in `*Test.kt` under the matching module/package; start with shared logic in `core`.
+- Run tests via Gradle (`./gradlew :core:build` or module-specific tasks) and cover new flows, errors, and edge cases deterministically.
+- Document coverage gaps or manual steps in `docs/IMPLEMENTATION_STATUS.md` when tests are deferred.
+
+## Documentation & Agent Responsibilities
+- Keep documentation and code comments in sync with behavior: update `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `README.md` when designs or tooling change; refresh `docs/IMPLEMENTATION_STATUS.md` percentages/prompts as features progress.
+- When adding dependencies, record rationale in commits and adjust `docs/ARCHITECTURE.md` if the stack changes; avoid GPL and check for known issues.
+- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT) and ensure all references stay consistent.
+
+## Commit & Pull Request Guidelines
+- Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.
+- PRs should describe behavior changes, risks, and linked issues; attach screenshots/GIFs for UI changes when possible.
+- Keep changes scoped; avoid mixing unrelated platform and shared edits in one commit unless tightly coupled.
+
+## Security & Configuration Tips
+- Never commit secrets. For local Android defaults use `local.properties` (`DANGEROUS_OPENAI_API_KEY=...`); for desktop/CI use `OPENAI_API_KEY` env var or `-Dopenai.api.key`.
+- Store GitHub/MCP tokens outside the repo; MCP client is currently stubbed and does not need real tokens.
+- Validate new dependencies against policy and prefer stable versions.
+
+## AI Agent Responsibilities
+
+This section defines responsibilities and guidelines for AI agents (GitHub Copilot, coding assistants, etc.) maintaining this codebase.
 
 ### 1. Documentation Synchronization
 
