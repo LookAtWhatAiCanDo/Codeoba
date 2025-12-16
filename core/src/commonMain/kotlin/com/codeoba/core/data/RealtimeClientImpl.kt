@@ -1,6 +1,7 @@
 package com.codeoba.core.data
 
 import com.codeoba.core.domain.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 expect class RealtimeClientImpl() : RealtimeClient {
     override val connectionState: StateFlow<ConnectionState>
     override val events: SharedFlow<RealtimeEvent>
+    override val audioFrames: Flow<ByteArray>
     
     override suspend fun connect(config: RealtimeConfig)
     override suspend fun disconnect()

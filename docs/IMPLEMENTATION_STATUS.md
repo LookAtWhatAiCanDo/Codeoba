@@ -17,13 +17,15 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Desktop App | ✅ Complete | 100% |
 | Android App | 🟡 Ready | 95% |
 | Shared UI | 🟡 Basic | 60% |
-| Realtime API (Android) | ✅ Complete | 100% |
+| Realtime API (Android) | 🟡 Implemented | 85% |
 | Realtime API (Desktop) | 🔴 Stub | 10% |
 | MCP Client | 🔴 Stub | 10% |
 | iOS App | 🔴 Stub | 5% |
 | Web App | ⚪ Not Started | 0% |
 
 **Legend:** ✅ Complete | 🟡 Partial | 🔴 Stub | ⚪ Not Started
+
+**Note on Realtime API (Android):** WebRTC implementation is complete and builds successfully. Needs integration testing with actual OpenAI API, audio playback implementation, and Context initialization in MainActivity.
 
 ---
 
@@ -342,7 +344,7 @@ Track progress by updating this table as features are completed:
 
 | Phase | Feature | Status | Notes |
 |-------|---------|--------|-------|
-| 1 | OpenAI Realtime WebRTC | ✅ Complete (Android) | Android implementation with io.github.webrtc-sdk:android:137.7151.05 |
+| 1 | OpenAI Realtime WebRTC | 🟡 Implemented (Android) | Android impl complete, needs integration testing & audio playback |
 | 1 | Desktop Audio Streaming | 🔴 Not Started | JavaSound configured, WebRTC pending |
 | 1 | Integration Testing | 🔴 Not Started | - |
 | 2 | MCP Protocol | 🔴 Not Started | See Phase 2 AI prompt above |

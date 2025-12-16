@@ -7,6 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,6 +30,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     
     private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
     actual override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
+    
+    private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
+    actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
     
     private var peerConnection: PeerConnection? = null
     private var dataChannel: DataChannel? = null
@@ -288,6 +292,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         
         override fun onAddTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
             // Handle incoming audio track from OpenAI
+            // Note: Audio frames are typically received via RTP and would need
+            // a custom audio sink to extract PCM data. For now, this is a placeholder.
+            // In production, you would set up an AudioTrackSink to capture frames.
         }
         
         override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {

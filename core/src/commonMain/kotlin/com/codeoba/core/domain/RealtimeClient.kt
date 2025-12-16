@@ -12,6 +12,12 @@ interface RealtimeClient {
     val connectionState: StateFlow<ConnectionState>
     val events: SharedFlow<RealtimeEvent>
     
+    /**
+     * Flow of incoming audio frames from OpenAI (PCM16 format).
+     * Audio is received via WebRTC RTP or data channel.
+     */
+    val audioFrames: Flow<ByteArray>
+    
     suspend fun connect(config: RealtimeConfig)
     suspend fun disconnect()
     suspend fun sendAudioFrame(frame: ByteArray)
