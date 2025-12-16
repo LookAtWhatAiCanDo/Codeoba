@@ -22,11 +22,12 @@ This document tracks the **current implementation status and roadmap** for Codeo
   - [6. Security & Configuration](#6-security--configuration)
 - [🎯 Implementation Roadmap](#-implementation-roadmap)
   - [Phase 1: Core Realtime Integration](#phase-1-core-realtime-integration--complete)
-  - [Phase 2: Audio Streaming & Playback](#phase-2-audio-streaming--playback--not-started)
-  - [Phase 3: MCP Protocol Implementation](#phase-3-mcp-protocol-implementation)
-  - [Phase 4: iOS Implementation](#phase-4-ios-implementation)
-  - [Phase 5: Web Platform](#phase-5-web-platform)
-  - [Phase 6: Polish & Production](#phase-6-polish--production)
+  - [Phase 2: Android Audio Streaming & Playback](#phase-2-android-audio-streaming--playback--not-started)
+  - [Phase 3: Desktop WebRTC Integration](#phase-3-desktop-webrtc-integration--not-started)
+  - [Phase 4: MCP Protocol Implementation](#phase-4-mcp-protocol-implementation)
+  - [Phase 5: iOS Implementation](#phase-5-ios-implementation)
+  - [Phase 6: Web Platform](#phase-6-web-platform)
+  - [Phase 7: Polish & Production](#phase-7-polish--production)
 - [🚧 What's Currently Stubbed](#-whats-currently-stubbed)
 - [🔍 Known Limitations](#-known-limitations-intentional-for-current-phase)
 - [📊 Progress Tracking](#-progress-tracking)
@@ -46,14 +47,15 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Android App | 🟡 Basic Structure | 75% |
 | Shared UI | 🟡 Basic | 60% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
-| Phase 2: Audio Streaming & Playback | 🔴 Not Started | 0% |
+| Phase 2: Android Audio & Playback | 🔴 Not Started | 0% |
+| Phase 3: Desktop WebRTC Integration | 🔴 Not Started | 0% |
 | MCP Client | 🔴 Stub | 10% |
 | iOS App | 🔴 Stub | 5% |
 | Web App | ⚪ Not Started | 0% |
 
 **Legend:** ✅ Complete | 🟡 Partial | 🔴 Stub | ⚪ Not Started
 
-**Note on Phase 1:** ✅ COMPLETE - WebRTC connection established successfully with io.github.webrtc-sdk:android:137.7151.05. SDP exchange works, peer connection established. Phase 2 will add: audio streaming, audio playback, PTT functionality, text input.
+**Note on Phase 1:** ✅ COMPLETE - WebRTC connection established successfully with io.github.webrtc-sdk:android:137.7151.05. SDP exchange works, peer connection established. Phase 2 will add Android audio streaming/playback. Phase 3 will add Desktop WebRTC client.
 
 ---
 
@@ -211,11 +213,9 @@ This section outlines the planned implementation sequence for remaining features
 - `core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt`
 - `app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt`
 
-### Phase 2: Audio Streaming & Playback 🔴 NOT STARTED
+### Phase 2: Android Audio Streaming & Playback 🔴 NOT STARTED
 
-### Phase 2: Audio Streaming & Playback 🔴 NOT STARTED
-
-**Goal:** Enable audio input/output for both Android and Desktop platforms
+**Goal:** Enable audio input/output for Android platform
 
 **Status:** 🔴 Not Started
 
@@ -237,20 +237,44 @@ This section outlines the planned implementation sequence for remaining features
    - Implement text input sending over data channel
    - Visual feedback for recording state
    
-4. 🔴 **Desktop WebSocket Client** (~2 days) → See Issue #TBD
-   - Implement WebSocket-based Realtime client
-   - Connect to wss://api.openai.com/v1/realtime
-   - Stream audio from JavaSound capture
-   
-5. 🔴 **Desktop Audio Playback** (~1 day) → See Issue #TBD
-   - JavaSound SourceDataLine playback implementation
-   
-6. 🔴 **Integration Testing** (~1 day) → See Issue #TBD
-   - End-to-end flow validation
+4. 🔴 **Integration Testing** (~1 day) → See Issue #TBD
+   - End-to-end flow validation for Android
    - Connection resilience testing
    - Error recovery validation
 
 > **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2
+
+---
+
+### Phase 3: Desktop WebRTC Integration 🔴 NOT STARTED
+
+**Goal:** Enable WebRTC-based Realtime API client for Desktop platform
+
+**Status:** 🔴 Not Started
+
+**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3) for detailed tracking)
+
+**Tasks:**
+1. 🔴 **Desktop WebRTC Client** (~3-4 days) → See Issue #TBD
+   - Evaluate Java-compatible WebRTC libraries:
+     - WebRTC-Java (JRTC)
+     - WebRTC-KMP (find or create fork with Java bindings)
+   - Implement WebRTC-based Realtime client (NOT WebSocket)
+   - Connect to OpenAI Realtime API using WebRTC
+   - Stream audio from JavaSound capture
+   
+2. 🔴 **Desktop Audio Playback** (~1 day) → See Issue #TBD
+   - JavaSound SourceDataLine playback implementation
+   - Handle PCM audio format
+   
+3. 🔴 **Integration Testing** (~1 day) → See Issue #TBD
+   - End-to-end flow validation for Desktop
+   - WebRTC connection resilience testing
+   - Error recovery validation
+
+> **📋 Note:** Desktop MUST use WebRTC (same as Android), NOT WebSocket. Evaluate WebRTC-Java or WebRTC-KMP with Java bindings.
+
+> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3
 
 ---
 
@@ -319,7 +343,7 @@ Connect audio capture to Realtime client:
 ```
 
 
-### Phase 3: MCP Protocol Implementation
+### Phase 4: MCP Protocol Implementation
 
 **Goal:** Execute actual GitHub operations from voice commands
 
@@ -353,7 +377,7 @@ Implement MCP protocol in McpClientImpl.kt:
 7. Test full flow: voice → transcript → tool call → GitHub action
 ```
 
-### Phase 4: iOS Implementation
+### Phase 5: iOS Implementation
 
 **Goal:** iOS app with AVAudioEngine integration
 
@@ -386,7 +410,7 @@ Implement iOS audio capture:
 7. Test on iOS simulator and device
 ```
 
-### Phase 5: Web Platform
+### Phase 6: Web Platform
 
 **Goal:** Browser-based Codeoba with Web Audio API
 
@@ -406,7 +430,7 @@ Implement iOS audio capture:
    - GitHub Pages deployment
    - Effort: ~1 day
 
-**AI Prompt for Phase 5:**
+**AI Prompt for Phase 6:**
 ```
 Implement Web platform:
 1. Add Kotlin/JS target to core module
@@ -418,7 +442,7 @@ Implement Web platform:
 7. Deploy to GitHub Pages
 ```
 
-### Phase 6: Polish & Production
+### Phase 7: Polish & Production
 
 **Goal:** Production-ready release
 
@@ -508,21 +532,22 @@ Track progress by updating this table as features are completed:
 | Phase | Feature | Status | Notes |
 |-------|---------|--------|-------|
 | 1 | OpenAI Realtime WebRTC (Android) | ✅ Complete | Successfully connects to API, SDP exchange working. Completed Dec 15-16, 2025 |
-| 2 | Android Audio Streaming | 🔴 Not Started | See Phase 2 prompts above |
-| 2 | Android Audio Playback | 🔴 Not Started | See Phase 2 prompts above |
-| 2 | Android PTT & Text Input | 🔴 Not Started | See Phase 2 prompts above |
-| 2 | Desktop WebSocket Client | 🔴 Not Started | See Phase 2 prompts above |
-| 2 | Desktop Audio Playback | 🔴 Not Started | See Phase 2 prompts above |
-| 2 | Integration Testing | 🔴 Not Started | See Phase 2 prompts above |
-| 3 | MCP Protocol | 🔴 Not Started | See Phase 3 AI prompt above |
-| 3 | GitHub API Integration | 🔴 Not Started | - |
-| 4 | iOS Platform | 🔴 Not Started | See Phase 4 AI prompt above |
-| 4 | iOS Audio Capture | 🔴 Not Started | See Phase 4 AI prompt above |
-| 4 | iOS Build Setup | 🔴 Not Started | - |
-| 5 | Web Platform Setup | 🔴 Not Started | See Phase 5 AI prompt above |
-| 5 | Web Audio API | 🔴 Not Started | - |
-| 6 | Testing Suite | 🔴 Not Started | - |
-| 6 | Production Polish | 🔴 Not Started | - |
+| 2 | Android Audio Streaming | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 2 | Android Audio Playback | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 2 | Android PTT & Text Input | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 2 | Android Integration Testing | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 3 | Desktop WebRTC Client | 🔴 Not Started | Use WebRTC (NOT WebSocket). See Phase 2 & 3 prompts above |
+| 3 | Desktop Audio Playback | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 3 | Desktop Integration Testing | 🔴 Not Started | See Phase 2 & 3 prompts above |
+| 4 | MCP Protocol | 🔴 Not Started | See Phase 4 AI prompt above |
+| 4 | GitHub API Integration | 🔴 Not Started | - |
+| 5 | iOS Platform | 🔴 Not Started | See Phase 5 AI prompt above |
+| 5 | iOS Audio Capture | 🔴 Not Started | See Phase 5 AI prompt above |
+| 5 | iOS Build Setup | 🔴 Not Started | - |
+| 6 | Web Platform Setup | 🔴 Not Started | See Phase 6 AI prompt above |
+| 6 | Web Audio API | 🔴 Not Started | - |
+| 7 | Testing Suite | 🔴 Not Started | - |
+| 7 | Production Polish | 🔴 Not Started | - |
 
 **Legend:** ✅ Complete | 🟡 In Progress | 🔴 Not Started
 
