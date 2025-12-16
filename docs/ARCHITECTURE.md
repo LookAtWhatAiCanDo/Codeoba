@@ -70,7 +70,7 @@ The heart of Codeoba - contains all shared code across platforms.
 **Packages:**
 
 ```
-com.codeoba.core/
+llc.lookatwhataicando.codeoba.core/
 ├── domain/              # Core interfaces and domain models
 │   ├── AudioCaptureService.kt
 │   ├── AudioRouteManager.kt
@@ -98,7 +98,7 @@ Android application module.
 
 **Structure:**
 ```
-com.codeoba.android/
+llc.lookatwhataicando.codeoba.android/
 └── MainActivity.kt      # Android entry point
 ```
 
@@ -118,7 +118,7 @@ Desktop (JVM) application module.
 
 **Structure:**
 ```
-com.codeoba.desktop/
+llc.lookatwhataicando.codeoba.desktop/
 └── Main.kt              # Desktop entry point
 ```
 

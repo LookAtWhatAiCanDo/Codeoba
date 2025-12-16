@@ -15,6 +15,6 @@ plugins {
 }
 
 allprojects {
-    group = "com.codeoba"
+    group = "llc.lookatwhataicando.codeoba"
     version = "1.0.0"
 }

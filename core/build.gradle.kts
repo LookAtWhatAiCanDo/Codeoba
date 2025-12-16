@@ -65,7 +65,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.codeoba.core"
+    namespace = "llc.lookatwhataicando.codeoba.core"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     
     defaultConfig {
