@@ -2,6 +2,8 @@
 
 This document contains the **GitHub Issue content for Phase 1.5 tasks**.
 
+> **Historical Note:** This document uses "Phase 1.5" and label `phase-1.5` as it was created during the transition period. Going forward, the project adopts a **whole integer phase numbering convention** (Phase 1, 2, 3, etc.). Future phases will use labels like `phase-2`, `phase-3`, etc., and unstarted phases may be renumbered. See AGENTS.md for the complete phase numbering convention.
+
 ## Purpose
 
 While GitHub Copilot can create issues directly, this document serves as:

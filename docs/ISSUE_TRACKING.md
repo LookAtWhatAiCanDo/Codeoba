@@ -88,6 +88,17 @@ Epic (Phase)
 
 **Labels:** N/A (not an issue)
 
+**Phase Numbering Convention:**
+
+> **Important:** Phases MUST use whole integers only (Phase 1, 2, 3, etc.), never decimals (Phase 1.5, 1.8, etc.).
+
+- Use **whole integers**: Phase 1, 2, 3, 4, 5, etc.
+- **Renumber freely**: Future unstarted phases can be renumbered as new work is discovered
+- When renumbering, note "formerly Phase X" in documentation for clarity
+- Renumbering unstarted phases is acceptable and preferred over decimal numbering
+
+See AGENTS.md for detailed rationale and examples.
+
 ---
 
 ### Level 2: Parent Issue (Feature)

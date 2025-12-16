@@ -177,6 +177,8 @@ Current UI includes:
 
 This section outlines the planned implementation sequence for remaining features.
 
+> **Phase Numbering Convention:** Phases use whole integers only (Phase 1, 2, 3, etc.), never decimals. Future unstarted phases may be renumbered as new work is discovered. See AGENTS.md for detailed guidelines.
+
 ### Phase 1: Core Realtime Integration 🟡 IN PROGRESS
 
 **Goal:** End-to-end voice → transcript → tool call flow

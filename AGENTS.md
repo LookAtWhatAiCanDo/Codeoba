@@ -35,6 +35,40 @@
 - Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT → ISSUE_TRACKING) and ensure all references stay consistent.
 - Follow the issue tracking system documented in `docs/ISSUE_TRACKING.md` when planning and implementing features.
 
+## Phase Numbering Convention
+
+**Phases MUST use whole integers only (Phase 1, 2, 3, etc.), never decimals (Phase 1.5, 1.8, etc.).**
+
+### Rationale
+
+Decimal phase numbers (e.g., Phase 1.5, 1.8, 1.11) create confusion and clutter. Using whole integers with renumbering is clearer:
+
+**❌ Confusing (with decimals):**
+- Phase 1: ABC - Complete
+- Phase 1.5: DEF - Complete
+- Phase 1.8: GHI - Complete  
+- Phase 1.9: JKL - Complete
+- Phase 1.11: MNO - In Progress
+- Phase 2: PQR - Not Started
+- Phase 3: XYZ - Not Started
+
+**✅ Clear (with whole integers and renumbering):**
+- Phase 1: ABC - Complete
+- Phase 2: DEF - Complete (discovered during Phase 1)
+- Phase 3: GHI - Complete (discovered during Phase 1)
+- Phase 4: JKL - Complete (discovered during Phase 1)
+- Phase 5: MNO - In Progress (discovered during Phase 1)
+- Phase 6: PQR - Not Started (formerly "Phase 2")
+- Phase 7: XYZ - Not Started (formerly "Phase 3")
+
+### Guidelines
+
+1. **Always use whole integers**: Phase 1, 2, 3, 4, 5, etc.
+2. **Renumber freely**: Future unstarted phases can be renumbered as new work is discovered
+3. **Document changes**: When renumbering, note "formerly Phase X" in documentation
+4. **Update labels**: If using GitHub labels like `phase-2`, update them when phases are renumbered
+5. **It's acceptable**: Renumbering future phases is NOT confusing because they haven't started yet
+
 ## Commit & Pull Request Guidelines
 - Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.
 - PRs should describe behavior changes, risks, and linked issues; attach screenshots/GIFs for UI changes when possible.

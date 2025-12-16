@@ -3,6 +3,8 @@
 **Date:** December 16, 2025  
 **Issue:** #12 - Discuss `docs/IMPLEMENTATION_STATUS.md` and plan next steps, Phase 1.x
 
+> **Historical Note:** This document uses "Phase 1.5" as it was created during the transition period. Going forward, the project adopts a **whole integer phase numbering convention** (Phase 1, 2, 3, etc.). Future phases will be renumbered rather than using decimals. See AGENTS.md for the complete phase numbering convention.
+
 ---
 
 ## Table of Contents
