@@ -52,6 +52,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.ktor.client.okhttp)
+                implementation(libs.webrtc.android)
             }
         }
         
@@ -64,7 +65,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.codeoba.core"
+    namespace = "llc.lookatwhataicando.codeoba.core"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
     
     defaultConfig {

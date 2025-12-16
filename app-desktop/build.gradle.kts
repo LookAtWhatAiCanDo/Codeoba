@@ -13,7 +13,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.codeoba.desktop.MainKt"
+        mainClass = "llc.lookatwhataicando.codeoba.desktop.MainKt"
         
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

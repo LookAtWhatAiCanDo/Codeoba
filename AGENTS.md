@@ -1,8 +1,57 @@
-# AI Agent Responsibilities
+# Repository Guidelines
 
-This document defines responsibilities and guidelines for AI agents (GitHub Copilot, coding assistants, etc.) maintaining this codebase.
+## Project Structure & Module Organization
+- `core/` holds shared Kotlin Multiplatform logic
+  - `commonMain` platform agnostic contracts.
+  - Keep platform specific code out of `commonMain`.
+  - Abstract out any platform specific code.
+  - Platform specific implementations under `androidMain`/`desktopMain`/....
+- Platform apps:
+  - `app-android/` (Android entry/resources)
+  - `app-desktop/` (JVM desktop)
+  - `app-ios/` (stubbed)
+- `docs/` contains architecture, development, and implementation status; Gradle settings and root scripts live at the repo root.
 
-## Core Responsibilities
+## Build, Test, and Development Commands
+- Shared build smoke: `./gradlew :core:build` (required before commit).
+- Android: `./gradlew :app-android:assembleDebug` then `:app-android:installDebug` for device/emulator.
+- Desktop: `./gradlew :app-desktop:run` for local run, or `:app-desktop:packageDistributionForCurrentOS` for installers.
+- Full CI-style check: `./gradlew build` (runs available unit tests across modules).
+
+## Coding Style & Naming Conventions
+- Kotlin style with 4-space indent; prefer small, single-purpose functions and meaningful names (verbs for actions, nouns for data).
+- Define interfaces in `core/src/commonMain`; implement per platform sourceset; keep platform code out of `commonMain`; Preserve platform abstraction boundaries.
+- Use StateFlow for state and SharedFlow for events; suffix flows with `State`/`Events`.
+- Add KDoc on public APIs and keep code comments aligned with docs.
+
+## Testing Guidelines
+- Place unit tests in `*Test.kt` under the matching module/package; start with shared logic in `core`.
+- Run tests via Gradle (`./gradlew :core:build` or module-specific tasks) and cover new flows, errors, and edge cases deterministically.
+- Document coverage gaps or manual steps in `docs/IMPLEMENTATION_STATUS.md` when tests are deferred.
+
+## Documentation & Agent Responsibilities
+- Keep documentation and code comments in sync with behavior: update `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `README.md` when designs or tooling change; refresh `docs/IMPLEMENTATION_STATUS.md` percentages/prompts as features progress.
+- When adding dependencies, record rationale in commits and adjust `docs/ARCHITECTURE.md` if the stack changes; avoid GPL and check for known issues.
+- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT) and ensure all references stay consistent.
+
+## Commit & Pull Request Guidelines
+- Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.
+- PRs should describe behavior changes, risks, and linked issues; attach screenshots/GIFs for UI changes when possible.
+- Keep changes scoped; avoid mixing unrelated platform and shared edits in one commit unless tightly coupled.
+
+## Security & Configuration Tips
+- Never commit secrets. For local Android defaults use `local.properties` (`DANGEROUS_OPENAI_API_KEY=...`); for desktop/CI use `OPENAI_API_KEY` env var or `-Dopenai.api.key`.
+- Store GitHub/MCP tokens outside the repo; MCP client is currently stubbed and does not need real tokens.
+- Validate new dependencies against policy and prefer stable versions.
+
+## AI Agent Responsibilities
+
+This section defines responsibilities and guidelines for AI agents (GitHub Copilot, coding assistants, etc.) maintaining this codebase.
+
+### 0. Organically Evolve AGENTS.md
+
+Always recomment improvements to the AGENTS.md file to persist recommendations
+and other lessons learned during working sessions.
 
 ### 1. Documentation Synchronization
 
@@ -18,7 +67,13 @@ This document defines responsibilities and guidelines for AI agents (GitHub Copi
 3. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
 4. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
 
-### 2. Progress Tracking Updates
+### 2. Next Steps Before Merging Branch To Its Parent
+
+When code is ready to merge to its parent branch (ex: main):
+1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
+2. Recommend next steps.
+
+### 3. Progress Tracking Updates
 
 **Update progress table in IMPLEMENTATION_STATUS.md when:**
 - A phase or feature is completed
@@ -34,7 +89,7 @@ This document defines responsibilities and guidelines for AI agents (GitHub Copi
 
 Use `~` prefix for approximate percentages.
 
-### 3. Code Quality Standards
+### 4. Code Quality Standards
 
 **All code changes must:**
 - Follow existing architectural patterns (see `docs/ARCHITECTURE.md`)
@@ -49,7 +104,7 @@ Use `~` prefix for approximate percentages.
 - Add KDoc comments for public APIs
 - Keep functions focused and single-purpose
 
-### 4. Testing Requirements
+### 5. Testing Requirements
 
 **Before committing:**
 - Run `./gradlew :core:build` to verify core module builds
@@ -62,7 +117,7 @@ Use `~` prefix for approximate percentages.
 - Document test coverage gaps in IMPLEMENTATION_STATUS.md
 - Include integration test scenarios in AI prompts for future work
 
-### 5. Architectural Consistency
+### 6. Architectural Consistency
 
 **Maintain these principles:**
 - **Platform abstraction:** Shared logic in `:core`, platform-specific in app modules
@@ -76,7 +131,7 @@ Use `~` prefix for approximate percentages.
 - Create platform implementations in respective sourcesets
 - Wire dependencies in platform entry points (MainActivity, Main.kt)
 
-### 6. Commit Message Standards
+### 7. Commit Message Standards
 
 **Format:**
 ```
@@ -96,7 +151,7 @@ Use `~` prefix for approximate percentages.
 - `build:` Build system or dependency changes
 - `chore:` Routine tasks, maintenance
 
-### 7. AI Prompt Maintenance
+### 8. AI Prompt Maintenance
 
 **In IMPLEMENTATION_STATUS.md, update AI prompts when:**
 - Implementation approach changes
@@ -111,7 +166,7 @@ Use `~` prefix for approximate percentages.
 - ✅ Testing/validation criteria included
 - ✅ Effort estimate provided
 
-### 8. Dependency Management
+### 9. Dependency Management
 
 **When adding dependencies:**
 - Check for vulnerabilities using `gh-advisory-database` tool
@@ -124,7 +179,7 @@ Use `~` prefix for approximate percentages.
 - Adding GPL-licensed dependencies (blocked by CI)
 - Dependencies with known security issues
 
-### 9. Error Handling
+### 10. Error Handling
 
 **All code must:**
 - Handle null/empty cases gracefully
@@ -136,7 +191,7 @@ Use `~` prefix for approximate percentages.
 - Catch platform exceptions and convert to common error types
 - Never crash the app on configuration errors (fallback to defaults)
 
-### 10. Breaking Changes
+### 11. Breaking Changes
 
 **When making breaking changes:**
 - Document in commit message with `BREAKING CHANGE:` footer
@@ -161,6 +216,10 @@ Use `~` prefix for approximate percentages.
 2. Update progress tracking if feature completed
 3. Write clear commit message
 4. Verify documentation is current
+
+**Before merging to main:**
+1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
+2. Recommend next steps.
 
 ## Notes
 
