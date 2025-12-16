@@ -294,11 +294,34 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             return
         }
         
+        if (dataChannel?.state() != DataChannel.State.OPEN) {
+            Log.w(TAG, "sendAudioFrame: Data channel not open, skipping frame")
+            return
+        }
+        
         try {
-            // With WebRTC AudioTrack, audio is sent automatically via RTP
-            // The audioTrack handles encoding and transmission internally
-            // No manual frame sending needed for standard WebRTC audio streaming
+            // Send audio as base64-encoded PCM16 via data channel
+            // OpenAI Realtime API expects audio frames via data channel with input_audio_buffer.append event
+            val base64Audio = android.util.Base64.encodeToString(frame, android.util.Base64.NO_WRAP)
+            
+            val audioEvent = buildJsonObject {
+                put("type", "input_audio_buffer.append")
+                put("audio", base64Audio)
+            }
+            
+            val messageBytes = audioEvent.toString().toByteArray(StandardCharsets.UTF_8)
+            val buffer = ByteBuffer.allocateDirect(messageBytes.size)
+            buffer.put(messageBytes)
+            buffer.flip()
+            
+            dataChannel?.send(DataChannel.Buffer(buffer, false))
+            
+            // Log first frame for debugging, then reduce logging frequency
+            if (System.currentTimeMillis() % 1000 < 100) { // Log roughly once per second
+                Log.d(TAG, "sendAudioFrame: Sent audio frame: ${frame.size} bytes (base64: ${base64Audio.length} chars)")
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "sendAudioFrame: Failed to send audio frame: ${e.message}", e)
             _events.emit(RealtimeEvent.Error("Failed to send audio: ${e.message}"))
         }
     }

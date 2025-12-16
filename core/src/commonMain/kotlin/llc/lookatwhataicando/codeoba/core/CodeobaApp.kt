@@ -41,8 +41,14 @@ class CodeobaApp(
         
         // Pipe audio frames to realtime client
         scope.launch {
+            var frameCount = 0L
             audioCaptureService.audioFrames.collect { frame ->
                 if (connectionState.value == ConnectionState.Connected) {
+                    frameCount++
+                    // Log every 100th frame to avoid spam
+                    if (frameCount % 100 == 0L) {
+                        addEventLogEntry(EventLogEntry.Info("Audio streaming: ${frameCount} frames sent"))
+                    }
                     realtimeClient.sendAudioFrame(frame)
                 }
             }
@@ -53,8 +59,11 @@ class CodeobaApp(
         addEventLogEntry(EventLogEntry.Info("Connecting to ${config.endpoint}..."))
         try {
             realtimeClient.connect(config)
-        } catch (e: Exception) {
+            // Connection state changes are reported via events flow
+        } catch (e: IllegalStateException) {
             addEventLogEntry(EventLogEntry.Error("Connection failed: ${e.message}"))
+        } catch (e: Exception) {
+            addEventLogEntry(EventLogEntry.Error("Connection error: ${e.message}"))
         }
     }
     
@@ -69,6 +78,21 @@ class CodeobaApp(
         addEventLogEntry(EventLogEntry.Info("Starting microphone..."))
         try {
             audioCaptureService.start()
+            // Check if start failed by checking state after a brief moment
+            kotlinx.coroutines.delay(100)
+            when (val currentState = audioCaptureState.value) {
+                is AudioCaptureState.Error -> {
+                    addEventLogEntry(EventLogEntry.Error("Microphone error: ${currentState.message}"))
+                }
+                is AudioCaptureState.Capturing -> {
+                    addEventLogEntry(EventLogEntry.Info("Microphone started successfully"))
+                }
+                else -> {
+                    // Still starting or other state
+                }
+            }
+        } catch (e: SecurityException) {
+            addEventLogEntry(EventLogEntry.Error("Permission denied: Please grant microphone permission"))
         } catch (e: Exception) {
             addEventLogEntry(EventLogEntry.Error("Failed to start microphone: ${e.message}"))
         }
