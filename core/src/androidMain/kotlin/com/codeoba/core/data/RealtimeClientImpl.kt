@@ -5,9 +5,11 @@ import android.util.Log
 import com.codeoba.core.domain.*
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -45,6 +47,12 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private var peerConnectionFactory: PeerConnectionFactory? = null
     
     private val httpClient = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            })
+        }
         engine {
             config {
                 followRedirects(true)
@@ -306,7 +314,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             Log.d(TAG, "Requesting ephemeral token for model: $model")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime/sessions") {
                 header(HttpHeaders.Authorization, "Bearer $apiKey")
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
                 setBody(buildJsonObject {
                     put("model", model)
                     put("voice", "alloy")
@@ -347,7 +355,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             Log.d(TAG, "Exchanging SDP offer with OpenAI...")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime") {
                 header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                contentType(ContentType.Application.Json)
                 setBody(buildJsonObject {
                     put("type", "offer")
                     put("sdp", sdpOffer)
