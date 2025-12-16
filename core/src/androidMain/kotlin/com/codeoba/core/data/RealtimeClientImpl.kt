@@ -1,6 +1,7 @@
 package com.codeoba.core.data
 
 import android.content.Context
+import android.util.Log
 import com.codeoba.core.domain.*
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -25,6 +26,9 @@ import java.nio.charset.StandardCharsets
  * Uses io.github.webrtc-sdk:android library for WebRTC functionality.
  */
 actual class RealtimeClientImpl actual constructor() : RealtimeClient {
+    companion object {
+        private const val TAG = "RealtimeClient"
+    }
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     actual override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
     
@@ -55,6 +59,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      * Must be called before connect().
      */
     fun initialize(context: Context) {
+        Log.d(TAG, "Initializing RealtimeClient with context")
         appContext = context.applicationContext
         
         // Initialize WebRTC
@@ -62,26 +67,34 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             .setEnableInternalTracer(false)
             .createInitializationOptions()
         PeerConnectionFactory.initialize(initOptions)
+        Log.i(TAG, "RealtimeClient initialized successfully")
     }
     
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
+            Log.w(TAG, "Already connected or connecting, ignoring connect request")
             return
         }
         
+        Log.i(TAG, "Connecting to ${config.endpoint} with model ${config.model}")
         _connectionState.value = ConnectionState.Connecting
         
         try {
             if (appContext == null) {
-                throw IllegalStateException("RealtimeClientImpl not initialized. Call initialize(context) first.")
+                val errorMsg = "RealtimeClientImpl not initialized. Call initialize(context) first."
+                Log.e(TAG, errorMsg)
+                throw IllegalStateException(errorMsg)
             }
             
             // Step 1: Get ephemeral token from OpenAI
+            Log.d(TAG, "Requesting ephemeral token...")
             ephemeralKey = getEphemeralToken(config.apiKey, config.model)
+            Log.d(TAG, "Ephemeral token received: ${ephemeralKey?.take(10)}...")
             
             // Step 2: Initialize PeerConnectionFactory
             if (peerConnectionFactory == null) {
+                Log.d(TAG, "Creating PeerConnectionFactory...")
                 val options = PeerConnectionFactory.Options()
                 peerConnectionFactory = PeerConnectionFactory.builder()
                     .setOptions(options)
@@ -89,6 +102,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             // Step 3: Create peer connection with STUN servers
+            Log.d(TAG, "Creating peer connection...")
             val iceServers = listOf(
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
             )
@@ -103,44 +117,58 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             )
             
             if (peerConnection == null) {
-                throw IllegalStateException("Failed to create PeerConnection")
+                val errorMsg = "Failed to create PeerConnection"
+                Log.e(TAG, errorMsg)
+                throw IllegalStateException(errorMsg)
             }
+            Log.d(TAG, "Peer connection created successfully")
             
             // Step 4: Create data channel for signaling
+            Log.d(TAG, "Creating data channel...")
             val dataChannelInit = DataChannel.Init().apply {
                 ordered = true
                 negotiated = false
             }
             dataChannel = peerConnection?.createDataChannel("oai-events", dataChannelInit)
             dataChannel?.registerObserver(createDataChannelObserver())
+            Log.d(TAG, "Data channel created")
             
             // Step 5: Add audio track
+            Log.d(TAG, "Adding audio track...")
             val audioConstraints = MediaConstraints()
             val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
             audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
             
             if (audioTrack != null) {
                 peerConnection?.addTrack(audioTrack, listOf("stream"))
+                Log.d(TAG, "Audio track added to peer connection")
             }
             
             // Step 6: Create SDP offer
+            Log.d(TAG, "Creating SDP offer...")
             val offerConstraints = MediaConstraints().apply {
                 mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
             }
             
             peerConnection?.createOffer(object : SdpObserver {
                 override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                    Log.d(TAG, "SDP offer created successfully")
                     peerConnection?.setLocalDescription(object : SdpObserver {
                         override fun onSetSuccess() {
+                            Log.d(TAG, "Local description set successfully")
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
                                     // Step 7: Exchange SDP with OpenAI
+                                    Log.d(TAG, "Exchanging SDP with OpenAI...")
                                     val answer = exchangeSDP(sessionDescription.description, ephemeralKey!!)
+                                    Log.d(TAG, "SDP answer received from OpenAI")
                                     peerConnection?.setRemoteDescription(object : SdpObserver {
                                         override fun onSetSuccess() {
+                                            Log.i(TAG, "Remote description set successfully, WebRTC connection established")
                                             // Connection being established, wait for ICE connection
                                         }
                                         override fun onSetFailure(error: String) {
+                                            Log.e(TAG, "Failed to set remote description: $error")
                                             CoroutineScope(Dispatchers.Main).launch {
                                                 _connectionState.value = ConnectionState.Error("Failed to set remote description: $error")
                                                 _events.emit(RealtimeEvent.Error(error))
@@ -150,6 +178,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                                         override fun onCreateFailure(p0: String?) {}
                                     }, SessionDescription(SessionDescription.Type.ANSWER, answer))
                                 } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to exchange SDP: ${e.message}", e)
                                     CoroutineScope(Dispatchers.Main).launch {
                                         _connectionState.value = ConnectionState.Error("Failed to exchange SDP: ${e.message}")
                                         _events.emit(RealtimeEvent.Error("Failed to exchange SDP: ${e.message}"))
@@ -158,6 +187,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                             }
                         }
                         override fun onSetFailure(error: String) {
+                            Log.e(TAG, "Failed to set local description: $error")
                             CoroutineScope(Dispatchers.Main).launch {
                                 _connectionState.value = ConnectionState.Error("Failed to set local description: $error")
                                 _events.emit(RealtimeEvent.Error(error))
@@ -169,6 +199,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 }
                 
                 override fun onCreateFailure(error: String) {
+                    Log.e(TAG, "Failed to create offer: $error")
                     CoroutineScope(Dispatchers.Main).launch {
                         _connectionState.value = ConnectionState.Error("Failed to create offer: $error")
                         _events.emit(RealtimeEvent.Error(error))
@@ -181,12 +212,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
+            Log.e(TAG, errorMsg, e)
             _connectionState.value = ConnectionState.Error(errorMsg)
             _events.emit(RealtimeEvent.Error(errorMsg))
         }
     }
     
     actual override suspend fun disconnect() {
+        Log.i(TAG, "Disconnecting...")
         try {
             dataChannel?.close()
             dataChannel?.unregisterObserver()
@@ -205,7 +238,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             
             _connectionState.value = ConnectionState.Disconnected
             _events.emit(RealtimeEvent.Disconnected)
+            Log.i(TAG, "Disconnected successfully")
         } catch (e: Exception) {
+            Log.e(TAG, "Error during disconnect: ${e.message}", e)
             _connectionState.value = ConnectionState.Disconnected
             _events.emit(RealtimeEvent.Disconnected)
         }
@@ -286,30 +321,36 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         
         override fun onDataChannel(channel: DataChannel) {
             // Data channel received from remote peer
+            Log.d(TAG, "Data channel received from remote peer")
             dataChannel = channel
             channel.registerObserver(createDataChannelObserver())
         }
         
         override fun onAddTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
             // Handle incoming audio track from OpenAI
+            Log.d(TAG, "Audio track received from OpenAI")
             // Note: Audio frames are typically received via RTP and would need
             // a custom audio sink to extract PCM data. For now, this is a placeholder.
             // In production, you would set up an AudioTrackSink to capture frames.
         }
         
         override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {
+            Log.d(TAG, "ICE connection state changed: $newState")
             CoroutineScope(Dispatchers.Main).launch {
                 when (newState) {
                     PeerConnection.IceConnectionState.CONNECTED,
                     PeerConnection.IceConnectionState.COMPLETED -> {
+                        Log.i(TAG, "ICE connection established")
                         _connectionState.value = ConnectionState.Connected
                         _events.emit(RealtimeEvent.Connected)
                     }
                     PeerConnection.IceConnectionState.FAILED -> {
+                        Log.e(TAG, "ICE connection failed")
                         _connectionState.value = ConnectionState.Error("ICE connection failed")
                         _events.emit(RealtimeEvent.Error("ICE connection failed"))
                     }
                     PeerConnection.IceConnectionState.DISCONNECTED -> {
+                        Log.w(TAG, "ICE connection disconnected")
                         _connectionState.value = ConnectionState.Disconnected
                         _events.emit(RealtimeEvent.Disconnected)
                     }
@@ -343,14 +384,17 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         override fun onBufferedAmountChange(amount: Long) {}
         override fun onStateChange() {
             dataChannel?.state()?.let { state ->
+                Log.d(TAG, "Data channel state changed: $state")
                 when (state) {
                     DataChannel.State.OPEN -> {
+                        Log.i(TAG, "Data channel opened, sending session.update")
                         // Data channel is open, can send session.update
                         CoroutineScope(Dispatchers.IO).launch {
                             sendSessionUpdate()
                         }
                     }
                     DataChannel.State.CLOSED -> {
+                        Log.w(TAG, "Data channel closed")
                         CoroutineScope(Dispatchers.Main).launch {
                             _connectionState.value = ConnectionState.Disconnected
                             _events.emit(RealtimeEvent.Disconnected)
@@ -399,7 +443,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             buffer.flip()
             
             dataChannel?.send(DataChannel.Buffer(buffer, false))
+            Log.d(TAG, "Session update sent successfully")
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to send session update: ${e.message}", e)
             _events.emit(RealtimeEvent.Error("Failed to send session update: ${e.message}"))
         }
     }
@@ -409,21 +455,26 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      */
     private suspend fun handleDataChannelMessage(message: String) {
         try {
+            Log.d(TAG, "Received message: ${message.take(100)}...")
             val jsonElement = json.parseToJsonElement(message)
             val jsonObject = jsonElement.jsonObject
             
             val eventType = jsonObject["type"]?.jsonPrimitive?.content ?: return
+            Log.d(TAG, "Event type: $eventType")
             
             when (eventType) {
                 "session.created" -> {
+                    Log.i(TAG, "Session created")
                     _events.emit(RealtimeEvent.Connected)
                 }
                 
                 "session.updated" -> {
+                    Log.d(TAG, "Session configuration confirmed")
                     // Session configuration confirmed
                 }
                 
                 "conversation.item.created" -> {
+                    Log.d(TAG, "Conversation item created")
                     val item = jsonObject["item"]?.jsonObject ?: return
                     handleConversationItem(item)
                 }
@@ -431,6 +482,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 "response.audio_transcript.delta" -> {
                     val delta = jsonObject["delta"]?.jsonPrimitive?.content ?: ""
                     if (delta.isNotEmpty()) {
+                        Log.d(TAG, "Transcript delta: $delta")
                         _events.emit(RealtimeEvent.Transcript(delta, false))
                     }
                 }
@@ -438,6 +490,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 "response.audio_transcript.done" -> {
                     val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
                     if (transcript.isNotEmpty()) {
+                        Log.i(TAG, "Transcript complete: $transcript")
                         _events.emit(RealtimeEvent.Transcript(transcript, true))
                     }
                 }
@@ -445,6 +498,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 "conversation.item.input_audio_transcription.completed" -> {
                     val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
                     if (transcript.isNotEmpty()) {
+                        Log.i(TAG, "User transcript: $transcript")
                         _events.emit(RealtimeEvent.Transcript("User: $transcript", true))
                     }
                 }
@@ -452,16 +506,23 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 "response.function_call_arguments.done" -> {
                     val name = jsonObject["name"]?.jsonPrimitive?.content ?: return
                     val arguments = jsonObject["arguments"]?.jsonPrimitive?.content ?: "{}"
+                    Log.i(TAG, "Tool call: $name with args: $arguments")
                     _events.emit(RealtimeEvent.ToolCall(name, arguments))
                 }
                 
                 "error" -> {
                     val error = jsonObject["error"]?.jsonObject
                     val errorMessage = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
+                    Log.e(TAG, "Error from API: $errorMessage")
                     _events.emit(RealtimeEvent.Error(errorMessage))
+                }
+                
+                else -> {
+                    Log.d(TAG, "Unhandled event type: $eventType")
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse message: ${e.message}", e)
             _events.emit(RealtimeEvent.Error("Failed to parse message: ${e.message}"))
         }
     }
