@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.codeoba.core.domain.*
 import io.ktor.client.*
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -43,7 +44,13 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private var audioTrack: AudioTrack? = null
     private var peerConnectionFactory: PeerConnectionFactory? = null
     
-    private val httpClient = HttpClient()
+    private val httpClient = HttpClient(OkHttp) {
+        engine {
+            config {
+                followRedirects(true)
+            }
+        }
+    }
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
