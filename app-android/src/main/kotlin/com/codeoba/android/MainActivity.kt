@@ -64,10 +64,13 @@ class MainActivity : ComponentActivity() {
         }
         
         // Initialize CodeobaApp with platform-specific implementations
+        val realtimeClient = RealtimeClientImpl()
+        realtimeClient.initialize(this) // Initialize with Android Context
+        
         codeobaApp = CodeobaApp(
             audioCaptureService = AndroidAudioCaptureService(this, scope),
             audioRouteManager = AndroidAudioRouteManager(this),
-            realtimeClient = RealtimeClientImpl(),
+            realtimeClient = realtimeClient,
             mcpClient = McpClientImpl(),
             companionProxy = CompanionProxyStub(),
             scope = scope
