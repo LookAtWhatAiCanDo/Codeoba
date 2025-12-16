@@ -14,10 +14,10 @@ This document tracks the **current implementation status and roadmap** for Codeo
 |-----------|--------|------------|
 | Project Structure | ✅ Complete | 100% |
 | Core Abstractions | ✅ Complete | 100% |
-| Desktop App | ✅ Complete | 100% |
-| Android App | ✅ Ready | 100% |
+| Desktop App | 🟡 Basic Structure | 70% |
+| Android App | 🟡 Basic Structure | 75% |
 | Shared UI | 🟡 Basic | 60% |
-| Realtime API (Android) | ✅ Complete | 100% |
+| Realtime API (Android) | 🟡 Connection Only | 45% |
 | Realtime API (Desktop) | 🔴 Stub | 10% |
 | MCP Client | 🔴 Stub | 10% |
 | iOS App | 🔴 Stub | 5% |
@@ -25,7 +25,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 **Legend:** ✅ Complete | 🟡 Partial | 🔴 Stub | ⚪ Not Started
 
-**Note on Realtime API (Android):** ✅ COMPLETE - Full WebRTC implementation with io.github.webrtc-sdk:android:137.7151.05. Successfully connects to OpenAI Realtime API, exchanges SDP, establishes peer connection. Context initialization, permissions, and logging all implemented. Tested and working. Needs audio playback and end-to-end integration testing.
+**Note on Realtime API (Android):** 🟡 PARTIAL - WebRTC connection established successfully with io.github.webrtc-sdk:android:137.7151.05. SDP exchange works, peer connection established. Still needs: audio streaming integration, audio playback, PTT functionality, text input, end-to-end testing.
 
 ---
 
@@ -50,12 +50,22 @@ This document tracks the **current implementation status and roadmap** for Codeo
 - ✅ Clean architecture patterns
 
 ### 3. Desktop Platform (`:app-desktop`)
-- ✅ JavaSound-based audio capture (structure ready)
+
+**Implementation:** 🟡 Basic Structure (70%)
+
+**Completed:**
+- ✅ JavaSound-based audio capture (structure ready, not streaming)
 - ✅ System default audio routing
 - ✅ Compose Desktop window
 - ✅ Full UI integration
 - ✅ API key configuration (env vars, system properties, local.properties)
 - ✅ Builds and runs successfully
+
+**Still Needed:**
+- 🔴 Realtime API client implementation (WebSocket recommended)
+- 🔴 Audio streaming to API
+- 🔴 Audio playback from API
+- 🔴 End-to-end testing
 
 **Build Command:**
 ```bash
@@ -64,9 +74,9 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 ### 4. Android Platform (`:app-android`)
 
-**Implementation:** ✅ Complete (100%)
+**Implementation:** 🟡 Partial (75%)
 
-All Android code is production-ready:
+**Completed:**
 - ✅ Full AudioRecord implementation (16kHz mono PCM)
 - ✅ Complete Bluetooth audio routing with device enumeration
 - ✅ Permission handling (RECORD_AUDIO, ACCESS_NETWORK_STATE, BLUETOOTH, MODIFY_AUDIO_SETTINGS)
@@ -75,28 +85,33 @@ All Android code is production-ready:
 - ✅ Launcher icons (vector drawables for all densities)
 - ✅ BuildConfig integration with local.properties
 - ✅ Compose UI integration
-- ✅ **WebRTC Realtime API client fully implemented and tested**
+- ✅ WebRTC connection established successfully
 - ✅ Context initialization in MainActivity
 
 **Platform Implementations** (in `:core/src/androidMain/`):
-- `AndroidAudioCaptureService.kt` - Microphone capture
-- `AndroidAudioRouteManager.kt` - Bluetooth/speaker/wired routing
-- `RealtimeClientImpl.kt` - **Full WebRTC client implementation**
+- `AndroidAudioCaptureService.kt` - Microphone capture (✅ implemented, 🔴 not integrated)
+- `AndroidAudioRouteManager.kt` - Bluetooth/speaker/wired routing (✅ implemented, 🔴 not integrated)
+- `RealtimeClientImpl.kt` - WebRTC client (🟡 connection works, audio streaming pending)
 
 **Build Status:** ✅ Builds successfully, app connects to OpenAI API
 ```bash
 ./gradlew :app-android:assembleDebug
 ```
 
-**WebRTC Implementation Highlights:**
-- Uses `io.github.webrtc-sdk:android:137.7151.05`
-- Ephemeral token authentication
-- Complete SDP exchange with proper content types
-- Data channel for event signaling
-- AudioTrack for RTP streaming
-- Comprehensive logcat logging
+**WebRTC Connection Status:**
+- ✅ Uses `io.github.webrtc-sdk:android:137.7151.05`
+- ✅ Ephemeral token authentication works
+- ✅ SDP exchange completes with proper content types
+- ✅ Data channel established for event signaling
+- ✅ Peer connection established successfully
+- ✅ Comprehensive logcat logging
 
-**Note:** Ready for end-to-end testing. Needs audio playback implementation for received frames.
+**Still Needed:**
+- 🔴 Audio capture integration (connect AudioCaptureService → RealtimeClient)
+- 🔴 Audio playback implementation (play received audio frames)
+- 🔴 PTT (Push-to-Talk) button functionality
+- 🔴 Text input functionality
+- 🔴 End-to-end testing with real conversations
 
 ### 5. Shared UI (Compose Multiplatform)
 
@@ -134,37 +149,53 @@ Current UI includes:
 
 This section outlines the planned implementation sequence for remaining features.
 
-### Phase 1: Core Realtime Integration ✅ COMPLETE (Android)
+### Phase 1: Core Realtime Integration 🟡 IN PROGRESS
 
 **Goal:** End-to-end voice → transcript → tool call flow
 
-**Status:** 🟢 Android implementation complete and tested, Desktop pending
+**Status:** 🟡 Android connection established, but audio streaming, playback, PTT, and text input not yet working
 
-**Completed Tasks (Android):**
-1. ✅ **OpenAI Realtime WebRTC Client** 
-   - ✅ WebRTC connection with ephemeral token authentication
-   - ✅ Peer connection establishment with STUN servers
-   - ✅ Data channel for JSON event signaling
-   - ✅ AudioTrack for RTP audio streaming (PCM16, 16kHz mono)
+**Completed Tasks:**
+1. ✅ **WebRTC Connection (Android Only)** 
+   - ✅ WebRTC peer connection establishment with STUN servers
+   - ✅ Ephemeral token authentication
    - ✅ SDP offer/answer exchange via HTTP POST to `/v1/realtime`
+   - ✅ Data channel for JSON event signaling
    - ✅ Proper content type (`application/sdp`) for SDP exchange
-   - ✅ Event parsing: session.created, response.audio_transcript, conversation.item, tool calls
-   - ✅ Event emission: RealtimeEvent.Transcript, RealtimeEvent.ToolCall, RealtimeEvent.Error
-   - ✅ ICE candidate handling and connection state management
-   - ✅ Comprehensive logging to logcat for debugging
+   - ✅ Event parsing structure: session.created, transcripts, tool calls
+   - ✅ ICE candidate handling
+   - ✅ Comprehensive logging to logcat
    - ✅ Context initialization in MainActivity
-   - ✅ All required Android permissions (RECORD_AUDIO, ACCESS_NETWORK_STATE, etc.)
+   - ✅ All required Android permissions
    - Completed: December 15-16, 2025
 
-2. 🔴 **Desktop Audio Frame Streaming** - NOT STARTED
-   - JavaSound capture configured but not streaming
-   - WebRTC library integration pending
-   - Recommendation: Use WebSocket fallback for Desktop
-
-3. 🔴 **Integration Testing** - NOT STARTED
-   - Voice input → transcript validation
+**Remaining Tasks for Phase 1:**
+1. 🔴 **Audio Streaming Integration (Android)**
+   - Connect AudioCaptureService to RealtimeClient
+   - Stream captured audio via RTP AudioTrack
+   - Test with real microphone input
+   
+2. 🔴 **Audio Playback (Android)**
+   - Implement playback from received audio frames
+   - Handle PCM audio output via AudioTrack
+   
+3. 🔴 **UI Integration (Android)**
+   - Implement PTT (Push-to-Talk) button functionality
+   - Implement text input functionality
+   - Connect UI controls to audio capture/streaming
+   
+4. 🔴 **Desktop Realtime Client**
+   - Implement WebSocket-based client (recommended over WebRTC for JVM)
+   - Connect to OpenAI Realtime API
+   - Stream audio from JavaSound capture
+   
+5. 🔴 **Desktop Audio Playback**
+   - JavaSound SourceDataLine playback
+   
+6. 🔴 **Integration Testing**
+   - End-to-end flow: voice → transcript → response
    - Connection resilience testing
-   - End-to-end flow verification
+   - Error recovery validation
 
 **Implementation Details:**
 
@@ -178,55 +209,58 @@ This section outlines the planned implementation sequence for remaining features
   4. `setRemoteDescription()` with answer
 - Named SdpObserver pattern for clear logging
 - HttpClient with OkHttp engine and ContentNegotiation plugin
-- Session configuration with server VAD and Whisper-1 transcription
-- Audio frame receiving via `audioFrames: Flow<ByteArray>`
+- Session configuration structure with server VAD and Whisper-1 transcription
+- Audio frame receiving structure via `audioFrames: Flow<ByteArray>`
+
+**What Works:**
+- ✅ Successfully connects to OpenAI Realtime API
+- ✅ SDP exchange completes successfully
+- ✅ WebRTC peer connection establishes
+- ✅ Data channel established
+
+**What Doesn't Work Yet:**
+- 🔴 Audio streaming (AudioCaptureService not connected to RealtimeClient)
+- 🔴 Audio playback (received frames not played)
+- 🔴 PTT button (UI not connected to audio capture)
+- 🔴 Text input (UI not sending text)
+- 🔴 End-to-end conversation flow
 
 **Key Files:**
 - `core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt`
 - `app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/MainActivity.kt`
-- `docs/WEBRTC_IMPLEMENTATION_PLAN.md`
-- `docs/WEBRTC_IMPLEMENTATION_SUMMARY.md`
 
-**Testing Status:**
-- ✅ Successfully connects to OpenAI Realtime API
-- ✅ SDP exchange completes successfully
-- ✅ WebRTC peer connection establishes
-- ⏳ End-to-end audio streaming pending
-- ⏳ Audio playback from received frames pending
+### Phase 1.5: Complete Phase 1 Features (Next)
 
-**Remaining Work for Phase 1:**
-1. Desktop WebRTC or WebSocket implementation
-2. Desktop audio capture streaming
-3. Audio playback implementation (both platforms)
-4. End-to-end integration testing with real API
-5. Reconnection and error recovery testing
+**Goal:** Finish Phase 1 by implementing audio streaming, playback, PTT, text input, and Desktop client
 
-### Phase 1.5: Phase 1 Completion (Next)
-
-**Goal:** Complete remaining Phase 1 tasks for Desktop and finalize integration
-
-**Tasks:**
-1. **Desktop Realtime Implementation**
-   - Implement WebSocket fallback (recommended over WebRTC for JVM)
-   - Connect to OpenAI Realtime API via WebSocket
-   - Send/receive JSON events over WebSocket
-   - Effort: ~2 days
-
-2. **Desktop Audio Streaming**
-   - Complete JavaSound capture loop
-   - Buffer management and frame delivery
-   - Effort: ~1 day
-
-3. **Audio Playback (Both Platforms)**
-   - Implement audio playback from received frames
-   - Handle PCM audio output
-   - Effort: ~1-2 days
-
-4. **Integration Testing**
-   - End-to-end flow: voice → transcript → response
+**Priority Tasks:**
+1. **Android Audio Streaming Integration** (~2 days)
+   - Connect AudioCaptureService to RealtimeClient
+   - Stream microphone audio via WebRTC AudioTrack
+   - Test with real microphone input
+   
+2. **Android Audio Playback** (~1-2 days)
+   - Implement AudioTrack playback for received PCM audio frames
+   - Handle audio format conversion if needed
+   - Volume control
+   
+3. **Android PTT & Text Input** (~1 day)
+   - Connect PTT button to AudioCaptureService start/stop
+   - Implement text input sending over data channel
+   - Visual feedback for recording state
+   
+4. **Desktop WebSocket Client** (~2 days)
+   - Implement WebSocket-based Realtime client
+   - Connect to wss://api.openai.com/v1/realtime
+   - Stream audio from JavaSound capture
+   
+5. **Desktop Audio Playback** (~1 day)
+   - JavaSound SourceDataLine playback implementation
+   
+6. **Integration Testing** (~1 day)
+   - End-to-end flow validation
    - Connection resilience testing
    - Error recovery validation
-   - Effort: ~1 day
 
 **AI Prompt for Phase 1.5 (Desktop WebSocket):**
 ```
