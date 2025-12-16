@@ -74,7 +74,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      * Must be called before connect().
      */
     fun initialize(context: Context) {
-        Log.d(TAG, "Initializing RealtimeClient with context")
+        Log.d(TAG, "initialize: Initializing RealtimeClient with context")
         appContext = context.applicationContext
         
         // Initialize WebRTC
@@ -82,34 +82,34 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             .setEnableInternalTracer(false)
             .createInitializationOptions()
         PeerConnectionFactory.initialize(initOptions)
-        Log.i(TAG, "RealtimeClient initialized successfully")
+        Log.i(TAG, "initialize: RealtimeClient initialized successfully")
     }
     
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
-            Log.w(TAG, "Already connected or connecting, ignoring connect request")
+            Log.w(TAG, "connect: Already connected or connecting, ignoring connect request")
             return
         }
         
-        Log.i(TAG, "Connecting to ${config.endpoint} with model ${config.model}")
+        Log.i(TAG, "connect: Connecting to ${config.endpoint} with model ${config.model}")
         _connectionState.value = ConnectionState.Connecting
         
         try {
             if (appContext == null) {
-                val errorMsg = "RealtimeClientImpl not initialized. Call initialize(context) first."
+                val errorMsg = "connect: RealtimeClientImpl not initialized. Call initialize(context) first."
                 Log.e(TAG, errorMsg)
                 throw IllegalStateException(errorMsg)
             }
             
             // Step 1: Get ephemeral token from OpenAI
-            Log.d(TAG, "Requesting ephemeral token...")
+            Log.d(TAG, "connect: Requesting ephemeral token...")
             ephemeralKey = getEphemeralToken(config.apiKey, config.model)
-            Log.d(TAG, "Ephemeral token received: ${ephemeralKey?.take(10)}...")
+            Log.d(TAG, "connect: Ephemeral token received: ${ephemeralKey?.take(10)}...")
             
             // Step 2: Initialize PeerConnectionFactory
             if (peerConnectionFactory == null) {
-                Log.d(TAG, "Creating PeerConnectionFactory...")
+                Log.d(TAG, "connect: Creating PeerConnectionFactory...")
                 val options = PeerConnectionFactory.Options()
                 peerConnectionFactory = PeerConnectionFactory.builder()
                     .setOptions(options)
@@ -117,7 +117,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             // Step 3: Create peer connection with STUN servers
-            Log.d(TAG, "Creating peer connection...")
+            Log.d(TAG, "connect: Creating peer connection...")
             val iceServers = listOf(
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
             )
@@ -136,31 +136,31 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 Log.e(TAG, errorMsg)
                 throw IllegalStateException(errorMsg)
             }
-            Log.d(TAG, "Peer connection created successfully")
+            Log.d(TAG, "connect: Peer connection created successfully")
             
             // Step 4: Create data channel for signaling
-            Log.d(TAG, "Creating data channel...")
+            Log.d(TAG, "connect: Creating data channel...")
             val dataChannelInit = DataChannel.Init().apply {
                 ordered = true
                 negotiated = false
             }
             dataChannel = peerConnection?.createDataChannel("oai-events", dataChannelInit)
             dataChannel?.registerObserver(createDataChannelObserver())
-            Log.d(TAG, "Data channel created")
+            Log.d(TAG, "connect: Data channel created")
             
             // Step 5: Add audio track
-            Log.d(TAG, "Adding audio track...")
+            Log.d(TAG, "connect: Adding audio track...")
             val audioConstraints = MediaConstraints()
             val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
             audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
             
             if (audioTrack != null) {
                 peerConnection?.addTrack(audioTrack, listOf("stream"))
-                Log.d(TAG, "Audio track added to peer connection")
+                Log.d(TAG, "connect: Audio track added to peer connection")
             }
             
             // Step 6: Create SDP offer
-            Log.d(TAG, "Creating SDP offer...")
+            Log.d(TAG, "connect: Creating SDP offer...")
             val offerConstraints = MediaConstraints().apply {
                 mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
                 mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
@@ -262,7 +262,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     }
     
     actual override suspend fun disconnect() {
-        Log.i(TAG, "Disconnecting...")
+        Log.i(TAG, "disconnect: Disconnecting...")
         try {
             dataChannel?.close()
             dataChannel?.unregisterObserver()
@@ -281,9 +281,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             
             _connectionState.value = ConnectionState.Disconnected
             _events.emit(RealtimeEvent.Disconnected)
-            Log.i(TAG, "Disconnected successfully")
+            Log.i(TAG, "disconnect: Disconnected successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Error during disconnect: ${e.message}", e)
+            Log.e(TAG, "disconnect: Error during disconnect: ${e.message}", e)
             _connectionState.value = ConnectionState.Disconnected
             _events.emit(RealtimeEvent.Disconnected)
         }
@@ -308,7 +308,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      */
     private suspend fun getEphemeralToken(apiKey: String, model: String): String {
         try {
-            Log.d(TAG, "Requesting ephemeral token for model: $model")
+            Log.d(TAG, "getEphemeralToken: Requesting ephemeral token for model: $model")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime/sessions") {
                 header(HttpHeaders.Authorization, "Bearer $apiKey")
                 contentType(ContentType.Application.Json)
@@ -319,11 +319,11 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
-            Log.d(TAG, "Ephemeral token response status: ${response.status}")
+            Log.d(TAG, "getEphemeralToken: Ephemeral token response status: ${response.status}")
             
             // Check HTTP status
             if (response.status.value !in 200..299) {
-                Log.e(TAG, "Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
+                Log.e(TAG, "getEphemeralToken:Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
                 throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
             }
             
@@ -331,15 +331,15 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             
             val ephemeralKey = jsonResponse["client_secret"]?.jsonObject?.get("value")?.jsonPrimitive?.content
             if (ephemeralKey == null) {
-                Log.e(TAG, "No ephemeral key in response. Response body: $responseBody")
+                Log.e(TAG, "getEphemeralToken: No ephemeral key in response. Response body: $responseBody")
                 throw IllegalStateException("No ephemeral key in response")
             }
             
-            Log.d(TAG, "Ephemeral token received: ${ephemeralKey.take(10)}...")
+            Log.d(TAG, "getEphemeralToken: Ephemeral token received: ${ephemeralKey.take(10)}...")
             return ephemeralKey
                 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get ephemeral token", e)
+            Log.e(TAG, "getEphemeralToken: Failed to get ephemeral token", e)
             throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
         }
     }
@@ -349,7 +349,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
      */
     private suspend fun exchangeSDP(sdpOffer: String, ephemeralToken: String): String {
         try {
-            Log.d(TAG, "Exchanging SDP offer with OpenAI...")
+            Log.d(TAG, "exchangeSDP: Exchanging SDP offer with OpenAI...")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime") {
                 header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
                 // OpenAI Realtime API requires application/sdp content type for SDP exchange
@@ -358,8 +358,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
-            Log.d(TAG, "SDP exchange response status: ${response.status}")
-            Log.d(TAG, "SDP exchange response (SDP answer): ${responseBody.take(200)}...")
+            Log.d(TAG, "exchangeSDP: SDP exchange response status: ${response.status}")
+            Log.d(TAG, "exchangeSDP: SDP exchange response (SDP answer): ${responseBody.take(200)}...")
             
             // Check HTTP status
             if (response.status.value !in 200..299) {
@@ -371,11 +371,11 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 throw IllegalStateException("Received empty SDP answer from OpenAI")
             }
             
-            Log.d(TAG, "SDP answer received successfully (${responseBody.length} chars)")
+            Log.d(TAG, "exchangeSDP: SDP answer received successfully (${responseBody.length} chars)")
             return responseBody
                 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to exchange SDP", e)
+            Log.e(TAG, "exchangeSDP: Failed to exchange SDP", e)
             throw IllegalStateException("Failed to exchange SDP: ${e.message}", e)
         }
     }
