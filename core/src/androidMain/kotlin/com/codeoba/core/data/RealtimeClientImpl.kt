@@ -148,35 +148,56 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             Log.d(TAG, "Creating SDP offer...")
             val offerConstraints = MediaConstraints().apply {
                 mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
             }
             
-            peerConnection?.createOffer(object : SdpObserver {
-                override fun onCreateSuccess(sessionDescription: SessionDescription) {
-                    Log.d(TAG, "SDP offer created successfully")
-                    peerConnection?.setLocalDescription(object : SdpObserver {
+            val sdpObserverOffer = object : SdpObserver {
+                override fun onCreateSuccess(desc: SessionDescription) {
+                    Log.d(TAG, "sdpObserverOffer onCreateSuccess - SDP offer created")
+                    
+                    val sdpObserverLocal = object : SdpObserver {
+                        override fun onCreateSuccess(sdp: SessionDescription?) {
+                            Log.d(TAG, "sdpObserverLocal onCreateSuccess($sdp)")
+                        }
+
                         override fun onSetSuccess() {
-                            Log.d(TAG, "Local description set successfully")
+                            Log.d(TAG, "sdpObserverLocal setSuccess - Local description set")
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
                                     // Step 7: Exchange SDP with OpenAI
-                                    Log.d(TAG, "Exchanging SDP with OpenAI...")
-                                    val answer = exchangeSDP(sessionDescription.description, ephemeralKey!!)
-                                    Log.d(TAG, "SDP answer received from OpenAI")
-                                    peerConnection?.setRemoteDescription(object : SdpObserver {
-                                        override fun onSetSuccess() {
-                                            Log.i(TAG, "Remote description set successfully, WebRTC connection established")
-                                            // Connection being established, wait for ICE connection
-                                        }
-                                        override fun onSetFailure(error: String) {
-                                            Log.e(TAG, "Failed to set remote description: $error")
-                                            CoroutineScope(Dispatchers.Main).launch {
-                                                _connectionState.value = ConnectionState.Error("Failed to set remote description: $error")
-                                                _events.emit(RealtimeEvent.Error(error))
+                                    Log.d(TAG, "Requesting SDP answer from OpenAI...")
+                                    val answerSdp = exchangeSDP(desc.description, ephemeralKey!!)
+                                    Log.d(TAG, "SDP answer received from OpenAI (${answerSdp.length} chars)")
+                                    
+                                    withContext(Dispatchers.Main) {
+                                        val sdpObserverRemote = object : SdpObserver {
+                                            override fun onCreateSuccess(sdp: SessionDescription?) {
+                                                Log.d(TAG, "sdpObserverRemote onCreateSuccess($sdp)")
+                                            }
+
+                                            override fun onSetSuccess() {
+                                                Log.i(TAG, "sdpObserverRemote setSuccess - Remote description set, WebRTC connection established")
+                                                // Connection is being established, wait for ICE connection state changes
+                                            }
+
+                                            override fun onCreateFailure(error: String?) {
+                                                Log.e(TAG, "sdpObserverRemote onCreateFailure($error)")
+                                            }
+
+                                            override fun onSetFailure(error: String) {
+                                                Log.e(TAG, "sdpObserverRemote onSetFailure($error)")
+                                                CoroutineScope(Dispatchers.Main).launch {
+                                                    _connectionState.value = ConnectionState.Error("Failed to set remote description: $error")
+                                                    _events.emit(RealtimeEvent.Error(error))
+                                                }
                                             }
                                         }
-                                        override fun onCreateSuccess(p0: SessionDescription?) {}
-                                        override fun onCreateFailure(p0: String?) {}
-                                    }, SessionDescription(SessionDescription.Type.ANSWER, answer))
+                                        val answerDescription = SessionDescription(
+                                            SessionDescription.Type.ANSWER,
+                                            answerSdp
+                                        )
+                                        peerConnection?.setRemoteDescription(sdpObserverRemote, answerDescription)
+                                    }
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Failed to exchange SDP: ${e.message}", e)
                                     CoroutineScope(Dispatchers.Main).launch {
@@ -186,29 +207,39 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                                 }
                             }
                         }
+
+                        override fun onCreateFailure(error: String?) {
+                            Log.e(TAG, "sdpObserverLocal onCreateFailure($error)")
+                        }
+
                         override fun onSetFailure(error: String) {
-                            Log.e(TAG, "Failed to set local description: $error")
+                            Log.e(TAG, "sdpObserverLocal onSetFailure($error)")
                             CoroutineScope(Dispatchers.Main).launch {
                                 _connectionState.value = ConnectionState.Error("Failed to set local description: $error")
                                 _events.emit(RealtimeEvent.Error(error))
                             }
                         }
-                        override fun onCreateSuccess(p0: SessionDescription?) {}
-                        override fun onCreateFailure(p0: String?) {}
-                    }, sessionDescription)
+                    }
+                    peerConnection?.setLocalDescription(sdpObserverLocal, desc)
                 }
-                
+
+                override fun onSetSuccess() {
+                    Log.d(TAG, "sdpObserverOffer setSuccess")
+                }
+
                 override fun onCreateFailure(error: String) {
-                    Log.e(TAG, "Failed to create offer: $error")
+                    Log.e(TAG, "sdpObserverOffer onCreateFailure($error)")
                     CoroutineScope(Dispatchers.Main).launch {
                         _connectionState.value = ConnectionState.Error("Failed to create offer: $error")
                         _events.emit(RealtimeEvent.Error(error))
                     }
                 }
-                
-                override fun onSetSuccess() {}
-                override fun onSetFailure(p0: String?) {}
-            }, offerConstraints)
+
+                override fun onSetFailure(p0: String?) {
+                    Log.e(TAG, "sdpObserverOffer onSetFailure($p0)")
+                }
+            }
+            peerConnection?.createOffer(sdpObserverOffer, offerConstraints)
             
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
