@@ -48,6 +48,11 @@
 
 This section defines responsibilities and guidelines for AI agents (GitHub Copilot, coding assistants, etc.) maintaining this codebase.
 
+### 0. Organically Evolve AGENTS.md
+
+Always recomment improvements to the AGENTS.md file to persist recommendations
+and other lessons learned during working sessions.
+
 ### 1. Documentation Synchronization
 
 **When making code changes, update documentation:**
@@ -62,7 +67,13 @@ This section defines responsibilities and guidelines for AI agents (GitHub Copil
 3. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
 4. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
 
-### 2. Progress Tracking Updates
+### 2. Next Steps Before Merging Branch To Its Parent
+
+When code is ready to merge to its parent branch (ex: main):
+1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
+2. Recommend next steps.
+
+### 3. Progress Tracking Updates
 
 **Update progress table in IMPLEMENTATION_STATUS.md when:**
 - A phase or feature is completed
@@ -78,7 +89,7 @@ This section defines responsibilities and guidelines for AI agents (GitHub Copil
 
 Use `~` prefix for approximate percentages.
 
-### 3. Code Quality Standards
+### 4. Code Quality Standards
 
 **All code changes must:**
 - Follow existing architectural patterns (see `docs/ARCHITECTURE.md`)
@@ -93,7 +104,7 @@ Use `~` prefix for approximate percentages.
 - Add KDoc comments for public APIs
 - Keep functions focused and single-purpose
 
-### 4. Testing Requirements
+### 5. Testing Requirements
 
 **Before committing:**
 - Run `./gradlew :core:build` to verify core module builds
@@ -106,7 +117,7 @@ Use `~` prefix for approximate percentages.
 - Document test coverage gaps in IMPLEMENTATION_STATUS.md
 - Include integration test scenarios in AI prompts for future work
 
-### 5. Architectural Consistency
+### 6. Architectural Consistency
 
 **Maintain these principles:**
 - **Platform abstraction:** Shared logic in `:core`, platform-specific in app modules
@@ -120,7 +131,7 @@ Use `~` prefix for approximate percentages.
 - Create platform implementations in respective sourcesets
 - Wire dependencies in platform entry points (MainActivity, Main.kt)
 
-### 6. Commit Message Standards
+### 7. Commit Message Standards
 
 **Format:**
 ```
@@ -140,7 +151,7 @@ Use `~` prefix for approximate percentages.
 - `build:` Build system or dependency changes
 - `chore:` Routine tasks, maintenance
 
-### 7. AI Prompt Maintenance
+### 8. AI Prompt Maintenance
 
 **In IMPLEMENTATION_STATUS.md, update AI prompts when:**
 - Implementation approach changes
@@ -155,7 +166,7 @@ Use `~` prefix for approximate percentages.
 - ✅ Testing/validation criteria included
 - ✅ Effort estimate provided
 
-### 8. Dependency Management
+### 9. Dependency Management
 
 **When adding dependencies:**
 - Check for vulnerabilities using `gh-advisory-database` tool
@@ -168,7 +179,7 @@ Use `~` prefix for approximate percentages.
 - Adding GPL-licensed dependencies (blocked by CI)
 - Dependencies with known security issues
 
-### 9. Error Handling
+### 10. Error Handling
 
 **All code must:**
 - Handle null/empty cases gracefully
@@ -180,7 +191,7 @@ Use `~` prefix for approximate percentages.
 - Catch platform exceptions and convert to common error types
 - Never crash the app on configuration errors (fallback to defaults)
 
-### 10. Breaking Changes
+### 11. Breaking Changes
 
 **When making breaking changes:**
 - Document in commit message with `BREAKING CHANGE:` footer
@@ -205,6 +216,10 @@ Use `~` prefix for approximate percentages.
 2. Update progress tracking if feature completed
 3. Write clear commit message
 4. Verify documentation is current
+
+**Before merging to main:**
+1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
+2. Recommend next steps.
 
 ## Notes
 
