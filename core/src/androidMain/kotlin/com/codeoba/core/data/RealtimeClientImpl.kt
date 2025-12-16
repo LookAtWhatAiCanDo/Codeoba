@@ -355,38 +355,27 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             Log.d(TAG, "Exchanging SDP offer with OpenAI...")
             val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime") {
                 header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("type", "offer")
-                    put("sdp", sdpOffer)
-                }.toString())
+                // OpenAI Realtime API requires application/sdp content type for SDP exchange
+                contentType(ContentType("application", "sdp"))
+                setBody(sdpOffer)
             }
             
             val responseBody = response.bodyAsText()
             Log.d(TAG, "SDP exchange response status: ${response.status}")
-            Log.d(TAG, "SDP exchange response body: ${responseBody.take(500)}...")
+            Log.d(TAG, "SDP exchange response (SDP answer): ${responseBody.take(200)}...")
             
             // Check HTTP status
             if (response.status.value !in 200..299) {
                 throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
             }
             
-            val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
-            
-            // Verify response type
-            val responseType = jsonResponse["type"]?.jsonPrimitive?.content
-            if (responseType != "answer") {
-                throw IllegalStateException("Expected type 'answer', got '$responseType'. Response: $responseBody")
+            // Response should be raw SDP answer text, not JSON
+            if (responseBody.isBlank()) {
+                throw IllegalStateException("Received empty SDP answer from OpenAI")
             }
             
-            // Extract SDP
-            val sdpAnswer = jsonResponse["sdp"]?.jsonPrimitive?.content
-            if (sdpAnswer == null) {
-                throw IllegalStateException("No SDP in response. Response keys: ${jsonResponse.keys}. Body: $responseBody")
-            }
-            
-            Log.d(TAG, "SDP answer received successfully (${sdpAnswer.length} chars)")
-            return sdpAnswer
+            Log.d(TAG, "SDP answer received successfully (${responseBody.length} chars)")
+            return responseBody
                 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to exchange SDP", e)
