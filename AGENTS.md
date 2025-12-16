@@ -32,7 +32,41 @@
 ## Documentation & Agent Responsibilities
 - Keep documentation and code comments in sync with behavior: update `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `README.md` when designs or tooling change; refresh `docs/IMPLEMENTATION_STATUS.md` percentages/prompts as features progress.
 - When adding dependencies, record rationale in commits and adjust `docs/ARCHITECTURE.md` if the stack changes; avoid GPL and check for known issues.
-- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT) and ensure all references stay consistent.
+- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT → ISSUE_TRACKING) and ensure all references stay consistent.
+- Follow the issue tracking system documented in `docs/ISSUE_TRACKING.md` when planning and implementing features.
+
+## Phase Numbering Convention
+
+**Phases MUST use whole integers only (Phase 1, 2, 3, etc.), never decimals (Phase 1.5, 1.8, etc.).**
+
+### Rationale
+
+Decimal phase numbers (e.g., Phase 1.5, 1.8, 1.11) create confusion and clutter. Using whole integers with renumbering is clearer:
+
+**❌ Confusing (with decimals):**
+- Phase 1: ABC - Complete
+- Phase 1.5: DEF - Complete
+- Phase 1.8: GHI - Complete  
+- Phase 1.9: JKL - Complete
+- Phase 1.11: MNO - In Progress
+- Phase 2: PQR - Not Started
+- Phase 3: XYZ - Not Started
+
+**✅ Clear (with whole integers and renumbering):**
+- Phase 1: ABC - Complete
+- Phase 2: DEF - Complete (discovered during Phase 1)
+- Phase 3: GHI - Complete (discovered during Phase 1)
+- Phase 4: JKL - Complete (discovered during Phase 1)
+- Phase 5: MNO - In Progress (discovered during Phase 1)
+- Phase 6: PQR - Not Started (formerly "Phase 2")
+- Phase 7: XYZ - Not Started (formerly "Phase 3")
+
+### Guidelines
+
+1. **Always use whole integers**: Phase 1, 2, 3, 4, 5, etc.
+2. **Renumber freely**: Future unstarted phases can be renumbered as new work is discovered
+3. **Update labels**: If using GitHub labels like `phase-2`, update them when phases are renumbered
+4. **It's acceptable**: Renumbering future phases is NOT confusing because they haven't started yet
 
 ## Commit & Pull Request Guidelines
 - Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.
@@ -60,18 +94,21 @@ and other lessons learned during working sessions.
 - Keep `docs/ARCHITECTURE.md` accurate with actual implementation
 - Update build/setup instructions in `docs/DEVELOPMENT.md` if tooling changes
 - Maintain consistency between code comments and external documentation
+- Create or update GitHub Issues following `docs/ISSUE_TRACKING.md` guidelines
 
 **Documentation hierarchy:**
 1. `README.md` - High-level overview, quick start (keep brief)
 2. `docs/IMPLEMENTATION_STATUS.md` - Forward-looking roadmap with AI prompts
-3. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
-4. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
+3. `docs/ISSUE_TRACKING.md` - Issue tracking and planning system
+4. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
+5. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
 
 ### 2. Next Steps Before Merging Branch To Its Parent
 
 When code is ready to merge to its parent branch (ex: main):
 1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
-2. Recommend next steps.
+2. Update or close related GitHub Issues.
+3. Recommend next steps and create new issues if needed.
 
 ### 3. Progress Tracking Updates
 
@@ -79,6 +116,14 @@ When code is ready to merge to its parent branch (ex: main):
 - A phase or feature is completed
 - A task moves from 0% → X% completion
 - Implementation approach changes significantly
+
+**Be Accurate, Not Optimistic:**
+- Only mark items as "Complete" (✅) when they actually work end-to-end
+- Use "In Progress" (🟡) for partially working features
+- Use "Not Started" (🔴) for stubbed or planned features
+- Don't exaggerate completion status or claim things are "fully functional" when they have limitations
+- Document what actually works vs. what doesn't work
+- Be specific about what "works" means (e.g., "connection establishes" vs. "end-to-end flow works")
 
 **Format for updates:**
 ```markdown
