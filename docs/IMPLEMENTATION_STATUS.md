@@ -4,6 +4,8 @@
 
 This document tracks the **current implementation status and roadmap** for Codeoba features.
 
+> **📋 Planning System:** See [ISSUE_TRACKING.md](ISSUE_TRACKING.md) for how we use GitHub Issues to track work.
+> 
 > **Note:** For detailed commit history, see `git log`. This document focuses on high-level status and next steps.
 
 ---
@@ -233,57 +235,105 @@ This section outlines the planned implementation sequence for remaining features
 
 **Goal:** Finish Phase 1 by implementing audio streaming, playback, PTT, text input, and Desktop client
 
-**Priority Tasks:**
-1. **Android Audio Streaming Integration** (~2 days)
+**Status:** 🔴 Not Started
+
+**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-1.5) for detailed tracking)
+
+**Priority Features:**
+1. **Android Audio Streaming Integration** (~2 days) → See Issue #TBD
    - Connect AudioCaptureService to RealtimeClient
    - Stream microphone audio via WebRTC AudioTrack
    - Test with real microphone input
    
-2. **Android Audio Playback** (~1-2 days)
+2. **Android Audio Playback** (~1-2 days) → See Issue #TBD
    - Implement AudioTrack playback for received PCM audio frames
    - Handle audio format conversion if needed
    - Volume control
    
-3. **Android PTT & Text Input** (~1 day)
+3. **Android PTT & Text Input** (~1 day) → See Issue #TBD
    - Connect PTT button to AudioCaptureService start/stop
    - Implement text input sending over data channel
    - Visual feedback for recording state
    
-4. **Desktop WebSocket Client** (~2 days)
+4. **Desktop WebSocket Client** (~2 days) → See Issue #TBD
    - Implement WebSocket-based Realtime client
    - Connect to wss://api.openai.com/v1/realtime
    - Stream audio from JavaSound capture
    
-5. **Desktop Audio Playback** (~1 day)
+5. **Desktop Audio Playback** (~1 day) → See Issue #TBD
    - JavaSound SourceDataLine playback implementation
    
-6. **Integration Testing** (~1 day)
+6. **Integration Testing** (~1 day) → See Issue #TBD
    - End-to-end flow validation
    - Connection resilience testing
    - Error recovery validation
 
-**AI Prompt for Phase 1.5 (Desktop WebSocket):**
+> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-1.5
+
+---
+
+## 🤖 AI Prompt Library
+
+This section contains reusable prompts for AI agents implementing features. For specific work items, see the corresponding GitHub Issues.
+
+### Phase 1.5 Prompts
+
+**Desktop WebSocket Client:**
 ```
 Implement Desktop Realtime client using WebSocket:
-1. Use Ktor WebSocket client to connect to wss://api.openai.com/v1/realtime
-2. Authenticate with ephemeral token in query parameters
-3. Send session.update with configuration over WebSocket
-4. Stream audio frames as base64-encoded events
-5. Parse incoming JSON events for transcripts and tool calls
-6. Implement reconnection logic
-7. Test with Desktop audio capture
-8. Update IMPLEMENTATION_STATUS.md when complete
+1. File: core/src/desktopMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt
+2. Use Ktor WebSocket client to connect to wss://api.openai.com/v1/realtime
+3. Authenticate with ephemeral token in query parameter: ?model=gpt-4o-realtime-preview-2024-12-17
+4. Send session.update JSON event with configuration:
+   - Turn detection type: "server_vad"
+   - Voice: "alloy"
+   - Input audio format: "pcm16"
+5. Stream audio frames as base64-encoded in input_audio_buffer.append events
+6. Parse incoming JSON events for: session.created, response.audio.delta, conversation.item.created
+7. Emit RealtimeEvent sealed class instances via events flow
+8. Implement reconnection with exponential backoff
+9. Test with Desktop audio capture (JavaSound)
+10. Update IMPLEMENTATION_STATUS.md Phase 1 Desktop client status when complete
+
+Reference: See existing Android WebRTC implementation in core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/data/RealtimeClientImpl.kt
 ```
 
-**AI Prompt for Phase 1.5 (Audio Playback):**
+**Audio Playback (Android & Desktop):**
 ```
 Implement audio playback for received audio frames:
-1. Android: Use AudioTrack to play received PCM audio
-2. Desktop: Use JavaSound SourceDataLine for playback
-3. Handle audio format conversion if needed
-4. Implement volume control
-5. Test audio quality and synchronization
-6. Update IMPLEMENTATION_STATUS.md when complete
+1. Android: 
+   - Create playback method in RealtimeClientImpl
+   - Use AudioTrack to play received PCM audio (16kHz mono)
+   - Handle audio format: AudioFormat.ENCODING_PCM_16BIT
+   - Set audio attributes: USAGE_MEDIA, CONTENT_TYPE_SPEECH
+2. Desktop:
+   - Use JavaSound SourceDataLine for playback
+   - Configure format: 16kHz, 16-bit, mono
+   - Implement buffering strategy
+3. Both platforms:
+   - Handle audio format conversion if needed
+   - Implement volume control
+   - Test audio quality and synchronization
+   - Add error handling for audio device issues
+4. Update IMPLEMENTATION_STATUS.md when complete
+```
+
+**Android Audio Streaming Integration:**
+```
+Connect audio capture to Realtime client:
+1. In MainActivity or CodeobaApp, wire AudioCaptureService output to RealtimeClient input
+2. Collect audioFrames flow from AudioCaptureService
+3. For each frame, send to RealtimeClient via WebRTC AudioTrack
+4. Handle start/stop lifecycle:
+   - Start capture → start streaming
+   - Stop capture → stop streaming
+5. Add error handling for:
+   - Microphone permission denied
+   - Audio capture failure
+   - Network connection issues
+6. Test with real microphone input
+7. Verify audio is reaching OpenAI API (check logs)
+8. Update IMPLEMENTATION_STATUS.md when complete
 ```
 
 

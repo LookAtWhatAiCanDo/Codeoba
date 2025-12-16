@@ -32,7 +32,8 @@
 ## Documentation & Agent Responsibilities
 - Keep documentation and code comments in sync with behavior: update `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `README.md` when designs or tooling change; refresh `docs/IMPLEMENTATION_STATUS.md` percentages/prompts as features progress.
 - When adding dependencies, record rationale in commits and adjust `docs/ARCHITECTURE.md` if the stack changes; avoid GPL and check for known issues.
-- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT) and ensure all references stay consistent.
+- Use the documented hierarchy (README → IMPLEMENTATION_STATUS → ARCHITECTURE → DEVELOPMENT → ISSUE_TRACKING) and ensure all references stay consistent.
+- Follow the issue tracking system documented in `docs/ISSUE_TRACKING.md` when planning and implementing features.
 
 ## Commit & Pull Request Guidelines
 - Commit messages: `<type>: <short summary>` (types: feat, fix, docs, refactor, test, build, chore). Note breaking changes explicitly.
@@ -60,18 +61,21 @@ and other lessons learned during working sessions.
 - Keep `docs/ARCHITECTURE.md` accurate with actual implementation
 - Update build/setup instructions in `docs/DEVELOPMENT.md` if tooling changes
 - Maintain consistency between code comments and external documentation
+- Create or update GitHub Issues following `docs/ISSUE_TRACKING.md` guidelines
 
 **Documentation hierarchy:**
 1. `README.md` - High-level overview, quick start (keep brief)
 2. `docs/IMPLEMENTATION_STATUS.md` - Forward-looking roadmap with AI prompts
-3. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
-4. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
+3. `docs/ISSUE_TRACKING.md` - Issue tracking and planning system
+4. `docs/ARCHITECTURE.md` - Technical architecture and design decisions
+5. `docs/DEVELOPMENT.md` - Setup, build, and configuration instructions
 
 ### 2. Next Steps Before Merging Branch To Its Parent
 
 When code is ready to merge to its parent branch (ex: main):
 1. Update `docs/IMPLEMENTATION_STATUS.md` with current status.
-2. Recommend next steps.
+2. Update or close related GitHub Issues.
+3. Recommend next steps and create new issues if needed.
 
 ### 3. Progress Tracking Updates
 
