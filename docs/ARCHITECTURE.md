@@ -69,6 +69,8 @@ The heart of Codeoba - contains all shared code across platforms.
 
 **Packages:**
 
+> **📘 Package Structure:** For a detailed explanation of the package organization and Clean Architecture principles, see [PACKAGE_STRUCTURE.md](PACKAGE_STRUCTURE.md)
+
 ```
 llc.lookatwhataicando.codeoba.core/
 ├── domain/              # Core interfaces and domain models

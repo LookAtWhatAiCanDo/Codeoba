@@ -99,6 +99,7 @@ Before running, you need to configure your OpenAI API key. See [docs/DEVELOPMENT
 
 - **[Implementation Status](docs/IMPLEMENTATION_STATUS.md)** - ⭐ **START HERE** - Complete status of what's done and what's next
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and module structure
+- [Package Structure](docs/PACKAGE_STRUCTURE.md) - Clean Architecture package organization explained
 - [Development Setup](docs/DEVELOPMENT.md) - Setup instructions and configuration
 - [Framework Evaluation](docs/FRAMEWORK_EVALUATION.md) - Why Compose Multiplatform was chosen
 - [GitHub Workflows](.github/workflows/README.md) - CI/CD documentation
