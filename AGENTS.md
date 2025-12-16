@@ -117,6 +117,14 @@ When code is ready to merge to its parent branch (ex: main):
 - A task moves from 0% → X% completion
 - Implementation approach changes significantly
 
+**Be Accurate, Not Optimistic:**
+- Only mark items as "Complete" (✅) when they actually work end-to-end
+- Use "In Progress" (🟡) for partially working features
+- Use "Not Started" (🔴) for stubbed or planned features
+- Don't exaggerate completion status or claim things are "fully functional" when they have limitations
+- Document what actually works vs. what doesn't work
+- Be specific about what "works" means (e.g., "connection establishes" vs. "end-to-end flow works")
+
 **Format for updates:**
 ```markdown
 | # | Feature | Completion | Notes |
