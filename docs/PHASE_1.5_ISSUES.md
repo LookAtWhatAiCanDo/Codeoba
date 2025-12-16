@@ -1,6 +1,28 @@
 # Phase 1.5 GitHub Issues
 
-This document contains the GitHub Issue content for Phase 1.5 tasks. Use these to create issues via GitHub web UI or CLI.
+This document contains the **GitHub Issue content for Phase 1.5 tasks**.
+
+## Purpose
+
+While GitHub Copilot can create issues directly, this document serves as:
+
+1. **Review & Approval** - Provides the issue content for human review before creation
+2. **Version Control** - Tracks issue definitions in git history alongside code changes
+3. **Batch Reference** - Allows reviewing all Phase 1.5 issues together for planning
+4. **Reusability** - Can be used as templates for similar issues in future phases
+5. **Documentation** - Permanent record of what Phase 1.5 entails, even after issues are closed
+
+## Usage
+
+**Option 1: Manual Creation**
+- Copy issue content from this document
+- Create issues via GitHub web UI or CLI
+- Apply labels and assignees as specified
+
+**Option 2: Copilot Creation** (Preferred)
+- Ask GitHub Copilot to create these issues
+- Reference this document for content
+- Example: "@copilot create the 6 issues defined in docs/PHASE_1.5_ISSUES.md"
 
 ---
 

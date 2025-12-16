@@ -10,6 +10,32 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 ---
 
+## Table of Contents
+
+- [📊 Overall Progress](#-overall-progress)
+- [✅ What's Implemented (Merge-Ready)](#-whats-implemented-merge-ready)
+  - [1. Project Foundation](#1-project-foundation)
+  - [2. Core Architecture](#2-core-architecture-core-module)
+  - [3. Desktop Platform](#3-desktop-platform-app-desktop)
+  - [4. Android Platform](#4-android-platform-app-android)
+  - [5. Shared UI](#5-shared-ui-compose-multiplatform)
+  - [6. Security & Configuration](#6-security--configuration)
+- [🎯 Implementation Roadmap](#-implementation-roadmap)
+  - [Phase 1: Core Realtime Integration](#phase-1-core-realtime-integration--in-progress)
+  - [Phase 1.5: Complete Phase 1 Features](#phase-15-complete-phase-1-features-next)
+  - [Phase 2: MCP Protocol Implementation](#phase-2-mcp-protocol-implementation)
+  - [Phase 3: iOS Implementation](#phase-3-ios-implementation)
+  - [Phase 4: Web Platform](#phase-4-web-platform)
+  - [Phase 5: Polish & Production](#phase-5-polish--production)
+- [🚧 What's Currently Stubbed](#-whats-currently-stubbed)
+- [🔍 Known Limitations](#-known-limitations-intentional-for-current-phase)
+- [📊 Progress Tracking](#-progress-tracking)
+- [🤖 AI Prompt Library](#-ai-prompt-library)
+- [📝 Notes for AI Agents](#-notes-for-ai-agents)
+- [🤝 Contributing](#-contributing)
+
+---
+
 ## 📊 Overall Progress
 
 | Component | Status | Completion |

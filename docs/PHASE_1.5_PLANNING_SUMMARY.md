@@ -5,6 +5,32 @@
 
 ---
 
+## Table of Contents
+
+- [Problem Statement](#problem-statement)
+- [Solution: Hybrid Planning System](#solution-hybrid-planning-system)
+  - [1. GitHub Issues (Concrete Work Items)](#1-github-issues-concrete-work-items)
+  - [2. IMPLEMENTATION_STATUS.md (Strategic Roadmap)](#2-implementation_statusmd-strategic-roadmap)
+- [New Documentation Structure](#new-documentation-structure)
+- [What Was Created](#what-was-created)
+  - [1. ISSUE_TRACKING.md](#1-issue_trackingmd)
+  - [2. PHASE_1.5_ISSUES.md](#2-phase_15_issuesmd)
+  - [3. GitHub Issue Templates](#3-github-issue-templates)
+  - [4. Updated Documentation](#4-updated-documentation)
+- [How to Use This System](#how-to-use-this-system)
+  - [For Project Managers](#for-project-managers)
+  - [For Developers/AI Agents](#for-developersai-agents)
+- [Benefits of This Approach](#benefits-of-this-approach)
+- [Next Steps](#next-steps)
+  - [Immediate (This PR)](#immediate-this-pr)
+  - [After Merge](#after-merge)
+- [Recommended Issue Creation Order](#recommended-issue-creation-order)
+- [Success Metrics](#success-metrics)
+- [References](#references)
+- [Conclusion](#conclusion)
+
+---
+
 ## Problem Statement
 
 The `Phase 1` PR was merged, but there is a `Phase 1.5`, so Phase 1 cannot be marked complete until all sub-phases are complete. This creates awkward tracking where:

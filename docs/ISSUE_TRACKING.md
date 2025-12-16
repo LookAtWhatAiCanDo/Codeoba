@@ -6,6 +6,36 @@ This document describes how Codeoba uses GitHub Issues for project planning and 
 
 ---
 
+## Table of Contents
+
+- [📋 Planning Philosophy](#-planning-philosophy)
+  - [Why This Hybrid Approach?](#why-this-hybrid-approach)
+- [🎯 Issue Hierarchy](#-issue-hierarchy)
+  - [Level 1: Epic (Phase)](#level-1-epic-phase)
+  - [Level 2: Parent Issue (Feature)](#level-2-parent-issue-feature)
+  - [Level 3: Sub-Issue (Task)](#level-3-sub-issue-task)
+- [🔄 Workflow](#-workflow)
+  - [1. Planning Phase Features](#1-planning-phase-features)
+  - [2. Implementing a Feature](#2-implementing-a-feature)
+  - [3. Completing a Phase](#3-completing-a-phase)
+- [🏷️ Label System](#️-label-system)
+- [📝 Issue Templates](#-issue-templates)
+  - [Parent Issue Template](#parent-issue-template)
+  - [Sub-Issue Template](#sub-issue-template)
+- [🤖 AI Agent Integration](#-ai-agent-integration)
+  - [Using Issues with Copilot](#using-issues-with-copilot)
+  - [AI Prompt Best Practices](#ai-prompt-best-practices)
+- [🔗 Relationship with IMPLEMENTATION_STATUS.md](#-relationship-with-implementation_statusmd)
+  - [Division of Responsibilities](#division-of-responsibilities)
+  - [Synchronization](#synchronization)
+- [📊 Project Board](#-project-board-optional)
+- [🎓 Best Practices](#-best-practices)
+- [📚 Examples](#-examples)
+- [🔄 Migration Plan](#-migration-plan)
+- [Summary](#summary)
+
+---
+
 ## 📋 Planning Philosophy
 
 Codeoba uses a **hybrid approach** that combines:
