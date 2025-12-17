@@ -86,9 +86,9 @@ class MainActivity : ComponentActivity() {
                     val apiKey = getApiKey()
                     
                     val config = RealtimeConfig(
-                        apiKey = apiKey,
+                        dangerousApiKey = apiKey,
                         endpoint = System.getProperty("realtime.endpoint")
-                            ?: "wss://api.openai.com/v1/realtime"
+                            ?: "https://api.openai.com/v1/realtime"
                     )
                     
                     CodeobaUI(app = codeobaApp, config = config)

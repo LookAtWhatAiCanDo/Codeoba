@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
@@ -23,4 +24,9 @@ expect class RealtimeClientImpl() : RealtimeClient {
     override suspend fun connect(config: RealtimeConfig)
     override suspend fun disconnect()
     override suspend fun sendAudioFrame(frame: ByteArray)
+
+    override suspend fun dataSendJson(jsonObject: JsonObject): Boolean
+    override suspend fun dataSendInputAudioBufferClear(): Boolean
+    override suspend fun dataSendInputAudioBufferCommit(): Boolean
+    override suspend fun dataSendResponseCreate(): Boolean
 }

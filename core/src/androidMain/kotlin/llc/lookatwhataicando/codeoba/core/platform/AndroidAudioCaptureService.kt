@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl
 
 /**
  * Android AudioCaptureService that works with WebRTC JavaAudioDeviceModule.
@@ -38,7 +39,7 @@ class AndroidAudioCaptureService(
     override val audioFrames: Flow<ByteArray> = emptyFlow()
     
     // Reference to RealtimeClient to control audio track
-    var realtimeClient: llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl? = null
+    var realtimeClient: RealtimeClientImpl? = null
     
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override suspend fun start() {
@@ -52,7 +53,7 @@ class AndroidAudioCaptureService(
         
         try {
             // Enable WebRTC audio track
-            realtimeClient?.setMicrophoneEnabled(true)
+            realtimeClient?.setLocalAudioTrackMicrophoneEnabled(true)
             
             _state.value = AudioCaptureState.Capturing
             Log.i(TAG, "start: WebRTC audio track enabled successfully")
@@ -71,7 +72,7 @@ class AndroidAudioCaptureService(
         Log.i(TAG, "stop: Disabling WebRTC audio track")
         try {
             // Disable WebRTC audio track
-            realtimeClient?.setMicrophoneEnabled(false)
+            realtimeClient?.setLocalAudioTrackMicrophoneEnabled(false)
             
             _state.value = AudioCaptureState.Idle
             Log.i(TAG, "stop: WebRTC audio track disabled successfully")

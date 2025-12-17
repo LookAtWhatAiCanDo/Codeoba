@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 class CodeobaApp(
     private val audioCaptureService: AudioCaptureService,
     private val audioRouteManager: AudioRouteManager,
-    private val realtimeClient: RealtimeClient,
+    val realtimeClient: RealtimeClient,
     private val mcpClient: McpClient,
     private val companionProxy: CompanionProxy,
     private val scope: CoroutineScope
