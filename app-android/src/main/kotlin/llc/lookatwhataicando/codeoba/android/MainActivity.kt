@@ -67,8 +67,11 @@ class MainActivity : ComponentActivity() {
         val realtimeClient = RealtimeClientImpl()
         realtimeClient.initialize(this) // Initialize with Android Context
         
+        val audioCaptureService = AndroidAudioCaptureService(this, scope)
+        audioCaptureService.realtimeClient = realtimeClient // Wire up for PTT control
+        
         codeobaApp = CodeobaApp(
-            audioCaptureService = AndroidAudioCaptureService(this, scope),
+            audioCaptureService = audioCaptureService,
             audioRouteManager = AndroidAudioRouteManager(this),
             realtimeClient = realtimeClient,
             mcpClient = McpClientImpl(),

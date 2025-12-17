@@ -67,12 +67,10 @@ class CodeobaApp(
     suspend fun startMicrophone() {
         addEventLogEntry(EventLogEntry.Info("Enabling microphone..."))
         try {
-            // With WebRTC JavaAudioDeviceModule, enable the audio track
-            (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.setMicrophoneEnabled(true)
-            addEventLogEntry(EventLogEntry.Info("Microphone enabled"))
-            
-            // Also start AudioCaptureService for UI state (will be deprecated)
+            // Note: AudioCaptureService is only used for UI state tracking on Android.
+            // Actual audio capture is handled by WebRTC's JavaAudioDeviceModule.
             audioCaptureService.start()
+            addEventLogEntry(EventLogEntry.Info("Microphone enabled"))
         } catch (e: SecurityException) {
             addEventLogEntry(EventLogEntry.Error("Permission denied: Please grant microphone permission"))
         } catch (e: Exception) {
@@ -82,11 +80,6 @@ class CodeobaApp(
     
     suspend fun stopMicrophone() {
         addEventLogEntry(EventLogEntry.Info("Disabling microphone..."))
-        
-        // Disable WebRTC audio track
-        (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.setMicrophoneEnabled(false)
-        
-        // Stop AudioCaptureService
         audioCaptureService.stop()
     }
     
