@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
 import org.webrtc.*
+import org.webrtc.audio.AudioDeviceModule
+import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
@@ -45,6 +47,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private var dataChannel: DataChannel? = null
     private var audioTrack: AudioTrack? = null
     private var peerConnectionFactory: PeerConnectionFactory? = null
+    private var audioDeviceModule: AudioDeviceModule? = null
     
     private val httpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) {
@@ -107,13 +110,23 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             ephemeralKey = getEphemeralToken(config.apiKey, config.model)
             Log.d(TAG, "connect: Ephemeral token received: ${ephemeralKey?.take(10)}...")
             
-            // Step 2: Initialize PeerConnectionFactory
+            // Step 2: Initialize PeerConnectionFactory with JavaAudioDeviceModule
             if (peerConnectionFactory == null) {
-                Log.d(TAG, "connect: Creating PeerConnectionFactory...")
+                Log.d(TAG, "connect: Creating PeerConnectionFactory with JavaAudioDeviceModule...")
+                
+                // Create JavaAudioDeviceModule with hardware AEC and NS
+                audioDeviceModule = JavaAudioDeviceModule.builder(appContext)
+                    .setUseHardwareAcousticEchoCanceler(true)
+                    .setUseHardwareNoiseSuppressor(true)
+                    .createAudioDeviceModule()
+                
                 val options = PeerConnectionFactory.Options()
                 peerConnectionFactory = PeerConnectionFactory.builder()
                     .setOptions(options)
+                    .setAudioDeviceModule(audioDeviceModule)
                     .createPeerConnectionFactory()
+                
+                Log.d(TAG, "connect: PeerConnectionFactory created with hardware AEC/NS enabled")
             }
             
             // Step 3: Create peer connection with STUN servers
@@ -148,15 +161,17 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             dataChannel?.registerObserver(createDataChannelObserver())
             Log.d(TAG, "connect: Data channel created")
             
-            // Step 5: Add audio track
+            // Step 5: Add audio track (initially disabled for PTT)
             Log.d(TAG, "connect: Adding audio track...")
             val audioConstraints = MediaConstraints()
             val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
             audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
             
             if (audioTrack != null) {
+                // Start with audio track disabled - will be enabled on PTT press
+                audioTrack?.setEnabled(false)
                 peerConnection?.addTrack(audioTrack, listOf("stream"))
-                Log.d(TAG, "connect: Audio track added to peer connection")
+                Log.d(TAG, "connect: Audio track added to peer connection (initially disabled for PTT)")
             }
             
             // Step 6: Create SDP offer
@@ -277,6 +292,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             peerConnectionFactory?.dispose()
             peerConnectionFactory = null
             
+            audioDeviceModule?.release()
+            audioDeviceModule = null
+            
             ephemeralKey = null
             
             _connectionState.value = ConnectionState.Disconnected
@@ -289,45 +307,26 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         }
     }
     
-    private var lastLogTime = 0L
-    
     actual override suspend fun sendAudioFrame(frame: ByteArray) {
-        if (_connectionState.value != ConnectionState.Connected) {
-            return
-        }
-        
-        if (dataChannel?.state() != DataChannel.State.OPEN) {
-            Log.w(TAG, "sendAudioFrame: Data channel not open, skipping frame")
-            return
-        }
-        
-        try {
-            // Send audio as base64-encoded PCM16 via data channel
-            // OpenAI Realtime API expects audio frames via data channel with input_audio_buffer.append event
-            val base64Audio = android.util.Base64.encodeToString(frame, android.util.Base64.NO_WRAP)
-            
-            val audioEvent = buildJsonObject {
-                put("type", "input_audio_buffer.append")
-                put("audio", base64Audio)
-            }
-            
-            val messageBytes = audioEvent.toString().toByteArray(StandardCharsets.UTF_8)
-            val buffer = ByteBuffer.allocateDirect(messageBytes.size)
-            buffer.put(messageBytes)
-            buffer.flip()
-            
-            dataChannel?.send(DataChannel.Buffer(buffer, false))
-            
-            // Log once per second to avoid spam
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastLogTime >= 1000) {
-                Log.d(TAG, "sendAudioFrame: Sent audio frame: ${frame.size} bytes (base64: ${base64Audio.length} chars)")
-                lastLogTime = currentTime
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "sendAudioFrame: Failed to send audio frame: ${e.message}", e)
-            _events.emit(RealtimeEvent.Error("Failed to send audio: ${e.message}"))
-        }
+        // With WebRTC and JavaAudioDeviceModule, audio is automatically captured
+        // and sent via the WebRTC audio track. No manual frame sending needed.
+        // The AudioDeviceModule handles microphone capture and routing to the peer connection.
+    }
+    
+    /**
+     * Enable microphone audio transmission (for PTT press).
+     */
+    fun enableMicrophone() {
+        audioTrack?.setEnabled(true)
+        Log.d(TAG, "enableMicrophone: Audio track enabled")
+    }
+    
+    /**
+     * Disable microphone audio transmission (for PTT release).
+     */
+    fun disableMicrophone() {
+        audioTrack?.setEnabled(false)
+        Log.d(TAG, "disableMicrophone: Audio track disabled")
     }
     
     /**

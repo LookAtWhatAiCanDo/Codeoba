@@ -39,20 +39,8 @@ class CodeobaApp(
             }
         }
         
-        // Pipe audio frames to realtime client
-        scope.launch {
-            var frameCount = 0L
-            audioCaptureService.audioFrames.collect { frame ->
-                if (connectionState.value == ConnectionState.Connected) {
-                    frameCount++
-                    // Log every 100th frame to avoid spam
-                    if (frameCount % 100 == 0L) {
-                        addEventLogEntry(EventLogEntry.Info("Audio streaming: ${frameCount} frames sent"))
-                    }
-                    realtimeClient.sendAudioFrame(frame)
-                }
-            }
-        }
+        // Note: With WebRTC JavaAudioDeviceModule, audio capture and transmission
+        // is handled automatically by WebRTC. No need to manually pipe audio frames.
     }
     
     suspend fun connect(config: RealtimeConfig) {
@@ -77,32 +65,28 @@ class CodeobaApp(
     }
     
     suspend fun startMicrophone() {
-        addEventLogEntry(EventLogEntry.Info("Starting microphone..."))
+        addEventLogEntry(EventLogEntry.Info("Enabling microphone..."))
         try {
+            // With WebRTC JavaAudioDeviceModule, enable the audio track
+            (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.enableMicrophone()
+            addEventLogEntry(EventLogEntry.Info("Microphone enabled"))
+            
+            // Also start AudioCaptureService for UI state (will be deprecated)
             audioCaptureService.start()
-            // Brief delay to allow async initialization before checking state
-            // AudioCaptureService changes state asynchronously during start()
-            kotlinx.coroutines.delay(100)
-            when (val currentState = audioCaptureState.value) {
-                is AudioCaptureState.Error -> {
-                    addEventLogEntry(EventLogEntry.Error("Microphone error: ${currentState.message}"))
-                }
-                is AudioCaptureState.Capturing -> {
-                    addEventLogEntry(EventLogEntry.Info("Microphone started successfully"))
-                }
-                else -> {
-                    // Still starting or other state
-                }
-            }
         } catch (e: SecurityException) {
             addEventLogEntry(EventLogEntry.Error("Permission denied: Please grant microphone permission"))
         } catch (e: Exception) {
-            addEventLogEntry(EventLogEntry.Error("Failed to start microphone: ${e.message}"))
+            addEventLogEntry(EventLogEntry.Error("Failed to enable microphone: ${e.message}"))
         }
     }
     
     suspend fun stopMicrophone() {
-        addEventLogEntry(EventLogEntry.Info("Stopping microphone..."))
+        addEventLogEntry(EventLogEntry.Info("Disabling microphone..."))
+        
+        // Disable WebRTC audio track
+        (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.disableMicrophone()
+        
+        // Stop AudioCaptureService
         audioCaptureService.stop()
     }
     
