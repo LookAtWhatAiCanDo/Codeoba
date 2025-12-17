@@ -168,9 +168,9 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
             
             if (audioTrack != null) {
-                // Start with audio track disabled - will be enabled on PTT press
-                audioTrack?.setEnabled(false)
                 peerConnection?.addTrack(audioTrack, listOf("stream"))
+                // Start with audio track disabled - will be enabled on PTT press
+                setMicrophoneEnabled(false)
                 Log.d(TAG, "connect: Audio track added to peer connection (initially disabled for PTT)")
             }
             
