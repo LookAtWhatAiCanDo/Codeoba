@@ -314,19 +314,13 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     }
     
     /**
-     * Enable microphone audio transmission (for PTT press).
+     * Enable or disable microphone audio transmission (for PTT control).
+     * 
+     * @param enabled true to enable microphone (PTT press), false to disable (PTT release)
      */
-    fun enableMicrophone() {
-        audioTrack?.setEnabled(true)
-        Log.d(TAG, "enableMicrophone: Audio track enabled")
-    }
-    
-    /**
-     * Disable microphone audio transmission (for PTT release).
-     */
-    fun disableMicrophone() {
-        audioTrack?.setEnabled(false)
-        Log.d(TAG, "disableMicrophone: Audio track disabled")
+    fun setMicrophoneEnabled(enabled: Boolean) {
+        audioTrack?.setEnabled(enabled)
+        Log.d(TAG, "setMicrophoneEnabled: Audio track ${if (enabled) "enabled" else "disabled"}")
     }
     
     /**

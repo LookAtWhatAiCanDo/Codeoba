@@ -68,7 +68,7 @@ class CodeobaApp(
         addEventLogEntry(EventLogEntry.Info("Enabling microphone..."))
         try {
             // With WebRTC JavaAudioDeviceModule, enable the audio track
-            (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.enableMicrophone()
+            (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.setMicrophoneEnabled(true)
             addEventLogEntry(EventLogEntry.Info("Microphone enabled"))
             
             // Also start AudioCaptureService for UI state (will be deprecated)
@@ -84,7 +84,7 @@ class CodeobaApp(
         addEventLogEntry(EventLogEntry.Info("Disabling microphone..."))
         
         // Disable WebRTC audio track
-        (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.disableMicrophone()
+        (realtimeClient as? llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl)?.setMicrophoneEnabled(false)
         
         // Stop AudioCaptureService
         audioCaptureService.stop()
