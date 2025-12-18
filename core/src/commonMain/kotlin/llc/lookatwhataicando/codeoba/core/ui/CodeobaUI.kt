@@ -91,8 +91,8 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                         } }
                     )
                     
-                    // Audio Route Dropdown (if available)
-                    if (audioRoutes.isNotEmpty()) {
+                    // Audio Route Dropdown (only show if multiple routes available)
+                    if (audioRoutes.size > 1) {
                         AudioRouteDropdown(
                             routes = audioRoutes,
                             activeRoute = activeRoute,
