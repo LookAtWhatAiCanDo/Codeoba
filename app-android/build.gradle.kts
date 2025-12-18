@@ -19,7 +19,7 @@ android {
         
         // Load API key from local.properties for development
         // This provides a default value that can be overridden at runtime
-        val localProperties = gradleLocalProperties(rootDir, providers)
+        val localProperties = gradleLocalProperties(rootDir)
         val dangerousOpenAiKey = localProperties.getProperty("DANGEROUS_OPENAI_API_KEY") ?: ""
         buildConfigField("String", "DANGEROUS_OPENAI_API_KEY", "\"$dangerousOpenAiKey\"")
     }
@@ -46,6 +46,14 @@ android {
     
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
+    }
+    
+    // Workaround for 16KB page size compatibility on Android 15+ devices
+    // See https://developer.android.com/guide/practices/page-sizes#agp_version_85_or_lower
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 

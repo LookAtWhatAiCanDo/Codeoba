@@ -2,7 +2,7 @@
 # Kotlin and Core
 kotlin = "1.9.21"
 compose = "1.5.11"
-agp = "8.13.2"
+agp = "8.2.2"
 
 # Kotlin Libraries
 kotlinx-coroutines = "1.7.3"
@@ -23,7 +23,7 @@ compose-compiler = "1.5.7"
 
 # Android
 android-compileSdk = "34"
-android-minSdk = "24"
+android-minSdk = "30"
 android-targetSdk = "34"
 
 [libraries]
