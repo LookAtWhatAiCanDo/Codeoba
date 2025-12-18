@@ -13,6 +13,7 @@ import llc.lookatwhataicando.codeoba.core.EventLogEntry
 import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val connectionState by app.connectionState.collectAsState()
@@ -22,93 +23,97 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val activeRoute by app.activeAudioRoute.collectAsState()
     
     val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Titlebar with Connect Switch
-        ConnectionTitlebar(
-            connectionState = connectionState,
-            onConnect = { scope.launch { app.connect(config) } },
-            onDisconnect = { scope.launch { app.disconnect() } }
-        )
-        
-        // Conversation panel with integrated text input
-        ConversationPanel(
-            events = eventLog,
-            connectionState = connectionState,
-            onSendText = { text ->
-                // TODO: Handle text submission
-                println("Text submitted: $text")
-            },
-            modifier = Modifier
-                .weight(1f)
-                .padding(16.dp)
-        )
-        
-        // Footer with PTT Button
-        PushToTalkFooter(
-            audioCaptureState = audioCaptureState,
-            connectionState = connectionState,
-            onStartMic = { scope.launch {
-                // TODO: cancelRemoteSpeech()
-                // TODO: play intro sound
-                app.startMicrophone()
-                app.realtimeClient.dataSendInputAudioBufferClear()
-            } },
-            onStopMic = { scope.launch {
-                app.stopMicrophone()
-                app.realtimeClient.dataSendInputAudioBufferCommit()
-                app.realtimeClient.dataSendResponseCreate()
-                // TODO: play outro sound
-            } }
-        )
-        
-        // Audio Route Dropdown (if available)
-        if (audioRoutes.isNotEmpty()) {
-            AudioRouteDropdown(
-                routes = audioRoutes,
-                activeRoute = activeRoute,
-                onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
-            )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                // Placeholder drawer content
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Menu",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                    Divider()
+                    // Placeholder menu items
+                    Text("Settings")
+                    Text("About")
+                }
+            }
         }
-    }
-}
-
-@Composable
-fun ConnectionTitlebar(
-    connectionState: ConnectionState,
-    onConnect: () -> Unit,
-    onDisconnect: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        tonalElevation = 3.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Codeoba",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            
-            Switch(
-                checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
-                onCheckedChange = { isChecked ->
-                    if (isChecked) {
-                        onConnect()
-                    } else {
-                        onDisconnect()
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Codeoba") },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Text("☰", style = MaterialTheme.typography.headlineMedium)
+                        }
+                    },
+                    actions = {
+                        Switch(
+                            checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    scope.launch { app.connect(config) }
+                                } else {
+                                    scope.launch { app.disconnect() }
+                                }
+                            },
+                            enabled = connectionState !is ConnectionState.Connecting
+                        )
                     }
+                )
+            },
+            bottomBar = {
+                Column {
+                    // Footer with PTT Button
+                    PushToTalkFooter(
+                        audioCaptureState = audioCaptureState,
+                        connectionState = connectionState,
+                        onStartMic = { scope.launch {
+                            // TODO: cancelRemoteSpeech()
+                            // TODO: play intro sound
+                            app.startMicrophone()
+                            app.realtimeClient.dataSendInputAudioBufferClear()
+                        } },
+                        onStopMic = { scope.launch {
+                            app.stopMicrophone()
+                            app.realtimeClient.dataSendInputAudioBufferCommit()
+                            app.realtimeClient.dataSendResponseCreate()
+                            // TODO: play outro sound
+                        } }
+                    )
+                    
+                    // Audio Route Dropdown (if available)
+                    if (audioRoutes.isNotEmpty()) {
+                        AudioRouteDropdown(
+                            routes = audioRoutes,
+                            activeRoute = activeRoute,
+                            onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            // Conversation panel with integrated text input
+            ConversationPanel(
+                events = eventLog,
+                connectionState = connectionState,
+                onSendText = { text ->
+                    // TODO: Handle text submission
+                    println("Text submitted: $text")
                 },
-                enabled = connectionState !is ConnectionState.Connecting
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
             )
         }
     }
