@@ -40,13 +40,10 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Text Input Alternative
-            TextInputPanel(
-                connectionState = connectionState,
-                onSendText = { text ->
-                    // TODO: Handle text submission
-                    println("Text submitted: $text")
-                }
+            // Event Log - fills most of the space
+            EventLog(
+                events = eventLog,
+                modifier = Modifier.weight(1f)
             )
             
             // Audio Route Selection (if available)
@@ -58,10 +55,13 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                 )
             }
             
-            // Event Log
-            EventLog(
-                events = eventLog,
-                modifier = Modifier.weight(1f)
+            // Text Input Alternative
+            TextInputPanel(
+                connectionState = connectionState,
+                onSendText = { text ->
+                    // TODO: Handle text submission
+                    println("Text submitted: $text")
+                }
             )
         }
         
