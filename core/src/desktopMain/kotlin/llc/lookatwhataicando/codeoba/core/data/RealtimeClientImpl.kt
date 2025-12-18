@@ -44,6 +44,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         println("[$tag] ERROR: $message")
         throwable?.printStackTrace()
     }
+    
+    override fun logVerbose(tag: String, message: String) {
+        println("[$tag] VERBOSE: $message")
+    }
+    
+    override fun logWarning(tag: String, message: String) {
+        println("[$tag] WARNING: $message")
+    }
 
     // HTTP client for Desktop (uses default engine)
     override val httpClient = HttpClient()
@@ -182,110 +190,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         // }
     }
     
-    /**
-     * Handle messages received on the data channel.
-     */
-    private suspend fun handleDataChannelMessage(message: String) {
-        try {
-            println("[RealtimeClient] Received message: ${message.take(100)}...")
-            val jsonElement = json.parseToJsonElement(message)
-            val jsonObject = jsonElement.jsonObject
-            
-            val eventType = jsonObject["type"]?.jsonPrimitive?.content ?: return
-            println("[RealtimeClient] Event type: $eventType")
-            
-            when (eventType) {
-                "session.created" -> {
-                    println("[RealtimeClient] Session created")
-                    _connectionState.value = ConnectionState.Connected
-                    _events.emit(RealtimeEvent.Connected)
-                }
-                
-                "session.updated" -> {
-                    println("[RealtimeClient] Session configuration updated")
-                    // Session configuration updated
-                }
-                
-                "conversation.item.created" -> {
-                    println("[RealtimeClient] Conversation item created")
-                    val item = jsonObject["item"]?.jsonObject ?: return
-                    handleConversationItem(item)
-                }
-                
-                "response.audio_transcript.delta" -> {
-                    val delta = jsonObject["delta"]?.jsonPrimitive?.content ?: ""
-                    if (delta.isNotEmpty()) {
-                        println("[RealtimeClient] Transcript delta: $delta")
-                        _events.emit(RealtimeEvent.Transcript(delta, false))
-                    }
-                }
-                
-                "response.audio_transcript.done" -> {
-                    val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
-                    if (transcript.isNotEmpty()) {
-                        println("[RealtimeClient] Transcript complete: $transcript")
-                        _events.emit(RealtimeEvent.Transcript(transcript, true))
-                    }
-                }
-                
-                "conversation.item.input_audio_transcription.completed" -> {
-                    val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
-                    if (transcript.isNotEmpty()) {
-                        println("[RealtimeClient] User transcript: $transcript")
-                        _events.emit(RealtimeEvent.Transcript("User: $transcript", true))
-                    }
-                }
-                
-                "response.function_call_arguments.done" -> {
-                    val name = jsonObject["name"]?.jsonPrimitive?.content ?: return
-                    val arguments = jsonObject["arguments"]?.jsonPrimitive?.content ?: "{}"
-                    println("[RealtimeClient] Tool call: $name with args: $arguments")
-                    _events.emit(RealtimeEvent.ToolCall(name, arguments))
-                }
-                
-                "error" -> {
-                    val error = jsonObject["error"]?.jsonObject
-                    val errorMessage = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
-                    println("[RealtimeClient] ERROR from API: $errorMessage")
-                    _events.emit(RealtimeEvent.Error(errorMessage))
-                }
-                
-                else -> {
-                    println("[RealtimeClient] Unhandled event type: $eventType")
-                }
-            }
-        } catch (e: Exception) {
-            val errorMsg = "Failed to parse message: ${e.message}"
-            println("[RealtimeClient] ERROR: $errorMsg")
-            e.printStackTrace()
-            _events.emit(RealtimeEvent.Error(errorMsg))
-        }
-    }
-    
-    private suspend fun handleConversationItem(item: JsonObject) {
-        val itemType = item["type"]?.jsonPrimitive?.content ?: return
-        
-        when (itemType) {
-            "message" -> {
-                val content = item["content"]?.jsonArray ?: return
-                for (contentItem in content) {
-                    val contentObj = contentItem.jsonObject
-                    val contentType = contentObj["type"]?.jsonPrimitive?.content
-                    
-                    if (contentType == "text") {
-                        val text = contentObj["text"]?.jsonPrimitive?.content ?: ""
-                        if (text.isNotEmpty()) {
-                            _events.emit(RealtimeEvent.Transcript(text, true))
-                        }
-                    }
-                }
-            }
-            
-            "function_call" -> {
-                val name = item["name"]?.jsonPrimitive?.content ?: return
-                val arguments = item["arguments"]?.jsonPrimitive?.content ?: "{}"
-                _events.emit(RealtimeEvent.ToolCall(name, arguments))
-            }
-        }
-    }
+    // Note: handleDataChannelMessage() and handleConversationItem() are now
+    // implemented in the RealtimeClientBase base class and shared between platforms
 }
+

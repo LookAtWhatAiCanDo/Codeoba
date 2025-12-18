@@ -54,6 +54,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             Log.e(tag, message)
         }
     }
+    
+    override fun logVerbose(tag: String, message: String) {
+        Log.v(tag, message)
+    }
+    
+    override fun logWarning(tag: String, message: String) {
+        Log.w(tag, message)
+    }
 
     // HTTP client for Android (uses OkHttp engine)
     override val httpClient = HttpClient(OkHttp) {
@@ -433,7 +441,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             } else {
                 val messageText = String(bytes, Charsets.UTF_8)
                 CoroutineScope(Dispatchers.Main).launch {
-                    handleDataChannelText(messageText)
+                    handleDataChannelMessage(messageText)
                 }
             }
         }
@@ -686,133 +694,12 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
 
     /**
      * Handle a data channel non-binary (ie "text") message.
+     * Delegates to base class implementation.
      */
     private suspend fun handleDataChannelText(messageText: String) {
-        try {
-            logDataChannelText("RX", messageText)
-
-            val jsonElement = json.parseToJsonElement(messageText)
-            val jsonObject = jsonElement.jsonObject
-            
-            val eventType = jsonObject["type"]?.jsonPrimitive?.content ?: return
-            Log.d(TAG, "Event type: $eventType")
-            
-            when (eventType) {
-                "session.created" -> {
-                    Log.v(TAG, "handleDataChannelText: Session created")
-                    _events.emit(RealtimeEvent.Connected)
-                }
-                "session.updated" -> {
-                    Log.d(TAG, "handleDataChannelText: Session updated")
-                    // Session configuration confirmed
-                }
-
-                "conversation.item.added" -> {
-                    Log.v(TAG, "handleDataChannelText: Conversation item added")
-                }
-                "conversation.item.done" -> {
-                    Log.v(TAG, "handleDataChannelText: Conversation item done")
-                }
-
-                "input_audio_buffer.cleared" -> {
-                    Log.v(TAG, "handleDataChannelText: Input audio buffer cleared")
-                }
-                "input_audio_buffer.committed" -> {
-                    Log.v(TAG, "handleDataChannelText: Input audio buffer committed")
-                }
-                "output_audio_buffer.started" -> {
-                    Log.v(TAG, "handleDataChannelText: Output audio buffer started")
-                }
-                "output_audio_buffer.stopped" -> {
-                    Log.v(TAG, "handleDataChannelText: Output audio buffer stopped")
-                }
-
-                "response.created" -> {
-                    Log.v(TAG, "handleDataChannelText: Response created")
-                }
-                "response.output_item.added" -> {
-                    Log.v(TAG, "handleDataChannelText: Response output item added")
-                }
-                "response.output_item.done" -> {
-                    val item = jsonObject["item"]?.jsonObject
-                    val content = item?.get("content")?.jsonArray
-                    for (contentItem in content!!) {
-                        val contentObj = contentItem.jsonObject
-                        val transcript = contentObj["transcript"]?.jsonPrimitive?.content ?: ""
-                        if (transcript.isNotEmpty()) {
-                            Log.i(TAG, "handleDataChannelText: Response output item done: $transcript")
-                            _events.emit(RealtimeEvent.Transcript(transcript, true))
-                        }
-                    }
-                }
-
-                "response.content_part.added" -> {
-                    Log.v(TAG, "handleDataChannelText: Response content part added")
-                }
-                "response.content_part.done" -> {
-                    Log.v(TAG, "handleDataChannelText: Response content part done")
-                }
-                "response.output_audio_transcript.delta" -> {
-                    Log.v(TAG, "handleDataChannelText: Response output audio transcript delta")
-                }
-                "response.output_audio.done" -> {
-                    Log.v(TAG, "handleDataChannelText: Output audio done")
-                }
-                "response.output_audio_transcript.done" -> {
-                    Log.v(TAG, "handleDataChannelText: Response output audio transcript done")
-                }
-                "response.done" -> {
-                    Log.v(TAG, "handleDataChannelText: Response done")
-                }
-
-                "rate_limits.updated" -> {
-                    Log.v(TAG, "handleDataChannelText: Rate limits updated")
-                }
-
-                "error" -> {
-                    val error = jsonObject["error"]?.jsonObject
-                    val errorMessage = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
-                    Log.e(TAG, "handleDataChannelText: Error from API: $errorMessage")
-                    _events.emit(RealtimeEvent.Error(errorMessage))
-                }
-                
-                else -> {
-                    Log.w(TAG, "handleDataChannelText: Unhandled event type: $eventType")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "handleDataChannelText: Failed to parse message: ${e.message}", e)
-            _events.emit(RealtimeEvent.Error("Failed to parse message: ${e.message}"))
-        }
+        handleDataChannelMessage(messageText)
     }
     
-    private suspend fun handleConversationItem(item: JsonObject) {
-        val itemType = item["type"]?.jsonPrimitive?.content ?: return
-        
-        when (itemType) {
-            "message" -> {
-                val content = item["content"]?.jsonArray ?: return
-                for (contentItem in content) {
-                    val contentObj = contentItem.jsonObject
-                    val contentType = contentObj["type"]?.jsonPrimitive?.content
-                    
-                    if (contentType == "text") {
-                        val text = contentObj["text"]?.jsonPrimitive?.content ?: ""
-                        if (text.isNotEmpty()) {
-                            _events.emit(RealtimeEvent.Transcript(text, true))
-                        }
-                    }
-                }
-            }
-            
-            "function_call" -> {
-                val name = item["name"]?.jsonPrimitive?.content ?: return
-                val arguments = item["arguments"]?.jsonPrimitive?.content ?: "{}"
-                _events.emit(RealtimeEvent.ToolCall(name, arguments))
-            }
-        }
-    }
-
     //
     //endregion handleDataChannel events
     //
