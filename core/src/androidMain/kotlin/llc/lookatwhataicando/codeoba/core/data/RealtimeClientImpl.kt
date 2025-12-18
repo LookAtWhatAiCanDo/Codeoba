@@ -117,6 +117,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         Log.i(TAG, "initialize: RealtimeClient initialized successfully")
     }
     
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
