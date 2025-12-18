@@ -42,9 +42,16 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     override val debug: Boolean
         get() = BuildConfig.DEBUG && false
 
-    // Platform-specific logging implementation
+    override fun logVerbose(tag: String, message: String) {
+        Log.v(tag, message)
+    }
+
     override fun logDebug(tag: String, message: String) {
         Log.d(tag, message)
+    }
+
+    override fun logWarning(tag: String, message: String) {
+        Log.w(tag, message)
     }
 
     override fun logError(tag: String, message: String, throwable: Throwable?) {
@@ -53,14 +60,6 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         } else {
             Log.e(tag, message)
         }
-    }
-    
-    override fun logVerbose(tag: String, message: String) {
-        Log.v(tag, message)
-    }
-    
-    override fun logWarning(tag: String, message: String) {
-        Log.w(tag, message)
     }
 
     // HTTP client for Android (uses OkHttp engine)
@@ -441,7 +440,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             } else {
                 val messageText = String(bytes, Charsets.UTF_8)
                 CoroutineScope(Dispatchers.Main).launch {
-                    handleDataChannelMessage(messageText)
+                    handleDataChannelText(messageText)
                 }
             }
         }
@@ -546,7 +545,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     private fun onDataChannelOpened() {
         Log.i(TAG, "onDataChannelOpened(); Sending session.update...")
         CoroutineScope(Dispatchers.IO).launch {
-            sendSessionUpdate()
+            dataSendSessionUpdate()
         }
     }
 
@@ -563,10 +562,6 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         // and sent via the WebRTC audio track. No manual frame sending needed.
         // The AudioDeviceModule handles microphone capture and routing to the peer connection.
     }
-
-    //
-    //region data send functions
-    //
 
     actual override suspend fun dataSendJson(jsonObject: JsonObject): Boolean {
         if (!dataChannelOpened) throw IllegalStateException("dataChannel not opened")
@@ -591,116 +586,4 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             return false
         }
     }
-
-    @OptIn(ExperimentalSerializationApi::class)
-    private suspend fun sendSessionUpdate() {
-        //
-        // https://platform.openai.com/docs/api-reference/realtime-client-events/session/update
-        //
-        dataSendJson(buildJsonObject {
-            put("type", "session.update")
-            put("event_id", RealtimeClient.generateId())
-            putJsonObject("session") {
-                put("type", "realtime")
-                put("audio", buildJsonObject {
-                    put("input", buildJsonObject {
-                        put("format", buildJsonObject {
-                            put("rate", 24000)
-                            put("type", "audio/pcm")
-                        })
-                        put("noise_reduction", buildJsonObject {
-                            // `near_field` for close-talking microphones such as headphones.
-                            // `far_field` for far-field microphones such as laptop or conference room microphones.
-                            put("type", "far_field")
-                        })
-                        // Transcription costs noticeably more money, so turn it off and enable in Preferences if we really want it
-                        put("transcription", null)
-                        // https://platform.openai.com/docs/api-reference/realtime-client-events/session/update#realtime_client_events-session-update-session-realtime_session_configuration-audio-input-turn_detection
-                        // No turn_detection; We will be PTTing...
-                        // TODO play with using VAD; see if it has improved any/much.
-                        put("turn_detection", null)
-                    })
-                    put("output", buildJsonObject {
-                        put("format", buildJsonObject {
-                            put("rate", 24000)
-                            put("type", "audio/pcm")
-                        })
-                        put("speed", 1.0) // 0.25 to 1.5
-                        // "voice": not used; Set in `getEphemeralToken` and never set again, per https://platform.openai.com/docs/api-reference/realtime-client-events/session/update:
-                        //  "The client may send this event at any time to update any field except for `voice` and `model`. `voice` can be updated only if there have been no other audio outputs yet."
-                    })
-                })
-                // "include": not yet used
-                put("instructions", "You are a helpful AI assistant for coding tasks.")
-                put("max_output_tokens", "inf")
-                // "model": not used; Set in `getEphemeralToken` and never set again, per https://platform.openai.com/docs/api-reference/realtime-client-events/session/update:
-                //  "The client may send this event at any time to update any field except for `voice` and `model`. `voice` can be updated only if there have been no other audio outputs yet."
-                // https://platform.openai.com/docs/api-reference/realtime-client-events/session/update#realtime_client_events-session-update-session-realtime_session_configuration-output_modalities
-                put("output_modalities", buildJsonArray {
-                    // "It is not possible to request both text and audio at the same time."
-                    add("audio")
-                })
-                // "prompt": not yet used
-                // "tool_choice": not yet used
-                // https://platform.openai.com/docs/api-reference/realtime-client-events/session/update#realtime_client_events-session-update-session-realtime_session_configuration-tools
-                put("tools", buildJsonArray {
-                    // MCP tools will be defined here in future
-                })
-                // "tracing": not yet used
-                // "truncation": not yet used
-            }
-        })
-    }
-
-    actual override suspend fun dataSendInputAudioBufferClear(): Boolean {
-        //
-        // https://platform.openai.com/docs/api-reference/realtime-client-events/input_audio_buffer/clear
-        //
-        return dataSendJson(buildJsonObject {
-            put("type", "input_audio_buffer.clear")
-            put("event_id", RealtimeClient.generateId())
-        })
-    }
-
-    actual override suspend fun dataSendInputAudioBufferCommit(): Boolean {
-        //
-        // https://platform.openai.com/docs/api-reference/realtime-client-events/input_audio_buffer/commit
-        //
-        return dataSendJson(buildJsonObject {
-            put("type", "input_audio_buffer.commit")
-            put("event_id", RealtimeClient.generateId())
-        })
-    }
-
-    //@OptIn(ExperimentalSerializationApi::class)
-    actual override suspend fun dataSendResponseCreate(): Boolean {
-        //
-        // https://platform.openai.com/docs/api-reference/realtime-client-events/response/create
-        //
-        return dataSendJson(buildJsonObject {
-            put("type", "response.create")
-            put("event_id", RealtimeClient.generateId())
-            //put("response", null)
-        })
-    }
-
-    //
-    //endregion data send functions
-    //
-
-    //
-    //region handleDataChannel events
-    //
-
-    /**
-     * Handle a data channel non-binary (ie "text") message.
-     * Delegates to base class implementation.
-     */
-    private suspend fun handleDataChannelText(messageText: String) {
-        handleDataChannelMessage(messageText)
-    }
-    
-    //
-    //endregion handleDataChannel events
-    //
 }

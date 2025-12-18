@@ -35,22 +35,21 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     override val debug: Boolean
         get() = false
 
-    // Platform-specific logging implementation
+    override fun logVerbose(tag: String, message: String) {
+        println("[$tag] VERBOSE: $message")
+    }
+
     override fun logDebug(tag: String, message: String) {
         println("[$tag] DEBUG: $message")
+    }
+
+    override fun logWarning(tag: String, message: String) {
+        println("[$tag] WARNING: $message")
     }
 
     override fun logError(tag: String, message: String, throwable: Throwable?) {
         println("[$tag] ERROR: $message")
         throwable?.printStackTrace()
-    }
-    
-    override fun logVerbose(tag: String, message: String) {
-        println("[$tag] VERBOSE: $message")
-    }
-    
-    override fun logWarning(tag: String, message: String) {
-        println("[$tag] WARNING: $message")
     }
 
     // HTTP client for Desktop (uses default engine)
@@ -70,23 +69,23 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
-            logDebug("RealtimeClient", "Already connected or connecting, ignoring connect request")
+            logDebug(TAG, "Already connected or connecting, ignoring connect request")
             return
         }
         
         _connectionState.value = ConnectionState.Connecting
-        logDebug("RealtimeClient", "Connecting to ${config.endpoint} with model ${config.model}")
+        logDebug(TAG, "Connecting to ${config.endpoint} with model ${config.model}")
         
         try {
             // Step 1: Get ephemeral token from OpenAI (using base class method)
-            logDebug("RealtimeClient", "Requesting ephemeral token...")
+            logDebug(TAG, "Requesting ephemeral token...")
             val ephemeralToken = getEphemeralToken(config)
-            logDebug("RealtimeClient", "Ephemeral token received: ${ephemeralToken.take(10)}...")
+            logDebug(TAG, "Ephemeral token received: ${ephemeralToken.take(10)}...")
             
             // Step 2: Create WebRTC peer connection
             // TODO: Initialize RTCPeerConnection with proper configuration
             // This requires adding a WebRTC library like libwebrtc or webrtc-java
-            logDebug("RealtimeClient", "WebRTC peer connection setup required but not yet implemented")
+            logDebug(TAG, "WebRTC peer connection setup required but not yet implemented")
             
             // Step 3: Create data channel for signaling
             // dataChannel = peerConnection.createDataChannel("oai-events")
@@ -109,7 +108,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             // For now, emit error indicating WebRTC library is needed
             val errorMsg = "WebRTC implementation requires platform-specific library. " +
                 "Need to add libwebrtc or similar dependency for Desktop platform."
-            logError("RealtimeClient", errorMsg)
+            logError(TAG, errorMsg)
             _connectionState.value = ConnectionState.Error(errorMsg)
             _events.emit(RealtimeEvent.Error(
                 "WebRTC not yet implemented for Desktop. Requires native WebRTC library integration."
@@ -117,14 +116,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
                 
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
-            logError("RealtimeClient", errorMsg, e)
+            logError(TAG, errorMsg, e)
             _connectionState.value = ConnectionState.Error(errorMsg)
             _events.emit(RealtimeEvent.Error(errorMsg))
         }
     }
     
     actual override suspend fun disconnect() {
-        logDebug("RealtimeClient", "Disconnecting...")
+        logDebug(TAG, "Disconnecting...")
         receiveJob?.cancel()
         receiveJob = null
         
@@ -140,7 +139,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         
         _connectionState.value = ConnectionState.Disconnected
         _events.emit(RealtimeEvent.Disconnected)
-        logDebug("RealtimeClient", "Disconnected")
+        logDebug(TAG, "Disconnected")
     }
     
     actual override suspend fun sendAudioFrame(frame: ByteArray) {
@@ -154,25 +153,10 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     
     actual override suspend fun dataSendJson(jsonObject: JsonObject): Boolean {
         // TODO: Implement when WebRTC data channel is available
-        logDebug("RealtimeClient", "dataSendJson not yet implemented for Desktop")
+        logDebug(TAG, "dataSendJson not yet implemented for Desktop")
         return false
     }
-    
-    actual override suspend fun dataSendInputAudioBufferClear(): Boolean {
-        // TODO: Implement when WebRTC data channel is available
-        return false
-    }
-    
-    actual override suspend fun dataSendInputAudioBufferCommit(): Boolean {
-        // TODO: Implement when WebRTC data channel is available
-        return false
-    }
-    
-    actual override suspend fun dataSendResponseCreate(): Boolean {
-        // TODO: Implement when WebRTC data channel is available
-        return false
-    }
-    
+
     /**
      * Set up event listeners on data channel for receiving events.
      */
@@ -189,8 +173,5 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         //     // Handle incoming audio track
         // }
     }
-    
-    // Note: handleDataChannelMessage() and handleConversationItem() are now
-    // implemented in the RealtimeClientBase base class and shared between platforms
 }
 
