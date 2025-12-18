@@ -1,9 +1,12 @@
 package llc.lookatwhataicando.codeoba.desktop
 
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.data.CompanionProxyStub
 import llc.lookatwhataicando.codeoba.core.data.McpClientImpl
@@ -12,9 +15,6 @@ import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.platform.DesktopAudioCaptureService
 import llc.lookatwhataicando.codeoba.core.platform.DesktopAudioRouteManager
 import llc.lookatwhataicando.codeoba.core.ui.CodeobaUI
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import java.io.File
 import java.util.Properties
 

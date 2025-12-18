@@ -4,14 +4,13 @@ import android.Manifest
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
-import android.os.Build
 import androidx.annotation.RequiresPermission
-import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
-import llc.lookatwhataicando.codeoba.core.domain.AudioRouteManager
-import llc.lookatwhataicando.codeoba.core.domain.AudioRouteType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
+import llc.lookatwhataicando.codeoba.core.domain.AudioRouteManager
+import llc.lookatwhataicando.codeoba.core.domain.AudioRouteType
 
 /**
  * Android implementation of AudioRouteManager.

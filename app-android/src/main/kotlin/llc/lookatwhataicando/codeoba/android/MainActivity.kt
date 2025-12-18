@@ -6,16 +6,21 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Base64
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.data.CompanionProxyStub
 import llc.lookatwhataicando.codeoba.core.data.McpClientImpl
@@ -24,16 +29,11 @@ import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.platform.AndroidAudioCaptureService
 import llc.lookatwhataicando.codeoba.core.platform.AndroidAudioRouteManager
 import llc.lookatwhataicando.codeoba.core.ui.CodeobaUI
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import android.util.Base64
 
 class MainActivity : ComponentActivity() {
     

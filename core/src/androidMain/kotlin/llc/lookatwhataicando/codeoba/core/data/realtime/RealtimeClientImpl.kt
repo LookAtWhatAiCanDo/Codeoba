@@ -2,30 +2,45 @@ package llc.lookatwhataicando.codeoba.core.data.realtime
 
 import android.Manifest
 import android.content.Context
-import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.twilio.audioswitch.AudioDevice
 import com.twilio.audioswitch.AudioSwitch
 import com.twilio.audioswitch.bluetooth.BluetoothHeadsetConnectionListener
-import io.ktor.client.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.json.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import llc.lookatwhataicando.codeoba.core.BuildConfig
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
-import org.webrtc.*
+import org.webrtc.AudioTrackSink
+import org.webrtc.DataChannel
+import org.webrtc.IceCandidate
+import org.webrtc.Logging
 import org.webrtc.Logging.Severity
-import org.webrtc.AudioTrack as AudioTrackWebRTC
+import org.webrtc.MediaConstraints
+import org.webrtc.MediaStream
+import org.webrtc.PeerConnection
+import org.webrtc.PeerConnectionFactory
+import org.webrtc.RtpReceiver
+import org.webrtc.RtpSender
+import org.webrtc.SdpObserver
+import org.webrtc.SessionDescription
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
+import android.media.AudioTrack as AudioTrackAndroid
+import org.webrtc.AudioTrack as AudioTrackWebRTC
 
 /**
  * Android implementation of RealtimeClient using WebRTC for OpenAI Realtime API.

@@ -1,11 +1,11 @@
 package llc.lookatwhataicando.codeoba.core.data.realtime
 
-import io.ktor.client.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonObject
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent

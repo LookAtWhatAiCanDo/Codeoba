@@ -1,9 +1,18 @@
 package llc.lookatwhataicando.codeoba.core
 
-import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureService
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
+import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
+import llc.lookatwhataicando.codeoba.core.domain.AudioRouteManager
+import llc.lookatwhataicando.codeoba.core.domain.CompanionCommand
+import llc.lookatwhataicando.codeoba.core.domain.CompanionProxy
+import llc.lookatwhataicando.codeoba.core.domain.McpClient
+import llc.lookatwhataicando.codeoba.core.domain.McpResult
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeClient
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
