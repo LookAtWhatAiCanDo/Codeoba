@@ -6,6 +6,9 @@ import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import llc.lookatwhataicando.codeoba.core.domain.*
+import com.twilio.audioswitch.AudioDevice
+import com.twilio.audioswitch.AudioSwitch
+import com.twilio.audioswitch.bluetooth.BluetoothHeadsetConnectionListener
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -98,6 +101,12 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
 
     private val useAudioPlayerWebRTC = true
     
+    // AudioSwitch for managing audio routing (speaker, Bluetooth, wired headset)
+    private var audioSwitch: AudioSwitch? = null
+    
+    // Volume control (0.0 to 1.0)
+    private var audioVolume: Float = 1.0f
+    
     // Context must be provided before connecting
     private var appContext: Context? = null
 
@@ -108,6 +117,43 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     fun initialize(context: Context) {
         Log.d(TAG, "initialize: Initializing RealtimeClient with context")
         appContext = context.applicationContext
+        
+        // Initialize AudioSwitch for audio routing management
+        try {
+            val bluetoothListener = object : BluetoothHeadsetConnectionListener {
+                override fun onBluetoothHeadsetStateChanged(headsetName: String?, state: Int) {
+                    Log.i(TAG, "Bluetooth headset state changed: device=$headsetName, state=$state")
+                    // AudioSwitch automatically updates available devices
+                }
+                
+                override fun onBluetoothScoStateChanged(state: Int) {
+                    Log.i(TAG, "Bluetooth SCO state changed: state=$state")
+                }
+                
+                override fun onBluetoothHeadsetActivationError() {
+                    Log.e(TAG, "Bluetooth headset activation error")
+                }
+            }
+            
+            audioSwitch = AudioSwitch(
+                context = context.applicationContext,
+                loggingEnabled = debug,
+                audioFocusChangeListener = { focused ->
+                    Log.d(TAG, "Audio focus changed: focused=$focused")
+                },
+                preferredDeviceList = listOf(
+                    AudioDevice.BluetoothHeadset::class.java,
+                    AudioDevice.WiredHeadset::class.java,
+                    AudioDevice.Speakerphone::class.java,
+                    AudioDevice.Earpiece::class.java
+                ),
+                bluetoothHeadsetConnectionListener = bluetoothListener
+            )
+            Log.i(TAG, "initialize: AudioSwitch initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "initialize: Failed to initialize AudioSwitch: ${e.message}", e)
+            // Continue without AudioSwitch - fallback to system default routing
+        }
         
         // Initialize WebRTC
         val initOptions = PeerConnectionFactory.InitializationOptions.builder(appContext)
@@ -218,6 +264,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
                     mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
                 }
             )
+            
+            // Step 7: Start AudioSwitch for audio routing management
+            Log.d(TAG, "connect: Starting AudioSwitch...")
+            audioSwitch?.start { availableDevices, selectedDevice ->
+                Log.i(TAG, "AudioSwitch devices changed: available=$availableDevices, selected=$selectedDevice")
+            }
+            audioSwitch?.activate()
+            Log.d(TAG, "connect: AudioSwitch started and activated")
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
             Log.e(TAG, errorMsg, e)
@@ -229,6 +283,11 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     actual override suspend fun disconnect() {
         Log.i(TAG, "disconnect: Disconnecting...")
         try {
+            // Stop AudioSwitch
+            Log.d(TAG, "disconnect: Stopping AudioSwitch...")
+            audioSwitch?.deactivate()
+            audioSwitch?.stop()
+            
             setLocalAudioTrackMicrophoneEnabled(false)
             localAudioTrackMicrophoneSender?.dispose()
             localAudioTrackMicrophoneSender = null
@@ -341,29 +400,27 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             val track = receiver.track()
             Log.d(TAG, "onAddTrack(receiver={..., track=${track}, ...}, mediaStreams(${mediaStreams.size})=[...])")
 
-            // Note: Audio frames are typically received via RTP and would need
-            // a custom audio sink to extract PCM data. For now, this is a placeholder.
-            // In production, you would set up an AudioTrackSink to capture frames.
-
             val trackKind = track?.kind()
             if (trackKind == AudioTrackWebRTC.AUDIO_TRACK_KIND) {
                 val audioTrackWebRTC = track as AudioTrackWebRTC
-                var audioTrackAndroid: AudioTrackAndroid? = null
-                var audioTrackSink: AudioTrackSink? = null
-//                if (!useAudioPlayerWebRTC) {
-//                    // TODO: Verify this outputs to the AudioSwitch routed audio output device correctly...
-//                    audioTrackAndroid = createMonoAudioTrack()
-//                    audioTrackSink = MyAudioSink(audioTrackAndroid) { isSpeakerEnabled }
-//                    audioTrackWebRTC.addSink(audioTrackSink)
-//                }
+                
+                // WebRTC automatically handles audio playback through the selected audio device
+                // AudioSwitch manages the routing (speaker, Bluetooth, wired headset)
+                Log.i(TAG, "onAddTrack: Remote audio track received, WebRTC will handle playback")
+                
                 val remoteAudioTrackInfo = RemoteAudioTrackInfo(
                     audioTrackWebRTC = audioTrackWebRTC,
-                    audioTrackAndroid = audioTrackAndroid,
-                    audioTrackSink = audioTrackSink
+                    audioTrackAndroid = null, // Not using custom AudioTrack
+                    audioTrackSink = null // Not extracting raw PCM data
                 )
                 remoteAudioTrackInfos.add(remoteAudioTrackInfo)
 
+                // Enable speaker playback
                 setLocalAudioTrackSpeakerEnabled(true)
+                
+                // Apply current volume setting to new track
+                audioTrackWebRTC.setVolume(audioVolume.toDouble())
+                Log.d(TAG, "onAddTrack: Applied volume ${audioVolume} to remote audio track")
             }
         }
 
@@ -586,5 +643,56 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             _events.emit(RealtimeEvent.Error("$type failed to send: ${e.message}"))
             return false
         }
+    }
+    
+    /**
+     * Set playback volume for received audio.
+     * 
+     * @param volume Volume level from 0.0 (mute) to 1.0 (full volume)
+     */
+    fun setVolume(volume: Float) {
+        require(volume in 0.0f..1.0f) { "Volume must be between 0.0 and 1.0" }
+        audioVolume = volume
+        Log.d(TAG, "setVolume: Setting playback volume to $volume")
+        
+        // Apply volume to all remote audio tracks
+        remoteAudioTrackInfos.forEach { info ->
+            info.audioTrackWebRTC.setVolume(volume.toDouble())
+        }
+    }
+    
+    /**
+     * Get current playback volume.
+     * 
+     * @return Current volume level (0.0 to 1.0)
+     */
+    fun getVolume(): Float = audioVolume
+    
+    /**
+     * Get list of available audio devices.
+     * 
+     * @return List of available audio devices, or empty list if AudioSwitch not initialized
+     */
+    fun getAvailableAudioDevices(): List<AudioDevice> {
+        return audioSwitch?.availableAudioDevices ?: emptyList()
+    }
+    
+    /**
+     * Get currently selected audio device.
+     * 
+     * @return Currently selected audio device, or null if AudioSwitch not initialized
+     */
+    fun getSelectedAudioDevice(): AudioDevice? {
+        return audioSwitch?.selectedAudioDevice
+    }
+    
+    /**
+     * Select a specific audio device for playback.
+     * 
+     * @param device The audio device to select (from getAvailableAudioDevices())
+     */
+    fun selectAudioDevice(device: AudioDevice) {
+        Log.i(TAG, "selectAudioDevice: Selecting audio device: $device")
+        audioSwitch?.selectDevice(device)
     }
 }

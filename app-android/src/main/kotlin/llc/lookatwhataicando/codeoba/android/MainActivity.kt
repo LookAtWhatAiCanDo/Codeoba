@@ -6,11 +6,15 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import llc.lookatwhataicando.codeoba.core.CodeobaApp
@@ -24,6 +28,7 @@ import llc.lookatwhataicando.codeoba.core.ui.CodeobaUI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -37,11 +42,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var codeobaApp: CodeobaApp
     
     companion object {
+        private const val TAG = "MainActivity"
         private const val PREFS_NAME = "codeoba_prefs"
         private const val KEY_API_KEY_ENCRYPTED = "api_key_encrypted"
         private const val KEY_IV = "api_key_iv"
         private const val KEYSTORE_ALIAS = "CodeobaApiKeyAlias"
     }
+    
+    private val snackbarHostState = SnackbarHostState()
     
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -51,17 +59,33 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    private val requestMultiplePermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        permissions.entries.forEach { entry ->
+            if (!entry.value) {
+                // Handle permission denied
+                val permissionName = when (entry.key) {
+                    Manifest.permission.RECORD_AUDIO -> "Microphone"
+                    Manifest.permission.BLUETOOTH_CONNECT -> "Bluetooth"
+                    else -> entry.key
+                }
+                val message = "$permissionName permission denied. Some features may not work."
+                Log.w(TAG, message)
+                
+                // Show snackbar to inform user
+                scope.launch {
+                    snackbarHostState.showSnackbar(message)
+                }
+            }
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Request microphone permission
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        // Request required permissions
+        requestRequiredPermissions()
         
         // Initialize CodeobaApp with platform-specific implementations
         val realtimeClient = RealtimeClientImpl()
@@ -81,18 +105,22 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             MaterialTheme {
-                Surface {
-                    // Get API key from secure storage or BuildConfig default
-                    val apiKey = getApiKey()
-                    
-                    val config = RealtimeConfig(
-                        dangerousApiKey = apiKey,
-                        // TODO: Better injection of endpoint from BuildConfig...
-                        endpoint = System.getProperty("realtime.endpoint")
-                            ?: "https://api.openai.com/v1/realtime"
-                    )
-                    
-                    CodeobaUI(app = codeobaApp, config = config)
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
+                ) { _ ->
+                    Surface {
+                        // Get API key from secure storage or BuildConfig default
+                        val apiKey = getApiKey()
+                        
+                        val config = RealtimeConfig(
+                            dangerousApiKey = apiKey,
+                            // TODO: Better injection of endpoint from BuildConfig...
+                            endpoint = System.getProperty("realtime.endpoint")
+                                ?: "https://api.openai.com/v1/realtime"
+                        )
+                        
+                        CodeobaUI(app = codeobaApp, config = config)
+                    }
                 }
             }
         }
@@ -194,5 +222,39 @@ class MainActivity : ComponentActivity() {
         val decrypted = cipher.doFinal(encrypted)
         
         return String(decrypted, Charsets.UTF_8)
+    }
+    
+    /**
+     * Request required runtime permissions.
+     * - RECORD_AUDIO: Required for microphone access
+     * - BLUETOOTH_CONNECT: Required for Bluetooth audio routing on Android 12+ (API 31+)
+     */
+    private fun requestRequiredPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+        
+        // Check RECORD_AUDIO permission
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
+        }
+        
+        // Check BLUETOOTH_CONNECT permission (required on Android 12+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+        }
+        
+        // Request permissions if needed
+        if (permissionsToRequest.isNotEmpty()) {
+            requestMultiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
+        }
     }
 }
