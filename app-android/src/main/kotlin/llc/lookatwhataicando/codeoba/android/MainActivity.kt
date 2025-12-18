@@ -51,17 +51,21 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    private val requestMultiplePermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        permissions.entries.forEach { entry ->
+            if (!entry.value) {
+                // Handle permission denied for ${entry.key}
+            }
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Request microphone permission
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        // Request required permissions
+        requestRequiredPermissions()
         
         // Initialize CodeobaApp with platform-specific implementations
         val realtimeClient = RealtimeClientImpl()
@@ -194,5 +198,39 @@ class MainActivity : ComponentActivity() {
         val decrypted = cipher.doFinal(encrypted)
         
         return String(decrypted, Charsets.UTF_8)
+    }
+    
+    /**
+     * Request required runtime permissions.
+     * - RECORD_AUDIO: Required for microphone access
+     * - BLUETOOTH_CONNECT: Required for Bluetooth audio routing on Android 12+ (API 31+)
+     */
+    private fun requestRequiredPermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+        
+        // Check RECORD_AUDIO permission
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
+        }
+        
+        // Check BLUETOOTH_CONNECT permission (required on Android 12+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+        }
+        
+        // Request permissions if needed
+        if (permissionsToRequest.isNotEmpty()) {
+            requestMultiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
+        }
     }
 }
