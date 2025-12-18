@@ -13,6 +13,7 @@ import llc.lookatwhataicando.codeoba.core.EventLogEntry
 import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val connectionState by app.connectionState.collectAsState()
@@ -22,61 +23,360 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val activeRoute by app.activeAudioRoute.collectAsState()
     
     val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                // Placeholder drawer content
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Menu",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                    Divider()
+                    // Placeholder menu items
+                    Text("Settings")
+                    Text("About")
+                }
+            }
+        }
     ) {
-        // Connection Panel
-        ConnectionPanel(
-            connectionState = connectionState,
-            onConnect = { scope.launch { app.connect(config) } },
-            onDisconnect = { scope.launch { app.disconnect() } }
-        )
-        
-        // Voice Panel
-        VoicePanel(
-            audioCaptureState = audioCaptureState,
-            connectionState = connectionState,
-            onStartMic = { scope.launch {
-                // TODO: cancelRemoteSpeech()
-                // TODO: play intro sound
-                app.startMicrophone()
-                app.realtimeClient.dataSendInputAudioBufferClear()
-            } },
-            onStopMic = { scope.launch {
-                app.stopMicrophone()
-                app.realtimeClient.dataSendInputAudioBufferCommit()
-                app.realtimeClient.dataSendResponseCreate()
-                // TODO: play outro sound
-            } }
-        )
-        
-        // Audio Route Selection (if available)
-        if (audioRoutes.isNotEmpty()) {
-            AudioRoutePanel(
-                routes = audioRoutes,
-                activeRoute = activeRoute,
-                onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Codeoba") },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Text("☰", style = MaterialTheme.typography.headlineMedium)
+                        }
+                    },
+                    actions = {
+                        Switch(
+                            checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    scope.launch { app.connect(config) }
+                                } else {
+                                    scope.launch { app.disconnect() }
+                                }
+                            },
+                            enabled = connectionState !is ConnectionState.Connecting
+                        )
+                    }
+                )
+            },
+            bottomBar = {
+                Column {
+                    // Footer with PTT Button
+                    PushToTalkFooter(
+                        audioCaptureState = audioCaptureState,
+                        connectionState = connectionState,
+                        onStartMic = { scope.launch {
+                            // TODO: cancelRemoteSpeech()
+                            // TODO: play intro sound
+                            app.startMicrophone()
+                            app.realtimeClient.dataSendInputAudioBufferClear()
+                        } },
+                        onStopMic = { scope.launch {
+                            app.stopMicrophone()
+                            app.realtimeClient.dataSendInputAudioBufferCommit()
+                            app.realtimeClient.dataSendResponseCreate()
+                            // TODO: play outro sound
+                        } }
+                    )
+                    
+                    // Audio Route Dropdown (only show if multiple routes available)
+                    if (audioRoutes.size > 1) {
+                        AudioRouteDropdown(
+                            routes = audioRoutes,
+                            activeRoute = activeRoute,
+                            onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            // Conversation panel with integrated text input
+            ConversationPanel(
+                events = eventLog,
+                connectionState = connectionState,
+                onSendText = { text ->
+                    // TODO: Handle text submission
+                    println("Text submitted: $text")
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
             )
         }
-        
-        // Event Log
-        EventLog(
-            events = eventLog,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
 @Composable
-fun ConnectionPanel(
+fun PushToTalkFooter(
+    audioCaptureState: AudioCaptureState,
     connectionState: ConnectionState,
-    onConnect: () -> Unit,
-    onDisconnect: () -> Unit
+    onStartMic: () -> Unit,
+    onStopMic: () -> Unit
 ) {
+    val isCapturing = audioCaptureState is AudioCaptureState.Capturing
+    val isConnected = connectionState is ConnectionState.Connected
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Status text
+            Text(
+                text = when (audioCaptureState) {
+                    is AudioCaptureState.Idle -> "Ready to talk"
+                    is AudioCaptureState.Starting -> "Starting microphone..."
+                    is AudioCaptureState.Capturing -> "🔴 Recording"
+                    is AudioCaptureState.Error -> "⚠️ ${audioCaptureState.message}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isCapturing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Large PTT Button - positioned for thumb access
+            Button(
+                onClick = if (isCapturing) onStopMic else onStartMic,
+                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isCapturing) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Text(
+                    text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ConversationPanel(
+    events: List<EventLogEntry>,
+    connectionState: ConnectionState,
+    onSendText: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var textInput by remember { mutableStateOf("") }
+    val isConnected = connectionState is ConnectionState.Connected
+    
+    Card(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            // Conversation header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Conversation:",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            
+            // Conversation messages (scrollable)
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(events) { event ->
+                    ConversationMessage(event)
+                }
+            }
+            
+            // Text input at bottom
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = textInput,
+                    onValueChange = { textInput = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Text Input") },
+                    enabled = isConnected,
+                    singleLine = true
+                )
+                Button(
+                    onClick = {
+                        if (textInput.isNotEmpty()) {
+                            onSendText(textInput)
+                            textInput = ""
+                        }
+                    },
+                    enabled = isConnected && textInput.isNotEmpty()
+                ) {
+                    Text("Send")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConversationMessage(event: EventLogEntry) {
+    when (event) {
+        is EventLogEntry.Transcript -> {
+            // Local message (user input) - aligned left
+            Card(
+                modifier = Modifier.fillMaxWidth(0.8f),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Text(
+                    text = event.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+        is EventLogEntry.ToolCall, is EventLogEntry.ToolResult, is EventLogEntry.Info -> {
+            // Remote message (AI response) - aligned right
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    val text = when (event) {
+                        is EventLogEntry.ToolCall -> "Tool: ${event.name}"
+                        is EventLogEntry.ToolResult -> {
+                            val icon = if (event.success) "✅" else "❌"
+                            "$icon ${event.name}: ${event.result}"
+                        }
+                        is EventLogEntry.Info -> event.message
+                        else -> ""
+                    }
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+        }
+        is EventLogEntry.Error -> {
+            // Error message - full width
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Text(
+                    text = "⚠️ ${event.message}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AudioRouteDropdown(
+    routes: List<AudioRoute>,
+    activeRoute: AudioRoute?,
+    onSelectRoute: (AudioRoute) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = activeRoute?.name ?: "Select Audio Device",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Audio Device") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    routes.forEach { route ->
+                        DropdownMenuItem(
+                            text = { Text(route.name) },
+                            onClick = {
+                                onSelectRoute(route)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TextInputPanel(
+    connectionState: ConnectionState,
+    onSendText: (String) -> Unit
+) {
+    var textInput by remember { mutableStateOf("") }
+    val isConnected = connectionState is ConnectionState.Connected
+    
     Card {
         Column(
             modifier = Modifier
@@ -85,115 +385,22 @@ fun ConnectionPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Connection",
+                text = "Text Input",
                 style = MaterialTheme.typography.titleMedium
             )
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = when (connectionState) {
-                        is ConnectionState.Disconnected -> "Disconnected"
-                        is ConnectionState.Connecting -> "Connecting..."
-                        is ConnectionState.Connected -> "Connected"
-                        is ConnectionState.Error -> "Error: ${connectionState.message}"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (connectionState is ConnectionState.Connected) {
-                    Button(onClick = onDisconnect) {
-                        Text("Disconnect")
-                    }
-                } else {
-                    Button(
-                        onClick = onConnect,
-                        enabled = connectionState !is ConnectionState.Connecting
-                    ) {
-                        Text("Connect")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun VoicePanel(
-    audioCaptureState: AudioCaptureState,
-    connectionState: ConnectionState,
-    onStartMic: () -> Unit,
-    onStopMic: () -> Unit
-) {
-    var textInput by remember { mutableStateOf("") }
-    
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Voice & Text Input",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            // Push-to-Talk Button (Walkie-Talkie Style)
-            val isCapturing = audioCaptureState is AudioCaptureState.Capturing
-            val isConnected = connectionState is ConnectionState.Connected
-            
-            Button(
-                onClick = if (isCapturing) onStopMic else onStartMic,
-                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCapturing) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = when (audioCaptureState) {
-                            is AudioCaptureState.Idle -> "Ready to record"
-                            is AudioCaptureState.Starting -> "Starting..."
-                            is AudioCaptureState.Capturing -> "Recording..."
-                            is AudioCaptureState.Error -> "Error: ${audioCaptureState.message}"
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-            
-            // Text Input Alternative
             OutlinedTextField(
                 value = textInput,
                 onValueChange = { textInput = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Or type your command...") },
+                label = { Text("Type your command...") },
                 placeholder = { Text("e.g., Create a new function called calculateSum") },
                 enabled = isConnected,
                 trailingIcon = {
                     if (textInput.isNotEmpty()) {
                         IconButton(
                             onClick = {
-                                // TODO: Handle text submission
-                                println("Text submitted: $textInput")
+                                onSendText(textInput)
                                 textInput = ""
                             }
                         ) {
@@ -245,62 +452,3 @@ fun AudioRoutePanel(
     }
 }
 
-@Composable
-fun EventLog(
-    events: List<EventLogEntry>,
-    modifier: Modifier = Modifier
-) {
-    Card(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Event Log",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(events) { event ->
-                    EventLogItem(event)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EventLogItem(event: EventLogEntry) {
-    val (text, color) = when (event) {
-        is EventLogEntry.Transcript -> {
-            val prefix = if (event.isFinal) "📝 " else "💭 "
-            prefix + event.text to MaterialTheme.colorScheme.primary
-        }
-        is EventLogEntry.ToolCall -> {
-            "🔧 Tool: ${event.name}\n   Args: ${event.args}" to MaterialTheme.colorScheme.secondary
-        }
-        is EventLogEntry.ToolResult -> {
-            val icon = if (event.success) "✅" else "❌"
-            "$icon ${event.name}: ${event.result}" to 
-                if (event.success) MaterialTheme.colorScheme.tertiary 
-                else MaterialTheme.colorScheme.error
-        }
-        is EventLogEntry.Info -> {
-            "ℹ️ ${event.message}" to MaterialTheme.colorScheme.onSurface
-        }
-        is EventLogEntry.Error -> {
-            "⚠️ ${event.message}" to MaterialTheme.colorScheme.error
-        }
-    }
-    
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = color
-    )
-}

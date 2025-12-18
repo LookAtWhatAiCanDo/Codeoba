@@ -45,7 +45,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Core Abstractions | ✅ Complete | 100% |
 | Desktop App | 🟡 Basic Structure | 70% |
 | Android App | 🟡 Basic Structure | 80% |
-| Shared UI | 🟡 Basic | 60% |
+| Shared UI | 🟡 Improved Layout | 75% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
 | Phase 2: Android Audio & Playback | 🟡 In Progress | 75% |
 | Phase 3: iOS Implementation | 🔴 Not Started | 0% |
@@ -136,20 +136,36 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 ### 5. Shared UI (Compose Multiplatform)
 
-**Implementation:** 🟡 Basic (60%)
+**Implementation:** 🟡 Improved Layout (75%)
 
 Current UI includes:
-- ✅ Connection status panel
-- ✅ Push-to-talk button (large, color-coded: blue → red when recording)
-- ✅ Text input field (multi-line alternative to voice)
-- ✅ Audio route selection dropdown
-- ✅ Event log display
+- ✅ **Titlebar with Connect Switch** (improved ergonomics)
+  - App name display
+  - Connection status text
+  - Switch control (ON = connect, OFF = disconnect)
+  - Primary container surface with elevation
+- ✅ **Push-to-talk button in footer** (thumb-accessible positioning)
+  - Large 72dp height button for easy access
+  - Status text above button
+  - Elevated surface with shadow for prominence
+  - Color-coded: blue → red when recording
+- ✅ Text input panel (separated from voice controls)
+- ✅ Audio route selection panel
+- ✅ Event log display (auto-expands to fill space)
 - ✅ Material 3 design system
 
 **What's Working:**
-- Desktop UI structure is implemented
+- Desktop UI structure is implemented with improved layout
 - Android UI integrates with service interfaces
 - State management uses reactive flows
+- Three-tier layout: Titlebar (controls) → Content → Footer (PTT)
+- Optimized for one-handed mobile use
+
+**Recent Improvements (December 18, 2025):**
+- ✅ Moved PTT button to footer for thumb accessibility
+- ✅ Replaced Connect button with Switch in titlebar
+- ✅ Reorganized content area for better hierarchy
+- ✅ Improved visual separation between UI zones
 
 **Future Enhancements:**
 - Visual recording indicator (waveform animation)
