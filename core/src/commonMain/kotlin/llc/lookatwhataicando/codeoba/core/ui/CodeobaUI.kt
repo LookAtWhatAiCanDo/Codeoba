@@ -188,7 +188,7 @@ fun PushToTalkFooter(
             // Status text
             Text(
                 text = when (audioCaptureState) {
-                    is AudioCaptureState.Idle -> if (isPressed) "🔴 Talking..." else "Ready to talk"
+                    is AudioCaptureState.Idle -> "Ready to talk"
                     is AudioCaptureState.Starting -> "Starting microphone..."
                     is AudioCaptureState.Capturing -> "🔴 Talking..."
                     is AudioCaptureState.Error -> "⚠️ ${audioCaptureState.message}"
