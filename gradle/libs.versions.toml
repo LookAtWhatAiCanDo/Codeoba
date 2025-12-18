@@ -23,7 +23,7 @@ compose-compiler = "1.5.7"
 
 # Android
 android-compileSdk = "34"
-android-minSdk = "24"
+android-minSdk = "30"
 android-targetSdk = "34"
 
 [libraries]

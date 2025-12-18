@@ -47,6 +47,14 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
     }
+    
+    // Workaround for 16KB page size compatibility on Android 15+ devices
+    // See https://developer.android.com/guide/practices/page-sizes#agp_version_85_or_lower
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {
