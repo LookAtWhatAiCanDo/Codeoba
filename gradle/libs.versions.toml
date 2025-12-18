@@ -15,7 +15,7 @@ ktor = "2.3.7"
 webrtc-android = "137.7151.05"
 
 # Audio
-audioswitch = "1.1.8"
+audioswitch = "1.2.4"
 
 # AndroidX
 androidx-activity-compose = "1.8.2"

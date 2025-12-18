@@ -8,6 +8,7 @@ import androidx.annotation.RequiresPermission
 import llc.lookatwhataicando.codeoba.core.domain.*
 import com.twilio.audioswitch.AudioDevice
 import com.twilio.audioswitch.AudioSwitch
+import com.twilio.audioswitch.bluetooth.BluetoothHeadsetConnectionListener
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -119,6 +120,21 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         
         // Initialize AudioSwitch for audio routing management
         try {
+            val bluetoothListener = object : BluetoothHeadsetConnectionListener {
+                override fun onBluetoothHeadsetStateChanged(headsetName: String?, state: Int) {
+                    Log.i(TAG, "Bluetooth headset state changed: device=$headsetName, state=$state")
+                    // AudioSwitch automatically updates available devices
+                }
+                
+                override fun onBluetoothScoStateChanged(state: Int) {
+                    Log.i(TAG, "Bluetooth SCO state changed: state=$state")
+                }
+                
+                override fun onBluetoothHeadsetActivationError() {
+                    Log.e(TAG, "Bluetooth headset activation error")
+                }
+            }
+            
             audioSwitch = AudioSwitch(
                 context = context.applicationContext,
                 loggingEnabled = debug,
@@ -130,7 +146,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
                     AudioDevice.WiredHeadset::class.java,
                     AudioDevice.Speakerphone::class.java,
                     AudioDevice.Earpiece::class.java
-                )
+                ),
+                bluetoothHeadsetConnectionListener = bluetoothListener
             )
             Log.i(TAG, "initialize: AudioSwitch initialized successfully")
         } catch (e: Exception) {
