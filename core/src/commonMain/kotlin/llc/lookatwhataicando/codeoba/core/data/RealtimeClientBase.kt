@@ -253,6 +253,18 @@ abstract class RealtimeClientBase : RealtimeClient {
         })
     }
 
+    /**
+     * Send a text message to the OpenAI Realtime API.
+     * 
+     * Creates a conversation item of type "message" with role "user" and content type "input_text".
+     * The message is sent via the data channel to the OpenAI Realtime API.
+     * 
+     * @param text The text message to send to the AI
+     * @return true if the message was successfully sent, false otherwise
+     * @throws IllegalStateException if the data channel is not open
+     * 
+     * @see <a href="https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create">OpenAI API Documentation</a>
+     */
     override suspend fun sendTextMessage(text: String): Boolean {
         //
         // https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create

@@ -91,7 +91,11 @@ class CodeobaApp(
                 // Add user's text message to event log
                 addEventLogEntry(EventLogEntry.Transcript(text, true))
                 // Request response from AI
-                realtimeClient.dataSendResponseCreate()
+                try {
+                    realtimeClient.dataSendResponseCreate()
+                } catch (e: Exception) {
+                    addEventLogEntry(EventLogEntry.Error("Failed to request AI response: ${e.message}"))
+                }
             } else {
                 addEventLogEntry(EventLogEntry.Error("Failed to send text message"))
             }
