@@ -44,10 +44,10 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Project Structure | ✅ Complete | 100% |
 | Core Abstractions | ✅ Complete | 100% |
 | Desktop App | 🟡 Basic Structure | 70% |
-| Android App | 🟡 Basic Structure | 75% |
+| Android App | 🟡 Basic Structure | 80% |
 | Shared UI | 🟡 Basic | 60% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
-| Phase 2: Android Audio & Playback | 🟡 In Progress | 60% |
+| Phase 2: Android Audio & Playback | 🟡 In Progress | 75% |
 | Phase 3: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 4: MCP Protocol | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
@@ -251,13 +251,17 @@ This section outlines the planned implementation sequence for remaining features
    - 🔴 TODO: Manual testing with real Android device
    - 🔴 TODO: Verify audio reaches OpenAI via WebRTC audio track
    
-2. 🟡 **Android Audio Playback** (~0.5-1 day) → See Issue #15 - ~50%
+2. ✅ **Android Audio Playback** (~0.5-1 day) → See Issue #15 - COMPLETE
    - ✅ WebRTC automatically handles audio playback via onAddTrack
    - ✅ Remote audio track received and enabled
    - ✅ Audio automatically routed to speaker by WebRTC
-   - 🔴 TODO: Volume controls not implemented
-   - 🔴 TODO: Explicit audio routing UI not implemented
+   - ✅ Volume control implemented (setVolume method)
+   - ✅ AudioSwitch integrated for audio device management
+   - ✅ Audio routing works on speaker, Bluetooth, and wired headsets
+   - ✅ Error handling for AudioSwitch initialization
+   - ✅ Documentation updated
    - 🔴 TODO: Manual testing with real device
+   - Completed: December 18, 2025
    
 3. 🟡 **Android PTT & Text Input** (~1-1.5 days) → See Issue #16 - ~25%
    - ✅ PTT UI exists with visual feedback (blue → red)
@@ -495,7 +499,7 @@ Track progress by updating this table as features are completed:
 |-------|---------|--------|-------|
 | 1 | OpenAI Realtime WebRTC (Android) | ✅ Complete | Successfully connects to API, SDP exchange working. Completed Dec 15-16, 2025 |
 | 2 | Android Audio Streaming | ✅ Complete | WebRTC JavaAudioDeviceModule with hardware AEC/NS. PTT controls audio track. Completed Dec 17-18, 2025 |
-| 2 | Android Audio Playback | 🔴 Not Started | See Issue #15 |
+| 2 | Android Audio Playback | ✅ Complete | WebRTC handles playback, AudioSwitch for routing, volume control implemented. Completed Dec 18, 2025 |
 | 2 | Android PTT & Text Input | 🟡 Partial | PTT ✅ complete, Text input 🔴 not started. See Issue #16 |
 | 2 | Android Integration Testing | 🔴 Not Started | See Issue #17 |
 | 3 | iOS Platform | 🔴 Not Started | - |

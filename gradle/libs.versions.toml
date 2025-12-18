@@ -14,6 +14,9 @@ ktor = "2.3.7"
 # WebRTC
 webrtc-android = "137.7151.05"
 
+# Audio
+audioswitch = "1.1.8"
+
 # AndroidX
 androidx-activity-compose = "1.8.2"
 androidx-lifecycle-viewmodel-compose = "2.7.0"
@@ -45,6 +48,9 @@ androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-
 
 # WebRTC
 webrtc-android = { module = "io.github.webrtc-sdk:android", version.ref = "webrtc-android" }
+
+# Audio
+audioswitch = { module = "com.twilio:audioswitch", version.ref = "audioswitch" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
