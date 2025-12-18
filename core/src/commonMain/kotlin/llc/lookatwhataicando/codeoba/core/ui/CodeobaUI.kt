@@ -107,8 +107,9 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                 events = eventLog,
                 connectionState = connectionState,
                 onSendText = { text ->
-                    // TODO: Handle text submission
-                    println("Text submitted: $text")
+                    scope.launch {
+                        app.sendTextMessage(text)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxSize()

@@ -49,6 +49,7 @@ interface RealtimeClient {
     suspend fun dataSendInputAudioBufferClear(): Boolean
     suspend fun dataSendInputAudioBufferCommit(): Boolean
     suspend fun dataSendResponseCreate(): Boolean
+    suspend fun sendTextMessage(text: String): Boolean
 }
 
 data class RealtimeConfig(

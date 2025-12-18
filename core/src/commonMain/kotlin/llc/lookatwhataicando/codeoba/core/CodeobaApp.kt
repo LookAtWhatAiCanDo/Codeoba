@@ -83,6 +83,25 @@ class CodeobaApp(
         audioCaptureService.stop()
     }
     
+    suspend fun sendTextMessage(text: String) {
+        addEventLogEntry(EventLogEntry.Info("Sending text message: $text"))
+        try {
+            val success = realtimeClient.sendTextMessage(text)
+            if (success) {
+                // Add user's text message to event log
+                addEventLogEntry(EventLogEntry.Transcript(text, true))
+                // Request response from AI
+                realtimeClient.dataSendResponseCreate()
+            } else {
+                addEventLogEntry(EventLogEntry.Error("Failed to send text message"))
+            }
+        } catch (e: IllegalStateException) {
+            addEventLogEntry(EventLogEntry.Error("Not connected: ${e.message}"))
+        } catch (e: Exception) {
+            addEventLogEntry(EventLogEntry.Error("Failed to send text: ${e.message}"))
+        }
+    }
+    
     suspend fun selectAudioRoute(route: AudioRoute) {
         audioRouteManager.selectRoute(route)
         addEventLogEntry(EventLogEntry.Info("Audio route changed to: ${route.name}"))

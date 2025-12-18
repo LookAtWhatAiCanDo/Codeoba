@@ -253,6 +253,26 @@ abstract class RealtimeClientBase : RealtimeClient {
         })
     }
 
+    override suspend fun sendTextMessage(text: String): Boolean {
+        //
+        // https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create
+        //
+        return dataSendJson(buildJsonObject {
+            put("type", "conversation.item.create")
+            put("event_id", RealtimeClient.generateId())
+            put("item", buildJsonObject {
+                put("type", "message")
+                put("role", "user")
+                put("content", buildJsonArray {
+                    add(buildJsonObject {
+                        put("type", "input_text")
+                        put("text", text)
+                    })
+                })
+            })
+        })
+    }
+
     /**
      * Handle a data channel non-binary (ie "text") message.
      * Common implementation used by all platforms.

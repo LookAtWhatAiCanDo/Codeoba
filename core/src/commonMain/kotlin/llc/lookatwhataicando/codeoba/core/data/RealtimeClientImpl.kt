@@ -31,4 +31,5 @@ expect class RealtimeClientImpl() : RealtimeClientBase {
     override suspend fun dataSendInputAudioBufferClear(): Boolean
     override suspend fun dataSendInputAudioBufferCommit(): Boolean
     override suspend fun dataSendResponseCreate(): Boolean
+    override suspend fun sendTextMessage(text: String): Boolean
 }
