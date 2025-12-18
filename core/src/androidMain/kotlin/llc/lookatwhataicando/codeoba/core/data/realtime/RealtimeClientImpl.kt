@@ -1,38 +1,46 @@
-package llc.lookatwhataicando.codeoba.core.data
+package llc.lookatwhataicando.codeoba.core.data.realtime
 
 import android.Manifest
 import android.content.Context
-import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import llc.lookatwhataicando.codeoba.core.domain.*
 import com.twilio.audioswitch.AudioDevice
 import com.twilio.audioswitch.AudioSwitch
 import com.twilio.audioswitch.bluetooth.BluetoothHeadsetConnectionListener
-import io.ktor.client.*
-import io.ktor.client.engine.okhttp.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.*
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import llc.lookatwhataicando.codeoba.core.BuildConfig
-import org.webrtc.*
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
+import org.webrtc.AudioTrackSink
+import org.webrtc.DataChannel
+import org.webrtc.IceCandidate
+import org.webrtc.Logging
 import org.webrtc.Logging.Severity
-import org.webrtc.AudioTrack as AudioTrackWebRTC
-import org.webrtc.audio.AudioDeviceModule
+import org.webrtc.MediaConstraints
+import org.webrtc.MediaStream
+import org.webrtc.PeerConnection
+import org.webrtc.PeerConnectionFactory
+import org.webrtc.RtpReceiver
+import org.webrtc.RtpSender
+import org.webrtc.SdpObserver
+import org.webrtc.SessionDescription
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
+import android.media.AudioTrack as AudioTrackAndroid
+import org.webrtc.AudioTrack as AudioTrackWebRTC
 
 /**
  * Android implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
@@ -165,7 +173,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     actual override suspend fun connect(config: RealtimeConfig) {
-        if (_connectionState.value == ConnectionState.Connected || 
+        if (_connectionState.value == ConnectionState.Connected ||
             _connectionState.value == ConnectionState.Connecting) {
             Log.w(TAG, "connect: Already connected or connecting, ignoring connect request")
             return

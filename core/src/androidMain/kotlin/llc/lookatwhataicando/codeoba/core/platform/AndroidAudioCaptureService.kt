@@ -4,15 +4,15 @@ import android.Manifest
 import android.content.Context
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureService
-import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
-import llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl
+import llc.lookatwhataicando.codeoba.core.data.realtime.RealtimeClientImpl
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureService
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
 
 /**
  * Android AudioCaptureService that works with WebRTC JavaAudioDeviceModule.
@@ -21,7 +21,7 @@ import llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl
  * by WebRTC. This service only manages UI state and controls the WebRTC audio track
  * enable/disable for PTT functionality.
  * 
- * @see llc.lookatwhataicando.codeoba.core.data.RealtimeClientImpl for actual audio handling
+ * @see RealtimeClientImpl for actual audio handling
  */
 class AndroidAudioCaptureService(
     private val context: Context,

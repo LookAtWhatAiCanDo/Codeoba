@@ -1,10 +1,10 @@
 package llc.lookatwhataicando.codeoba.core.data
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import llc.lookatwhataicando.codeoba.core.domain.CompanionCommand
 import llc.lookatwhataicando.codeoba.core.domain.CompanionNotification
 import llc.lookatwhataicando.codeoba.core.domain.CompanionProxy
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * Stub implementation of CompanionProxy for MVP.

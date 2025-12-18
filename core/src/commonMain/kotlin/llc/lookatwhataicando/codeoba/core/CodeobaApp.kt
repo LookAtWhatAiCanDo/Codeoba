@@ -1,9 +1,22 @@
 package llc.lookatwhataicando.codeoba.core
 
-import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureService
+import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
+import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
+import llc.lookatwhataicando.codeoba.core.domain.AudioRouteManager
+import llc.lookatwhataicando.codeoba.core.domain.CompanionCommand
+import llc.lookatwhataicando.codeoba.core.domain.CompanionProxy
+import llc.lookatwhataicando.codeoba.core.domain.McpClient
+import llc.lookatwhataicando.codeoba.core.domain.McpResult
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeClient
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
 
 /**
  * Main app state and coordinator.
@@ -81,6 +94,29 @@ class CodeobaApp(
     suspend fun stopMicrophone() {
         addEventLogEntry(EventLogEntry.Info("Disabling microphone..."))
         audioCaptureService.stop()
+    }
+    
+    suspend fun sendTextMessage(text: String) {
+        addEventLogEntry(EventLogEntry.Info("Sending text message: $text"))
+        try {
+            val success = realtimeClient.dataSendConversationItemCreateUserMessageInputText(text)
+            if (success) {
+                // Add user's text message to event log
+                addEventLogEntry(EventLogEntry.Transcript(text, true))
+                // Request response from AI
+                try {
+                    realtimeClient.dataSendResponseCreate()
+                } catch (e: Exception) {
+                    addEventLogEntry(EventLogEntry.Error("Failed to request AI response: ${e.message}"))
+                }
+            } else {
+                addEventLogEntry(EventLogEntry.Error("Failed to send text message"))
+            }
+        } catch (e: IllegalStateException) {
+            addEventLogEntry(EventLogEntry.Error("Not connected: ${e.message}"))
+        } catch (e: Exception) {
+            addEventLogEntry(EventLogEntry.Error("Failed to send text: ${e.message}"))
+        }
     }
     
     suspend fun selectAudioRoute(route: AudioRoute) {
