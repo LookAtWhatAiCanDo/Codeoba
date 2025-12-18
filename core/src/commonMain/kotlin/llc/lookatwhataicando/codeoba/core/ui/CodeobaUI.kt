@@ -24,20 +24,49 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val scope = rememberCoroutineScope()
     
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Connection Panel
-        ConnectionPanel(
+        // Titlebar with Connect Switch
+        ConnectionTitlebar(
             connectionState = connectionState,
             onConnect = { scope.launch { app.connect(config) } },
             onDisconnect = { scope.launch { app.disconnect() } }
         )
         
-        // Voice Panel
-        VoicePanel(
+        // Main content area
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Text Input Alternative
+            TextInputPanel(
+                connectionState = connectionState,
+                onSendText = { text ->
+                    // TODO: Handle text submission
+                    println("Text submitted: $text")
+                }
+            )
+            
+            // Audio Route Selection (if available)
+            if (audioRoutes.isNotEmpty()) {
+                AudioRoutePanel(
+                    routes = audioRoutes,
+                    activeRoute = activeRoute,
+                    onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+                )
+            }
+            
+            // Event Log
+            EventLog(
+                events = eventLog,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        // Footer with PTT Button
+        PushToTalkFooter(
             audioCaptureState = audioCaptureState,
             connectionState = connectionState,
             onStartMic = { scope.launch {
@@ -53,30 +82,139 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                 // TODO: play outro sound
             } }
         )
-        
-        // Audio Route Selection (if available)
-        if (audioRoutes.isNotEmpty()) {
-            AudioRoutePanel(
-                routes = audioRoutes,
-                activeRoute = activeRoute,
-                onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
-            )
-        }
-        
-        // Event Log
-        EventLog(
-            events = eventLog,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
 @Composable
-fun ConnectionPanel(
+fun ConnectionTitlebar(
     connectionState: ConnectionState,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit
 ) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "Codeoba",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = when (connectionState) {
+                        is ConnectionState.Disconnected -> "Disconnected"
+                        is ConnectionState.Connecting -> "Connecting..."
+                        is ConnectionState.Connected -> "Connected"
+                        is ConnectionState.Error -> "Error: ${connectionState.message}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Connect",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Switch(
+                    checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
+                    onCheckedChange = { isChecked ->
+                        if (isChecked) {
+                            onConnect()
+                        } else {
+                            onDisconnect()
+                        }
+                    },
+                    enabled = connectionState !is ConnectionState.Connecting
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PushToTalkFooter(
+    audioCaptureState: AudioCaptureState,
+    connectionState: ConnectionState,
+    onStartMic: () -> Unit,
+    onStopMic: () -> Unit
+) {
+    val isCapturing = audioCaptureState is AudioCaptureState.Capturing
+    val isConnected = connectionState is ConnectionState.Connected
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Status text
+            Text(
+                text = when (audioCaptureState) {
+                    is AudioCaptureState.Idle -> "Ready to talk"
+                    is AudioCaptureState.Starting -> "Starting microphone..."
+                    is AudioCaptureState.Capturing -> "🔴 Recording"
+                    is AudioCaptureState.Error -> "⚠️ ${audioCaptureState.message}"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isCapturing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+            )
+            
+            // Large PTT Button - positioned for thumb access
+            Button(
+                onClick = if (isCapturing) onStopMic else onStartMic,
+                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isCapturing) 
+                        MaterialTheme.colorScheme.error 
+                    else 
+                        MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Text(
+                    text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TextInputPanel(
+    connectionState: ConnectionState,
+    onSendText: (String) -> Unit
+) {
+    var textInput by remember { mutableStateOf("") }
+    val isConnected = connectionState is ConnectionState.Connected
+    
     Card {
         Column(
             modifier = Modifier
@@ -85,115 +223,22 @@ fun ConnectionPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Connection",
+                text = "Text Input",
                 style = MaterialTheme.typography.titleMedium
             )
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = when (connectionState) {
-                        is ConnectionState.Disconnected -> "Disconnected"
-                        is ConnectionState.Connecting -> "Connecting..."
-                        is ConnectionState.Connected -> "Connected"
-                        is ConnectionState.Error -> "Error: ${connectionState.message}"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                if (connectionState is ConnectionState.Connected) {
-                    Button(onClick = onDisconnect) {
-                        Text("Disconnect")
-                    }
-                } else {
-                    Button(
-                        onClick = onConnect,
-                        enabled = connectionState !is ConnectionState.Connecting
-                    ) {
-                        Text("Connect")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun VoicePanel(
-    audioCaptureState: AudioCaptureState,
-    connectionState: ConnectionState,
-    onStartMic: () -> Unit,
-    onStopMic: () -> Unit
-) {
-    var textInput by remember { mutableStateOf("") }
-    
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Voice & Text Input",
-                style = MaterialTheme.typography.titleMedium
-            )
-            
-            // Push-to-Talk Button (Walkie-Talkie Style)
-            val isCapturing = audioCaptureState is AudioCaptureState.Capturing
-            val isConnected = connectionState is ConnectionState.Connected
-            
-            Button(
-                onClick = if (isCapturing) onStopMic else onStartMic,
-                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCapturing) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = when (audioCaptureState) {
-                            is AudioCaptureState.Idle -> "Ready to record"
-                            is AudioCaptureState.Starting -> "Starting..."
-                            is AudioCaptureState.Capturing -> "Recording..."
-                            is AudioCaptureState.Error -> "Error: ${audioCaptureState.message}"
-                        },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-            
-            // Text Input Alternative
             OutlinedTextField(
                 value = textInput,
                 onValueChange = { textInput = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Or type your command...") },
+                label = { Text("Type your command...") },
                 placeholder = { Text("e.g., Create a new function called calculateSum") },
                 enabled = isConnected,
                 trailingIcon = {
                     if (textInput.isNotEmpty()) {
                         IconButton(
                             onClick = {
-                                // TODO: Handle text submission
-                                println("Text submitted: $textInput")
+                                onSendText(textInput)
                                 textInput = ""
                             }
                         ) {
