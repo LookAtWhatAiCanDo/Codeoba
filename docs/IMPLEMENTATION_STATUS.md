@@ -47,7 +47,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Android App | 🟡 Basic Structure | 80% |
 | Shared UI | 🟡 Improved Layout | 75% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
-| Phase 2: Android Audio & Playback | 🟡 In Progress | 75% |
+| Phase 2: Android Audio & Playback | 🟡 In Progress | 90% |
 | Phase 3: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 4: MCP Protocol | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
@@ -252,7 +252,7 @@ This section outlines the planned implementation sequence for remaining features
 
 **Status:** 🟡 In Progress (as of December 18, 2025)
 
-**Completion:** ~45% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
+**Completion:** ~90% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
 
 **Tasks:**
 1. ✅ **Android Audio Streaming Integration** → COMPLETE (Issue #14) - 100%
@@ -279,13 +279,19 @@ This section outlines the planned implementation sequence for remaining features
    - 🔴 TODO: Manual testing with real device
    - Completed: December 18, 2025
    
-3. 🟡 **Android PTT & Text Input** (~1-1.5 days) → See Issue #16 - ~25%
+3. ✅ **Android PTT & Text Input** (~1-1.5 days) → See Issue #16 - COMPLETE
    - ✅ PTT UI exists with visual feedback (blue → red)
    - ✅ Calls startMicrophone/stopMicrophone methods
-   - 🔴 TODO: Verify AudioCaptureService→RealtimeClient wiring is correct
-   - 🔴 TODO: End-to-end PTT flow not confirmed working
-   - 🔴 TODO: Implement text input sending via data channel
-   - 🔴 TODO: Implement sendTextMessage() method
+   - ✅ AudioCaptureService controls WebRTC audio track enable/disable
+   - ✅ Text input sending via data channel implemented
+   - ✅ Implemented sendTextMessage() method in RealtimeClient
+   - ✅ Text messages formatted according to OpenAI Realtime API spec
+   - ✅ User messages added to event log
+   - ✅ AI response requested after text message sent
+   - ✅ Error handling for connection state and exceptions
+   - ✅ Build verification successful
+   - 🔴 TODO: Manual testing with real Android device
+   - Completed: December 18, 2025
    
 4. 🔴 **Integration Testing** (~1 day) → See Issue #17
    - End-to-end flow validation for Android
@@ -516,7 +522,7 @@ Track progress by updating this table as features are completed:
 | 1 | OpenAI Realtime WebRTC (Android) | ✅ Complete | Successfully connects to API, SDP exchange working. Completed Dec 15-16, 2025 |
 | 2 | Android Audio Streaming | ✅ Complete | WebRTC JavaAudioDeviceModule with hardware AEC/NS. PTT controls audio track. Completed Dec 17-18, 2025 |
 | 2 | Android Audio Playback | ✅ Complete | WebRTC handles playback, AudioSwitch for routing, volume control implemented. Completed Dec 18, 2025 |
-| 2 | Android PTT & Text Input | 🟡 Partial | PTT ✅ complete, Text input 🔴 not started. See Issue #16 |
+| 2 | Android PTT & Text Input | ✅ Complete | PTT controls WebRTC audio track, text input sends via data channel. Completed Dec 18, 2025 |
 | 2 | Android Integration Testing | 🔴 Not Started | See Issue #17 |
 | 3 | iOS Platform | 🔴 Not Started | - |
 | 3 | iOS Audio Capture | 🔴 Not Started | - |
