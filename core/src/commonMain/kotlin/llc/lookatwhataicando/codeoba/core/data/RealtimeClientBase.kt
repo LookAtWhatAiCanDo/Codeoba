@@ -18,7 +18,25 @@ import llc.lookatwhataicando.codeoba.core.domain.*
  * Contains common code shared between Android and Desktop platforms.
  */
 abstract class RealtimeClientBase : RealtimeClient {
-    
+    companion object {
+        private fun repr(str: String?): String {
+            return if (str == null) "null" else "`$str`"
+        }
+    }
+    protected abstract val TAG: String
+
+    protected abstract val debug: Boolean
+
+    // Platform-specific logging
+    protected abstract fun logDebug(tag: String, message: String)
+    protected abstract fun logError(tag: String, message: String, throwable: Throwable? = null)
+
+    protected fun logDataChannelText(logPrefix: String, text: String) {
+        val logDataChannelTextLength = 512
+        val logText = if (text.length <= logDataChannelTextLength) text else { text.take(logDataChannelTextLength) + "..." }
+        logDebug(TAG, "$logPrefix message(${text.length})=${repr(logText)}")
+    }
+
     // Common state flows
     protected val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -34,14 +52,10 @@ abstract class RealtimeClientBase : RealtimeClient {
     
     // Platform-specific HTTP client (to be provided by subclasses)
     protected abstract val httpClient: HttpClient
-    
-    // Platform-specific logging
-    protected abstract fun logDebug(tag: String, message: String)
-    protected abstract fun logError(tag: String, message: String, throwable: Throwable? = null)
-    
+
     /**
      * Get ephemeral token from OpenAI for WebRTC session.
-     * Common implementation used by all platforms.
+     * See https://platform.openai.com/docs/api-reference/realtime-sessions/create-realtime-client-secret
      */
     protected suspend fun getEphemeralToken(config: RealtimeConfig): String {
         try {
@@ -66,11 +80,11 @@ abstract class RealtimeClientBase : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
-            logDebug("RealtimeClient", "getEphemeralToken: Ephemeral token response status: ${response.status}")
+            logDebug(TAG, "getEphemeralToken: Ephemeral token response status: ${response.status}")
             
             // Check HTTP status
             if (response.status.value !in 200..299) {
-                logError("RealtimeClient", "getEphemeralToken: Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
+                logError(TAG, "getEphemeralToken: Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
                 throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
             }
             
@@ -78,26 +92,25 @@ abstract class RealtimeClientBase : RealtimeClient {
             
             val ephemeralToken = jsonResponse["value"]?.jsonPrimitive?.content
             if (ephemeralToken == null) {
-                logError("RealtimeClient", "getEphemeralToken: No ephemeral token in response. Response body: $responseBody")
+                logError(TAG, "getEphemeralToken: No ephemeral token in response. Response body: $responseBody")
                 throw IllegalStateException("No ephemeral token in response")
             }
             
-            logDebug("RealtimeClient", "getEphemeralToken: Ephemeral token received: ${ephemeralToken.take(10)}...")
+            logDebug(TAG, "getEphemeralToken: Ephemeral token received: ${ephemeralToken.take(10)}...")
             return ephemeralToken
-                
+
         } catch (e: Exception) {
-            logError("RealtimeClient", "getEphemeralToken: Failed to get ephemeral token", e)
+            logError(TAG, "getEphemeralToken: Failed to get ephemeral token", e)
             throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
         }
     }
     
     /**
      * Exchange SDP offer/answer with OpenAI.
-     * Common implementation used by all platforms.
      */
     protected suspend fun exchangeSDP(endpoint: String, ephemeralToken: String, sdpOffer: String): String {
         try {
-            logDebug("RealtimeClient", "exchangeSDP: Exchanging SDP offer with OpenAI...")
+            logDebug(TAG, "exchangeSDP: Exchanging SDP offer with OpenAI...")
 
             val response = httpClient.post("$endpoint/calls") {
                 header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
@@ -107,8 +120,8 @@ abstract class RealtimeClientBase : RealtimeClient {
             }
             
             val responseBody = response.bodyAsText()
-            logDebug("RealtimeClient", "exchangeSDP: SDP exchange response status: ${response.status}")
-            logDebug("RealtimeClient", "exchangeSDP: SDP exchange response (SDP answer): ${responseBody.take(10)}...")
+            logDebug(TAG, "exchangeSDP: SDP exchange response status: ${response.status}")
+            logDebug(TAG, "exchangeSDP: SDP exchange response (SDP answer): ${responseBody.take(10)}...")
             
             // Check HTTP status
             if (response.status.value !in 200..299) {
@@ -120,11 +133,11 @@ abstract class RealtimeClientBase : RealtimeClient {
                 throw IllegalStateException("Received empty SDP answer from OpenAI")
             }
             
-            logDebug("RealtimeClient", "exchangeSDP: SDP answer received successfully (${responseBody.length} chars)")
+            logDebug(TAG, "exchangeSDP: SDP answer received successfully (${responseBody.length} chars)")
             return responseBody
-                
+
         } catch (e: Exception) {
-            logError("RealtimeClient", "exchangeSDP: Failed to exchange SDP", e)
+            logError(TAG, "exchangeSDP: Failed to exchange SDP", e)
             throw IllegalStateException("Failed to exchange SDP: ${e.message}", e)
         }
     }

@@ -27,21 +27,27 @@ import kotlinx.serialization.json.*
  * 6. Handle ICE candidates
  * 7. Stream audio through RTP
  */
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
-    
-    // HTTP client for Desktop (uses default engine)
-    override val httpClient = HttpClient()
-    
+    override val TAG: String
+        get() = "RealtimeClientImpl"
+    // TODO: Pass this in as a constructor parameter
+    override val debug: Boolean
+        get() = false
+
     // Platform-specific logging implementation
     override fun logDebug(tag: String, message: String) {
         println("[$tag] DEBUG: $message")
     }
-    
+
     override fun logError(tag: String, message: String, throwable: Throwable?) {
         println("[$tag] ERROR: $message")
         throwable?.printStackTrace()
     }
-    
+
+    // HTTP client for Desktop (uses default engine)
+    override val httpClient = HttpClient()
+
     private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
     actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
     

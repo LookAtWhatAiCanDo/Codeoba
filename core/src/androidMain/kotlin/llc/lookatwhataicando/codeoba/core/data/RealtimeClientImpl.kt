@@ -34,21 +34,24 @@ import java.nio.ByteBuffer
  * 
  * Uses io.github.webrtc-sdk:android library for WebRTC functionality.
  */
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
-    companion object {
-        private const val TAG = "RealtimeClient"
+    override val TAG: String
+        get() = "RealtimeClientImpl"
+    // TODO: Pass this in as a constructor parameter
+    override val debug: Boolean
+        get() = BuildConfig.DEBUG && false
 
-        @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
-        private val debug = BuildConfig.DEBUG && false
+    // Platform-specific logging implementation
+    override fun logDebug(tag: String, message: String) {
+        Log.d(tag, message)
+    }
 
-        private fun logDataChannelText(logPrefix: String, text: String) {
-            val logDataChannelTextLength = 512
-            val logText = if (text.length <= logDataChannelTextLength) text else { text.take(logDataChannelTextLength) + "..." }
-            Log.d(TAG, "$logPrefix message(${text.length})=${repr(logText)}")
-        }
-
-        private fun repr(str: String?): String {
-            return if (str == null) "null" else "`$str`"
+    override fun logError(tag: String, message: String, throwable: Throwable?) {
+        if (throwable != null) {
+            Log.e(tag, message, throwable)
+        } else {
+            Log.e(tag, message)
         }
     }
 
@@ -66,20 +69,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
             }
         }
     }
-    
-    // Platform-specific logging implementation
-    override fun logDebug(tag: String, message: String) {
-        Log.d(tag, message)
-    }
-    
-    override fun logError(tag: String, message: String, throwable: Throwable?) {
-        if (throwable != null) {
-            Log.e(tag, message, throwable)
-        } else {
-            Log.e(tag, message)
-        }
-    }
-    
+
     private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
     actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
     

@@ -43,10 +43,10 @@ fun main() = application {
                 val apiKey = getApiKey()
                 
                 val config = RealtimeConfig(
-                    apiKey = apiKey,
+                    dangerousApiKey = apiKey,
                     endpoint = System.getenv("REALTIME_ENDPOINT") 
                         ?: System.getProperty("realtime.endpoint")
-                        ?: "wss://api.openai.com/v1/realtime"
+                        ?: "https://api.openai.com/v1/realtime"
                 )
                 
                 CodeobaUI(app = codeobaApp, config = config)
