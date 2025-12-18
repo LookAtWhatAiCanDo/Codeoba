@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 class CodeobaApp(
     private val audioCaptureService: AudioCaptureService,
     private val audioRouteManager: AudioRouteManager,
-    private val realtimeClient: RealtimeClient,
+    val realtimeClient: RealtimeClient,
     private val mcpClient: McpClient,
     private val companionProxy: CompanionProxy,
     private val scope: CoroutineScope
@@ -39,22 +39,21 @@ class CodeobaApp(
             }
         }
         
-        // Pipe audio frames to realtime client
-        scope.launch {
-            audioCaptureService.audioFrames.collect { frame ->
-                if (connectionState.value == ConnectionState.Connected) {
-                    realtimeClient.sendAudioFrame(frame)
-                }
-            }
-        }
+        // Note: With WebRTC JavaAudioDeviceModule, audio capture and transmission
+        // is handled automatically by WebRTC. No need to manually pipe audio frames.
     }
     
     suspend fun connect(config: RealtimeConfig) {
         addEventLogEntry(EventLogEntry.Info("Connecting to ${config.endpoint}..."))
         try {
             realtimeClient.connect(config)
+            // Connection state changes are reported via events flow
+        } catch (e: IllegalStateException) {
+            // IllegalStateException indicates initialization or state issues
+            addEventLogEntry(EventLogEntry.Error("Setup error: ${e.message}"))
         } catch (e: Exception) {
-            addEventLogEntry(EventLogEntry.Error("Connection failed: ${e.message}"))
+            // Other exceptions are typically network-related
+            addEventLogEntry(EventLogEntry.Error("Network error: ${e.message}"))
         }
     }
     
@@ -66,16 +65,21 @@ class CodeobaApp(
     }
     
     suspend fun startMicrophone() {
-        addEventLogEntry(EventLogEntry.Info("Starting microphone..."))
+        addEventLogEntry(EventLogEntry.Info("Enabling microphone..."))
         try {
+            // Note: AudioCaptureService is only used for UI state tracking on Android.
+            // Actual audio capture is handled by WebRTC's JavaAudioDeviceModule.
             audioCaptureService.start()
+            addEventLogEntry(EventLogEntry.Info("Microphone enabled"))
+        } catch (e: SecurityException) {
+            addEventLogEntry(EventLogEntry.Error("Permission denied: Please grant microphone permission"))
         } catch (e: Exception) {
-            addEventLogEntry(EventLogEntry.Error("Failed to start microphone: ${e.message}"))
+            addEventLogEntry(EventLogEntry.Error("Failed to enable microphone: ${e.message}"))
         }
     }
     
     suspend fun stopMicrophone() {
-        addEventLogEntry(EventLogEntry.Info("Stopping microphone..."))
+        addEventLogEntry(EventLogEntry.Info("Disabling microphone..."))
         audioCaptureService.stop()
     }
     

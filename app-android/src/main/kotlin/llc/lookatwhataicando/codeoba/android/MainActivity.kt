@@ -67,8 +67,11 @@ class MainActivity : ComponentActivity() {
         val realtimeClient = RealtimeClientImpl()
         realtimeClient.initialize(this) // Initialize with Android Context
         
+        val audioCaptureService = AndroidAudioCaptureService(this, scope)
+        audioCaptureService.realtimeClient = realtimeClient // Wire up for PTT control
+        
         codeobaApp = CodeobaApp(
-            audioCaptureService = AndroidAudioCaptureService(this, scope),
+            audioCaptureService = audioCaptureService,
             audioRouteManager = AndroidAudioRouteManager(this),
             realtimeClient = realtimeClient,
             mcpClient = McpClientImpl(),
@@ -83,9 +86,10 @@ class MainActivity : ComponentActivity() {
                     val apiKey = getApiKey()
                     
                     val config = RealtimeConfig(
-                        apiKey = apiKey,
+                        dangerousApiKey = apiKey,
+                        // TODO: Better injection of endpoint from BuildConfig...
                         endpoint = System.getProperty("realtime.endpoint")
-                            ?: "wss://api.openai.com/v1/realtime"
+                            ?: "https://api.openai.com/v1/realtime"
                     )
                     
                     CodeobaUI(app = codeobaApp, config = config)

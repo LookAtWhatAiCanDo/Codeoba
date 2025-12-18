@@ -40,8 +40,18 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
         VoicePanel(
             audioCaptureState = audioCaptureState,
             connectionState = connectionState,
-            onStartMic = { scope.launch { app.startMicrophone() } },
-            onStopMic = { scope.launch { app.stopMicrophone() } }
+            onStartMic = { scope.launch {
+                // TODO: cancelRemoteSpeech()
+                // TODO: play intro sound
+                app.startMicrophone()
+                app.realtimeClient.dataSendInputAudioBufferClear()
+            } },
+            onStopMic = { scope.launch {
+                app.stopMicrophone()
+                app.realtimeClient.dataSendInputAudioBufferCommit()
+                app.realtimeClient.dataSendResponseCreate()
+                // TODO: play outro sound
+            } }
         )
         
         // Audio Route Selection (if available)

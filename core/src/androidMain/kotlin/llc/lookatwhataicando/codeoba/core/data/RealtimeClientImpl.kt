@@ -1,7 +1,10 @@
 package llc.lookatwhataicando.codeoba.core.data
 
+import android.Manifest
 import android.content.Context
+import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import llc.lookatwhataicando.codeoba.core.domain.*
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -18,35 +21,51 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
+import llc.lookatwhataicando.codeoba.core.BuildConfig
 import org.webrtc.*
+import org.webrtc.Logging.Severity
+import org.webrtc.AudioTrack as AudioTrackWebRTC
+import org.webrtc.audio.AudioDeviceModule
+import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 /**
  * Android implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
  * 
  * Uses io.github.webrtc-sdk:android library for WebRTC functionality.
  */
-actual class RealtimeClientImpl actual constructor() : RealtimeClient {
-    companion object {
-        private const val TAG = "RealtimeClient"
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
+    override val TAG: String
+        get() = "RealtimeClientImpl"
+    // TODO: Pass this in as a constructor parameter
+    override val debug: Boolean
+        get() = BuildConfig.DEBUG && false
+
+    override fun logVerbose(tag: String, message: String) {
+        Log.v(tag, message)
     }
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    actual override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
-    
-    private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
-    actual override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
-    
-    private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
-    actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
-    
-    private var peerConnection: PeerConnection? = null
-    private var dataChannel: DataChannel? = null
-    private var audioTrack: AudioTrack? = null
-    private var peerConnectionFactory: PeerConnectionFactory? = null
-    
-    private val httpClient = HttpClient(OkHttp) {
+
+    override fun logDebug(tag: String, message: String) {
+        Log.d(tag, message)
+    }
+
+    override fun logWarning(tag: String, message: String) {
+        Log.w(tag, message)
+    }
+
+    override fun logError(tag: String, message: String, throwable: Throwable?) {
+        if (throwable != null) {
+            Log.e(tag, message, throwable)
+        } else {
+            Log.e(tag, message)
+        }
+    }
+
+    // HTTP client for Android (uses OkHttp engine)
+    override val httpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -59,16 +78,29 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             }
         }
     }
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+
+    private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
+    actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
     
-    private var ephemeralKey: String? = null
+    private var peerConnection: PeerConnection? = null
+    private var dataChannel: DataChannel? = null
+    private var dataChannelOpened = false
+
+    private var localAudioTrackMicrophone: AudioTrackWebRTC? = null
+    private var localAudioTrackMicrophoneSender: RtpSender? = null
+
+    data class RemoteAudioTrackInfo(
+        val audioTrackWebRTC: AudioTrackWebRTC,
+        val audioTrackAndroid: AudioTrackAndroid?,
+        val audioTrackSink: AudioTrackSink?,
+    )
+    private val remoteAudioTrackInfos = mutableListOf<RemoteAudioTrackInfo>()
+
+    private val useAudioPlayerWebRTC = true
     
     // Context must be provided before connecting
     private var appContext: Context? = null
-    
+
     /**
      * Initialize WebRTC with Android context.
      * Must be called before connect().
@@ -85,13 +117,14 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         Log.i(TAG, "initialize: RealtimeClient initialized successfully")
     }
     
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
             Log.w(TAG, "connect: Already connected or connecting, ignoring connect request")
             return
         }
-        
+
         Log.i(TAG, "connect: Connecting to ${config.endpoint} with model ${config.model}")
         _connectionState.value = ConnectionState.Connecting
         
@@ -101,158 +134,90 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 Log.e(TAG, errorMsg)
                 throw IllegalStateException(errorMsg)
             }
-            
+
             // Step 1: Get ephemeral token from OpenAI
             Log.d(TAG, "connect: Requesting ephemeral token...")
-            ephemeralKey = getEphemeralToken(config.apiKey, config.model)
-            Log.d(TAG, "connect: Ephemeral token received: ${ephemeralKey?.take(10)}...")
+            val ephemeralToken = getEphemeralToken(config)
+            Log.d(TAG, "connect: Ephemeral token received: ${ephemeralToken.take(10)}...")
             
-            // Step 2: Initialize PeerConnectionFactory
-            if (peerConnectionFactory == null) {
-                Log.d(TAG, "connect: Creating PeerConnectionFactory...")
-                val options = PeerConnectionFactory.Options()
-                peerConnectionFactory = PeerConnectionFactory.builder()
-                    .setOptions(options)
-                    .createPeerConnectionFactory()
+            // Step 2: Initialize PeerConnectionFactory with JavaAudioDeviceModule
+            Log.d(TAG, "connect: Creating PeerConnectionFactory with JavaAudioDeviceModule...")
+
+            // Create JavaAudioDeviceModule with hardware AEC and NS
+            val audioDeviceModule = JavaAudioDeviceModule.builder(appContext)
+                .setUseHardwareAcousticEchoCanceler(true)
+                .setUseHardwareNoiseSuppressor(true)
+                .createAudioDeviceModule()
+
+            PeerConnectionFactory.initialize(
+                PeerConnectionFactory.InitializationOptions
+                    .builder(appContext).apply {
+                        if (debug) {
+                            setEnableInternalTracer(true)
+                            setFieldTrials("WebRTC-LogLevel/Warning/")
+                        } else {
+                            setEnableInternalTracer(false)
+                        }
+                    }
+                    .createInitializationOptions()
+            )
+            if (!debug) {
+                Logging.enableLogToDebugOutput(Severity.LS_NONE)
             }
-            
+            val peerConnectionFactory = PeerConnectionFactory
+                .builder()
+                .setOptions(PeerConnectionFactory.Options())
+                .setAudioDeviceModule(audioDeviceModule)
+                .createPeerConnectionFactory()
+            Log.d(TAG, "connect: PeerConnectionFactory created with hardware AEC/NS enabled")
+
             // Step 3: Create peer connection with STUN servers
             Log.d(TAG, "connect: Creating peer connection...")
-            val iceServers = listOf(
-                PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
-            )
-            val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
-                sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
-                continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
-            }
-            
+            // ICE/STUN is not needed to talk to *server* (only needed for peer-to-peer)
+            val iceServers = listOf<PeerConnection.IceServer>()
+            val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
+//            val iceServers = listOf(
+//                PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
+//            )
+//            val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
+//                sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+//                continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+//            }
+
             peerConnection = peerConnectionFactory?.createPeerConnection(
                 rtcConfig,
                 createPeerConnectionObserver()
             )
-            
             if (peerConnection == null) {
                 val errorMsg = "Failed to create PeerConnection"
                 Log.e(TAG, errorMsg)
                 throw IllegalStateException(errorMsg)
             }
             Log.d(TAG, "connect: Peer connection created successfully")
-            
-            // Step 4: Create data channel for signaling
+
+            // Step 4: Add audio track (initially disabled for PTT)
+            Log.d(TAG, "connect: Adding audio track...")
+            setLocalAudioMicrophone(peerConnectionFactory)
+
+            // Step 5: Create data channel for signaling
             Log.d(TAG, "connect: Creating data channel...")
-            val dataChannelInit = DataChannel.Init().apply {
+            val dataChannelInit = DataChannel.Init()/*.apply {
                 ordered = true
                 negotiated = false
-            }
+            }*/
             dataChannel = peerConnection?.createDataChannel("oai-events", dataChannelInit)
             dataChannel?.registerObserver(createDataChannelObserver())
             Log.d(TAG, "connect: Data channel created")
-            
-            // Step 5: Add audio track
-            Log.d(TAG, "connect: Adding audio track...")
-            val audioConstraints = MediaConstraints()
-            val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
-            audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
-            
-            if (audioTrack != null) {
-                peerConnection?.addTrack(audioTrack, listOf("stream"))
-                Log.d(TAG, "connect: Audio track added to peer connection")
-            }
-            
+
             // Step 6: Create SDP offer
             Log.d(TAG, "connect: Creating SDP offer...")
-            val offerConstraints = MediaConstraints().apply {
-                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
-                mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
-            }
-            peerConnection?.createOffer(object : SdpObserver {
-                override fun onCreateSuccess(sessionDescription: SessionDescription) {
-                    Log.d(TAG, "sdpObserverOffer: onCreateSuccess - SDP offer created successfully")
-
-                    peerConnection?.setLocalDescription(object : SdpObserver {
-                        override fun onCreateSuccess(sdp: SessionDescription?) {
-                            Log.d(TAG, "sdpObserverLocal: onCreateSuccess($sdp)")
-                        }
-
-                        override fun onSetSuccess() {
-                            Log.d(TAG, "sdpObserverLocal: setSuccess - Local description set successfully")
-                            CoroutineScope(Dispatchers.IO).launch {
-                                try {
-                                    // Step 7: Exchange SDP with OpenAI
-                                    Log.d(TAG, "sdpObserverLocal: Exchanging SDP with OpenAI...")
-                                    val answerSdp = exchangeSDP(sessionDescription.description, ephemeralKey!!)
-                                    Log.d(TAG, "sdpObserverLocal: SDP answer received from OpenAI (${answerSdp.length} chars)")
-
-                                    val answerDescription = SessionDescription(
-                                        SessionDescription.Type.ANSWER,
-                                        answerSdp
-                                    )
-
-                                    withContext(Dispatchers.Main) {
-                                        peerConnection?.setRemoteDescription(object : SdpObserver {
-                                            override fun onCreateSuccess(sdp: SessionDescription?) {
-                                                Log.d(TAG, "sdpObserverRemote: onCreateSuccess($sdp)")
-                                            }
-
-                                            override fun onSetSuccess() {
-                                                Log.i(TAG, "sdpObserverRemote: setSuccess - Remote description set successfully, WebRTC connection established")
-                                                // Connection is being established, wait for ICE connection state changes
-                                            }
-
-                                            override fun onCreateFailure(error: String?) {
-                                                Log.e(TAG, "sdpObserverRemote: onCreateFailure($error)")
-                                            }
-
-                                            override fun onSetFailure(error: String) {
-                                                Log.e(TAG, "sdpObserverRemote: onSetFailure - Failed to set remote description: $error")
-                                                CoroutineScope(Dispatchers.Main).launch {
-                                                    _connectionState.value = ConnectionState.Error("Failed to set remote description: $error")
-                                                    _events.emit(RealtimeEvent.Error(error))
-                                                }
-                                            }
-                                        }, answerDescription)
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "sdpObserverLocal: Failed to exchange SDP: ${e.message}", e)
-                                    CoroutineScope(Dispatchers.Main).launch {
-                                        _connectionState.value = ConnectionState.Error("Failed to exchange SDP: ${e.message}")
-                                        _events.emit(RealtimeEvent.Error("Failed to exchange SDP: ${e.message}"))
-                                    }
-                                }
-                            }
-                        }
-
-                        override fun onCreateFailure(error: String?) {
-                            Log.e(TAG, "sdpObserverLocal: onCreateFailure($error)")
-                        }
-
-                        override fun onSetFailure(error: String) {
-                            Log.e(TAG, "sdpObserverLocal: onSetFailure - Failed to set local description: $error")
-                            CoroutineScope(Dispatchers.Main).launch {
-                                _connectionState.value = ConnectionState.Error("Failed to set local description: $error")
-                                _events.emit(RealtimeEvent.Error(error))
-                            }
-                        }
-                    }, sessionDescription)
+            peerConnection?.createOffer(
+                createSdpObserver(config.endpoint, ephemeralToken),
+                MediaConstraints().apply {
+                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
                 }
-
-                override fun onSetSuccess() {
-                    Log.d(TAG, "sdpObserverOffer: setSuccess")
-                }
-
-                override fun onCreateFailure(error: String) {
-                    Log.e(TAG, "sdpObserverOffer: onCreateFailure - Failed to create offer: $error")
-                    CoroutineScope(Dispatchers.Main).launch {
-                        _connectionState.value = ConnectionState.Error("Failed to create offer: $error")
-                        _events.emit(RealtimeEvent.Error(error))
-                    }
-                }
-
-                override fun onSetFailure(error: String?) {
-                    Log.e(TAG, "sdpObserverOffer: onSetFailure($error)")
-                }
-            }, offerConstraints)
-
+            )
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
             Log.e(TAG, errorMsg, e)
@@ -264,21 +229,24 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     actual override suspend fun disconnect() {
         Log.i(TAG, "disconnect: Disconnecting...")
         try {
-            dataChannel?.close()
-            dataChannel?.unregisterObserver()
-            dataChannel = null
-            
-            audioTrack?.dispose()
-            audioTrack = null
-            
-            peerConnection?.close()
-            peerConnection = null
-            
-            peerConnectionFactory?.dispose()
-            peerConnectionFactory = null
-            
-            ephemeralKey = null
-            
+            setLocalAudioTrackMicrophoneEnabled(false)
+            localAudioTrackMicrophoneSender?.dispose()
+            localAudioTrackMicrophoneSender = null
+            localAudioTrackMicrophone?.dispose()
+            localAudioTrackMicrophone = null
+
+            dataChannel?.also {
+                dataChannel = null
+                it.unregisterObserver()
+                it.close()
+            }
+            dataChannelOpened = false
+
+            peerConnection?.also {
+                peerConnection = null
+                it.close()
+            }
+
             _connectionState.value = ConnectionState.Disconnected
             _events.emit(RealtimeEvent.Disconnected)
             Log.i(TAG, "disconnect: Disconnected successfully")
@@ -288,124 +256,64 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             _events.emit(RealtimeEvent.Disconnected)
         }
     }
-    
-    actual override suspend fun sendAudioFrame(frame: ByteArray) {
-        if (_connectionState.value != ConnectionState.Connected) {
-            return
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    private fun setLocalAudioMicrophone(peerConnectionFactory: PeerConnectionFactory) {
+        localAudioTrackMicrophoneSender?.also {
+            peerConnection?.removeTrack(it)
+            localAudioTrackMicrophoneSender = null
         }
-        
-        try {
-            // With WebRTC AudioTrack, audio is sent automatically via RTP
-            // The audioTrack handles encoding and transmission internally
-            // No manual frame sending needed for standard WebRTC audio streaming
-        } catch (e: Exception) {
-            _events.emit(RealtimeEvent.Error("Failed to send audio: ${e.message}"))
+
+        val audioConstraints = MediaConstraints()
+        val audioSource = peerConnectionFactory.createAudioSource(audioConstraints)
+        localAudioTrackMicrophone = peerConnectionFactory.createAudioTrack("MIC_TRACK", audioSource)
+        if (localAudioTrackMicrophone != null) {
+            localAudioTrackMicrophoneSender = peerConnection?.addTrack(localAudioTrackMicrophone)
+            // Start with audio track disabled - will be enabled on PTT press
+            setLocalAudioTrackMicrophoneEnabled(false)
+            Log.d(TAG, "setLocalAudioMicrophone: Audio track added to peer connection (initially disabled for PTT)")
         }
     }
-    
+
     /**
-     * Get ephemeral token from OpenAI for WebRTC session.
+     * Enable or disable microphone audio transmission (for PTT control).
+     * 
+     * @param enabled true to enable microphone (PTT press), false to disable (PTT release)
      */
-    private suspend fun getEphemeralToken(apiKey: String, model: String): String {
-        try {
-            Log.d(TAG, "getEphemeralToken: Requesting ephemeral token for model: $model")
-            val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime/sessions") {
-                header(HttpHeaders.Authorization, "Bearer $apiKey")
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("model", model)
-                    put("voice", "alloy")
-                }.toString())
+    fun setLocalAudioTrackMicrophoneEnabled(enabled: Boolean) {
+        Log.d(TAG, "setLocalAudioTrackMicrophoneEnabled($enabled)")
+        localAudioTrackMicrophone?.setEnabled(enabled)
+    }
+
+    private var isSpeakerEnabled: Boolean = false
+
+    fun setLocalAudioTrackSpeakerEnabled(enabled: Boolean) {
+        Log.d(TAG, "setLocalAudioTrackSpeakerEnabled($enabled)")
+        if (isSpeakerEnabled != enabled) {
+            isSpeakerEnabled = enabled
+            remoteAudioTrackInfos.forEach { playback ->
+                playback.audioTrackWebRTC.setEnabled(enabled)
+                playback.audioTrackAndroid?.also {
+                    if (enabled) {
+                        it.flush()
+                        it.play()
+                    } else {
+                        it.pause()
+                        it.flush()
+                    }
+                }
             }
-            
-            val responseBody = response.bodyAsText()
-            Log.d(TAG, "getEphemeralToken: Ephemeral token response status: ${response.status}")
-            
-            // Check HTTP status
-            if (response.status.value !in 200..299) {
-                Log.e(TAG, "getEphemeralToken:Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
-                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
-            }
-            
-            val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
-            
-            val ephemeralKey = jsonResponse["client_secret"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-            if (ephemeralKey == null) {
-                Log.e(TAG, "getEphemeralToken: No ephemeral key in response. Response body: $responseBody")
-                throw IllegalStateException("No ephemeral key in response")
-            }
-            
-            Log.d(TAG, "getEphemeralToken: Ephemeral token received: ${ephemeralKey.take(10)}...")
-            return ephemeralKey
-                
-        } catch (e: Exception) {
-            Log.e(TAG, "getEphemeralToken: Failed to get ephemeral token", e)
-            throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
         }
     }
-    
-    /**
-     * Exchange SDP offer/answer with OpenAI.
-     */
-    private suspend fun exchangeSDP(sdpOffer: String, ephemeralToken: String): String {
-        try {
-            Log.d(TAG, "exchangeSDP: Exchanging SDP offer with OpenAI...")
-            val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime") {
-                header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
-                // OpenAI Realtime API requires application/sdp content type for SDP exchange
-                contentType(ContentType("application", "sdp"))
-                setBody(sdpOffer)
-            }
-            
-            val responseBody = response.bodyAsText()
-            Log.d(TAG, "exchangeSDP: SDP exchange response status: ${response.status}")
-            Log.d(TAG, "exchangeSDP: SDP exchange response (SDP answer): ${responseBody.take(200)}...")
-            
-            // Check HTTP status
-            if (response.status.value !in 200..299) {
-                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
-            }
-            
-            // Response should be raw SDP answer text, not JSON
-            if (responseBody.isBlank()) {
-                throw IllegalStateException("Received empty SDP answer from OpenAI")
-            }
-            
-            Log.d(TAG, "exchangeSDP: SDP answer received successfully (${responseBody.length} chars)")
-            return responseBody
-                
-        } catch (e: Exception) {
-            Log.e(TAG, "exchangeSDP: Failed to exchange SDP", e)
-            throw IllegalStateException("Failed to exchange SDP: ${e.message}", e)
-        }
-    }
-    
+
     /**
      * Create WebRTC peer connection observer.
      */
     private fun createPeerConnectionObserver() = object : PeerConnection.Observer {
-        override fun onIceCandidate(candidate: IceCandidate) {
-            // ICE candidates are handled automatically in this setup
-            // OpenAI handles ICE over the data channel
-        }
-        
-        override fun onDataChannel(channel: DataChannel) {
-            // Data channel received from remote peer
-            Log.d(TAG, "Data channel received from remote peer")
-            dataChannel = channel
-            channel.registerObserver(createDataChannelObserver())
-        }
-        
-        override fun onAddTrack(receiver: RtpReceiver, streams: Array<MediaStream>) {
-            // Handle incoming audio track from OpenAI
-            Log.d(TAG, "Audio track received from OpenAI")
-            // Note: Audio frames are typically received via RTP and would need
-            // a custom audio sink to extract PCM data. For now, this is a placeholder.
-            // In production, you would set up an AudioTrackSink to capture frames.
-        }
-        
+        private val TAG = "PeerConnection"
+
         override fun onIceConnectionChange(newState: PeerConnection.IceConnectionState) {
-            Log.d(TAG, "ICE connection state changed: $newState")
+            Log.d(TAG, "onIceConnectionChange($newState)")
             CoroutineScope(Dispatchers.Main).launch {
                 when (newState) {
                     PeerConnection.IceConnectionState.CONNECTED,
@@ -428,199 +336,255 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
                 }
             }
         }
-        
-        override fun onSignalingChange(newState: PeerConnection.SignalingState) {}
-        override fun onIceConnectionReceivingChange(receiving: Boolean) {}
-        override fun onIceGatheringChange(newState: PeerConnection.IceGatheringState) {}
-        override fun onAddStream(stream: MediaStream) {}
-        override fun onRemoveStream(stream: MediaStream) {}
-        override fun onRenegotiationNeeded() {}
-        override fun onIceCandidatesRemoved(candidates: Array<IceCandidate>) {}
+
+        override fun onAddTrack(receiver: RtpReceiver, mediaStreams: Array<MediaStream>) {
+            val track = receiver.track()
+            Log.d(TAG, "onAddTrack(receiver={..., track=${track}, ...}, mediaStreams(${mediaStreams.size})=[...])")
+
+            // Note: Audio frames are typically received via RTP and would need
+            // a custom audio sink to extract PCM data. For now, this is a placeholder.
+            // In production, you would set up an AudioTrackSink to capture frames.
+
+            val trackKind = track?.kind()
+            if (trackKind == AudioTrackWebRTC.AUDIO_TRACK_KIND) {
+                val audioTrackWebRTC = track as AudioTrackWebRTC
+                var audioTrackAndroid: AudioTrackAndroid? = null
+                var audioTrackSink: AudioTrackSink? = null
+//                if (!useAudioPlayerWebRTC) {
+//                    // TODO: Verify this outputs to the AudioSwitch routed audio output device correctly...
+//                    audioTrackAndroid = createMonoAudioTrack()
+//                    audioTrackSink = MyAudioSink(audioTrackAndroid) { isSpeakerEnabled }
+//                    audioTrackWebRTC.addSink(audioTrackSink)
+//                }
+                val remoteAudioTrackInfo = RemoteAudioTrackInfo(
+                    audioTrackWebRTC = audioTrackWebRTC,
+                    audioTrackAndroid = audioTrackAndroid,
+                    audioTrackSink = audioTrackSink
+                )
+                remoteAudioTrackInfos.add(remoteAudioTrackInfo)
+
+                setLocalAudioTrackSpeakerEnabled(true)
+            }
+        }
+
+        override fun onDataChannel(channel: DataChannel) {
+            Log.d(TAG, "onDataChannel($channel)")
+            // Data channel received from remote peer
+            //Log.d(TAG, "Data channel received from remote peer")
+            //dataChannel = channel
+            //channel.registerObserver(createDataChannelObserver())
+        }
+        override fun onSignalingChange(newState: PeerConnection.SignalingState) {
+            Log.v(TAG, "onSignalingChange($newState)")
+        }
+        override fun onIceConnectionReceivingChange(receiving: Boolean) {
+            Log.v(TAG, "onIceConnectionReceivingChange($receiving)")
+        }
+        override fun onIceGatheringChange(newState: PeerConnection.IceGatheringState) {
+            Log.v(TAG, "onIceGatheringChange($newState)")
+        }
+        override fun onIceCandidate(candidate: IceCandidate) {
+            // ICE candidates are handled automatically in this setup
+            // OpenAI handles ICE over the data channel
+            Log.v(TAG, "onIceCandidate($candidate)")
+        }
+        override fun onIceCandidatesRemoved(candidates: Array<IceCandidate>) {
+            Log.v(TAG, "onIceCandidatesRemoved($candidates)")
+        }
+        override fun onAddStream(stream: MediaStream) {
+            Log.v(TAG, "onAddStream($stream)")
+        }
+        override fun onRemoveStream(stream: MediaStream) {
+            Log.v(TAG, "onRemoveStream($stream)")
+        }
+        override fun onRenegotiationNeeded() {
+            Log.v(TAG, "onRenegotiationNeeded")
+        }
     }
     
     /**
      * Create observer for data channel messages.
      */
     private fun createDataChannelObserver() = object : DataChannel.Observer {
-        override fun onMessage(buffer: DataChannel.Buffer) {
-            val data = ByteArray(buffer.data.remaining())
-            buffer.data.get(data)
-            val message = String(data, StandardCharsets.UTF_8)
-            CoroutineScope(Dispatchers.Main).launch {
-                handleDataChannelMessage(message)
-            }
-        }
-        
-        override fun onBufferedAmountChange(amount: Long) {}
+        private val TAG = "DataChannel"
+
         override fun onStateChange() {
-            dataChannel?.state()?.let { state ->
-                Log.d(TAG, "Data channel state changed: $state")
-                when (state) {
+            Log.v(TAG, "onStateChange()")
+            dataChannel?.state()?.let { newState ->
+                Log.d(TAG, "onStateChange: dataChannel.state() changed to $newState")
+                when (newState) {
                     DataChannel.State.OPEN -> {
-                        Log.i(TAG, "Data channel opened, sending session.update")
-                        // Data channel is open, can send session.update
-                        CoroutineScope(Dispatchers.IO).launch {
-                            sendSessionUpdate()
+                        if (!dataChannelOpened) {
+                            Log.i(TAG, "onStateChange: onDataChannelOpened()")
+                            dataChannelOpened = true
+                            onDataChannelOpened()
                         }
                     }
                     DataChannel.State.CLOSED -> {
-                        Log.w(TAG, "Data channel closed")
-                        CoroutineScope(Dispatchers.Main).launch {
-                            _connectionState.value = ConnectionState.Disconnected
-                            _events.emit(RealtimeEvent.Disconnected)
+                        if (dataChannelOpened) {
+                            Log.i(TAG, "onStateChange: onDataChannelClosed()")
+                            dataChannelOpened = false
+                            onDataChannelClosed()
                         }
                     }
                     else -> {}
                 }
             }
         }
-    }
-    
-    /**
-     * Send session configuration to OpenAI.
-     */
-    private suspend fun sendSessionUpdate() {
-        try {
-            val sessionUpdate = buildJsonObject {
-                put("type", "session.update")
-                putJsonObject("session") {
-                    put("modalities", buildJsonArray {
-                        add("text")
-                        add("audio")
-                    })
-                    put("instructions", "You are a helpful AI assistant for coding tasks.")
-                    put("voice", "alloy")
-                    put("input_audio_format", "pcm16")
-                    put("output_audio_format", "pcm16")
-                    put("input_audio_transcription", buildJsonObject {
-                        put("model", "whisper-1")
-                    })
-                    put("turn_detection", buildJsonObject {
-                        put("type", "server_vad")
-                        put("threshold", 0.5)
-                        put("prefix_padding_ms", 300)
-                        put("silence_duration_ms", 200)
-                    })
-                    put("tools", buildJsonArray {
-                        // MCP tools will be defined here in future
-                    })
+
+        override fun onMessage(buffer: DataChannel.Buffer) {
+            val bufferData = buffer.data
+            val bytes = ByteArray(bufferData.remaining())
+            bufferData.get(bytes)
+            if (buffer.binary) {
+                Log.e(TAG, "onMessage: Unhandled binary data received on data channel")
+            } else {
+                val messageText = String(bytes, Charsets.UTF_8)
+                CoroutineScope(Dispatchers.Main).launch {
+                    handleDataChannelText(messageText)
                 }
             }
-            
-            val messageBytes = sessionUpdate.toString().toByteArray(StandardCharsets.UTF_8)
-            val buffer = ByteBuffer.allocateDirect(messageBytes.size)
-            buffer.put(messageBytes)
-            buffer.flip()
-            
-            dataChannel?.send(DataChannel.Buffer(buffer, false))
-            Log.d(TAG, "Session update sent successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to send session update: ${e.message}", e)
-            _events.emit(RealtimeEvent.Error("Failed to send session update: ${e.message}"))
+        }
+
+        override fun onBufferedAmountChange(previousAmount: Long) {
+            Log.v(TAG, "onBufferedAmountChange($previousAmount)")
         }
     }
-    
-    /**
-     * Handle messages received on the data channel.
-     */
-    private suspend fun handleDataChannelMessage(message: String) {
-        try {
-            Log.d(TAG, "Received message: ${message.take(100)}...")
-            val jsonElement = json.parseToJsonElement(message)
-            val jsonObject = jsonElement.jsonObject
-            
-            val eventType = jsonObject["type"]?.jsonPrimitive?.content ?: return
-            Log.d(TAG, "Event type: $eventType")
-            
-            when (eventType) {
-                "session.created" -> {
-                    Log.i(TAG, "Session created")
-                    _events.emit(RealtimeEvent.Connected)
-                }
-                
-                "session.updated" -> {
-                    Log.d(TAG, "Session configuration confirmed")
-                    // Session configuration confirmed
-                }
-                
-                "conversation.item.created" -> {
-                    Log.d(TAG, "Conversation item created")
-                    val item = jsonObject["item"]?.jsonObject ?: return
-                    handleConversationItem(item)
-                }
-                
-                "response.audio_transcript.delta" -> {
-                    val delta = jsonObject["delta"]?.jsonPrimitive?.content ?: ""
-                    if (delta.isNotEmpty()) {
-                        Log.d(TAG, "Transcript delta: $delta")
-                        _events.emit(RealtimeEvent.Transcript(delta, false))
+
+    private fun createSdpObserver(endpoint: String, ephemeralToken: String): SdpObserver {
+        return object : SdpObserver {
+            override fun onCreateSuccess(sessionDescription: SessionDescription) {
+                Log.d(TAG, "sdpObserverOffer: onCreateSuccess - SDP offer created successfully")
+
+                peerConnection?.setLocalDescription(object : SdpObserver {
+                    override fun onCreateSuccess(sdp: SessionDescription?) {
+                        Log.d(TAG, "sdpObserverLocal: onCreateSuccess($sdp)")
                     }
-                }
-                
-                "response.audio_transcript.done" -> {
-                    val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
-                    if (transcript.isNotEmpty()) {
-                        Log.i(TAG, "Transcript complete: $transcript")
-                        _events.emit(RealtimeEvent.Transcript(transcript, true))
-                    }
-                }
-                
-                "conversation.item.input_audio_transcription.completed" -> {
-                    val transcript = jsonObject["transcript"]?.jsonPrimitive?.content ?: ""
-                    if (transcript.isNotEmpty()) {
-                        Log.i(TAG, "User transcript: $transcript")
-                        _events.emit(RealtimeEvent.Transcript("User: $transcript", true))
-                    }
-                }
-                
-                "response.function_call_arguments.done" -> {
-                    val name = jsonObject["name"]?.jsonPrimitive?.content ?: return
-                    val arguments = jsonObject["arguments"]?.jsonPrimitive?.content ?: "{}"
-                    Log.i(TAG, "Tool call: $name with args: $arguments")
-                    _events.emit(RealtimeEvent.ToolCall(name, arguments))
-                }
-                
-                "error" -> {
-                    val error = jsonObject["error"]?.jsonObject
-                    val errorMessage = error?.get("message")?.jsonPrimitive?.content ?: "Unknown error"
-                    Log.e(TAG, "Error from API: $errorMessage")
-                    _events.emit(RealtimeEvent.Error(errorMessage))
-                }
-                
-                else -> {
-                    Log.d(TAG, "Unhandled event type: $eventType")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse message: ${e.message}", e)
-            _events.emit(RealtimeEvent.Error("Failed to parse message: ${e.message}"))
-        }
-    }
-    
-    private suspend fun handleConversationItem(item: JsonObject) {
-        val itemType = item["type"]?.jsonPrimitive?.content ?: return
-        
-        when (itemType) {
-            "message" -> {
-                val content = item["content"]?.jsonArray ?: return
-                for (contentItem in content) {
-                    val contentObj = contentItem.jsonObject
-                    val contentType = contentObj["type"]?.jsonPrimitive?.content
-                    
-                    if (contentType == "text") {
-                        val text = contentObj["text"]?.jsonPrimitive?.content ?: ""
-                        if (text.isNotEmpty()) {
-                            _events.emit(RealtimeEvent.Transcript(text, true))
+
+                    override fun onSetSuccess() {
+                        Log.d(TAG, "sdpObserverLocal: onSetSuccess() - Local description set successfully")
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                // Step 7: Exchange SDP with OpenAI
+                                Log.d(TAG, "sdpObserverLocal: Exchanging SDP with OpenAI...")
+                                val answerSdp = exchangeSDP(
+                                    endpoint = endpoint,
+                                    ephemeralToken = ephemeralToken,
+                                    sdpOffer = sessionDescription.description
+                                )
+                                Log.d(TAG, "sdpObserverLocal: SDP answer received from OpenAI (${answerSdp.length} chars)")
+
+                                withContext(Dispatchers.Main) {
+                                    peerConnection?.setRemoteDescription(object : SdpObserver {
+                                        override fun onCreateSuccess(sdp: SessionDescription?) {
+                                            Log.d(TAG, "sdpObserverRemote: onCreateSuccess($sdp)")
+                                        }
+
+                                        override fun onSetSuccess() {
+                                            Log.i(TAG, "sdpObserverRemote: onSetSuccess() - Remote description set successfully, WebRTC connection established")
+                                            // Connection is being established, wait for ICE connection state changes
+                                        }
+
+                                        override fun onCreateFailure(error: String?) {
+                                            Log.e(TAG, "sdpObserverRemote: onCreateFailure($error)")
+                                        }
+
+                                        override fun onSetFailure(error: String) {
+                                            Log.e(TAG, "sdpObserverRemote: onSetFailure($error)")
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                _connectionState.value = ConnectionState.Error("Failed to set remote description: $error")
+                                                _events.emit(RealtimeEvent.Error(error))
+                                            }
+                                        }
+                                    }, SessionDescription(
+                                        SessionDescription.Type.ANSWER,
+                                        answerSdp
+                                    ))
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "sdpObserverLocal: Failed to exchange SDP: ${e.message}", e)
+                                CoroutineScope(Dispatchers.Main).launch {
+                                    _connectionState.value = ConnectionState.Error("Failed to exchange SDP: ${e.message}")
+                                    _events.emit(RealtimeEvent.Error("Failed to exchange SDP: ${e.message}"))
+                                }
+                            }
                         }
                     }
+
+                    override fun onCreateFailure(error: String?) {
+                        Log.e(TAG, "sdpObserverLocal: onCreateFailure($error)")
+                    }
+
+                    override fun onSetFailure(error: String) {
+                        Log.e(TAG, "sdpObserverLocal: onSetFailure - Failed to set local description: $error")
+                        CoroutineScope(Dispatchers.Main).launch {
+                            _connectionState.value = ConnectionState.Error("Failed to set local description: $error")
+                            _events.emit(RealtimeEvent.Error(error))
+                        }
+                    }
+                }, sessionDescription)
+            }
+
+            override fun onSetSuccess() {
+                Log.v(TAG, "sdpObserverOffer: onSetSuccess()")
+            }
+
+            override fun onCreateFailure(error: String) {
+                Log.e(TAG, "sdpObserverOffer: onCreateFailure($error)")
+                CoroutineScope(Dispatchers.Main).launch {
+                    _connectionState.value = ConnectionState.Error("Failed to create offer: $error")
+                    _events.emit(RealtimeEvent.Error(error))
                 }
             }
-            
-            "function_call" -> {
-                val name = item["name"]?.jsonPrimitive?.content ?: return
-                val arguments = item["arguments"]?.jsonPrimitive?.content ?: "{}"
-                _events.emit(RealtimeEvent.ToolCall(name, arguments))
+
+            override fun onSetFailure(error: String?) {
+                Log.e(TAG, "sdpObserverOffer: onSetFailure($error)")
             }
+        }
+    }
+
+    private fun onDataChannelOpened() {
+        Log.i(TAG, "onDataChannelOpened(); Sending session.update...")
+        CoroutineScope(Dispatchers.IO).launch {
+            dataSendSessionUpdate()
+        }
+    }
+
+    private fun onDataChannelClosed() {
+        Log.w(TAG, "onDataChannelClosed()")
+        CoroutineScope(Dispatchers.Main).launch {
+            _connectionState.value = ConnectionState.Disconnected
+            _events.emit(RealtimeEvent.Disconnected)
+        }
+    }
+
+    actual override suspend fun sendAudioFrame(frame: ByteArray) {
+        // With WebRTC and JavaAudioDeviceModule, audio is automatically captured
+        // and sent via the WebRTC audio track. No manual frame sending needed.
+        // The AudioDeviceModule handles microphone capture and routing to the peer connection.
+    }
+
+    actual override suspend fun dataSendJson(jsonObject: JsonObject): Boolean {
+        if (!dataChannelOpened) throw IllegalStateException("dataChannel not opened")
+        val type = jsonObject["type"].toString()
+        try {
+            val messageText = jsonObject.toString()
+            logDataChannelText("TX", messageText)
+            val messageBytes = messageText.toByteArray(Charsets.UTF_8)
+            val byteBuffer = ByteBuffer.allocateDirect(messageBytes.size)
+            byteBuffer.put(messageBytes)
+            byteBuffer.flip()
+            if (dataChannel?.send(DataChannel.Buffer(byteBuffer, false)) == true) {
+                Log.d(TAG, "dataSendJson: $type successfully sent")
+                return true
+            } else {
+                Log.e(TAG, "dataSendJson: $type failed to send")
+                return false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "dataSendJson: $type failed to send: ${e.message}", e)
+            _events.emit(RealtimeEvent.Error("$type failed to send: ${e.message}"))
+            return false
         }
     }
 }
