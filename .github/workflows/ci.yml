@@ -109,6 +109,7 @@ jobs:
     name: Package Desktop Distribution
     runs-on: ${{ matrix.os }}
     needs: build-desktop
+    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
