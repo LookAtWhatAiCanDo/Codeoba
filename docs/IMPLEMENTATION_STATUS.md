@@ -236,15 +236,14 @@ This section outlines the planned implementation sequence for remaining features
 
 **Status:** 🟡 In Progress (as of December 18, 2025)
 
-**Completion:** 60% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
+**Completion:** ~45% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
 
 **Tasks:**
-1. ✅ **Android Audio Streaming Integration** → COMPLETE (Issue #14)
+1. ✅ **Android Audio Streaming Integration** → COMPLETE (Issue #14) - 100%
    - ✅ Refactored to use WebRTC JavaAudioDeviceModule (NOT data channel approach)
    - ✅ Hardware AEC and noise suppression enabled
    - ✅ Audio capture handled automatically by WebRTC
    - ✅ Implemented setMicrophoneEnabled() for PTT control
-   - ✅ PTT button wired to microphone enable/disable
    - ✅ Comprehensive logging and error handling
    - ✅ Build verification successful
    - ✅ Code consolidation: extracted ~300+ lines to RealtimeClientBase
@@ -252,16 +251,19 @@ This section outlines the planned implementation sequence for remaining features
    - 🔴 TODO: Manual testing with real Android device
    - 🔴 TODO: Verify audio reaches OpenAI via WebRTC audio track
    
-2. 🔴 **Android Audio Playback** (~1-2 days) → See Issue #15
-   - Implement AudioTrack playback for received PCM audio frames
-   - Handle audio format conversion if needed
-   - Volume control
-   - Audio routing to speaker/Bluetooth/headset
+2. 🟡 **Android Audio Playback** (~0.5-1 day) → See Issue #15 - ~50%
+   - ✅ WebRTC automatically handles audio playback via onAddTrack
+   - ✅ Remote audio track received and enabled
+   - ✅ Audio automatically routed to speaker by WebRTC
+   - 🔴 TODO: Volume controls not implemented
+   - 🔴 TODO: Explicit audio routing UI not implemented
+   - 🔴 TODO: Manual testing with real device
    
-3. 🟡 **Android PTT & Text Input** (~0.5 days) → See Issue #16
-   - ✅ PTT button connected to startMicrophone/stopMicrophone
-   - ✅ Visual feedback for recording state (blue → red)
-   - ✅ PTT controls WebRTC audio track enable/disable
+3. 🟡 **Android PTT & Text Input** (~1-1.5 days) → See Issue #16 - ~25%
+   - ✅ PTT UI exists with visual feedback (blue → red)
+   - ✅ Calls startMicrophone/stopMicrophone methods
+   - 🔴 TODO: Verify AudioCaptureService→RealtimeClient wiring is correct
+   - 🔴 TODO: End-to-end PTT flow not confirmed working
    - 🔴 TODO: Implement text input sending via data channel
    - 🔴 TODO: Implement sendTextMessage() method
    
