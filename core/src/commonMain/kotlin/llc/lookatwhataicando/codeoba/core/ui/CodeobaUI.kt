@@ -211,6 +211,7 @@ fun PushToTalkFooter(
                                 onStartMic()
                                 
                                 // Wait for all pointers to be released
+                                // Continue loop while any pointer is still down
                                 do {
                                     val event = awaitPointerEvent()
                                 } while (event.changes.any { !it.changedToUp() })
