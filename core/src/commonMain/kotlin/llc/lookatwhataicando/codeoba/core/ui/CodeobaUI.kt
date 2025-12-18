@@ -12,6 +12,8 @@ import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.EventLogEntry
 import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.launch
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

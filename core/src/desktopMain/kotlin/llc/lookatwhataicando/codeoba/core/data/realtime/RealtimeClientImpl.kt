@@ -1,19 +1,14 @@
-package llc.lookatwhataicando.codeoba.core.data
+package llc.lookatwhataicando.codeoba.core.data.realtime
 
-import llc.lookatwhataicando.codeoba.core.domain.*
 import io.ktor.client.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
 
 /**
  * Desktop implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
@@ -67,7 +62,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     private var receiveJob: Job? = null
     
     actual override suspend fun connect(config: RealtimeConfig) {
-        if (_connectionState.value == ConnectionState.Connected || 
+        if (_connectionState.value == ConnectionState.Connected ||
             _connectionState.value == ConnectionState.Connecting) {
             logDebug(TAG, "Already connected or connecting, ignoring connect request")
             return
@@ -110,7 +105,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
                 "Need to add libwebrtc or similar dependency for Desktop platform."
             logError(TAG, errorMsg)
             _connectionState.value = ConnectionState.Error(errorMsg)
-            _events.emit(RealtimeEvent.Error(
+            _events.emit(
+                RealtimeEvent.Error(
                 "WebRTC not yet implemented for Desktop. Requires native WebRTC library integration."
             ))
                 

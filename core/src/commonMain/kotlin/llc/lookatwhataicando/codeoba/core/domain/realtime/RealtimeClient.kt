@@ -1,4 +1,4 @@
-package llc.lookatwhataicando.codeoba.core.domain
+package llc.lookatwhataicando.codeoba.core.domain.realtime
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -49,7 +49,7 @@ interface RealtimeClient {
     suspend fun dataSendInputAudioBufferClear(): Boolean
     suspend fun dataSendInputAudioBufferCommit(): Boolean
     suspend fun dataSendResponseCreate(): Boolean
-    suspend fun sendTextMessage(text: String): Boolean
+    suspend fun dataSendConversationItemCreateUserMessageInputText(text: String): Boolean
 }
 
 data class RealtimeConfig(

@@ -4,6 +4,10 @@ import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeClient
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
 
 /**
  * Main app state and coordinator.
@@ -86,7 +90,7 @@ class CodeobaApp(
     suspend fun sendTextMessage(text: String) {
         addEventLogEntry(EventLogEntry.Info("Sending text message: $text"))
         try {
-            val success = realtimeClient.sendTextMessage(text)
+            val success = realtimeClient.dataSendConversationItemCreateUserMessageInputText(text)
             if (success) {
                 // Add user's text message to event log
                 addEventLogEntry(EventLogEntry.Transcript(text, true))

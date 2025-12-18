@@ -1,36 +1,29 @@
-package llc.lookatwhataicando.codeoba.core.data
+package llc.lookatwhataicando.codeoba.core.data.realtime
 
 import android.Manifest
 import android.content.Context
 import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import llc.lookatwhataicando.codeoba.core.domain.*
 import com.twilio.audioswitch.AudioDevice
 import com.twilio.audioswitch.AudioSwitch
 import com.twilio.audioswitch.bluetooth.BluetoothHeadsetConnectionListener
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
 import llc.lookatwhataicando.codeoba.core.BuildConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
 import org.webrtc.*
 import org.webrtc.Logging.Severity
 import org.webrtc.AudioTrack as AudioTrackWebRTC
-import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 
@@ -165,7 +158,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     actual override suspend fun connect(config: RealtimeConfig) {
-        if (_connectionState.value == ConnectionState.Connected || 
+        if (_connectionState.value == ConnectionState.Connected ||
             _connectionState.value == ConnectionState.Connecting) {
             Log.w(TAG, "connect: Already connected or connecting, ignoring connect request")
             return

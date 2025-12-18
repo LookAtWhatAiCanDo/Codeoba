@@ -1,4 +1,4 @@
-package llc.lookatwhataicando.codeoba.core.data
+package llc.lookatwhataicando.codeoba.core.data.realtime
 
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -12,7 +12,12 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.*
-import llc.lookatwhataicando.codeoba.core.domain.*
+import llc.lookatwhataicando.codeoba.core.data.realtime.protocol.events.ConversationItemCreateEvent
+import llc.lookatwhataicando.codeoba.core.data.realtime.protocol.items.UserMessageItem
+import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeClient
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
 
 /**
  * Abstract base class for RealtimeClient implementations.
@@ -148,10 +153,17 @@ abstract class RealtimeClientBase : RealtimeClient {
     /**
      * Helper to generate event IDs
      */
-    protected fun generateEventId(prefix: String = "evt_"): String {
-        return RealtimeClient.generateId(prefix, 21)
+    protected fun generateEventId(): String {
+        return RealtimeClient.generateId("evt_", 21)
     }
-    
+
+    /**
+     * Helper to generate message IDs
+     */
+    protected fun generateMessageId(): String {
+        return RealtimeClient.generateId("msg_", 21)
+    }
+
     /**
      * Helper to build JSON objects safely
      */
@@ -168,7 +180,7 @@ abstract class RealtimeClientBase : RealtimeClient {
         //
         dataSendJson(buildJsonObject {
             put("type", "session.update")
-            put("event_id", RealtimeClient.generateId())
+            put("event_id", generateEventId())
             putJsonObject("session") {
                 put("type", "realtime")
                 put("audio", buildJsonObject {
@@ -227,7 +239,7 @@ abstract class RealtimeClientBase : RealtimeClient {
         //
         return dataSendJson(buildJsonObject {
             put("type", "input_audio_buffer.clear")
-            put("event_id", RealtimeClient.generateId())
+            put("event_id", generateEventId())
         })
     }
 
@@ -237,7 +249,7 @@ abstract class RealtimeClientBase : RealtimeClient {
         //
         return dataSendJson(buildJsonObject {
             put("type", "input_audio_buffer.commit")
-            put("event_id", RealtimeClient.generateId())
+            put("event_id", generateEventId())
         })
     }
 
@@ -248,7 +260,7 @@ abstract class RealtimeClientBase : RealtimeClient {
         //
         return dataSendJson(buildJsonObject {
             put("type", "response.create")
-            put("event_id", RealtimeClient.generateId())
+            put("event_id", generateEventId())
             //put("response", null)
         })
     }
@@ -265,24 +277,15 @@ abstract class RealtimeClientBase : RealtimeClient {
      * 
      * @see <a href="https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create">OpenAI API Documentation</a>
      */
-    override suspend fun sendTextMessage(text: String): Boolean {
-        //
-        // https://platform.openai.com/docs/api-reference/realtime-client-events/conversation/item/create
-        //
-        return dataSendJson(buildJsonObject {
-            put("type", "conversation.item.create")
-            put("event_id", RealtimeClient.generateId())
-            put("item", buildJsonObject {
-                put("type", "message")
-                put("role", "user")
-                put("content", buildJsonArray {
-                    add(buildJsonObject {
-                        put("type", "input_text")
-                        put("text", text)
-                    })
-                })
-            })
-        })
+    override suspend fun dataSendConversationItemCreateUserMessageInputText(text: String): Boolean {
+        return dataSendJson(
+            ConversationItemCreateEvent(
+                eventId = generateEventId(),
+                item = UserMessageItem.Text(
+                    id = generateMessageId(),
+                    text = text
+                )
+            ).toJson())
     }
 
     /**

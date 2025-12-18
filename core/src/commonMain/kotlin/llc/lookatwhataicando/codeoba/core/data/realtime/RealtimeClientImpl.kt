@@ -1,14 +1,8 @@
-package llc.lookatwhataicando.codeoba.core.data
+package llc.lookatwhataicando.codeoba.core.data.realtime
 
-import llc.lookatwhataicando.codeoba.core.domain.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonObject
+import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 
 /**
  * Implementation of RealtimeClient using WebRTC for OpenAI Realtime API.
@@ -31,5 +25,5 @@ expect class RealtimeClientImpl() : RealtimeClientBase {
     override suspend fun dataSendInputAudioBufferClear(): Boolean
     override suspend fun dataSendInputAudioBufferCommit(): Boolean
     override suspend fun dataSendResponseCreate(): Boolean
-    override suspend fun sendTextMessage(text: String): Boolean
+    override suspend fun dataSendConversationItemCreateUserMessageInputText(text: String): Boolean
 }
