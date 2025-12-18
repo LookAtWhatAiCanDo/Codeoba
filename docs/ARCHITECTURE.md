@@ -195,6 +195,45 @@ interface AudioCaptureService {
 - Encoding: PCM 16-bit
 - Rationale: Compatible with OpenAI Realtime API requirements
 
+### Audio Playback
+
+**Purpose:** Play received audio responses from OpenAI Realtime API.
+
+**Implementation:**
+Audio playback is handled automatically by WebRTC on Android platform:
+
+**Android Platform:**
+- WebRTC automatically handles audio playback via `onAddTrack` callback
+- AudioSwitch library manages audio routing (speaker, Bluetooth, wired headsets)
+- Volume control via `setVolume(volume: Float)` API
+- Device selection via `selectAudioDevice(device: AudioDevice)` API
+
+**API:**
+```kotlin
+// Volume control (0.0 = mute, 1.0 = full volume)
+realtimeClient.setVolume(0.8f)
+val currentVolume = realtimeClient.getVolume()
+
+// Audio device management
+val availableDevices = realtimeClient.getAvailableAudioDevices()
+val selectedDevice = realtimeClient.getSelectedAudioDevice()
+realtimeClient.selectAudioDevice(AudioDevice.BluetoothHeadset(...))
+```
+
+**Platform Implementations:**
+| Platform | Status | Playback Method | Audio Routing |
+|----------|--------|----------------|---------------|
+| Android  | ✅ Complete | WebRTC automatic | AudioSwitch library |
+| iOS      | 🚧 Planned | WebRTC automatic | AVAudioSession |
+| Desktop  | 🚧 Planned | WebRTC / JavaSound | System default |
+| Web      | 📋 Planned | WebRTC automatic | Browser default |
+
+**AudioSwitch Integration (Android):**
+- Automatically detects and manages audio device changes
+- Prioritizes devices: Bluetooth → Wired → Speakerphone → Earpiece
+- Handles audio focus changes
+- Graceful fallback if AudioSwitch initialization fails
+
 ### AudioRouteManager
 
 **Purpose:** Manage audio input/output routing (Bluetooth, speaker, etc.).
