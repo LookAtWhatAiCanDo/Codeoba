@@ -2,7 +2,7 @@
 # Kotlin and Core
 kotlin = "1.9.21"
 compose = "1.5.11"
-agp = "8.2.2"
+agp = "8.13.2"
 
 # Kotlin Libraries
 kotlinx-coroutines = "1.7.3"
