@@ -3,7 +3,6 @@ package llc.lookatwhataicando.codeoba.core.data
 import android.Manifest
 import android.content.Context
 import android.media.AudioTrack as AudioTrackAndroid
-import android.media.AudioManager
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import llc.lookatwhataicando.codeoba.core.domain.*
@@ -121,7 +120,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         // Initialize AudioSwitch for audio routing management
         try {
             audioSwitch = AudioSwitch(
-                context = appContext!!,
+                context = context.applicationContext,
                 loggingEnabled = debug,
                 audioFocusChangeListener = { focused ->
                     Log.d(TAG, "Audio focus changed: focused=$focused")
