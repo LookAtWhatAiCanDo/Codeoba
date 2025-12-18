@@ -1,5 +1,7 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import llc.lookatwhataicando.codeoba.core.CodeobaApp
@@ -166,6 +171,7 @@ fun PushToTalkFooter(
 ) {
     val isCapturing = audioCaptureState is AudioCaptureState.Capturing
     val isConnected = connectionState is ConnectionState.Connected
+    var isPressed by remember { mutableStateOf(false) }
     
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -183,24 +189,49 @@ fun PushToTalkFooter(
             // Status text
             Text(
                 text = when (audioCaptureState) {
-                    is AudioCaptureState.Idle -> "Ready to talk"
+                    is AudioCaptureState.Idle -> if (isPressed) "🔴 Talking..." else "Ready to talk"
                     is AudioCaptureState.Starting -> "Starting microphone..."
-                    is AudioCaptureState.Capturing -> "🔴 Recording"
+                    is AudioCaptureState.Capturing -> "🔴 Talking..."
                     is AudioCaptureState.Error -> "⚠️ ${audioCaptureState.message}"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isCapturing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                color = if (isCapturing || isPressed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
             )
             
-            // Large PTT Button - positioned for thumb access
+            // Large PTT Button - positioned for thumb access with momentary press behavior
+            val buttonModifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .then(
+                    if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                        Modifier.pointerInput(Unit) {
+                            awaitEachGesture {
+                                // Wait for initial press
+                                awaitFirstDown()
+                                isPressed = true
+                                onStartMic()
+                                
+                                // Wait for all pointers to be released
+                                do {
+                                    val event = awaitPointerEvent()
+                                } while (event.changes.any { !it.changedToUp() })
+                                
+                                // All pointers released
+                                isPressed = false
+                                onStopMic()
+                            }
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
+            
             Button(
-                onClick = if (isCapturing) onStopMic else onStartMic,
+                onClick = { /* Handled by pointerInput */ },
                 enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp),
+                modifier = buttonModifier,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCapturing) 
+                    containerColor = if (isCapturing || isPressed) 
                         MaterialTheme.colorScheme.error 
                     else 
                         MaterialTheme.colorScheme.primary,
@@ -208,7 +239,7 @@ fun PushToTalkFooter(
                 )
             ) {
                 Text(
-                    text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
+                    text = if (isCapturing || isPressed) "🔴 Release to Stop" else "🎤 Push to Talk",
                     style = MaterialTheme.typography.titleLarge
                 )
             }
