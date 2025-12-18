@@ -27,12 +27,20 @@ import kotlinx.serialization.json.*
  * 6. Handle ICE candidates
  * 7. Stream audio through RTP
  */
-actual class RealtimeClientImpl actual constructor() : RealtimeClient {
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    actual override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     
-    private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
-    actual override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
+    // HTTP client for Desktop (uses default engine)
+    override val httpClient = HttpClient()
+    
+    // Platform-specific logging implementation
+    override fun logDebug(tag: String, message: String) {
+        println("[$tag] DEBUG: $message")
+    }
+    
+    override fun logError(tag: String, message: String, throwable: Throwable?) {
+        println("[$tag] ERROR: $message")
+        throwable?.printStackTrace()
+    }
     
     private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
     actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
@@ -43,35 +51,28 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private var dataChannel: Any? = null // Would be: org.webrtc.DataChannel or similar  
     private var audioTrack: Any? = null // Would be: org.webrtc.AudioTrack or similar
     
-    private val httpClient = HttpClient()
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
-    
     private var receiveJob: Job? = null
-    private var ephemeralKey: String? = null
     
     actual override suspend fun connect(config: RealtimeConfig) {
         if (_connectionState.value == ConnectionState.Connected || 
             _connectionState.value == ConnectionState.Connecting) {
-            println("[RealtimeClient] Already connected or connecting, ignoring connect request")
+            logDebug("RealtimeClient", "Already connected or connecting, ignoring connect request")
             return
         }
         
         _connectionState.value = ConnectionState.Connecting
-        println("[RealtimeClient] Connecting to ${config.endpoint} with model ${config.model}")
+        logDebug("RealtimeClient", "Connecting to ${config.endpoint} with model ${config.model}")
         
         try {
-            // Step 1: Get ephemeral token from OpenAI
-            println("[RealtimeClient] Requesting ephemeral token...")
-            ephemeralKey = getEphemeralToken(config.apiKey, config.model)
-            println("[RealtimeClient] Ephemeral token received: ${ephemeralKey?.take(10)}...")
+            // Step 1: Get ephemeral token from OpenAI (using base class method)
+            logDebug("RealtimeClient", "Requesting ephemeral token...")
+            val ephemeralToken = getEphemeralToken(config)
+            logDebug("RealtimeClient", "Ephemeral token received: ${ephemeralToken.take(10)}...")
             
             // Step 2: Create WebRTC peer connection
             // TODO: Initialize RTCPeerConnection with proper configuration
             // This requires adding a WebRTC library like libwebrtc or webrtc-java
-            println("[RealtimeClient] WebRTC peer connection setup required but not yet implemented")
+            logDebug("RealtimeClient", "WebRTC peer connection setup required but not yet implemented")
             
             // Step 3: Create data channel for signaling
             // dataChannel = peerConnection.createDataChannel("oai-events")
@@ -84,8 +85,8 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             // val offer = peerConnection.createOffer()
             // peerConnection.setLocalDescription(offer)
             
-            // Step 6: Send offer to OpenAI and get answer
-            // val answer = exchangeSDP(offer, ephemeralKey)
+            // Step 6: Send offer to OpenAI and get answer (using base class method)
+            // val answer = exchangeSDP(config.endpoint, ephemeralToken, offer)
             // peerConnection.setRemoteDescription(answer)
             
             // Step 7: Set up event listeners
@@ -94,23 +95,22 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             // For now, emit error indicating WebRTC library is needed
             val errorMsg = "WebRTC implementation requires platform-specific library. " +
                 "Need to add libwebrtc or similar dependency for Desktop platform."
-            println("[RealtimeClient] ERROR: $errorMsg")
+            logError("RealtimeClient", errorMsg)
             _connectionState.value = ConnectionState.Error(errorMsg)
             _events.emit(RealtimeEvent.Error(
                 "WebRTC not yet implemented for Desktop. Requires native WebRTC library integration."
             ))
-            
+                
         } catch (e: Exception) {
             val errorMsg = "Failed to connect: ${e.message}"
-            println("[RealtimeClient] ERROR: $errorMsg")
-            e.printStackTrace()
+            logError("RealtimeClient", errorMsg, e)
             _connectionState.value = ConnectionState.Error(errorMsg)
             _events.emit(RealtimeEvent.Error(errorMsg))
         }
     }
     
     actual override suspend fun disconnect() {
-        println("[RealtimeClient] Disconnecting...")
+        logDebug("RealtimeClient", "Disconnecting...")
         receiveJob?.cancel()
         receiveJob = null
         
@@ -123,11 +123,10 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         peerConnection = null
         dataChannel = null
         audioTrack = null
-        ephemeralKey = null
         
         _connectionState.value = ConnectionState.Disconnected
         _events.emit(RealtimeEvent.Disconnected)
-        println("[RealtimeClient] Disconnected")
+        logDebug("RealtimeClient", "Disconnected")
     }
     
     actual override suspend fun sendAudioFrame(frame: ByteArray) {
@@ -135,39 +134,29 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
             return
         }
         
-        try {
-            // Send audio via RTP through the audio track
-            // audioTrack?.send(frame)
-            
-            // For now, do nothing as WebRTC is not yet implemented
-        } catch (e: Exception) {
-            _events.emit(RealtimeEvent.Error("Failed to send audio: ${e.message}"))
-        }
+        // Send audio via RTP through the audio track
+        // TODO: Implement when WebRTC is available
     }
     
-    /**
-     * Get ephemeral token from OpenAI for WebRTC session.
-     */
-    private suspend fun getEphemeralToken(apiKey: String, model: String): String {
-        try {
-            val response: HttpResponse = httpClient.post("https://api.openai.com/v1/realtime/sessions") {
-                header(HttpHeaders.Authorization, "Bearer $apiKey")
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("model", model)
-                    put("voice", "alloy")
-                }.toString())
-            }
-            
-            val responseBody = response.bodyAsText()
-            val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
-            
-            return jsonResponse["client_secret"]?.jsonObject?.get("value")?.jsonPrimitive?.content
-                ?: throw IllegalStateException("No ephemeral key in response")
-                
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
-        }
+    actual override suspend fun dataSendJson(jsonObject: JsonObject): Boolean {
+        // TODO: Implement when WebRTC data channel is available
+        logDebug("RealtimeClient", "dataSendJson not yet implemented for Desktop")
+        return false
+    }
+    
+    actual override suspend fun dataSendInputAudioBufferClear(): Boolean {
+        // TODO: Implement when WebRTC data channel is available
+        return false
+    }
+    
+    actual override suspend fun dataSendInputAudioBufferCommit(): Boolean {
+        // TODO: Implement when WebRTC data channel is available
+        return false
+    }
+    
+    actual override suspend fun dataSendResponseCreate(): Boolean {
+        // TODO: Implement when WebRTC data channel is available
+        return false
     }
     
     /**

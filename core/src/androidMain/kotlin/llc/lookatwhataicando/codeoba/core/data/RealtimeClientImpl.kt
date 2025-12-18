@@ -34,7 +34,7 @@ import java.nio.ByteBuffer
  * 
  * Uses io.github.webrtc-sdk:android library for WebRTC functionality.
  */
-actual class RealtimeClientImpl actual constructor() : RealtimeClient {
+actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
     companion object {
         private const val TAG = "RealtimeClient"
 
@@ -52,11 +52,33 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         }
     }
 
-    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
-    actual override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+    // HTTP client for Android (uses OkHttp engine)
+    override val httpClient = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            })
+        }
+        engine {
+            config {
+                followRedirects(true)
+            }
+        }
+    }
     
-    private val _events = MutableSharedFlow<RealtimeEvent>(replay = 0)
-    actual override val events: SharedFlow<RealtimeEvent> = _events.asSharedFlow()
+    // Platform-specific logging implementation
+    override fun logDebug(tag: String, message: String) {
+        Log.d(tag, message)
+    }
+    
+    override fun logError(tag: String, message: String, throwable: Throwable?) {
+        if (throwable != null) {
+            Log.e(tag, message, throwable)
+        } else {
+            Log.e(tag, message)
+        }
+    }
     
     private val _audioFrames = MutableSharedFlow<ByteArray>(replay = 0)
     actual override val audioFrames: Flow<ByteArray> = _audioFrames.asSharedFlow()
@@ -76,24 +98,6 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
     private val remoteAudioTrackInfos = mutableListOf<RemoteAudioTrackInfo>()
 
     private val useAudioPlayerWebRTC = true
-
-    private val httpClient = HttpClient(OkHttp) {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-            })
-        }
-        engine {
-            config {
-                followRedirects(true)
-            }
-        }
-    }
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
     
     // Context must be provided before connecting
     private var appContext: Context? = null
@@ -304,95 +308,6 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClient {
         }
     }
 
-    /**
-     * Get ephemeral token from OpenAI for WebRTC session.
-     *
-     * See https://platform.openai.com/docs/api-reference/realtime-sessions/create-realtime-client-secret
-     */
-    private suspend fun getEphemeralToken(config: RealtimeConfig): String {
-        try {
-            val model = config.model
-            val voice = config.voice
-            Log.d(TAG, "getEphemeralToken: Requesting ephemeral token for model: $model, voice: $voice")
-            val response = httpClient.post("${config.endpoint}/client_secrets") {
-                header(HttpHeaders.Authorization, "Bearer ${config.dangerousApiKey}")
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject {
-                    put("session", buildJsonObject {
-                        put("type", "realtime")
-                        put("model", model)
-                        put("audio", buildJsonObject {
-                            put("output", buildJsonObject {
-                                put("voice", voice)
-                            })
-                        })
-                    })
-                })
-            }
-            
-            val responseBody = response.bodyAsText()
-            Log.d(TAG, "getEphemeralToken: Ephemeral token response status: ${response.status}")
-            
-            // Check HTTP status
-            if (response.status.value !in 200..299) {
-                Log.e(TAG, "getEphemeralToken:Failed to get ephemeral token: HTTP ${response.status.value}: $responseBody")
-                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
-            }
-            
-            val jsonResponse = json.parseToJsonElement(responseBody).jsonObject
-            
-            val ephemeralToken = jsonResponse["value"]?.jsonPrimitive?.content
-            if (ephemeralToken == null) {
-                Log.e(TAG, "getEphemeralToken: No ephemeral token in response. Response body: $responseBody")
-                throw IllegalStateException("No ephemeral token in response")
-            }
-            
-            Log.d(TAG, "getEphemeralToken: Ephemeral token received: ${ephemeralToken.take(10)}...")
-            return ephemeralToken
-                
-        } catch (e: Exception) {
-            Log.e(TAG, "getEphemeralToken: Failed to get ephemeral token", e)
-            throw IllegalStateException("Failed to get ephemeral token: ${e.message}", e)
-        }
-    }
-    
-    /**
-     * Exchange SDP offer/answer with OpenAI.
-     */
-    private suspend fun exchangeSDP(endpoint: String, ephemeralToken: String, sdpOffer: String): String {
-        try {
-            Log.d(TAG, "exchangeSDP: Exchanging SDP offer with OpenAI...")
-
-            val response = httpClient.post("$endpoint/calls") {
-                header(HttpHeaders.Authorization, "Bearer $ephemeralToken")
-                accept(ContentType.Text.Plain)
-                contentType(ContentType("application", "sdp"))
-                setBody(sdpOffer)
-            }
-            
-            val responseBody = response.bodyAsText()
-            Log.d(TAG, "exchangeSDP: SDP exchange response status: ${response.status}")
-            Log.d(TAG, "exchangeSDP: SDP exchange response (SDP answer): ${responseBody.take(10)}...")
-            
-            // Check HTTP status
-            if (response.status.value !in 200..299) {
-                throw IllegalStateException("HTTP ${response.status.value}: $responseBody")
-            }
-            
-            // Response should be raw SDP answer text, not JSON
-            if (responseBody.isBlank()) {
-                throw IllegalStateException("Received empty SDP answer from OpenAI")
-            }
-            
-            Log.d(TAG, "exchangeSDP: SDP answer received successfully (${responseBody.length} chars)")
-            return responseBody
-                
-        } catch (e: Exception) {
-            Log.e(TAG, "exchangeSDP: Failed to exchange SDP", e)
-            throw IllegalStateException("Failed to exchange SDP: ${e.message}", e)
-        }
-    }
-    
     /**
      * Create WebRTC peer connection observer.
      */

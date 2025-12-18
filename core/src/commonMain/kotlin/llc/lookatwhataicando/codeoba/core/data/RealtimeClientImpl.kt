@@ -15,10 +15,11 @@ import kotlinx.serialization.json.JsonObject
  * 
  * OpenAI Realtime API uses WebRTC for low-latency bidirectional audio streaming.
  * This requires platform-specific WebRTC implementations.
+ * 
+ * Platform-specific implementations extend RealtimeClientBase which provides
+ * common HTTP/JSON functionality.
  */
-expect class RealtimeClientImpl() : RealtimeClient {
-    override val connectionState: StateFlow<ConnectionState>
-    override val events: SharedFlow<RealtimeEvent>
+expect class RealtimeClientImpl() : RealtimeClientBase {
     override val audioFrames: Flow<ByteArray>
     
     override suspend fun connect(config: RealtimeConfig)
