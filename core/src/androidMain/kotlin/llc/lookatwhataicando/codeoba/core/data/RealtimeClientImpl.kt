@@ -1,8 +1,10 @@
 package llc.lookatwhataicando.codeoba.core.data
 
+import android.Manifest
 import android.content.Context
 import android.media.AudioTrack as AudioTrackAndroid
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import llc.lookatwhataicando.codeoba.core.domain.*
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
@@ -254,9 +256,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         }
     }
 
-    /**
-     * Requires RECORD_AUDIO permission
-     */
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     private fun setLocalAudioMicrophone(peerConnectionFactory: PeerConnectionFactory) {
         localAudioTrackMicrophoneSender?.also {
             peerConnection?.removeTrack(it)

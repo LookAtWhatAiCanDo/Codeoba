@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
                     
                     val config = RealtimeConfig(
                         dangerousApiKey = apiKey,
+                        // TODO: Better injection of endpoint from BuildConfig...
                         endpoint = System.getProperty("realtime.endpoint")
                             ?: "https://api.openai.com/v1/realtime"
                     )
