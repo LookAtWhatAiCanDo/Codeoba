@@ -19,6 +19,7 @@ import kotlinx.serialization.json.JsonObject
  * Platform-specific implementations extend RealtimeClientBase which provides
  * common HTTP/JSON functionality.
  */
+@Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 expect class RealtimeClientImpl() : RealtimeClientBase {
     override val audioFrames: Flow<ByteArray>
     
