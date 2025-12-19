@@ -1,5 +1,6 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -198,49 +201,63 @@ fun PushToTalkFooter(
             )
             
             // Large PTT Button - positioned for thumb access with momentary press behavior
-            val buttonModifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .then(
-                    if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
-                        Modifier.pointerInput(Unit) {
-                            awaitEachGesture {
-                                // Wait for initial press
-                                awaitFirstDown()
-                                isPressed = true
-                                onStartMic()
-                                
-                                // Wait for all pointers to be released
-                                // Continue loop while any pointer is still down
-                                do {
-                                    val event = awaitPointerEvent()
-                                } while (event.changes.any { !it.changedToUp() })
-                                
-                                // All pointers released
-                                isPressed = false
-                                onStopMic()
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .background(
+                        color = if (isCapturing || isPressed) {
+                            MaterialTheme.colorScheme.error
+                        } else if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .alpha(if (isConnected && audioCaptureState !is AudioCaptureState.Starting) 1.0f else 0.38f)
+                    .then(
+                        if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                            Modifier.pointerInput(Unit) {
+                                awaitEachGesture {
+                                    // Wait for initial press
+                                    awaitFirstDown().also { it.consume() }
+                                    isPressed = true
+                                    onStartMic()
+                                    
+                                    // Wait for all pointers to be released
+                                    // Continue loop while any pointer is still down
+                                    do {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                    } while (event.changes.any { !it.changedToUp() })
+                                    
+                                    // All pointers released
+                                    isPressed = false
+                                    onStopMic()
+                                }
+                            }
+                        } else {
+                            Modifier.pointerInput(Unit) {
+                                awaitEachGesture {
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        Modifier
-                    }
-                )
-            
-            Button(
-                onClick = { /* Handled by pointerInput */ },
-                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
-                modifier = buttonModifier,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCapturing || isPressed) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                    )
             ) {
                 Text(
                     text = if (isCapturing || isPressed) "🔴 Release to Stop" else "🎤 Push to Talk",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    }
                 )
             }
         }
