@@ -211,6 +211,8 @@ fun PushToTalkFooter(
             )
             
             // Large PTT Button - positioned for thumb access with momentary press behavior
+            val isEnabled = isConnected && audioCaptureState !is AudioCaptureState.Starting
+            
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -219,65 +221,61 @@ fun PushToTalkFooter(
                     .background(
                         color = if (isCapturing || isPressed) {
                             MaterialTheme.colorScheme.error
-                        } else if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                        } else if (isEnabled) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         },
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .alpha(if (isConnected && audioCaptureState !is AudioCaptureState.Starting) 1.0f else 0.38f)
-                    .then(
-                        if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
-                            Modifier.pointerInput(Unit) {
-                                logger.d("PTT", "pointerInput block initialized (enabled)")
-                                awaitEachGesture {
-                                    logger.d("PTT", "Awaiting gesture...")
-                                    // Wait for initial press
-                                    val down = awaitFirstDown()
-                                    logger.d("PTT", "First down detected at (${down.position.x}, ${down.position.y})")
-                                    down.consume()
-                                    isPressed = true
-                                    logger.i("PTT", "Calling onStartMic()")
-                                    onStartMic()
-                                    
-                                    // Wait for all pointers to be released
-                                    // Continue loop while any pointer is still down
-                                    do {
-                                        val event = awaitPointerEvent()
-                                        logger.v("PTT", "Pointer event: ${event.changes.size} changes")
-                                        event.changes.forEach { change ->
-                                            logger.v("PTT", "  - Change: pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
-                                            change.consume()
-                                        }
-                                    } while (event.changes.any { !it.changedToUp() })
-                                    
-                                    // All pointers released
-                                    logger.d("PTT", "All pointers released")
-                                    isPressed = false
-                                    logger.i("PTT", "Calling onStopMic()")
-                                    onStopMic()
-                                }
+                    .alpha(if (isEnabled) 1.0f else 0.38f)
+                    .pointerInput(isEnabled) {
+                        if (isEnabled) {
+                            logger.d("PTT", "pointerInput block initialized (enabled)")
+                            awaitEachGesture {
+                                logger.d("PTT", "Awaiting gesture...")
+                                // Wait for initial press
+                                val down = awaitFirstDown()
+                                logger.d("PTT", "First down detected at (${down.position.x}, ${down.position.y})")
+                                down.consume()
+                                isPressed = true
+                                logger.i("PTT", "Calling onStartMic()")
+                                onStartMic()
+                                
+                                // Wait for all pointers to be released
+                                // Continue loop while any pointer is still down
+                                do {
+                                    val event = awaitPointerEvent()
+                                    logger.v("PTT", "Pointer event: ${event.changes.size} changes")
+                                    event.changes.forEach { change ->
+                                        logger.v("PTT", "  - Change: pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
+                                        change.consume()
+                                    }
+                                } while (event.changes.any { !it.changedToUp() })
+                                
+                                // All pointers released
+                                logger.d("PTT", "All pointers released")
+                                isPressed = false
+                                logger.i("PTT", "Calling onStopMic()")
+                                onStopMic()
                             }
                         } else {
                             logger.d("PTT", "pointerInput block initialized (disabled)")
-                            Modifier.pointerInput(Unit) {
-                                awaitEachGesture {
-                                    logger.d("PTT", "Disabled - consuming events")
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        logger.v("PTT", "Disabled - consuming ${event.changes.size} changes")
-                                        event.changes.forEach { it.consume() }
-                                    }
+                            awaitEachGesture {
+                                logger.d("PTT", "Disabled - consuming events")
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    logger.v("PTT", "Disabled - consuming ${event.changes.size} changes")
+                                    event.changes.forEach { it.consume() }
                                 }
                             }
                         }
-                    )
+                    }
             ) {
                 Text(
                     text = if (isCapturing || isPressed) "🔴 Release to Stop" else "🎤 Push to Talk",
                     style = MaterialTheme.typography.titleLarge,
-                    color = if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
+                    color = if (isEnabled) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
