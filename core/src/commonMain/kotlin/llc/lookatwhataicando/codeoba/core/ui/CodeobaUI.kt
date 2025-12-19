@@ -243,15 +243,18 @@ fun PushToTalkFooter(
                                 onStartMic()
                                 
                                 // Wait for all pointers to be released
-                                // Continue loop while any pointer is still down
+                                // Continue loop while the original pointer is still down
                                 do {
                                     val event = awaitPointerEvent()
                                     logger.v("PTT", "Pointer event: ${event.changes.size} changes")
                                     event.changes.forEach { change ->
-                                        logger.v("PTT", "  - Change: pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
+                                        logger.v("PTT", "  - Change: id=${change.id}, pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
                                         change.consume()
                                     }
-                                } while (event.changes.any { !it.changedToUp() })
+                                    // Check if the original pointer (or any currently pressed pointer from this gesture) is still down
+                                    val anyPressed = event.changes.any { it.pressed }
+                                    logger.v("PTT", "  - anyPressed=$anyPressed")
+                                } while (event.changes.any { it.pressed })
                                 
                                 // All pointers released
                                 logger.d("PTT", "All pointers released")
