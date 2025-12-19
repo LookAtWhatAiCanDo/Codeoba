@@ -54,6 +54,7 @@ import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.EventLogEntry
 import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
 import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
+import llc.lookatwhataicando.codeoba.core.domain.createLogger
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 
@@ -175,9 +176,12 @@ fun PushToTalkFooter(
     val isConnected = connectionState is ConnectionState.Connected
     var isPressed by remember { mutableStateOf(false) }
     
+    // Create logger instance for PTT button
+    val logger = remember { createLogger() }
+    
     // Log state changes for debugging
     remember(isCapturing, isConnected, isPressed) {
-        println("[PTT] State: isCapturing=$isCapturing, isConnected=$isConnected, isPressed=$isPressed, audioCaptureState=${audioCaptureState::class.simpleName}")
+        logger.d("PTT", "State: isCapturing=$isCapturing, isConnected=$isConnected, isPressed=$isPressed, audioCaptureState=${audioCaptureState::class.simpleName}")
         null
     }
     
@@ -226,43 +230,43 @@ fun PushToTalkFooter(
                     .then(
                         if (isConnected && audioCaptureState !is AudioCaptureState.Starting) {
                             Modifier.pointerInput(Unit) {
-                                println("[PTT] pointerInput block initialized (enabled)")
+                                logger.d("PTT", "pointerInput block initialized (enabled)")
                                 awaitEachGesture {
-                                    println("[PTT] Awaiting gesture...")
+                                    logger.d("PTT", "Awaiting gesture...")
                                     // Wait for initial press
                                     val down = awaitFirstDown()
-                                    println("[PTT] First down detected at (${down.position.x}, ${down.position.y})")
+                                    logger.d("PTT", "First down detected at (${down.position.x}, ${down.position.y})")
                                     down.consume()
                                     isPressed = true
-                                    println("[PTT] Calling onStartMic()")
+                                    logger.i("PTT", "Calling onStartMic()")
                                     onStartMic()
                                     
                                     // Wait for all pointers to be released
                                     // Continue loop while any pointer is still down
                                     do {
                                         val event = awaitPointerEvent()
-                                        println("[PTT] Pointer event: ${event.changes.size} changes")
+                                        logger.v("PTT", "Pointer event: ${event.changes.size} changes")
                                         event.changes.forEach { change ->
-                                            println("[PTT]   - Change: pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
+                                            logger.v("PTT", "  - Change: pressed=${change.pressed}, changedToUp=${change.changedToUp()}")
                                             change.consume()
                                         }
                                     } while (event.changes.any { !it.changedToUp() })
                                     
                                     // All pointers released
-                                    println("[PTT] All pointers released")
+                                    logger.d("PTT", "All pointers released")
                                     isPressed = false
-                                    println("[PTT] Calling onStopMic()")
+                                    logger.i("PTT", "Calling onStopMic()")
                                     onStopMic()
                                 }
                             }
                         } else {
-                            println("[PTT] pointerInput block initialized (disabled)")
+                            logger.d("PTT", "pointerInput block initialized (disabled)")
                             Modifier.pointerInput(Unit) {
                                 awaitEachGesture {
-                                    println("[PTT] Disabled - consuming events")
+                                    logger.d("PTT", "Disabled - consuming events")
                                     while (true) {
                                         val event = awaitPointerEvent()
-                                        println("[PTT] Disabled - consuming ${event.changes.size} changes")
+                                        logger.v("PTT", "Disabled - consuming ${event.changes.size} changes")
                                         event.changes.forEach { it.consume() }
                                     }
                                 }
