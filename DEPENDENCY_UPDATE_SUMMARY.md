@@ -91,8 +91,8 @@ All updated versions are verified compatible according to official documentation
 #### Changed Files
 - `core/build.gradle.kts`: Updated `compilerOptions.jvmTarget` to `JVM_17`
 - `core/build.gradle.kts`: Updated `compileOptions` to `VERSION_17`
+- `app-android/build.gradle.kts`: Migrated from `kotlinOptions` to `compilerOptions.jvmTarget` set to `JVM_17`
 - `app-android/build.gradle.kts`: Updated `compileOptions` to `VERSION_17`
-- `app-android/build.gradle.kts`: Updated `kotlinOptions.jvmTarget` to `"17"`
 
 ## Code Changes
 
@@ -165,7 +165,28 @@ plugins {
 
 #### app-android/build.gradle.kts
 1. **Added Compose Compiler plugin**
-2. **Fixed gradleLocalProperties API** (signature changed in AGP 8.7+):
+2. **Migrated kotlinOptions to compilerOptions DSL**:
+   ```kotlin
+   // BEFORE
+   kotlinOptions {
+       jvmTarget = "11"
+   }
+   
+   // AFTER
+   kotlin {
+       compilerOptions {
+           jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+       }
+   }
+   ```
+3. **Updated JVM target to 17**:
+   ```kotlin
+   compileOptions {
+       sourceCompatibility = JavaVersion.VERSION_17
+       targetCompatibility = JavaVersion.VERSION_17
+   }
+   ```
+4. **Fixed gradleLocalProperties API** (signature changed in AGP 8.7+):
    ```kotlin
    // BEFORE
    val localProperties = gradleLocalProperties(rootDir)
@@ -173,7 +194,7 @@ plugins {
    // AFTER
    val localProperties = gradleLocalProperties(rootDir, providers)
    ```
-3. **Removed deprecated composeOptions**:
+5. **Removed deprecated composeOptions**:
    ```kotlin
    // BEFORE
    composeOptions {
