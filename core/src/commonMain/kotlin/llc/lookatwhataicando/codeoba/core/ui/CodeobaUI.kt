@@ -16,10 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,7 +88,7 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
-                    Divider()
+                    HorizontalDivider()
                     // Placeholder menu items
                     Text("Settings")
                     Text("About")
@@ -350,7 +350,7 @@ fun ConversationPanel(
                     ) {
                         Icon(
                             modifier = Modifier.mirror(),
-                            imageVector = Icons.Filled.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send"
                         )
                     }

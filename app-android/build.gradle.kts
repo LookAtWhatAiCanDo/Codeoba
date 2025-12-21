@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -19,7 +20,7 @@ android {
         
         // Load API key from local.properties for development
         // This provides a default value that can be overridden at runtime
-        val localProperties = gradleLocalProperties(rootDir)
+        val localProperties = gradleLocalProperties(rootDir, providers)
         val dangerousOpenAiKey = localProperties.getProperty("DANGEROUS_OPENAI_API_KEY") ?: ""
         buildConfigField("String", "DANGEROUS_OPENAI_API_KEY", "\"$dangerousOpenAiKey\"")
     }
@@ -44,9 +45,8 @@ android {
         buildConfig = true
     }
     
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
+    // Note: As of Kotlin 2.0+, Compose Compiler is bundled with Kotlin
+    // The kotlinCompilerExtensionVersion is automatically set by the Compose plugin
     
     // Workaround for 16KB page size compatibility on Android 15+ devices
     // See https://developer.android.com/guide/practices/page-sizes#agp_version_85_or_lower
