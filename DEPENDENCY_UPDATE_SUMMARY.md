@@ -17,6 +17,7 @@ Successfully updated all major toolchains and dependencies to their **latest sta
 | **Gradle** | 8.14.3 | 8.14.3 | 8.14.3 | ✅ Already at Target |
 | **AGP** | 8.2.2 | **8.7.3** | 8.13.2 | ✅ Latest Stable |
 | **Compose MP** | 1.5.11 | **1.7.3** | N/A | ✅ Latest Stable |
+| **JVM Target** | 11 | **17** | N/A | ✅ LTS Version |
 
 ### Kotlin Libraries
 
@@ -68,6 +69,30 @@ All updated versions are verified compatible according to official documentation
 2. **AGP 8.7.3 + Kotlin 2.1.0**: ✅ [AGP 8.3+ supports Kotlin 2.0+](https://developer.android.com/build/releases/gradle-plugin)
 3. **Compose 1.7.3 + Kotlin 2.1.0**: ✅ [Compose 1.7.0+ supports Kotlin 2.1.0](https://github.com/JetBrains/compose-multiplatform/releases)
 4. **Ktor 3.0.2 + Kotlin 2.1.0**: ✅ [Ktor 3.0+ requires Kotlin 1.9.20+](https://ktor.io/docs/releases.html)
+5. **JVM 17 + Kotlin 2.1.0**: ✅ [Kotlin 2.1.0 supports JVM 8-22](https://kotlinlang.org/docs/whatsnew21.html)
+
+### JVM Target Version Update
+
+**Updated from JVM 11 to JVM 17** (based on feedback):
+
+#### Rationale
+- **JVM 17**: Current LTS (Long Term Support) version
+- **Industry Standard**: Most Android projects now target JVM 17
+- **Future-Proof**: Better positioned for future Android and Kotlin updates
+- **Performance**: JVM 17 includes performance improvements over JVM 11
+- **Features**: Access to modern Java language features (sealed classes, pattern matching, etc.)
+
+#### Compatibility
+- ✅ Kotlin 2.1.0 fully supports JVM 17
+- ✅ AGP 8.7.3 supports JVM 17 target
+- ✅ Android minSdk 30+ works with JVM 17
+- ✅ Compose Multiplatform 1.7.3 supports JVM 17
+
+#### Changed Files
+- `core/build.gradle.kts`: Updated `compilerOptions.jvmTarget` to `JVM_17`
+- `core/build.gradle.kts`: Updated `compileOptions` to `VERSION_17`
+- `app-android/build.gradle.kts`: Updated `compileOptions` to `VERSION_17`
+- `app-android/build.gradle.kts`: Updated `kotlinOptions.jvmTarget` to `"17"`
 
 ## Code Changes
 
@@ -114,8 +139,16 @@ androidTarget {
 // AFTER
 androidTarget {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
+}
+```
+
+**Updated JVM target to 17** (LTS version, industry standard):
+```kotlin
+compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 ```
 
