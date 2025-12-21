@@ -1,5 +1,8 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -20,6 +25,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -41,14 +47,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.EventLogEntry
 import llc.lookatwhataicando.codeoba.core.domain.AudioCaptureState
 import llc.lookatwhataicando.codeoba.core.domain.AudioRoute
+import llc.lookatwhataicando.codeoba.core.domain.createLogger
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
+import llc.lookatwhataicando.codeoba.core.mirror
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +107,7 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                     },
                     actions = {
                         Switch(
+                            modifier = Modifier.padding(horizontal = 16.dp),
                             checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
                             onCheckedChange = { isChecked ->
                                 if (isChecked) {
@@ -164,8 +177,17 @@ fun PushToTalkFooter(
     onStartMic: () -> Unit,
     onStopMic: () -> Unit
 ) {
+    val TAG = "PushToTalkFooter"
+    val logger = remember { createLogger() }
     val isCapturing = audioCaptureState is AudioCaptureState.Capturing
     val isConnected = connectionState is ConnectionState.Connected
+    var isPressed by remember { mutableStateOf(false) }
+    
+    // Log state changes for debugging
+    remember(isCapturing, isConnected, isPressed) {
+        logger.d(TAG, "State: isCapturing=$isCapturing, isConnected=$isConnected, isPressed=$isPressed, audioCaptureState=${audioCaptureState::class.simpleName}")
+        null
+    }
     
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -180,36 +202,65 @@ fun PushToTalkFooter(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Status text
-            Text(
-                text = when (audioCaptureState) {
-                    is AudioCaptureState.Idle -> "Ready to talk"
-                    is AudioCaptureState.Starting -> "Starting microphone..."
-                    is AudioCaptureState.Capturing -> "🔴 Recording"
-                    is AudioCaptureState.Error -> "⚠️ ${audioCaptureState.message}"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isCapturing) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-            )
+            // Large PTT Button - positioned for thumb access with momentary press behavior
+            val isEnabled = isConnected && audioCaptureState !is AudioCaptureState.Starting
             
-            // Large PTT Button - positioned for thumb access
-            Button(
-                onClick = if (isCapturing) onStopMic else onStartMic,
-                enabled = isConnected && audioCaptureState !is AudioCaptureState.Starting,
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCapturing) 
-                        MaterialTheme.colorScheme.error 
-                    else 
-                        MaterialTheme.colorScheme.primary,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                    .height(72.dp)
+                    .background(
+                        color = if (isCapturing || isPressed) {
+                            MaterialTheme.colorScheme.error
+                        } else if (isEnabled) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .alpha(if (isEnabled) 1.0f else 0.38f)
+                    .pointerInput(isEnabled) {
+                        if (isEnabled) {
+                            awaitEachGesture {
+                                // Wait for initial press
+                                val down = awaitFirstDown()
+                                down.consume()
+                                isPressed = true
+                                onStartMic()
+                                
+                                // Wait for all pointers to be released
+                                // Continue loop while the original pointer is still down
+                                do {
+                                    val event = awaitPointerEvent()
+                                    event.changes.forEach { change -> change.consume() }
+                                    // Check if the original pointer (or any currently pressed pointer from this gesture) is still down
+                                    val anyPressed = event.changes.any { it.pressed }
+                                } while (anyPressed)
+                                
+                                // All pointers released
+                                isPressed = false
+                                onStopMic()
+                            }
+                        } else {
+                            awaitEachGesture {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    event.changes.forEach { it.consume() }
+                                }
+                            }
+                        }
+                    }
             ) {
                 Text(
-                    text = if (isCapturing) "🔴 Release to Stop" else "🎤 Push to Talk",
-                    style = MaterialTheme.typography.titleLarge
+                    text = if (isCapturing || isPressed) "Release to Stop" else "Push to Talk",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (isEnabled) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    }
                 )
             }
         }
@@ -223,9 +274,11 @@ fun ConversationPanel(
     onSendText: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val TAG = "ConversationPanel"
+    val logger = remember { createLogger() }
     var textInput by remember { mutableStateOf("") }
     val isConnected = connectionState is ConnectionState.Connected
-    
+
     Card(modifier = modifier) {
         Column(
             modifier = Modifier
@@ -266,24 +319,41 @@ fun ConversationPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = textInput,
-                    onValueChange = { textInput = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Text Input") },
-                    enabled = isConnected,
-                    singleLine = true
-                )
-                Button(
-                    onClick = {
-                        if (textInput.isNotEmpty()) {
-                            onSendText(textInput)
-                            textInput = ""
-                        }
-                    },
-                    enabled = isConnected && textInput.isNotEmpty()
-                ) {
-                    Text("Send")
+                fun doSendInputText() {
+                    textInput = textInput.trim()
+                    if (textInput.isNotEmpty()) {
+                        onSendText(textInput)
+                        textInput = ""
+                    }
+                }
+
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Default
+                        ),
+                        value = textInput,
+                        onValueChange = { textInput = it },
+                        placeholder = { Text("Text Input") },
+                        enabled = isConnected,
+                        minLines = 3,
+                        maxLines = 10
+                    )
+                    IconButton(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 8.dp, bottom = 8.dp),
+                        enabled = isConnected && textInput.isNotEmpty(),
+                        onClick = { doSendInputText() }
+                    ) {
+                        Icon(
+                            modifier = Modifier.mirror(),
+                            imageVector = Icons.Filled.Send,
+                            contentDescription = "Send"
+                        )
+                    }
                 }
             }
         }
