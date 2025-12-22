@@ -64,6 +64,8 @@ kotlin {
                 implementation(libs.ktor.client.cio)
                 
                 // Platform-specific JavaFX native libraries for WebView support
+                // Note: Using string interpolation because Gradle catalog doesn't support
+                // classifier-based dependencies. Platform classifier must be determined at runtime.
                 val osName = System.getProperty("os.name").lowercase()
                 val platform = when {
                     osName.contains("mac") || osName.contains("darwin") -> "mac"
@@ -72,11 +74,12 @@ kotlin {
                     else -> "linux"
                 }
                 
-                implementation("org.openjfx:javafx-base:${libs.versions.javafx.get()}:$platform")
-                implementation("org.openjfx:javafx-graphics:${libs.versions.javafx.get()}:$platform")
-                implementation("org.openjfx:javafx-controls:${libs.versions.javafx.get()}:$platform")
-                implementation("org.openjfx:javafx-web:${libs.versions.javafx.get()}:$platform")
-                implementation("org.openjfx:javafx-swing:${libs.versions.javafx.get()}:$platform")
+                val javafxVersion = libs.versions.javafx.get()
+                implementation("org.openjfx:javafx-base:$javafxVersion:$platform")
+                implementation("org.openjfx:javafx-graphics:$javafxVersion:$platform")
+                implementation("org.openjfx:javafx-controls:$javafxVersion:$platform")
+                implementation("org.openjfx:javafx-web:$javafxVersion:$platform")
+                implementation("org.openjfx:javafx-swing:$javafxVersion:$platform")
             }
         }
     }

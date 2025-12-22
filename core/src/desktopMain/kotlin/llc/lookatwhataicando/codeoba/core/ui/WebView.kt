@@ -50,7 +50,9 @@ actual fun WebView(
                 val jfxPanel = panel.components.firstOrNull() as? JFXPanel
                 jfxPanel?.scene?.let { scene ->
                     val webView = scene.root as? JFXWebView
-                    webView?.engine?.load(url)
+                    if (webView != null && webView.engine.location != url) {
+                        webView.engine.load(url)
+                    }
                 }
             }
         }
