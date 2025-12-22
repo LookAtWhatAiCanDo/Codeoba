@@ -1,7 +1,12 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -15,6 +20,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.webkit.WebView as AndroidWebView
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -41,16 +46,18 @@ import kotlin.math.roundToInt
  * - Cookie persistence for logged-in sessions
  * - Pull-to-refresh gesture (custom implementation to avoid gesture conflicts)
  */
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 actual fun WebViewWithBackHandler(
     url: String,
     modifier: Modifier,
     onWebViewCreated: ((Any?) -> Unit)?
 ) {
-    var webView by remember { mutableStateOf<AndroidWebView?>(null) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     var pullOffset by remember { mutableFloatStateOf(0f) }
+    var scrollY by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
     
     val refreshThreshold = with(LocalDensity.current) { 80.dp.toPx() }
@@ -69,7 +76,7 @@ actual fun WebViewWithBackHandler(
                     var totalDrag = 0f
                     
                     // Check if WebView is scrolled to top
-                    val isAtTop = webView?.scrollY == 0
+                    val isAtTop = scrollY <= 0
                     
                     if (isAtTop && !isRefreshing) {
                         drag(down.id) { change ->
@@ -128,7 +135,7 @@ actual fun WebViewWithBackHandler(
                 .fillMaxSize()
                 .offset { IntOffset(0, pullOffset.roundToInt()) },
             factory = { context ->
-                AndroidWebView(context).apply {
+                WebView(context).apply {
                     // Enable JavaScript and DOM storage
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
@@ -149,18 +156,66 @@ actual fun WebViewWithBackHandler(
                     // Cache configuration for better performance
                     settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                     
+                    // Enable modern web features
+                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    settings.allowFileAccess = true
+                    settings.allowContentAccess = true
+                    
+                    // Enable hardware acceleration
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    
                     webViewClient = object : WebViewClient() {
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            Log.d("WebView", "Page started loading: $url")
+                        }
+                        
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            Log.d("WebView", "Page finished loading: $url")
+                            scrollY = view?.scrollY ?: 0
+                        }
+                        
                         override fun doUpdateVisitedHistory(
-                            view: AndroidWebView?,
+                            view: WebView?,
                             url: String?,
                             isReload: Boolean
                         ) {
                             super.doUpdateVisitedHistory(view, url, isReload)
-                            // Update canGoBack state whenever navigation history changes
                             canGoBack = view?.canGoBack() ?: false
+                            scrollY = view?.scrollY ?: 0
+                        }
+                        
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView?,
+                            request: WebResourceRequest?
+                        ): Boolean {
+                            // Allow all navigation within the WebView
+                            return false
+                        }
+                        
+                        override fun onReceivedError(
+                            view: WebView?,
+                            errorCode: Int,
+                            description: String?,
+                            failingUrl: String?
+                        ) {
+                            super.onReceivedError(view, errorCode, description, failingUrl)
+                            Log.e("WebView", "Error loading page: $description (code: $errorCode) URL: $failingUrl")
                         }
                     }
-                    webChromeClient = WebChromeClient()
+                    
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                            super.onProgressChanged(view, newProgress)
+                            Log.d("WebView", "Loading progress: $newProgress%")
+                        }
+                    }
+                    
+                    // Monitor scroll changes
+                    setOnScrollChangeListener { _, _, newScrollY, _, _ ->
+                        scrollY = newScrollY
+                    }
                     
                     loadUrl(url)
                     onWebViewCreated?.invoke(this)
@@ -172,7 +227,6 @@ actual fun WebViewWithBackHandler(
                 if (view.url != url) {
                     view.loadUrl(url)
                 }
-                // Update canGoBack state
                 canGoBack = view.canGoBack()
             }
         )
