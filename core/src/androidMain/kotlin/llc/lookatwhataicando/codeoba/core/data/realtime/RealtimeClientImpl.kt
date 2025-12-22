@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import llc.lookatwhataicando.codeoba.core.BuildConfig
 import llc.lookatwhataicando.codeoba.core.domain.realtime.ConnectionState
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeEvent
@@ -53,7 +52,7 @@ actual class RealtimeClientImpl actual constructor() : RealtimeClientBase() {
         get() = "RealtimeClientImpl"
     // TODO: Pass this in as a constructor parameter
     override val debug: Boolean
-        get() = BuildConfig.DEBUG && false
+        get() = false
 
     override fun logVerbose(tag: String, message: String) {
         Log.v(tag, message)

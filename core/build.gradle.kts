@@ -1,14 +1,18 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.android.library)
     alias(libs.plugins.compose)
     alias(libs.plugins.kotlin.compose)
 }
 
 kotlin {
     // Android target
-    androidTarget {
+    androidLibrary {
+        namespace = "llc.lookatwhataicando.codeoba.core"
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
@@ -60,23 +64,5 @@ kotlin {
                 implementation(libs.ktor.client.cio)
             }
         }
-    }
-}
-
-android {
-    namespace = "llc.lookatwhataicando.codeoba.core"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-    
-    defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
-    }
-    
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        buildConfig = true
     }
 }
