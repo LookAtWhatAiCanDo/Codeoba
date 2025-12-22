@@ -10,10 +10,15 @@ import androidx.compose.ui.unit.dp
 /**
  * Agent tab content displaying the GitHub Copilot Agents page in a browser.
  * Provides easy navigation with gestures support.
+ * 
+ * @param onWebViewCreated Callback when WebView is created, provides the WebView instance
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AgentTabContent(modifier: Modifier = Modifier) {
+fun AgentTabContent(
+    modifier: Modifier = Modifier,
+    onWebViewCreated: ((Any?) -> Unit)? = null
+) {
     Column(modifier = modifier.fillMaxSize()) {
         // Header
         Surface(
@@ -36,9 +41,10 @@ fun AgentTabContent(modifier: Modifier = Modifier) {
         }
         
         // WebView content
-        WebView(
+        WebViewWithBackHandler(
             url = "https://github.com/copilot/agents",
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            onWebViewCreated = onWebViewCreated
         )
     }
 }

@@ -56,6 +56,8 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.webrtc.android)
                 implementation(libs.audioswitch)
+                implementation(libs.accompanist.swiperefresh)
+                implementation(libs.androidx.activity.compose)
             }
         }
         
