@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -274,8 +275,6 @@ fun ConversationPanel(
     onSendText: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val TAG = "ConversationPanel"
-    val logger = remember { createLogger() }
     var textInput by remember { mutableStateOf("") }
     val isConnected = connectionState is ConnectionState.Connected
 
@@ -349,7 +348,6 @@ fun ConversationPanel(
                         onClick = { doSendInputText() }
                     ) {
                         Icon(
-                            modifier = Modifier.mirror(),
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send"
                         )
@@ -455,7 +453,7 @@ fun AudioRouteDropdown(
                     label = { Text("Audio Device") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
