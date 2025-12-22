@@ -161,8 +161,15 @@ actual fun WebViewWithBackHandler(
                     settings.allowFileAccess = true
                     settings.allowContentAccess = true
                     
-                    // Enable hardware acceleration
-                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                    // Enable hardware acceleration (but use software for better Compose compatibility)
+                    // Hardware acceleration can cause black screen issues in some Compose scenarios
+                    setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+                    
+                    // Force WebView to be visible
+                    visibility = android.view.View.VISIBLE
+                    
+                    // Enable additional rendering settings
+                    setBackgroundColor(android.graphics.Color.WHITE)
                     
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -174,6 +181,13 @@ actual fun WebViewWithBackHandler(
                             super.onPageFinished(view, url)
                             Log.d("WebView", "Page finished loading: $url")
                             scrollY = view?.scrollY ?: 0
+                            
+                            // Force redraw to fix black screen issues
+                            view?.let {
+                                it.visibility = android.view.View.VISIBLE
+                                it.invalidate()
+                                it.requestLayout()
+                            }
                         }
                         
                         override fun doUpdateVisitedHistory(
@@ -228,6 +242,9 @@ actual fun WebViewWithBackHandler(
                     view.loadUrl(url)
                 }
                 canGoBack = view.canGoBack()
+                
+                // Ensure visibility
+                view.visibility = android.view.View.VISIBLE
             }
         )
         
