@@ -18,7 +18,7 @@ Successfully updated all major toolchains and dependencies to their **latest sta
 | **AGP** | 8.2.2 | **8.13.2** | 8.13.2 | ✅ At Target |
 | **Compose MP** | 1.5.11 | **1.9.3** | N/A | ✅ Latest Stable |
 | **JVM Target** | 11 | **17** | N/A | ✅ LTS Version |
-| **Android compileSdk** | 34 | **35** | N/A | ✅ Required for new libraries |
+| **Android compileSdk** | 34 | **36** | N/A | ✅ Required for new libraries |
 
 ### Kotlin Libraries
 
@@ -81,10 +81,10 @@ All updated versions are verified compatible:
 - **Features**: Access to modern Java language features (sealed classes, pattern matching, etc.)
 
 #### Compatibility
-- ✅ Kotlin 2.1.0 fully supports JVM 17
-- ✅ AGP 8.7.3 supports JVM 17 target
+- ✅ Kotlin 2.3.0 fully supports JVM 17
+- ✅ AGP 8.13.2 supports JVM 17 target
 - ✅ Android minSdk 30+ works with JVM 17
-- ✅ Compose Multiplatform 1.7.3 supports JVM 17
+- ✅ Compose Multiplatform 1.9.3 supports JVM 17
 
 #### Changed Files
 - `core/build.gradle.kts`: Updated `compilerOptions.jvmTarget` to `JVM_17`
@@ -116,8 +116,8 @@ kotlinx-serialization-json = "1.9.0"
 ktor = "3.3.3"
 androidx-activity-compose = "1.12.2"
 androidx-lifecycle-viewmodel-compose = "2.10.0"
-android-compileSdk = "35"
-android-targetSdk = "35"
+android-compileSdk = "36"
+android-targetSdk = "36"
 # compose-compiler removed (bundled with Kotlin 2.0+)
 ```
 
@@ -271,10 +271,10 @@ plugins {
 1. **menuAnchor deprecation** in CodeobaUI.kt:
    ```
    'fun Modifier.menuAnchor(): Modifier' is deprecated. 
-   Use overload that takes MenuAnchorType and enabled parameters.
+   Use overload that takes ExposedDropdownMenuAnchorType and enabled parameters.
    ```
-   - **Impact**: Low - UI still functions correctly
-   - **Action**: Can be updated in future cleanup task
+   - **Impact**: Low - UI continued to function correctly during migration
+   - **Status**: ✅ Resolved — `menuAnchor` usage in `CodeobaUI.kt` has been updated to the new overload (using `ExposedDropdownMenuAnchorType.PrimaryNotEditable`)
 
 2. **Android deprecated APIs** in AudioRouteManager:
    - `isSpeakerphoneOn` deprecated in Android API
@@ -406,17 +406,16 @@ All completed:
 4. ✅ Document changes
 
 ### Future Actions 📋
-1. **Update menuAnchor usage**: Migrate to new API signature
-2. **Android Audio APIs**: Complete migration to AudioSwitch (already planned in Phase 2)
-3. **Test with real devices**: Verify on physical Android and iOS devices
-4. **CI Configuration**: Add workaround for validateSigningDebug task
-5. **Monitor for Kotlin 2.2.0**: Update when available (expected Q1 2025)
+1. **Android Audio APIs**: Complete migration to AudioSwitch (already planned in Phase 2)
+2. **Test with real devices**: Verify on physical Android and iOS devices
+3. **CI Configuration**: Add workaround for validateSigningDebug task
+4. **Monitor future Kotlin releases**: Evaluate and update when stable versions beyond 2.3.0 become available
 
 ## Conclusion
 
-✅ **Successfully updated all toolchains to latest stable versions**
+✅ **Successfully updated all toolchains to target versions**
 
-The project is now using the most recent stable releases of all major dependencies. While the issue requested specific future versions (Kotlin 2.3.0, AGP 8.13.2) that don't exist yet, the updates applied represent the **best available versions** for production use as of December 2024.
+The project is now using the target versions specified in the issue (Kotlin 2.3.0, AGP 8.13.2). All major dependencies have been updated to their latest stable releases as of December 2025.
 
 All builds are successful, deprecated APIs have been modernized, and the project is positioned to easily adopt future versions when they become available.
 
@@ -424,7 +423,7 @@ All builds are successful, deprecated APIs have been modernized, and the project
 
 | Goal | Status | Notes |
 |------|--------|-------|
-| Update to latest versions | ✅ Complete | Using latest stable: Kotlin 2.1.0, AGP 8.7.3, Compose 1.7.3 |
+| Update to latest versions | ✅ Complete | Using target versions: Kotlin 2.3.0, AGP 8.13.2, Compose 1.9.3 |
 | Maintain compatibility | ✅ Complete | All compatibility guides followed |
 | Preserve existing features | ✅ Complete | 16KB page size workaround preserved |
 | Build verification | ✅ Complete | Core and Desktop build successfully |
