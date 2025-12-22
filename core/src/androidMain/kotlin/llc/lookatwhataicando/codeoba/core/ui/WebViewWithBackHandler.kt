@@ -6,7 +6,6 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +27,6 @@ import android.webkit.WebView as AndroidWebView
  * - Cookie persistence for logged-in sessions
  * - Pull-to-refresh gesture
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 actual fun WebViewWithBackHandler(
     url: String,
@@ -82,9 +80,6 @@ actual fun WebViewWithBackHandler(
                         
                         // Cache configuration for better performance
                         settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-                        
-                        // User agent (keep default)
-                        settings.userAgentString = settings.userAgentString
                         
                         webViewClient = object : WebViewClient() {
                             override fun doUpdateVisitedHistory(

@@ -48,9 +48,6 @@ actual fun WebView(
                 // Cache configuration for better performance
                 settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                 
-                // User agent (keep default)
-                settings.userAgentString = settings.userAgentString
-                
                 webViewClient = WebViewClient()
                 webChromeClient = WebChromeClient()
                 
