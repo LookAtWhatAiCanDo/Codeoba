@@ -18,23 +18,12 @@ actual fun WebView(
     url: String,
     modifier: Modifier
 ) {
-    var webView by remember { mutableStateOf<JFXWebView?>(null) }
-    
     // Initialize JavaFX platform if not already initialized
     LaunchedEffect(Unit) {
         try {
             Platform.startup {}
         } catch (e: IllegalStateException) {
             // JavaFX platform already initialized
-        }
-    }
-    
-    // Load URL when it changes
-    LaunchedEffect(url) {
-        webView?.let { view ->
-            Platform.runLater {
-                view.engine.load(url)
-            }
         }
     }
     
@@ -50,10 +39,18 @@ actual fun WebView(
                         engine.load(url)
                     }
                     
-                    webView = view
-                    
                     val scene = Scene(view)
                     jfxPanel.scene = scene
+                }
+            }
+        },
+        update = { panel ->
+            // Update URL when it changes
+            Platform.runLater {
+                val jfxPanel = panel.components.firstOrNull() as? JFXPanel
+                jfxPanel?.scene?.let { scene ->
+                    val webView = scene.root as? JFXWebView
+                    webView?.engine?.load(url)
                 }
             }
         }

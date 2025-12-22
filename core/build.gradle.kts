@@ -63,14 +63,7 @@ kotlin {
             dependencies {
                 implementation(libs.ktor.client.cio)
                 
-                // JavaFX for WebView support
-                implementation(libs.javafx.base)
-                implementation(libs.javafx.graphics)
-                implementation(libs.javafx.controls)
-                implementation(libs.javafx.web)
-                implementation(libs.javafx.swing)
-                
-                // Platform-specific JavaFX native libraries
+                // Platform-specific JavaFX native libraries for WebView support
                 val osName = System.getProperty("os.name").lowercase()
                 val platform = when {
                     osName.contains("mac") || osName.contains("darwin") -> "mac"

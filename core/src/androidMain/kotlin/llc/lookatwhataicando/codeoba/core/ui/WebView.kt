@@ -1,7 +1,6 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
 import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
