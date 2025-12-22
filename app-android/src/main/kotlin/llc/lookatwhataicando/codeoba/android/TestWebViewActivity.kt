@@ -9,22 +9,44 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 
 /**
- * Simple test activity with just a WebView - no tabs, no drawer, no pull-to-refresh.
- * Used to isolate WebView rendering issues.
+ * Test activity with WebView and editable address bar.
+ * Used to isolate and diagnose WebView rendering issues.
  */
 class TestWebViewActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "TestWebViewActivity"
-        private const val TEST_URL = "https://github.com/copilot/agents"
+        private const val DEFAULT_URL = "https://github.com/copilot/agents"
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,22 +54,95 @@ class TestWebViewActivity : ComponentActivity() {
         
         setContent {
             MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    SimpleWebView(url = TEST_URL)
-                }
+                TestWebViewScreen(defaultUrl = DEFAULT_URL)
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TestWebViewScreen(defaultUrl: String) {
+    var currentUrl by remember { mutableStateOf(defaultUrl) }
+    var addressBarText by remember { mutableStateOf(defaultUrl) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
+    val focusManager = LocalFocusManager.current
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Test WebView") },
+                navigationIcon = {
+                    IconButton(onClick = { /* Activity will handle back */ }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { webView?.reload() }) {
+                        Icon(Icons.Default.Refresh, "Reload")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Address bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                OutlinedTextField(
+                    value = addressBarText,
+                    onValueChange = { addressBarText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("URL") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+                    keyboardActions = KeyboardActions(
+                        onGo = {
+                            var url = addressBarText.trim()
+                            // Add https:// if no protocol specified
+                            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                                url = "https://$url"
+                                addressBarText = url
+                            }
+                            currentUrl = url
+                            focusManager.clearFocus()
+                        }
+                    )
+                )
+            }
+            
+            // WebView
+            TestWebView(
+                url = currentUrl,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                onWebViewCreated = { webView = it },
+                onUrlChanged = { newUrl -> 
+                    addressBarText = newUrl
+                }
+            )
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun SimpleWebView(url: String) {
+fun TestWebView(
+    url: String,
+    modifier: Modifier = Modifier,
+    onWebViewCreated: (WebView) -> Unit = {},
+    onUrlChanged: (String) -> Unit = {}
+) {
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         factory = { context ->
             WebView(context).apply {
                 Log.d("TestWebViewActivity", "Creating WebView")
@@ -77,11 +172,12 @@ fun SimpleWebView(url: String) {
                 // Set white background
                 setBackgroundColor(android.graphics.Color.WHITE)
                 
-                // WebView client for logging
+                // WebView client for logging and URL updates
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                         super.onPageStarted(view, url, favicon)
                         Log.d("TestWebViewActivity", "Page started: $url")
+                        url?.let { onUrlChanged(it) }
                     }
                     
                     override fun onPageFinished(view: WebView?, url: String?) {
@@ -109,6 +205,13 @@ fun SimpleWebView(url: String) {
                 
                 Log.d("TestWebViewActivity", "Loading URL: $url")
                 loadUrl(url)
+                onWebViewCreated(this)
+            }
+        },
+        update = { view ->
+            if (view.url != url) {
+                Log.d("TestWebViewActivity", "Updating URL to: $url")
+                view.loadUrl(url)
             }
         }
     )
