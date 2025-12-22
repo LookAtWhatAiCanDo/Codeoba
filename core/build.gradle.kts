@@ -62,6 +62,28 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(libs.ktor.client.cio)
+                
+                // JavaFX for WebView support
+                implementation(libs.javafx.base)
+                implementation(libs.javafx.graphics)
+                implementation(libs.javafx.controls)
+                implementation(libs.javafx.web)
+                implementation(libs.javafx.swing)
+                
+                // Platform-specific JavaFX native libraries
+                val osName = System.getProperty("os.name").lowercase()
+                val platform = when {
+                    osName.contains("mac") || osName.contains("darwin") -> "mac"
+                    osName.contains("win") -> "win"
+                    osName.contains("linux") -> "linux"
+                    else -> "linux"
+                }
+                
+                implementation("org.openjfx:javafx-base:${libs.versions.javafx.get()}:$platform")
+                implementation("org.openjfx:javafx-graphics:${libs.versions.javafx.get()}:$platform")
+                implementation("org.openjfx:javafx-controls:${libs.versions.javafx.get()}:$platform")
+                implementation("org.openjfx:javafx-web:${libs.versions.javafx.get()}:$platform")
+                implementation("org.openjfx:javafx-swing:${libs.versions.javafx.get()}:$platform")
             }
         }
     }

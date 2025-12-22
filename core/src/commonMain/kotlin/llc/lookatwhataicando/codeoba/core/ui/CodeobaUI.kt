@@ -36,6 +36,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
@@ -75,6 +77,10 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
+    // Tab state
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Realtime", "Agent")
+    
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -99,74 +105,106 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
     ) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Codeoba") },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Text("☰", style = MaterialTheme.typography.headlineMedium)
-                        }
-                    },
-                    actions = {
-                        Switch(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
-                            onCheckedChange = { isChecked ->
-                                if (isChecked) {
-                                    scope.launch { app.connect(config) }
-                                } else {
-                                    scope.launch { app.disconnect() }
-                                }
-                            },
-                            enabled = connectionState !is ConnectionState.Connecting
-                        )
-                    }
-                )
-            },
-            bottomBar = {
                 Column {
-                    // Footer with PTT Button
-                    PushToTalkFooter(
-                        audioCaptureState = audioCaptureState,
-                        connectionState = connectionState,
-                        onStartMic = { scope.launch {
-                            // TODO: cancelRemoteSpeech()
-                            // TODO: play intro sound
-                            app.startMicrophone()
-                            app.realtimeClient.dataSendInputAudioBufferClear()
-                        } },
-                        onStopMic = { scope.launch {
-                            app.stopMicrophone()
-                            app.realtimeClient.dataSendInputAudioBufferCommit()
-                            app.realtimeClient.dataSendResponseCreate()
-                            // TODO: play outro sound
-                        } }
+                    TopAppBar(
+                        title = { Text("Codeoba") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Text("☰", style = MaterialTheme.typography.headlineMedium)
+                            }
+                        },
+                        actions = {
+                            // Only show connection switch in Realtime tab
+                            if (selectedTabIndex == 0) {
+                                Switch(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    checked = connectionState is ConnectionState.Connected || connectionState is ConnectionState.Connecting,
+                                    onCheckedChange = { isChecked ->
+                                        if (isChecked) {
+                                            scope.launch { app.connect(config) }
+                                        } else {
+                                            scope.launch { app.disconnect() }
+                                        }
+                                    },
+                                    enabled = connectionState !is ConnectionState.Connecting
+                                )
+                            }
+                        }
                     )
                     
-                    // Audio Route Dropdown (only show if multiple routes available)
-                    if (audioRoutes.size > 1) {
-                        AudioRouteDropdown(
-                            routes = audioRoutes,
-                            activeRoute = activeRoute,
-                            onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+                    // Tabs below the top bar
+                    PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
+                }
+            },
+            bottomBar = {
+                // Only show bottom bar for Realtime tab
+                if (selectedTabIndex == 0) {
+                    Column {
+                        // Footer with PTT Button
+                        PushToTalkFooter(
+                            audioCaptureState = audioCaptureState,
+                            connectionState = connectionState,
+                            onStartMic = { scope.launch {
+                                // TODO: cancelRemoteSpeech()
+                                // TODO: play intro sound
+                                app.startMicrophone()
+                                app.realtimeClient.dataSendInputAudioBufferClear()
+                            } },
+                            onStopMic = { scope.launch {
+                                app.stopMicrophone()
+                                app.realtimeClient.dataSendInputAudioBufferCommit()
+                                app.realtimeClient.dataSendResponseCreate()
+                                // TODO: play outro sound
+                            } }
                         )
+                        
+                        // Audio Route Dropdown (only show if multiple routes available)
+                        if (audioRoutes.size > 1) {
+                            AudioRouteDropdown(
+                                routes = audioRoutes,
+                                activeRoute = activeRoute,
+                                onSelectRoute = { route -> scope.launch { app.selectAudioRoute(route) } }
+                            )
+                        }
                     }
                 }
             }
         ) { innerPadding ->
-            // Conversation panel with integrated text input
-            ConversationPanel(
-                events = eventLog,
-                connectionState = connectionState,
-                onSendText = { text ->
-                    scope.launch {
-                        app.sendTextMessage(text)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp)
-            )
+            // Tab content
+            when (selectedTabIndex) {
+                0 -> {
+                    // Realtime tab: Conversation panel with integrated text input
+                    ConversationPanel(
+                        events = eventLog,
+                        connectionState = connectionState,
+                        onSendText = { text ->
+                            scope.launch {
+                                app.sendTextMessage(text)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(16.dp)
+                    )
+                }
+                1 -> {
+                    // Agent tab: Browser view
+                    AgentTabContent(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
+            }
         }
     }
 }

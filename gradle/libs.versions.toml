@@ -17,6 +17,9 @@ webrtc-android = "137.7151.05"
 # Audio
 audioswitch = "1.2.4"
 
+# JavaFX for WebView
+javafx = "17.0.2"
+
 # AndroidX
 androidx-activity-compose = "1.12.2"
 androidx-lifecycle-viewmodel-compose = "2.10.0"
@@ -50,6 +53,13 @@ webrtc-android = { module = "io.github.webrtc-sdk:android", version.ref = "webrt
 
 # Audio
 audioswitch = { module = "com.twilio:audioswitch", version.ref = "audioswitch" }
+
+# JavaFX
+javafx-base = { module = "org.openjfx:javafx-base", version.ref = "javafx" }
+javafx-graphics = { module = "org.openjfx:javafx-graphics", version.ref = "javafx" }
+javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javafx" }
+javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
+javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
