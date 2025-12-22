@@ -23,7 +23,7 @@ This directory contains GitHub Actions workflows for the Codeoba project.
 - Core build artifacts (7 days retention)
 - Desktop build artifacts (7 days retention)
 - Test results (7 days retention)
-- Desktop packages for each OS (30 days retention)
+- Desktop packages for each OS (7 days retention)
 
 ### 📦 Release (`release.yml`)
 
@@ -36,7 +36,7 @@ This directory contains GitHub Actions workflows for the Codeoba project.
 2. **create-release** - Creates GitHub release with distribution packages
 
 **Artifacts:**
-- OS-specific distribution packages (90 days retention)
+- OS-specific distribution packages (7 days retention)
 - Attached to GitHub releases
 
 **Usage:**
@@ -169,7 +169,7 @@ build-android:
     with:
       name: android-debug-apk
       path: app-android/build/outputs/apk/debug/*.apk
-      retention-days: 30
+      retention-days: 7
 ```
 
 ### Adding Code Coverage

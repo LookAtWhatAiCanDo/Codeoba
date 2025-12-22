@@ -1,15 +1,15 @@
 [versions]
 # Kotlin and Core
-kotlin = "1.9.21"
-compose = "1.5.11"
-agp = "8.2.2"
+kotlin = "2.3.0"
+compose = "1.9.3"
+agp = "8.13.2"
 
 # Kotlin Libraries
-kotlinx-coroutines = "1.7.3"
-kotlinx-serialization-json = "1.6.2"
+kotlinx-coroutines = "1.10.2"
+kotlinx-serialization-json = "1.9.0"
 
 # Networking
-ktor = "2.3.7"
+ktor = "3.3.3"
 
 # WebRTC
 webrtc-android = "137.7151.05"
@@ -18,16 +18,15 @@ webrtc-android = "137.7151.05"
 audioswitch = "1.2.4"
 
 # AndroidX
-androidx-activity-compose = "1.8.2"
-androidx-lifecycle-viewmodel-compose = "2.7.0"
-
-# Compiler
-compose-compiler = "1.5.7"
+androidx-activity-compose = "1.12.2"
+androidx-lifecycle-viewmodel-compose = "2.10.0"
 
 # Android
-android-compileSdk = "34"
 android-minSdk = "30"
-android-targetSdk = "34"
+android-compileSdk = "36"
+android-targetSdk = "36"
+
+owasp-dependencycheck = "12.1.9"
 
 [libraries]
 # Kotlinx
@@ -55,8 +54,9 @@ audioswitch = { module = "com.twilio:audioswitch", version.ref = "audioswitch" }
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+owasp-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "owasp-dependencycheck" }

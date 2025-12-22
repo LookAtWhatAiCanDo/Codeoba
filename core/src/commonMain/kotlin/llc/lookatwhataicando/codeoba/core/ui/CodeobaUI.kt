@@ -16,13 +16,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
@@ -88,7 +89,7 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
-                    Divider()
+                    HorizontalDivider()
                     // Placeholder menu items
                     Text("Settings")
                     Text("About")
@@ -274,8 +275,6 @@ fun ConversationPanel(
     onSendText: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val TAG = "ConversationPanel"
-    val logger = remember { createLogger() }
     var textInput by remember { mutableStateOf("") }
     val isConnected = connectionState is ConnectionState.Connected
 
@@ -349,8 +348,7 @@ fun ConversationPanel(
                         onClick = { doSendInputText() }
                     ) {
                         Icon(
-                            modifier = Modifier.mirror(),
-                            imageVector = Icons.Filled.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send"
                         )
                     }
@@ -455,7 +453,7 @@ fun AudioRouteDropdown(
                     label = { Text("Audio Device") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(

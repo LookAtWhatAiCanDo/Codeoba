@@ -1,7 +1,7 @@
 plugins {
     // Kotlin Multiplatform
     alias(libs.plugins.kotlin.multiplatform) apply false
-    
+
     // Compose
     alias(libs.plugins.compose) apply false
     
@@ -10,15 +10,15 @@ plugins {
 
     // Android
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
     alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.android.library) apply false
 
-    id("org.owasp.dependencycheck") version "12.1.9"
+    alias(libs.plugins.owasp.dependencycheck) apply true
 }
 
 allprojects {
     group = "llc.lookatwhataicando.codeoba"
-    version = "1.0.0"
+    version = "0.3.0"
 
     apply(plugin = "org.owasp.dependencycheck")
     dependencyCheck {

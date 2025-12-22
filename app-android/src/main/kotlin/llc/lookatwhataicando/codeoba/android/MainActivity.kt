@@ -11,11 +11,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,18 +108,18 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbarHostState) }
-                ) { _ ->
-                    Surface {
+                ) { padding ->
+                    Surface(modifier = Modifier.padding(padding)) {
                         // Get API key from secure storage or BuildConfig default
                         val apiKey = getApiKey()
-                        
+
                         val config = RealtimeConfig(
                             dangerousApiKey = apiKey,
                             // TODO: Better injection of endpoint from BuildConfig...
                             endpoint = System.getProperty("realtime.endpoint")
                                 ?: "https://api.openai.com/v1/realtime"
                         )
-                        
+
                         CodeobaUI(app = codeobaApp, config = config)
                     }
                 }

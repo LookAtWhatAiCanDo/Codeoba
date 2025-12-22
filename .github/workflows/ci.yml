@@ -137,7 +137,7 @@ jobs:
       with:
         name: desktop-packages-${{ matrix.os }}
         path: app-desktop/build/compose/binaries/main/*/
-        retention-days: 30
+        retention-days: 7
 
   code-quality:
     name: Code Quality Checks
