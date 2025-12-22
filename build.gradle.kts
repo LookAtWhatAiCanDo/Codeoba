@@ -18,7 +18,7 @@ plugins {
 
 allprojects {
     group = "llc.lookatwhataicando.codeoba"
-    version = "1.0.0"
+    version = "0.3.0"
 
     apply(plugin = "org.owasp.dependencycheck")
     dependencyCheck {
