@@ -31,6 +31,7 @@ kotlin {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
                 
                 // Coroutines
                 implementation(libs.kotlinx.coroutines.core)
