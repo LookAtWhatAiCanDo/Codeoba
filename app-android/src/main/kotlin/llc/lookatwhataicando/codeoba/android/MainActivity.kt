@@ -120,7 +120,19 @@ class MainActivity : ComponentActivity() {
                                 ?: "https://api.openai.com/v1/realtime"
                         )
 
-                        CodeobaUI(app = codeobaApp, config = config)
+                        CodeobaUI(
+                            app = codeobaApp,
+                            config = config,
+                            onTestWebViewClick = {
+                                // Launch test WebView activity
+                                startActivity(
+                                    android.content.Intent(
+                                        this@MainActivity,
+                                        TestWebViewActivity::class.java
+                                    )
+                                )
+                            }
+                        )
                     }
                 }
             }

@@ -39,6 +39,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -67,7 +68,11 @@ import llc.lookatwhataicando.codeoba.core.mirror
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
+fun CodeobaUI(
+    app: CodeobaApp,
+    config: RealtimeConfig,
+    onTestWebViewClick: (() -> Unit)? = null
+) {
     val connectionState by app.connectionState.collectAsState()
     val audioCaptureState by app.audioCaptureState.collectAsState()
     val eventLog by app.eventLog.collectAsState()
@@ -96,6 +101,22 @@ fun CodeobaUI(app: CodeobaApp, config: RealtimeConfig) {
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                     HorizontalDivider()
+                    
+                    // Test WebView menu item
+                    if (onTestWebViewClick != null) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                }
+                                onTestWebViewClick()
+                            }
+                        ) {
+                            Text("Test WebView")
+                        }
+                        HorizontalDivider()
+                    }
+                    
                     // Placeholder menu items
                     Text("Settings")
                     Text("About")
