@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,6 +73,9 @@ import llc.lookatwhataicando.codeoba.core.mirror
 fun CodeobaUI(
     app: CodeobaApp,
     config: RealtimeConfig,
+    themePreferenceManager: Any? = null,
+    currentThemeMode: String = "SYSTEM",
+    onThemeChange: ((String) -> Unit)? = null,
     onTestWebViewClick: (() -> Unit)? = null
 ) {
     val connectionState by app.connectionState.collectAsState()
@@ -90,7 +95,6 @@ fun CodeobaUI(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // Placeholder drawer content
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -101,6 +105,20 @@ fun CodeobaUI(
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                     HorizontalDivider()
+                    
+                    // Theme Selector
+                    if (onThemeChange != null) {
+                        Text(
+                            "Theme",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                        ThemeSelector(
+                            currentMode = currentThemeMode,
+                            onModeSelected = onThemeChange
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    }
                     
                     // Test WebView menu item
                     if (onTestWebViewClick != null) {
@@ -125,6 +143,7 @@ fun CodeobaUI(
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets.systemBars,
             topBar = {
                 Column {
                     TopAppBar(
@@ -612,6 +631,41 @@ fun AudioRoutePanel(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeSelector(
+    currentMode: String,
+    onModeSelected: (String) -> Unit
+) {
+    val themeModes = listOf("LIGHT", "DARK", "SYSTEM")
+    val themeLabels = mapOf(
+        "LIGHT" to "☀️ Light",
+        "DARK" to "🌙 Dark",
+        "SYSTEM" to "⚙️ System"
+    )
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        themeModes.forEach { mode ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = mode == currentMode,
+                    onClick = { onModeSelected(mode) }
+                )
+                Text(
+                    text = themeLabels[mode] ?: mode,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
