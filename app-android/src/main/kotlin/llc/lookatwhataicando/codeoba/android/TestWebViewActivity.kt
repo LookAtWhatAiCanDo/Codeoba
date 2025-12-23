@@ -154,6 +154,12 @@ fun TestWebView(
             WebView(context).apply {
                 Log.d("TestWebViewActivity", "Creating WebView")
                 
+                // CRITICAL: Set layout params to ensure WebView has proper dimensions
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                
                 // CRITICAL: Enable hardware acceleration explicitly on the view
                 setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                 

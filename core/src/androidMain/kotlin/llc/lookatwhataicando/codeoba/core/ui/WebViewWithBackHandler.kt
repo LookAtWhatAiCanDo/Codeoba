@@ -136,6 +136,12 @@ actual fun WebViewWithBackHandler(
                 .offset { IntOffset(0, pullOffset.roundToInt()) },
             factory = { context ->
                 WebView(context).apply {
+                    // CRITICAL: Set layout params to ensure WebView has proper dimensions
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    
                     // Enable JavaScript and DOM storage
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
