@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -89,12 +92,15 @@ fun TestWebViewScreen(defaultUrl: String) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(Color.White) // Ensure white background for entire column
         ) {
-            // Address bar
-            Row(
+            // Address bar - wrapped in Surface to ensure visibility
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp
             ) {
                 OutlinedTextField(
                     value = addressBarText,
@@ -118,12 +124,13 @@ fun TestWebViewScreen(defaultUrl: String) {
                 )
             }
             
-            // WebView
+            // WebView - ensure it's in its own layer
             TestWebView(
                 url = currentUrl,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .weight(1f)
+                    .background(Color.White), // Explicit white background
                 onWebViewCreated = { webView = it },
                 onUrlChanged = { newUrl -> 
                     addressBarText = newUrl
@@ -147,6 +154,9 @@ fun TestWebView(
             WebView(context).apply {
                 Log.d("TestWebViewActivity", "Creating WebView")
                 
+                // CRITICAL: Enable hardware acceleration explicitly on the view
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                
                 // Basic settings
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
@@ -169,8 +179,18 @@ fun TestWebView(
                 settings.builtInZoomControls = true
                 settings.displayZoomControls = false
                 
+                // CRITICAL: Use wide viewport for proper rendering
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
+                
+                // CRITICAL: Ensure layout algorithm is correct
+                settings.layoutAlgorithm = android.webkit.WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+                
                 // Set white background
                 setBackgroundColor(android.graphics.Color.WHITE)
+                
+                // CRITICAL: Force the WebView to be visible
+                visibility = android.view.View.VISIBLE
                 
                 // WebView client for logging and URL updates
                 webViewClient = object : WebViewClient() {
@@ -183,6 +203,11 @@ fun TestWebView(
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         Log.d("TestWebViewActivity", "Page finished: $url")
+                        // Force a layout pass after page loads
+                        view?.post {
+                            view.requestLayout()
+                            view.invalidate()
+                        }
                     }
                     
                     override fun onReceivedError(
@@ -209,6 +234,8 @@ fun TestWebView(
             }
         },
         update = { view ->
+            // Ensure WebView stays visible
+            view.visibility = android.view.View.VISIBLE
             if (view.url != url) {
                 Log.d("TestWebViewActivity", "Updating URL to: $url")
                 view.loadUrl(url)
