@@ -76,8 +76,9 @@ actual fun WebViewWithBackHandler(
                     val down = awaitFirstDown()
                     var totalDrag = 0f
                     
-                    // Check if WebView is scrolled to top
-                    val isAtTop = scrollY <= 0
+                    // Check if WebView is scrolled to top at gesture start
+                    // Query actual WebView scroll position for accurate check
+                    val isAtTop = (webView?.scrollY ?: scrollY) <= 0
                     
                     if (isAtTop && !isRefreshing) {
                         drag(down.id) { change ->
@@ -85,15 +86,19 @@ actual fun WebViewWithBackHandler(
                             
                             // Only handle downward drags when at top
                             if (dragAmount > 0 || totalDrag > 0) {
-                                totalDrag += dragAmount
-                                
-                                // Apply resistance to the drag
-                                val resistance = if (totalDrag > refreshThreshold) 0.3f else 0.5f
-                                pullOffset = (totalDrag * resistance).coerceAtLeast(0f)
-                                
-                                // Consume the change to prevent the drawer from opening
-                                if (abs(dragAmount) > abs(change.positionChange().x)) {
-                                    change.consume()
+                                // Recheck scroll position during drag to ensure we're still at top
+                                val currentScrollY = webView?.scrollY ?: scrollY
+                                if (currentScrollY <= 0) {
+                                    totalDrag += dragAmount
+                                    
+                                    // Apply resistance to the drag
+                                    val resistance = if (totalDrag > refreshThreshold) 0.3f else 0.5f
+                                    pullOffset = (totalDrag * resistance).coerceAtLeast(0f)
+                                    
+                                    // Consume the change to prevent the drawer from opening
+                                    if (abs(dragAmount) > abs(change.positionChange().x)) {
+                                        change.consume()
+                                    }
                                 }
                             }
                         }
