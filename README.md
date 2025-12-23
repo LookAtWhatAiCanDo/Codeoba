@@ -60,7 +60,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture docum
 
 ### Prerequisites
 
-- JDK 11 or higher
+- JDK 25 or higher
 - Android Studio (for Android development)
 - Xcode (for iOS development, macOS only)
 
