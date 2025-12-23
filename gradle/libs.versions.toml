@@ -20,9 +20,6 @@ audioswitch = "1.2.4"
 # JavaFX for WebView
 javafx = "17.0.2"
 
-# Accompanist
-accompanist = "0.34.0"
-
 # AndroidX
 androidx-activity-compose = "1.12.2"
 androidx-lifecycle-viewmodel-compose = "2.10.0"
@@ -65,9 +62,6 @@ javafx-controls = { module = "org.openjfx:javafx-controls", version.ref = "javaf
 javafx-media = { module = "org.openjfx:javafx-media", version.ref = "javafx" }
 javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
 javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
-
-# Accompanist
-accompanist-swiperefresh = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanist" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

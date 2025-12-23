@@ -28,6 +28,12 @@ actual fun WebView(
         modifier = modifier,
         factory = { context ->
             AndroidWebView(context).apply {
+                // Set explicit layout params to avoid zero-height rendering issues
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                
                 // Enable JavaScript and DOM storage
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true

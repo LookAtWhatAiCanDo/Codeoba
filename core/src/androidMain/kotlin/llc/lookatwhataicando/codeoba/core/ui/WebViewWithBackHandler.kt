@@ -166,10 +166,9 @@ actual fun WebViewWithBackHandler(
                     // Cache configuration for better performance
                     settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                     
-                    // Enable modern web features
-                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    settings.allowFileAccess = true
-                    settings.allowContentAccess = true
+                    // Security: Restrict file access since we only load remote HTTPS content
+                    settings.allowFileAccess = false
+                    settings.allowContentAccess = false
                     
                     // Set background color
                     setBackgroundColor(android.graphics.Color.WHITE)
