@@ -158,7 +158,6 @@ class MainActivity : ComponentActivity() {
                         CodeobaUI(
                             app = codeobaApp,
                             config = config,
-                            themePreferenceManager = themePreferenceManager,
                             currentThemeMode = themeMode.name,
                             onThemeChange = { modeName ->
                                 try {

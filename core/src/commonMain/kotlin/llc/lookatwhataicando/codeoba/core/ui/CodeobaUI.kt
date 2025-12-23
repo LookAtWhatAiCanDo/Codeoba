@@ -73,7 +73,6 @@ import llc.lookatwhataicando.codeoba.core.mirror
 fun CodeobaUI(
     app: CodeobaApp,
     config: RealtimeConfig,
-    themePreferenceManager: Any? = null,
     currentThemeMode: String = "SYSTEM",
     onThemeChange: ((String) -> Unit)? = null,
     onTestWebViewClick: (() -> Unit)? = null
