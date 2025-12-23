@@ -71,14 +71,19 @@ actual fun WebViewWithBackHandler(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(webView) { // Recompose when webView changes
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     var totalDrag = 0f
                     
-                    // Check if WebView is scrolled to top at gesture start
-                    // Query actual WebView scroll position for accurate check
-                    val isAtTop = (webView?.scrollY ?: scrollY) <= 0
+                    // Get current scroll position directly from WebView for accurate check
+                    // Prefer WebView's actual scrollY over cached state to avoid race conditions
+                    val currentWebView = webView
+                    val isAtTop = if (currentWebView != null) {
+                        currentWebView.scrollY <= 0
+                    } else {
+                        scrollY <= 0  // Fallback to cached state if WebView not initialized yet
+                    }
                     
                     if (isAtTop && !isRefreshing) {
                         drag(down.id) { change ->
@@ -87,7 +92,8 @@ actual fun WebViewWithBackHandler(
                             // Only handle downward drags when at top
                             if (dragAmount > 0 || totalDrag > 0) {
                                 // Recheck scroll position during drag to ensure we're still at top
-                                val currentScrollY = webView?.scrollY ?: scrollY
+                                // This prevents pull-to-refresh when user scrolls content mid-gesture
+                                val currentScrollY = currentWebView?.scrollY ?: scrollY
                                 if (currentScrollY <= 0) {
                                     totalDrag += dragAmount
                                     
