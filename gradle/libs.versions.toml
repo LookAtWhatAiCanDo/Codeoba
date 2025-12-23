@@ -18,7 +18,7 @@ webrtc-android = "137.7151.05"
 audioswitch = "1.2.4"
 
 # JavaFX for WebView
-javafx = "17.0.2"
+javafx = "25.0.1"
 
 # AndroidX
 androidx-activity-compose = "1.12.2"
