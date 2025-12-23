@@ -12,48 +12,65 @@ import javax.swing.JPanel
 
 /**
  * Desktop implementation of WebView using JavaFX WebView.
+ * 
+ * Note: JavaFX is automatically initialized when the first JFXPanel is created.
+ * We don't need to explicitly call Platform.startup() as that can cause issues
+ * when JavaFX is already initialized.
  */
 @Composable
 actual fun WebView(
     url: String,
     modifier: Modifier
 ) {
-    // Initialize JavaFX platform if not already initialized
-    LaunchedEffect(Unit) {
-        try {
-            Platform.startup {}
-        } catch (e: IllegalStateException) {
-            // JavaFX platform already initialized
-        }
-    }
-    
     SwingPanel(
         modifier = modifier,
         factory = {
             JPanel(BorderLayout()).apply {
-                val jfxPanel = JFXPanel()
-                add(jfxPanel, BorderLayout.CENTER)
-                
-                Platform.runLater {
-                    val view = JFXWebView().apply {
-                        engine.load(url)
-                    }
+                try {
+                    // Creating JFXPanel automatically initializes JavaFX toolkit
+                    val jfxPanel = JFXPanel()
+                    add(jfxPanel, BorderLayout.CENTER)
                     
-                    val scene = Scene(view)
-                    jfxPanel.scene = scene
+                    // Use Platform.runLater to ensure JavaFX thread is ready
+                    Platform.runLater {
+                        try {
+                            val view = JFXWebView().apply {
+                                engine.load(url)
+                            }
+                            
+                            val scene = Scene(view)
+                            jfxPanel.scene = scene
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            println("Error initializing JavaFX WebView: ${e.message}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    println("Error creating JFXPanel: ${e.message}")
                 }
             }
         },
         update = { panel ->
             // Update URL when it changes
-            Platform.runLater {
-                val jfxPanel = panel.components.firstOrNull() as? JFXPanel
-                jfxPanel?.scene?.let { scene ->
-                    val webView = scene.root as? JFXWebView
-                    if (webView != null && webView.engine.location != url) {
-                        webView.engine.load(url)
+            try {
+                Platform.runLater {
+                    try {
+                        val jfxPanel = panel.components.firstOrNull() as? JFXPanel
+                        jfxPanel?.scene?.let { scene ->
+                            val webView = scene.root as? JFXWebView
+                            if (webView != null && webView.engine.location != url) {
+                                webView.engine.load(url)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        println("Error updating WebView URL: ${e.message}")
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("Error in Platform.runLater: ${e.message}")
             }
         }
     )
