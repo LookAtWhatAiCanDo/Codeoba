@@ -166,7 +166,7 @@ fun TestWebView(
     var isRefreshing by remember { mutableStateOf(false) }
     var pullOffset by remember { mutableFloatStateOf(0f) }
     val coroutineScope = rememberCoroutineScope()
-    val refreshThreshold = with(LocalDensity.current) { 80.dp.toPx() }
+    val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
     
     Box(modifier = modifier) {
         AndroidView(
@@ -257,6 +257,7 @@ fun TestWebView(
                 
                 // Implement pull-to-refresh with touch listener
                 var downY = 0f
+                var downX = 0f
                 var totalDragDistance = 0f
                 var isDragging = false
                 
@@ -264,23 +265,29 @@ fun TestWebView(
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
                             downY = event.y
+                            downX = event.x
                             totalDragDistance = 0f
                             isDragging = false
                             false // Let WebView handle it
                         }
                         MotionEvent.ACTION_MOVE -> {
                             val currentY = event.y
+                            val currentX = event.x
                             val deltaY = currentY - downY
+                            val deltaX = currentX - downX
                             
                             // Check if at top and dragging down
                             val isAtTop = (view as? WebView)?.scrollY == 0
                             
-                            if (isAtTop && deltaY > 0 && !isRefreshing) {
+                            // Favor vertical drags to avoid drawer conflicts
+                            val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f
+                            
+                            if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag) {
                                 isDragging = true
                                 totalDragDistance = deltaY
                                 
-                                // Apply resistance
-                                val resistance = if (totalDragDistance > refreshThreshold) 0.3f else 0.5f
+                                // Apply resistance - more aggressive after threshold
+                                val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
                                 pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                 
                                 true // Consume touch to prevent scrolling
@@ -347,17 +354,29 @@ fun TestWebView(
         
         // Refresh indicator
         if (isRefreshing || pullOffset > 0) {
-            CircularProgressIndicator(
+            // Background overlay to make indicator more visible
+            Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset { IntOffset(0, (pullOffset * 0.5f).roundToInt()) }
-                    .size(32.dp)
+                    .offset { IntOffset(0, (pullOffset * 0.3f).roundToInt()) }
+                    .size(56.dp)
                     .graphicsLayer {
-                        alpha = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleX = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleY = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                    }
-            )
+                        alpha = (pullOffset / refreshThreshold).coerceIn(0.3f, 0.9f)
+                    },
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -57,7 +59,7 @@ actual fun WebViewWithBackHandler(
     var scrollY by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
     
-    val refreshThreshold = with(LocalDensity.current) { 80.dp.toPx() }
+    val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
     
     // Handle back navigation
     BackHandler(enabled = canGoBack) {
@@ -166,6 +168,7 @@ actual fun WebViewWithBackHandler(
                     // Implement pull-to-refresh with touch listener
                     // This must be done at the WebView level since AndroidView consumes touches
                     var downY = 0f
+                    var downX = 0f
                     var totalDragDistance = 0f
                     var isDragging = false
                     
@@ -173,24 +176,31 @@ actual fun WebViewWithBackHandler(
                         when (event.action) {
                             MotionEvent.ACTION_DOWN -> {
                                 downY = event.y
+                                downX = event.x
                                 totalDragDistance = 0f
                                 isDragging = false
                                 false // Don't consume, let WebView handle it
                             }
                             MotionEvent.ACTION_MOVE -> {
                                 val currentY = event.y
+                                val currentX = event.x
                                 val deltaY = currentY - downY
+                                val deltaX = currentX - downX
                                 
                                 // Check if we're at the top of the page and dragging down
                                 val isAtTop = (view as? WebView)?.scrollY == 0
                                 
-                                if (isAtTop && deltaY > 0 && !isRefreshing) {
+                                // Favor vertical drags: only consume if vertical movement is dominant
+                                // This allows the drawer to work when dragging more horizontally
+                                val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f
+                                
+                                if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag) {
                                     // Start pull-to-refresh
                                     isDragging = true
                                     totalDragDistance = deltaY
                                     
-                                    // Apply resistance
-                                    val resistance = if (totalDragDistance > refreshThreshold) 0.3f else 0.5f
+                                    // Apply resistance - more aggressive resistance after threshold
+                                    val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
                                     pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                     
                                     // Consume touch event to prevent scrolling
@@ -257,17 +267,29 @@ actual fun WebViewWithBackHandler(
         
         // Refresh indicator
         if (isRefreshing || pullOffset > 0) {
-            CircularProgressIndicator(
+            // Background overlay to make indicator more visible
+            Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset { IntOffset(0, (pullOffset * 0.5f).roundToInt()) }
-                    .size(32.dp)
+                    .offset { IntOffset(0, (pullOffset * 0.3f).roundToInt()) }
+                    .size(56.dp)
                     .graphicsLayer {
-                        alpha = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleX = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleY = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                    }
-            )
+                        alpha = (pullOffset / refreshThreshold).coerceIn(0.3f, 0.9f)
+                    },
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }
