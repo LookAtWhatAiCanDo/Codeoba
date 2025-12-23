@@ -63,13 +63,18 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(libs.ktor.client.cio)
+                implementation(libs.kotlinx.coroutines.swing)
                 
                 // Platform-specific JavaFX native libraries for WebView support
                 // Note: Using string interpolation because Gradle catalog doesn't support
                 // classifier-based dependencies. Platform classifier must be determined at runtime.
                 val osName = System.getProperty("os.name").lowercase()
+                val osArch = System.getProperty("os.arch").lowercase()
                 val platform = when {
-                    osName.contains("mac") || osName.contains("darwin") -> "mac"
+                    osName.contains("mac") || osName.contains("darwin") -> {
+                        // macOS: detect ARM64 (Apple Silicon) vs x86_64 (Intel)
+                        if (osArch.contains("aarch64") || osArch.contains("arm")) "mac-aarch64" else "mac"
+                    }
                     osName.contains("win") -> "win"
                     osName.contains("linux") -> "linux"
                     else -> "linux"
