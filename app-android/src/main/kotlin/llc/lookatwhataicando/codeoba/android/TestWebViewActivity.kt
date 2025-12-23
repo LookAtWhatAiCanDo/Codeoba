@@ -170,7 +170,7 @@ fun TestWebView(
                 // Cookie support
                 CookieManager.getInstance().setAcceptCookie(true)
                 CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                
+
                 // Cache configuration
                 settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                 settings.databaseEnabled = true

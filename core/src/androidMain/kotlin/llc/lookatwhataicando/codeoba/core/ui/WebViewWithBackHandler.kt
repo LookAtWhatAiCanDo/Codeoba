@@ -1,6 +1,7 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
 import android.annotation.SuppressLint
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.util.Log
 import android.webkit.CookieManager
@@ -135,6 +136,9 @@ actual fun WebViewWithBackHandler(
                 .fillMaxSize()
                 .offset { IntOffset(0, pullOffset.roundToInt()) },
             factory = { context ->
+                if (0 != (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
+                    WebView.setWebContentsDebuggingEnabled(true)
+                }
                 WebView(context).apply {
                     // CRITICAL: Set layout params to ensure WebView has proper dimensions
                     layoutParams = android.view.ViewGroup.LayoutParams(
@@ -169,7 +173,7 @@ actual fun WebViewWithBackHandler(
                     
                     // Set background color
                     setBackgroundColor(android.graphics.Color.WHITE)
-                    
+
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             super.onPageStarted(view, url, favicon)
@@ -210,7 +214,7 @@ actual fun WebViewWithBackHandler(
                             Log.e("WebView", "Error loading page: $description (code: $errorCode) URL: $failingUrl")
                         }
                     }
-                    
+
                     webChromeClient = object : WebChromeClient() {
                         override fun onProgressChanged(view: WebView?, newProgress: Int) {
                             super.onProgressChanged(view, newProgress)
