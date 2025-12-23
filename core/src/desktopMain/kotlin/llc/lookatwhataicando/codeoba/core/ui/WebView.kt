@@ -35,7 +35,22 @@ actual fun WebView(
                     Platform.runLater {
                         try {
                             val view = JFXWebView().apply {
+                                // Enable JavaScript
+                                engine.isJavaScriptEnabled = true
+                                
+                                // Set a modern user agent to ensure GitHub serves proper CSS
+                                // Using Chrome on macOS to ensure full CSS/JS support
+                                engine.userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+                                    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                                    "Chrome/120.0.0.0 Safari/537.36"
+                                
+                                // Load the URL
                                 engine.load(url)
+                                
+                                // Add console logging for debugging
+                                engine.loadWorker.stateProperty().addListener { _, _, newState ->
+                                    println("D/WebView: Load state: $newState, URL: ${engine.location}")
+                                }
                             }
                             
                             val scene = Scene(view)
