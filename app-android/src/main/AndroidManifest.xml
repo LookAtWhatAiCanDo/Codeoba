@@ -25,5 +25,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity
+            android:name=".TestWebViewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Codeoba"
+            android:label="Test WebView" />
     </application>
 </manifest>

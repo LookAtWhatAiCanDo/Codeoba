@@ -25,6 +25,8 @@ Future support planned for:
 - **Multi-platform**: Single Kotlin codebase targeting all major platforms
 - **Audio routing**: Smart Bluetooth headset and device audio management
 - **Event logging**: Clear visibility into voice → transcript → actions → results
+- **Tabbed interface**: Monitor GitHub Copilot Agents progress alongside voice interaction
+- **WebView integration**: Cross-platform browser components for GitHub Copilot Agents (fully functional on Android, limited on Desktop)
 
 ---
 
@@ -113,10 +115,10 @@ Before running, you need to configure your OpenAI API key. See [docs/DEVELOPMENT
 
 | Component | Status |
 |-----------|--------|
-| Desktop App | ✅ Functional |
-| Android App | ✅ Ready (95%) |
-| Shared UI | 🟡 Basic (60%) |
-| Realtime API | 🔴 Stub (10%) |
+| Desktop App | ✅ Functional (with WebView) |
+| Android App | ✅ Ready (enhanced with WebView) |
+| Shared UI | 🟡 Tabbed Interface (85%) |
+| Realtime API | 🔴 Stub (Desktop), ✅ Complete (Android) |
 | MCP Client | 🔴 Stub (10%) |
 | iOS App | 🔴 Stub (5%) |
 

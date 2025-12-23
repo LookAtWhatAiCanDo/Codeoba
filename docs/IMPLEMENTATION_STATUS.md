@@ -1,6 +1,6 @@
 # Codeoba Implementation Status
 
-**Last Updated:** December 18, 2025
+**Last Updated:** December 23, 2025
 
 This document tracks the **current implementation status and roadmap** for Codeoba features.
 
@@ -43,11 +43,12 @@ This document tracks the **current implementation status and roadmap** for Codeo
 |-----------|--------|------------|
 | Project Structure | ✅ Complete | 100% |
 | Core Abstractions | ✅ Complete | 100% |
-| Desktop App | 🟡 Basic Structure | 70% |
-| Android App | 🟡 Basic Structure | 80% |
-| Shared UI | 🟡 Improved Layout | 75% |
+| Desktop App | 🟡 Enhanced with WebView | 75% |
+| Android App | 🟡 Enhanced with WebView | 85% |
+| Shared UI | 🟡 Tabbed Interface | 85% |
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
 | Phase 2: Android Audio & Playback | 🟡 In Progress | 90% |
+| Phase 2.5: Tabbed UI with Agent Browser | ✅ Complete | 100% |
 | Phase 3: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 4: MCP Protocol | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
@@ -136,42 +137,83 @@ This document tracks the **current implementation status and roadmap** for Codeo
 
 ### 5. Shared UI (Compose Multiplatform)
 
-**Implementation:** 🟡 Improved Layout (75%)
+**Implementation:** 🟡 Enhanced with Tabbed Interface (85%)
 
 Current UI includes:
-- ✅ **Titlebar with Connect Switch** (improved ergonomics)
-  - App name display
-  - Connection status text
-  - Switch control (ON = connect, OFF = disconnect)
-  - Primary container surface with elevation
-- ✅ **Push-to-talk button in footer** (thumb-accessible positioning)
-  - Large 72dp height button for easy access
-  - Status text above button
-  - Elevated surface with shadow for prominence
-  - Color-coded: blue → red when recording
-- ✅ Text input panel (separated from voice controls)
-- ✅ Audio route selection panel
-- ✅ Event log display (auto-expands to fill space)
+- ✅ **Tabbed Navigation** (NEW - December 23, 2025)
+  - Two distinct tabs: "Realtime" and "Agent"
+  - Smooth tab switching with isolated content
+  - Material 3 tab design with proper indicators
+- ✅ **Realtime Tab** - Original voice interaction UI
+  - Titlebar with Connect Switch (improved ergonomics)
+    - App name display
+    - Connection status text
+    - Switch control (ON = connect, OFF = disconnect)
+    - Primary container surface with elevation
+  - Push-to-talk button in footer (thumb-accessible positioning)
+    - Large 72dp height button for easy access
+    - Status text above button
+    - Elevated surface with shadow for prominence
+    - Color-coded: blue → red when recording
+  - Text input panel (separated from voice controls)
+  - Audio route selection panel
+  - Event log display (auto-expands to fill space)
+- ✅ **Agent Tab** - GitHub Copilot Agents browser view (NEW - December 23, 2025)
+  - **Android**: Full WebView with proper rendering
+    - Cookie persistence for login sessions
+    - JavaScript enabled with security sandboxing
+    - Pull-to-refresh gesture handler
+    - Back navigation through browser history
+    - Chrome DevTools remote debugging support
+  - **Desktop**: JavaFX WebView with limited functionality
+    - Basic page rendering
+    - JavaScript enabled
+    - Known limitations: older WebKit engine, no DevTools
+- ✅ **Test WebView Activity** (Android debug tool)
+  - Isolated WebView testing environment
+  - Editable address bar with protocol auto-addition
+  - Full browser UI with navigation controls
+  - Access via hamburger menu → "Test WebView"
 - ✅ Material 3 design system
 
 **What's Working:**
-- Desktop UI structure is implemented with improved layout
-- Android UI integrates with service interfaces
+- Desktop and Android UI with tabbed navigation
+- Smooth tab transitions with content isolation
+- Android WebView fully functional with proper CSS/JS rendering
+- Desktop WebView provides basic browsing (limited by JavaFX WebKit)
 - State management uses reactive flows
-- Three-tier layout: Titlebar (controls) → Content → Footer (PTT)
+- Three-tier layout in Realtime tab: Titlebar (controls) → Content → Footer (PTT)
 - Optimized for one-handed mobile use
 
-**Recent Improvements (December 18, 2025):**
+**Recent Improvements (December 23, 2025):**
+- ✅ Added tabbed UI with Realtime and Agent tabs
+- ✅ Implemented cross-platform WebView components
+- ✅ Fixed Android WebView rendering (MATCH_PARENT layout params)
+- ✅ Added JavaFX WebView for Desktop (with known limitations)
+- ✅ Security hardening: disabled file access in production WebView
+- ✅ Created TestWebViewActivity debug tool for Android
+- ✅ Removed unused dependencies (Accompanist)
+- ✅ Code quality improvements
+
+**Previous Improvements (December 18, 2025):**
 - ✅ Moved PTT button to footer for thumb accessibility
 - ✅ Replaced Connect button with Switch in titlebar
 - ✅ Reorganized content area for better hierarchy
 - ✅ Improved visual separation between UI zones
+
+**Known Limitations:**
+- Desktop WebView uses older JavaFX WebKit engine
+  - Plain appearance on complex modern web apps
+  - GitHub authentication may not work fully
+  - No Chrome DevTools debugging support
+  - **Recommendation**: Use Android app for full Agent tab functionality
 
 **Future Enhancements:**
 - Visual recording indicator (waveform animation)
 - Richer event display with syntax highlighting
 - Settings panel for configuration
 - Dark mode support
+- Desktop: Consider alternative browser component (CEF) for better modern web support
 
 ### 6. Security & Configuration
 - ✅ No hardcoded API keys
@@ -253,6 +295,93 @@ This section outlines the planned implementation sequence for remaining features
 **Status:** 🟡 In Progress (as of December 18, 2025)
 
 **Completion:** ~90% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-2) for detailed tracking)
+
+### Phase 2.5: Tabbed UI with Agent Browser ✅ COMPLETE
+
+**Goal:** Add tabbed interface with Realtime and Agent tabs for monitoring GitHub Copilot Agents
+
+**Status:** ✅ Complete (December 23, 2025)
+
+**Completion:** 100%
+
+**Completed Tasks:**
+1. ✅ **Tabbed Navigation UI** - Tab switching between Realtime and Agent views
+   - Material 3 tab design with proper indicators
+   - Smooth content transitions
+   - Isolated tab content
+   - Completed: December 23, 2025
+
+2. ✅ **Android WebView Implementation** - Full-featured browser in Agent tab
+   - WebView with MATCH_PARENT layout params (fixes zero-height rendering issue)
+   - Cookie persistence for GitHub login sessions
+   - JavaScript enabled with proper sandboxing
+   - File access disabled for security (HTTPS-only content)
+   - Custom pull-to-refresh gesture handler
+   - Back navigation through browser history with BackHandler
+   - Chrome DevTools remote debugging support via `chrome://inspect/`
+   - Completed: December 23, 2025
+
+3. ✅ **Desktop WebView Implementation** - JavaFX WebView in Agent tab
+   - JavaFX WebView with JavaScript enabled
+   - Modern Chrome user agent string
+   - ARM64 platform detection for Apple Silicon Macs
+   - JavaFX Media module for media content support
+   - kotlinx-coroutines-swing for proper Swing/JavaFX integration
+   - Known limitations documented (older WebKit engine)
+   - Completed: December 23, 2025
+
+4. ✅ **TestWebViewActivity Debug Tool** (Android) - Isolated WebView testing
+   - Standalone test activity with Scaffold and TopAppBar
+   - Editable address bar for testing any URL
+   - Back button and refresh functionality
+   - Comprehensive logging
+   - Access via hamburger menu → "Test WebView"
+   - Completed: December 23, 2025
+
+5. ✅ **Security Hardening** - Address code review feedback
+   - Disabled file/content access in production WebView
+   - Removed unused Accompanist dependency
+   - Added explicit layout params to all WebViews
+   - Code quality improvements (removed redundant qualifications)
+   - Completed: December 23, 2025
+
+**Implementation Details:**
+
+**Android WebView:**
+- Loads `https://github.com/copilot/agents` with full functionality
+- Cookie persistence maintains login sessions across app restarts
+- Custom gesture handler for pull-to-refresh (doesn't conflict with drawer)
+- BackHandler intercepts back press when WebView has navigation history
+- Security: File access disabled, JavaScript sandboxed, HTTPS-only content
+- Chrome DevTools debugging: `chrome://inspect/` on desktop computer
+
+**Desktop WebView (JavaFX):**
+- Loads URLs with basic rendering
+- JavaScript enabled with modern user agent
+- ARM64 support for Apple Silicon Macs
+- **Known Limitations**: 
+  - Older WebKit engine limits modern CSS/JS features
+  - Complex authentication flows may not work
+  - No Chrome DevTools debugging support
+  - **Recommendation**: Use Android app for full functionality
+
+**What Works:**
+- ✅ Tab switching smooth with content isolated to respective tabs
+- ✅ Android Agent tab fully functional with GitHub login/navigation
+- ✅ Desktop Agent tab provides basic browsing (with limitations)
+- ✅ Test WebView activity allows isolated debugging
+- ✅ Security hardened: file access disabled, unused dependencies removed
+- ✅ Code review feedback addressed
+
+**Key Files:**
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/CodeobaUI.kt` (tabbed UI)
+- `core/src/androidMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/WebViewWithBackHandler.kt` (Android WebView)
+- `core/src/desktopMain/kotlin/llc/lookatwhataicando/codeoba/core/ui/WebView.kt` (Desktop WebView)
+- `app-android/src/main/kotlin/llc/lookatwhataicando/codeoba/android/TestWebViewActivity.kt` (debug tool)
+- `core/build.gradle.kts` (JavaFX ARM64 platform detection)
+- `gradle/libs.versions.toml` (dependencies)
+
+> **📋 Note:** Android implementation is production-ready. Desktop implementation has known limitations due to JavaFX WebKit engine constraints.
 
 **Tasks:**
 1. ✅ **Android Audio Streaming Integration** → COMPLETE (Issue #14) - 100%
@@ -524,6 +653,7 @@ Track progress by updating this table as features are completed:
 | 2 | Android Audio Playback | ✅ Complete | WebRTC handles playback, AudioSwitch for routing, volume control implemented. Completed Dec 18, 2025 |
 | 2 | Android PTT & Text Input | ✅ Complete | PTT controls WebRTC audio track, text input sends via data channel. Completed Dec 18, 2025 |
 | 2 | Android Integration Testing | 🔴 Not Started | See Issue #17 |
+| 2.5 | Tabbed UI with Agent Browser | ✅ Complete | Android WebView fully functional, Desktop limited by JavaFX WebKit. Completed Dec 23, 2025 |
 | 3 | iOS Platform | 🔴 Not Started | - |
 | 3 | iOS Audio Capture | 🔴 Not Started | - |
 | 3 | iOS Build Setup | 🔴 Not Started | - |
