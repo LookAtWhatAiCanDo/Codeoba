@@ -2,6 +2,8 @@
 
 This document provides a comprehensive evaluation of various cross-platform framework options for the Codeoba project.
 
+> **⚠️ December 23, 2025 Update:** A detailed WebView-specific evaluation has been conducted. See [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md) for comprehensive analysis of embedded browser capabilities across frameworks, including the KMP Desktop WebView limitations discovered in PR #36.
+
 ## Project Requirements
 
 Codeoba is a cross-platform application with the following specific requirements:
@@ -106,7 +108,8 @@ Teams with native mobile development experience wanting to share business logic 
 - **API Integration**: ★★★★★ - Ktor for shared networking, native libraries available
 - **Wearable Support**: ★★★★★ - **Best-in-class** - Native Wear OS and Apple Watch development fully supported
 - **MCP Integration**: ★★★★☆ - Good, can share business logic while using platform-specific implementations
-- **Overall Fit**: **Excellent** - Best choice for wearable integration, full native capabilities
+- **WebView/Browser**: ⚠️ ★★★☆☆ - **Bifurcated**: Excellent on Android (Chromium), limited on Desktop (JavaFX WebKit) - see [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md)
+- **Overall Fit**: **Excellent** - Best choice for wearable integration, full native capabilities, with mitigatable Desktop WebView limitations
 
 ---
 
@@ -146,7 +149,8 @@ Desktop-first applications, embedded systems, or projects requiring deep hardwar
 - **API Integration**: ★★★★☆ - Good networking support via Qt Network
 - **Wearable Support**: ★☆☆☆☆ - Very limited mobile/wearable ecosystem
 - **MCP Integration**: ★★★★☆ - C++ provides flexibility for custom protocols
-- **Overall Fit**: **Poor** - Not ideal for mobile-first real-time communication apps
+- **WebView/Browser**: ⭐⭐⭐⭐⭐ - **QtWebEngine (Chromium-based) on ALL platforms** - see [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md)
+- **Overall Fit**: **Poor** - Not ideal for mobile-first real-time communication apps, despite superior WebView
 
 ---
 
@@ -464,43 +468,48 @@ Teams prioritizing modern declarative UI with Kotlin, wanting true cross-platfor
 - **API Integration**: ★★★★★ - Kotlin has excellent coroutines and networking libraries (Ktor), perfect for async API calls
 - **Wearable Support**: ★★★★☆ - **Excellent** - Native Wear OS support with Compose for Wear OS; Apple Watch requires companion native Swift/SwiftUI app but can share business logic via KMP (not as seamless as Kotlin MP but better than Flutter/RN)
 - **MCP Integration**: ★★★★★ - Kotlin's type-safe serialization and coroutines are ideal for protocol implementations
-- **Overall Fit**: **Excellent** - Combines shared UI and business logic with native capabilities, strong wearable support, ideal for Codeoba's requirements
+- **WebView/Browser**: ⚠️ ★★★☆☆ - **Identical to KMP**: Excellent on Android (Chromium), limited on Desktop (JavaFX WebKit) - see [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md)
+- **Overall Fit**: **Excellent** - Combines shared UI and business logic with native capabilities, strong wearable support, ideal for Codeoba's requirements (with Desktop WebView mitigation needed)
 
 ---
 
 ## Comparison Matrix
 
-| Framework | Mobile | Desktop | Web | Language | Performance | Learning Curve | Community |
-|-----------|--------|---------|-----|----------|-------------|----------------|-----------|
-| Flutter | ★★★★★ | ★★★★☆ | ★★★☆☆ | Dart | ★★★★★ | ★★★☆☆ | ★★★★☆ |
-| Kotlin MP | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
-| Compose MP | ★★★★★ | ★★★★★ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ |
-| Qt | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | C++/QML | ★★★★★ | ★★★★☆ | ★★★★☆ |
-| React Native | ★★★★★ | ★★☆☆☆ | ★★★★☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★★★ |
-| Electron | ☆☆☆☆☆ | ★★★★★ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ |
-| Cordova | ★★★☆☆ | ☆☆☆☆☆ | ★★★★☆ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★☆☆ |
-| PWA | ★★★☆☆ | ★★★☆☆ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ |
-| .NET MAUI | ★★★★☆ | ★★★★☆ | ★★★☆☆ | C# | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
-| Ionic | ★★★★☆ | ★★★☆☆ | ★★★★☆ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★☆ |
-| NativeScript | ★★★★☆ | ☆☆☆☆☆ | ★★★☆☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ |
+| Framework | Mobile | Desktop | Web | Language | Performance | Learning Curve | Community | WebView Quality |
+|-----------|--------|---------|-----|----------|-------------|----------------|-----------|-----------------|
+| Flutter | ★★★★★ | ★★★★☆ | ★★★☆☆ | Dart | ★★★★★ | ★★★☆☆ | ★★★★☆ | ★★★☆☆ |
+| Kotlin MP | ★★★★★ | ★★★☆☆ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
+| Compose MP | ★★★★★ | ★★★★★ | ★★☆☆☆ | Kotlin | ★★★★★ | ★★★★☆ | ★★★☆☆ | ★★★☆☆ |
+| Qt | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | C++/QML | ★★★★★ | ★★★★☆ | ★★★★☆ | ★★★★★ |
+| React Native | ★★★★★ | ★★☆☆☆ | ★★★★☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★★★ | ★★★★☆ |
+| Electron | ☆☆☆☆☆ | ★★★★★ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ | ★★★★★ |
+| Cordova | ★★★☆☆ | ☆☆☆☆☆ | ★★★★☆ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★☆☆ | ★★☆☆☆ |
+| PWA | ★★★☆☆ | ★★★☆☆ | ★★★★★ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★★ | ★★★★★ |
+| .NET MAUI | ★★★★☆ | ★★★★☆ | ★★★☆☆ | C# | ★★★★☆ | ★★★☆☆ | ★★★☆☆ | ★★★★☆ |
+| Ionic | ★★★★☆ | ★★★☆☆ | ★★★★☆ | JS/TS | ★★☆☆☆ | ★★☆☆☆ | ★★★★☆ | ★★★★☆ |
+| NativeScript | ★★★★☆ | ☆☆☆☆☆ | ★★★☆☆ | JS/TS | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ | ★★★☆☆ |
+
+**Note:** See [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md) for detailed WebView capability analysis.
 
 ## Codeoba-Specific Comparison
 
-Based on the project's requirements for WebRTC, real-time voice, MCP integration, and wearable support:
+Based on the project's requirements for WebRTC, real-time voice, MCP integration, wearable support, and WebView embedding:
 
-| Framework | WebRTC | Audio | API/MCP | Wearable | Overall Fit |
-|-----------|--------|-------|---------|----------|-------------|
-| **Compose MP** | ★★★★★ | ★★★★★ | ★★★★★ | ★★★★☆ | **Excellent** |
-| **Kotlin MP** | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★★★ | **Excellent** |
-| **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
-| **Flutter** | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ | **Strong** |
-| Ionic | ★★★★☆ | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | Moderate |
-| .NET MAUI | ★★★☆☆ | ★★★★☆ | ★★★★★ | ★★☆☆☆ | Moderate |
-| NativeScript | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★☆☆☆ | Moderate |
-| Cordova | ★★★☆☆ | ★★★☆☆ | ★★★★☆ | ★☆☆☆☆ | Poor |
-| PWA | ★★★★★ | ★★★★☆ | ★★★★★ | ☆☆☆☆☆ | Poor |
-| Qt | ★★★☆☆ | ★★★★★ | ★★★★☆ | ★☆☆☆☆ | Poor |
-| Electron | ★★★★★ | ★★★★★ | ★★★★★ | ☆☆☆☆☆ | Poor |
+| Framework | WebRTC | Audio | API/MCP | Wearable | WebView | Overall Fit |
+|-----------|--------|-------|---------|----------|---------|-------------|
+| **Compose MP** | ★★★★★ | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★☆☆ | **Excellent** |
+| **Kotlin MP** | ★★★★★ | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | **Excellent** |
+| **React Native** | ★★★★★ | ★★★★☆ | ★★★★★ | ★★★☆☆ | ★★★★☆ | **Excellent** |
+| **Flutter** | ★★★★☆ | ★★★★★ | ★★★★★ | ★★★☆☆ | ★★★☆☆ | **Strong** |
+| Qt | ★★★☆☆ | ★★★★★ | ★★★★☆ | ★☆☆☆☆ | ★★★★★ | Moderate |
+| .NET MAUI | ★★★☆☆ | ★★★★☆ | ★★★★★ | ★★☆☆☆ | ★★★★☆ | Moderate |
+| Ionic | ★★★★☆ | ★★★☆☆ | ★★★★★ | ★☆☆☆☆ | ★★★★☆ | Moderate |
+| NativeScript | ★★★☆☆ | ★★★★☆ | ★★★★☆ | ★★☆☆☆ | ★★★☆☆ | Moderate |
+| Electron | ★★★★★ | ★★★★★ | ★★★★★ | ☆☆☆☆☆ | ★★★★★ | Poor |
+| PWA | ★★★★★ | ★★★★☆ | ★★★★★ | ☆☆☆☆☆ | ★★★★★ | Poor |
+| Cordova | ★★★☆☆ | ★★★☆☆ | ★★★★☆ | ★☆☆☆☆ | ★★☆☆☆ | Poor |
+
+**Note:** WebView column reflects both mobile AND desktop support. See [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md) for detailed analysis.
 
 ### Top 3 Recommendations for Codeoba
 
@@ -619,7 +628,9 @@ There is no one-size-fits-all solution. The best framework depends on:
 
 ### For Codeoba Specifically
 
-Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime API integration**, **MCP protocol support**, **voice/audio handling**, and **potential wearable companion devices**, the recommended frameworks are:
+Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime API integration**, **MCP protocol support**, **voice/audio handling**, **potential wearable companion devices**, and **embedded browser for GitHub Copilot Agents monitoring**:
+
+> **⚠️ December 23, 2025 Update:** A WebView-specific limitation was discovered in the Desktop implementation. See [WEBVIEW_EVALUATION.md](WEBVIEW_EVALUATION.md) for comprehensive analysis and mitigation strategies. Despite this limitation, the recommendation to stay with KMP remains valid due to mitigation viability and KMP's other strengths.
 
 #### Primary Recommendation: **Compose Multiplatform**
 - **Best overall fit** - Combines shared UI and business logic in a single Kotlin codebase
@@ -628,6 +639,7 @@ Given the requirements for **WebRTC real-time communication**, **OpenAI Realtime
 - Strong wearable support (native Wear OS with Compose, Apple Watch via companion app sharing business logic)
 - Perfect for MCP protocol implementation with Kotlin's coroutines and type-safe serialization
 - Modern declarative UI framework (Jetpack Compose) proven on Android, now cross-platform
+- ⚠️ **Desktop WebView limitation**: JavaFX WebView has limited modern web support - mitigatable with CEF integration (see WEBVIEW_EVALUATION.md)
 - **Best choice for teams willing to invest in Kotlin ecosystem, prioritizing shared UI with strong (but not perfect) wearable support**
 
 #### Alternative #1: **Kotlin Multiplatform**
