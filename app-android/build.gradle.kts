@@ -62,6 +62,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(compose.material3)
+    implementation(compose.materialIconsExtended)
     implementation(compose.ui)
     implementation(compose.uiTooling)
     implementation(compose.preview)
