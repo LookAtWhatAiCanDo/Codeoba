@@ -165,6 +165,9 @@ class MainActivity : ComponentActivity() {
                                     themePreferenceManager.setThemeMode(newMode)
                                 } catch (e: IllegalArgumentException) {
                                     Log.e(TAG, "Invalid theme mode: $modeName", e)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Invalid theme mode: $modeName")
+                                    }
                                 }
                             },
                             onTestWebViewClick = {
