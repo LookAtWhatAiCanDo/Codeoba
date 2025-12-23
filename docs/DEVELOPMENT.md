@@ -10,7 +10,7 @@ This guide covers setting up your development environment for Codeoba across all
 
 ### All Platforms
 
-- **JDK 11 or higher** - Required for Kotlin compilation
+- **JDK 21 or higher** - Required for Kotlin compilation
   - Download from [AdoptOpenJDK](https://adoptopenjdk.net/) or [Oracle](https://www.oracle.com/java/technologies/downloads/)
   
 - **Git** - For version control
