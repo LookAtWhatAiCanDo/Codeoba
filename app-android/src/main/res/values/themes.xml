@@ -10,5 +10,7 @@
         <!-- Navigation bar configuration -->
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <!-- Add status bar scrim for better contrast -->
+        <item name="android:enforceStatusBarContrast">true</item>
     </style>
 </resources>

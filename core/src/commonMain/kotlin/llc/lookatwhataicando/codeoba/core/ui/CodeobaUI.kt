@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +37,9 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -647,23 +651,24 @@ fun ThemeSelector(
         "SYSTEM" to "⚙️ System"
     )
     
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+    val selectedIndex = themeModes.indexOf(currentMode).takeIf { it >= 0 } ?: 2
+    
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        themeModes.forEach { mode ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        themeModes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = index == selectedIndex,
+                onClick = { onModeSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = themeModes.size
+                ),
+                icon = {}
             ) {
-                RadioButton(
-                    selected = mode == currentMode,
-                    onClick = { onModeSelected(mode) }
-                )
                 Text(
                     text = themeLabels[mode] ?: mode,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
