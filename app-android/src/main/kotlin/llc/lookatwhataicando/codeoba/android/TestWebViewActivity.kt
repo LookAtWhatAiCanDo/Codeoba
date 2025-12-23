@@ -5,13 +5,14 @@ import android.os.Bundle
 import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -48,7 +49,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 class TestWebViewActivity : ComponentActivity() {
     
     companion object {
-        private const val TAG = "TestWebViewActivity"
+        //private const val TAG = "TestWebViewActivity"
         private const val DEFAULT_URL = "https://github.com/copilot/agents"
     }
     
@@ -173,8 +174,7 @@ fun TestWebView(
 
                 // Cache configuration
                 settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-                settings.databaseEnabled = true
-                
+
                 // Modern web features
                 settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 settings.allowFileAccess = true
@@ -215,15 +215,14 @@ fun TestWebView(
                             view.invalidate()
                         }
                     }
-                    
+
                     override fun onReceivedError(
                         view: WebView?,
-                        errorCode: Int,
-                        description: String?,
-                        failingUrl: String?
+                        request: WebResourceRequest?,
+                        error: WebResourceError?
                     ) {
-                        super.onReceivedError(view, errorCode, description, failingUrl)
-                        Log.e("TestWebViewActivity", "Error: $description (code: $errorCode) URL: $failingUrl")
+                        super.onReceivedError(view, request, error)
+                        Log.e("TestWebViewActivity", "request: $request, error: $error")
                     }
                 }
                 
