@@ -101,6 +101,8 @@ Before running, you need to configure your OpenAI API key. See [docs/DEVELOPMENT
 
 - **[Implementation Status](docs/IMPLEMENTATION_STATUS.md)** - ⭐ **START HERE** - Complete status of what's done and what's next
 - **[Issue Tracking](docs/ISSUE_TRACKING.md)** - How we use GitHub Issues for planning and tracking
+- **[WebView Evaluation](docs/WEBVIEW_EVALUATION.md)** - 🆕 **December 23, 2025** - Comprehensive WebView technology assessment and decision
+  - [Decision Summary](docs/WEBVIEW_DECISION_SUMMARY.md) - Quick overview of WebView evaluation and recommendation
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and module structure
 - [Package Structure](docs/PACKAGE_STRUCTURE.md) - Clean Architecture package organization explained
 - [Development Setup](docs/DEVELOPMENT.md) - Setup instructions and configuration
