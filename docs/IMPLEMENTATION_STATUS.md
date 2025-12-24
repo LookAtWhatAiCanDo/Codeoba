@@ -23,8 +23,8 @@ This document tracks the **current implementation status and roadmap** for Codeo
 - [🎯 Implementation Roadmap](#-implementation-roadmap)
   - [Phase 1: Core Realtime Integration](#phase-1-core-realtime-integration--complete)
   - [Phase 2: Android Audio Streaming & Playback](#phase-2-android-audio-streaming--playback--not-started)
-  - [Phase 3: iOS Implementation](#phase-3-ios-implementation--not-started)
-  - [Phase 4: MCP Protocol Implementation](#phase-4-mcp-protocol-implementation)
+  - [Phase 3: MCP Protocol Implementation](#phase-3-mcp-protocol-implementation)
+  - [Phase 4: iOS Implementation](#phase-4-ios-implementation--not-started)
   - [Phase 5: Desktop WebRTC Integration](#phase-5-desktop-webrtc-integration--not-started)
   - [Phase 6: Web Platform](#phase-6-web-platform)
   - [Phase 7: Polish & Production](#phase-7-polish--production)
@@ -49,15 +49,15 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
 | Phase 2: Android Audio & Playback | 🟡 In Progress | 90% |
 | Phase 2.5: Tabbed UI with Agent Browser | ✅ Complete | 100% |
-| Phase 3: iOS Implementation | 🔴 Not Started | 0% |
-| Phase 4: MCP Protocol | 🔴 Not Started | 0% |
+| Phase 3: MCP Protocol | 🔴 Not Started | 0% |
+| Phase 4: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
 | Phase 6: Web Platform | 🔴 Not Started | 0% |
 | Phase 7: Polish & Production | 🔴 Not Started | 0% |
 
 **Legend:** ✅ Complete | 🟡 Partial | 🔴 Stub | ⚪ Not Started
 
-**Note on Phase 1:** ✅ COMPLETE - WebRTC connection established successfully with io.github.webrtc-sdk:android:137.7151.05. SDP exchange works, peer connection established. Phase 2 will add Android audio streaming/playback. Phase 3 focuses on iOS. Phase 5 will add Desktop WebRTC client.
+**Note on Phase 1:** ✅ COMPLETE - WebRTC connection established successfully with io.github.webrtc-sdk:android:137.7151.05. SDP exchange works, peer connection established. Phase 2 will add Android audio streaming/playback. Phase 4 focuses on iOS. Phase 5 will add Desktop WebRTC client.
 
 ---
 
@@ -432,36 +432,13 @@ This section outlines the planned implementation sequence for remaining features
 
 ---
 
-### Phase 3: iOS Implementation 🔴 NOT STARTED
+### Phase 3: MCP Protocol Implementation
 
-**Goal:** iOS app with AVAudioEngine integration
+**Goal:** Execute actual GitHub operations from voice commands
 
 **Status:** 🔴 Not Started
 
 **Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3) for detailed tracking)
-
-**Tasks:**
-1. 🔴 **iOS Audio Capture** (~2 days) → See Issue #TBD
-   - AVAudioSession configuration
-   - AVAudioEngine tap setup
-   - Permission handling (NSMicrophoneUsageDescription)
-   - Convert to 16kHz mono PCM format
-   
-2. 🔴 **iOS Audio Routing** (~1 day) → See Issue #TBD
-   - AVAudioSession route management
-   - AirPods/Bluetooth detection
-   
-3. 🔴 **iOS Build Configuration** (~1 day) → See Issue #TBD
-   - Xcode project setup
-   - Info.plist permissions
-
-> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3
-
----
-
-### Phase 4: MCP Protocol Implementation
-
-**Goal:** Execute actual GitHub operations from voice commands
 
 **Tasks:**
 1. **MCP Client Protocol**
@@ -492,6 +469,35 @@ Implement MCP protocol in McpClientImpl.kt:
 6. Add comprehensive error handling
 7. Test full flow: voice → transcript → tool call → GitHub action
 ```
+
+> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3
+
+---
+
+### Phase 4: iOS Implementation 🔴 NOT STARTED
+
+**Goal:** iOS app with AVAudioEngine integration
+
+**Status:** 🔴 Not Started
+
+**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-4) for detailed tracking)
+
+**Tasks:**
+1. 🔴 **iOS Audio Capture** (~2 days) → See Issue #TBD
+   - AVAudioSession configuration
+   - AVAudioEngine tap setup
+   - Permission handling (NSMicrophoneUsageDescription)
+   - Convert to 16kHz mono PCM format
+   
+2. 🔴 **iOS Audio Routing** (~1 day) → See Issue #TBD
+   - AVAudioSession route management
+   - AirPods/Bluetooth detection
+   
+3. 🔴 **iOS Build Configuration** (~1 day) → See Issue #TBD
+   - Xcode project setup
+   - Info.plist permissions
+
+> **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-4
 
 ---
 
@@ -654,11 +660,11 @@ Track progress by updating this table as features are completed:
 | 2 | Android PTT & Text Input | ✅ Complete | PTT controls WebRTC audio track, text input sends via data channel. Completed Dec 18, 2025 |
 | 2 | Android Integration Testing | 🔴 Not Started | See Issue #17 |
 | 2.5 | Tabbed UI with Agent Browser | ✅ Complete | Android WebView fully functional, Desktop limited by JavaFX WebKit. Completed Dec 23, 2025 |
-| 3 | iOS Platform | 🔴 Not Started | - |
-| 3 | iOS Audio Capture | 🔴 Not Started | - |
-| 3 | iOS Build Setup | 🔴 Not Started | - |
-| 4 | MCP Protocol | 🔴 Not Started | - |
-| 4 | GitHub API Integration | 🔴 Not Started | - |
+| 3 | MCP Protocol | 🔴 Not Started | - |
+| 3 | GitHub API Integration | 🔴 Not Started | - |
+| 4 | iOS Platform | 🔴 Not Started | - |
+| 4 | iOS Audio Capture | 🔴 Not Started | - |
+| 4 | iOS Build Setup | 🔴 Not Started | - |
 | 5 | Desktop WebRTC Client | 🔴 Not Started | Use WebRTC (NOT WebSocket) |
 | 5 | Desktop Audio Playback | 🔴 Not Started | - |
 | 5 | Desktop Integration Testing | 🔴 Not Started | - |
