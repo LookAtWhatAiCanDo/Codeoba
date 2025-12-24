@@ -21,11 +21,15 @@ import java.util.Properties
 fun main() = application {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
+    // Get GitHub token from environment or use OpenAI key as fallback for now
+    val githubToken = System.getenv("GITHUB_TOKEN") 
+        ?: getApiKey() // TODO: Get separate GitHub token
+    
     val codeobaApp = CodeobaApp(
         audioCaptureService = DesktopAudioCaptureService(),
         audioRouteManager = DesktopAudioRouteManager(),
         realtimeClient = RealtimeClientImpl(),
-        mcpClient = McpClientImpl(),
+        mcpClient = McpClientImpl(githubToken),
         companionProxy = CompanionProxyStub(),
         scope = scope
     )
