@@ -1,5 +1,6 @@
 package llc.lookatwhataicando.codeoba.core.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +20,14 @@ fun AgentTabContent(
     modifier: Modifier = Modifier,
     onWebViewCreated: ((Any?) -> Unit)? = null
 ) {
+    // Debug flag - tap title 3 times to toggle
+    val showDebugInfo = remember { mutableStateOf(false) }
+    var debugScrollY by remember { mutableIntStateOf(0) }
+    var debugIsAtTop by remember { mutableStateOf(false) }
+    var debugPullOffset by remember { mutableFloatStateOf(0f) }
+    var tapCount by remember { mutableIntStateOf(0) }
+    var lastTapTime by remember { mutableLongStateOf(0L) }
+    
     Column(modifier = modifier.fillMaxSize()) {
         // Header
         Surface(
@@ -33,10 +42,35 @@ fun AgentTabContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Title with tap-to-enable debug feature (triple-tap to toggle)
                 Text(
                     text = "GitHub Copilot Agents",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastTapTime < 500) {
+                                tapCount++
+                                if (tapCount >= 3) {
+                                    showDebugInfo.value = !showDebugInfo.value
+                                    tapCount = 0
+                                }
+                            } else {
+                                tapCount = 1
+                            }
+                            lastTapTime = currentTime
+                        }
                 )
+                
+                // Debug info display (triple-tap title to toggle)
+                if (showDebugInfo.value) {
+                    Text(
+                        text = "scrollY=$debugScrollY ${if (debugIsAtTop) "TOP" else "---"} pull=${debugPullOffset.toInt()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
         
@@ -44,7 +78,14 @@ fun AgentTabContent(
         WebViewWithBackHandler(
             url = "https://github.com/copilot/agents",
             modifier = Modifier.fillMaxSize(),
-            onWebViewCreated = onWebViewCreated
+            onWebViewCreated = onWebViewCreated,
+            onDebugInfoUpdate = if (showDebugInfo.value) {
+                { scrollY, isAtTop, pullOffset ->
+                    debugScrollY = scrollY
+                    debugIsAtTop = isAtTop
+                    debugPullOffset = pullOffset
+                }
+            } else null
         )
     }
 }

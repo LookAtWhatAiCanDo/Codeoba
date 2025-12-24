@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
  * @param url The URL to load in the WebView
  * @param modifier The modifier to apply to the WebView
  * @param onWebViewCreated Callback when WebView is created (for platform-specific handling)
+ * @param onDebugInfoUpdate Optional callback for debug info (scrollY, isAtTop, pullOffset)
  */
 @Composable
 expect fun WebViewWithBackHandler(
     url: String,
     modifier: Modifier = Modifier,
-    onWebViewCreated: ((Any?) -> Unit)? = null
+    onWebViewCreated: ((Any?) -> Unit)? = null,
+    onDebugInfoUpdate: ((scrollY: Int, isAtTop: Boolean, pullOffset: Float) -> Unit)? = null
 )

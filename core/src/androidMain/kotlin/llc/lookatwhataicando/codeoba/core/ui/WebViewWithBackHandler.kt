@@ -45,12 +45,13 @@ import kotlin.math.roundToInt
  * - Cookie persistence for logged-in sessions
  * - Pull-to-refresh gesture (custom implementation to avoid gesture conflicts)
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 actual fun WebViewWithBackHandler(
     url: String,
     modifier: Modifier,
-    onWebViewCreated: ((Any?) -> Unit)?
+    onWebViewCreated: ((Any?) -> Unit)?,
+    onDebugInfoUpdate: ((scrollY: Int, isAtTop: Boolean, pullOffset: Float) -> Unit)?
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -164,6 +165,8 @@ actual fun WebViewWithBackHandler(
                     // Monitor scroll changes
                     setOnScrollChangeListener { _, _, newScrollY, _, _ ->
                         scrollY = newScrollY
+                        // Update debug info if callback provided
+                        onDebugInfoUpdate?.invoke(scrollY, scrollY == 0, pullOffset)
                     }
                     
                     // Implement pull-to-refresh with touch listener
@@ -209,6 +212,9 @@ actual fun WebViewWithBackHandler(
                                     val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
                                     pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                     
+                                    // Update debug info if callback provided
+                                    onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
+                                    
                                     // Consume touch event to prevent scrolling
                                     true
                                 } else if (isDragging && isAtTop) {
@@ -217,12 +223,18 @@ actual fun WebViewWithBackHandler(
                                     totalDragDistance = deltaY
                                     val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
                                     pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                    
+                                    // Update debug info if callback provided
+                                    onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
+                                    
                                     true
                                 } else {
                                     // Stop dragging if we're no longer at top
                                     if (isDragging && !isAtTop) {
                                         isDragging = false
                                         pullOffset = 0f
+                                        // Update debug info if callback provided
+                                        onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
                                     }
                                     false // Let WebView handle normal scrolling
                                 }
