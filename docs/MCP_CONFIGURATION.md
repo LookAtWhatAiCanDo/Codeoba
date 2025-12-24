@@ -4,12 +4,37 @@ This guide explains how to configure and use the Model Context Protocol (MCP) in
 
 ## Overview
 
-Codeoba uses the Model Context Protocol (MCP) to execute GitHub operations from voice commands. The MCP implementation includes:
+Codeoba uses the Model Context Protocol (MCP) to execute GitHub operations from voice commands. The MCP implementation uses a **dynamic tool registry pattern** for extensibility:
 
-- **5 GitHub Operations**: Open repositories, create/edit files, create branches, create pull requests
+- **Dynamic Tool Registry**: Tools are registered at runtime, making it easy to add new operations
+- **Tool Handler Interface**: Each tool implements `McpToolHandler` with schema, validation, and execution
+- **5 Built-in GitHub Operations**: Open repositories, create/edit files, create branches, create pull requests
 - **Approval Flow**: Sensitive operations require user approval before execution
 - **Retry Logic**: Automatic retry with exponential backoff for transient failures
 - **Error Handling**: Comprehensive error messages and validation
+
+### Extensibility
+
+The dynamic registry makes it easy to add new tools:
+
+```kotlin
+// Custom tool handler
+class MyCustomToolHandler : McpToolHandler {
+    override val name = "my_custom_tool"
+    override val description = "My custom operation"
+    override val requiresApproval = true
+    override val inputSchema = buildJsonObject { /* schema */ }
+    
+    override suspend fun execute(args: JsonObject, context: McpToolContext): McpResult {
+        // Implementation
+    }
+}
+
+// Register the tool
+mcpClient.registerTool(MyCustomToolHandler())
+```
+
+This allows Codeoba to adapt to GitHub's expanding MCP protocol without code changes.
 
 ## Prerequisites
 
@@ -301,32 +326,59 @@ If operations timeout frequently:
 ### Architecture
 
 ```
-Voice Command → OpenAI Realtime API → Tool Call Event → MCP Client → GitHub API
+Voice Command → OpenAI Realtime API → Tool Call Event → MCP Client
+                                                             ↓
+                                                      Tool Registry
+                                                             ↓
+                                                   Tool Handler (dynamic)
                                                              ↓
                                                        Approval Flow
                                                              ↓
                                                         Retry Logic
                                                              ↓
+                                                        GitHub API
+                                                             ↓
                                                       Result/Error
 ```
 
+### Dynamic Tool Registry
+
+The MCP implementation uses a registry pattern for maximum flexibility:
+
+1. **Tool Handlers**: Each operation implements `McpToolHandler` interface
+2. **Registration**: Tools are registered in `McpClientImpl` initialization
+3. **Discovery**: `getAllToolDefinitions()` returns all registered tools
+4. **Execution**: Tools are invoked dynamically by name
+5. **Extensibility**: New tools can be added without modifying core logic
+
+**Key Benefits:**
+- Easy to add new GitHub operations as they become available
+- Tools are self-contained with their own schemas and validation
+- Type-safe execution within each handler
+- Approval policy defined per-tool
+
 ### Key Components
 
-- **McpClientImpl**: Main MCP client implementation
+- **McpClientImpl**: Main MCP client with tool registry
+- **McpToolRegistry**: Central registry for all tools
+- **McpToolHandler**: Interface for tool implementations
+- **GitHubToolHandlers**: Implementations of 5 GitHub operations
 - **GitHubApiClientImpl**: GitHub REST API v3 client
 - **ApprovalManager**: Manages approval requests/responses
 - **RetryPolicy**: Handles retry logic with exponential backoff
-- **McpToolSchemas**: JSON Schema definitions for all tools
+- **McpToolSchemas**: JSON Schema definitions (deprecated, now in handlers)
 
 ### Files
 
 Located in `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/`:
-- `McpClientImpl.kt` - Main implementation
+- `McpClientImpl.kt` - Main implementation with tool registry
+- `McpToolRegistry.kt` - Dynamic tool registry
+- `handlers/GitHubToolHandlers.kt` - GitHub operation handlers
 - `GitHubApiClient.kt` - API interface
 - `GitHubApiClientImpl.kt` - API implementation
 - `ApprovalManager.kt` - Approval flow
 - `RetryPolicy.kt` - Retry logic
-- `McpToolSchemas.kt` - Tool schemas
+- `McpToolSchemas.kt` - Legacy schema definitions (for backward compatibility)
 - `JsonRpcProtocol.kt` - Protocol messages
 
 ## Future Enhancements

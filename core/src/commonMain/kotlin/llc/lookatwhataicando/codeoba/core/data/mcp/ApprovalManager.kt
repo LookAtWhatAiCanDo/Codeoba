@@ -135,23 +135,3 @@ sealed class ApprovalResult {
     data class Denied(val reason: String) : ApprovalResult()
     object Timeout : ApprovalResult()
 }
-
-/**
- * Determines which operations require approval
- */
-object ApprovalPolicy {
-    
-    /**
-     * Check if a tool operation requires user approval
-     */
-    fun requiresApproval(toolName: String): Boolean {
-        return when (toolName) {
-            "create_file" -> true
-            "edit_file" -> true
-            "create_branch" -> true
-            "create_pr" -> true
-            "open_repo" -> false // Read-only operation
-            else -> true // Default to requiring approval for unknown tools
-        }
-    }
-}
