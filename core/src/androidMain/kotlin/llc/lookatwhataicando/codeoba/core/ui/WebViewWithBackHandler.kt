@@ -188,12 +188,13 @@ actual fun WebViewWithBackHandler(
                                 val deltaY = currentY - downY
                                 val deltaX = currentX - downX
                                 
-                                // Check if we're at the top of the page and dragging down
+                                // CRITICAL: Always check if we're at the top of the page
+                                // This must be checked on EVERY move, not just when starting
                                 val isAtTop = (view as? WebView)?.scrollY == 0
                                 
-                                // Favor vertical drags: only consume if vertical movement is dominant
-                                // This allows the drawer to work when dragging more horizontally
-                                val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f
+                                // Stricter vertical drag detection to avoid drawer conflicts
+                                // Require significantly more vertical than horizontal movement
+                                val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 2.5f
                                 
                                 // Only activate pull-to-refresh after minimum drag threshold
                                 // This prevents conflicts with text selection and other gestures
@@ -210,13 +211,19 @@ actual fun WebViewWithBackHandler(
                                     
                                     // Consume touch event to prevent scrolling
                                     true
-                                } else if (isDragging) {
-                                    // Continue drag if already started
+                                } else if (isDragging && isAtTop) {
+                                    // Continue drag ONLY if still at top
+                                    // If user scrolled away, stop the pull-to-refresh
                                     totalDragDistance = deltaY
                                     val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
                                     pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                     true
                                 } else {
+                                    // Stop dragging if we're no longer at top
+                                    if (isDragging && !isAtTop) {
+                                        isDragging = false
+                                        pullOffset = 0f
+                                    }
                                     false // Let WebView handle normal scrolling
                                 }
                             }
