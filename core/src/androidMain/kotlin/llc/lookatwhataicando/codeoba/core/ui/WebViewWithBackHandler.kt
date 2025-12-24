@@ -4,20 +4,20 @@ import android.annotation.SuppressLint
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -29,8 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -47,12 +45,13 @@ import kotlin.math.roundToInt
  * - Cookie persistence for logged-in sessions
  * - Pull-to-refresh gesture (custom implementation to avoid gesture conflicts)
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 actual fun WebViewWithBackHandler(
     url: String,
     modifier: Modifier,
-    onWebViewCreated: ((Any?) -> Unit)?
+    onWebViewCreated: ((Any?) -> Unit)?,
+    onDebugInfoUpdate: ((scrollY: Int, isAtTop: Boolean, pullOffset: Float) -> Unit)?
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -61,7 +60,8 @@ actual fun WebViewWithBackHandler(
     var scrollY by remember { mutableIntStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
     
-    val refreshThreshold = with(LocalDensity.current) { 80.dp.toPx() }
+    val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val minDragToActivate = with(LocalDensity.current) { 20.dp.toPx() }
     
     // Handle back navigation
     BackHandler(enabled = canGoBack) {
@@ -69,66 +69,7 @@ actual fun WebViewWithBackHandler(
     }
     
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    var totalDrag = 0f
-                    
-                    // Check if WebView is scrolled to top
-                    val isAtTop = scrollY <= 0
-                    
-                    if (isAtTop && !isRefreshing) {
-                        drag(down.id) { change ->
-                            val dragAmount = change.positionChange().y
-                            
-                            // Only handle downward drags when at top
-                            if (dragAmount > 0 || totalDrag > 0) {
-                                totalDrag += dragAmount
-                                
-                                // Apply resistance to the drag
-                                val resistance = if (totalDrag > refreshThreshold) 0.3f else 0.5f
-                                pullOffset = (totalDrag * resistance).coerceAtLeast(0f)
-                                
-                                // Consume the change to prevent the drawer from opening
-                                if (abs(dragAmount) > abs(change.positionChange().x)) {
-                                    change.consume()
-                                }
-                            }
-                        }
-                        
-                        // Trigger refresh if threshold met
-                        if (totalDrag > refreshThreshold) {
-                            isRefreshing = true
-                            coroutineScope.launch {
-                                webView?.reload()
-                                delay(1000)
-                                isRefreshing = false
-                            }
-                        }
-                        
-                        // Animate back to 0
-                        coroutineScope.launch {
-                            val start = pullOffset
-                            val duration = 200L
-                            val startTime = System.currentTimeMillis()
-                            
-                            while (pullOffset > 0) {
-                                val elapsed = System.currentTimeMillis() - startTime
-                                val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
-                                pullOffset = start * (1f - progress)
-                                
-                                if (progress >= 1f) {
-                                    pullOffset = 0f
-                                    break
-                                }
-                                delay(16)
-                            }
-                        }
-                    }
-                }
-            }
+        modifier = modifier.fillMaxSize()
     ) {
         // WebView
         AndroidView(
@@ -224,6 +165,127 @@ actual fun WebViewWithBackHandler(
                     // Monitor scroll changes
                     setOnScrollChangeListener { _, _, newScrollY, _, _ ->
                         scrollY = newScrollY
+                        // Update debug info if callback provided
+                        onDebugInfoUpdate?.invoke(scrollY, scrollY == 0, pullOffset)
+                    }
+                    
+                    // Implement pull-to-refresh with touch listener
+                    // This must be done at the WebView level since AndroidView consumes touches
+                    var downY = 0f
+                    var downX = 0f
+                    var totalDragDistance = 0f
+                    var isDragging = false
+                    
+                    setOnTouchListener { view, event ->
+                        when (event.action) {
+                            MotionEvent.ACTION_DOWN -> {
+                                downY = event.y
+                                downX = event.x
+                                totalDragDistance = 0f
+                                isDragging = false
+                                false // Don't consume, let WebView handle it
+                            }
+                            MotionEvent.ACTION_MOVE -> {
+                                val currentY = event.y
+                                val currentX = event.x
+                                val deltaY = currentY - downY
+                                val deltaX = currentX - downX
+                                
+                                // CRITICAL: Always check if we're at the top of the page
+                                // This must be checked on EVERY move, not just when starting
+                                val isAtTop = (view as? WebView)?.scrollY == 0
+                                
+                                // Stricter vertical drag detection to avoid drawer conflicts
+                                // Require significantly more vertical than horizontal movement
+                                val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 2.5f
+                                
+                                // Only activate pull-to-refresh after minimum drag threshold
+                                // This prevents conflicts with text selection and other gestures
+                                val hasMinimumDrag = kotlin.math.abs(deltaY) >= minDragToActivate
+                                
+                                if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag && hasMinimumDrag) {
+                                    // Start pull-to-refresh
+                                    isDragging = true
+                                    totalDragDistance = deltaY
+                                    
+                                    // Apply resistance - more aggressive resistance after threshold
+                                    val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                    pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                    
+                                    // Update debug info if callback provided
+                                    onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
+                                    
+                                    // Consume touch event to prevent scrolling
+                                    true
+                                } else if (isDragging && isAtTop) {
+                                    // Continue drag ONLY if still at top
+                                    // If user scrolled away, stop the pull-to-refresh
+                                    totalDragDistance = deltaY
+                                    val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                    pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                    
+                                    // Update debug info if callback provided
+                                    onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
+                                    
+                                    true
+                                } else {
+                                    // Stop dragging if we're no longer at top
+                                    if (isDragging && !isAtTop) {
+                                        isDragging = false
+                                        pullOffset = 0f
+                                        // Update debug info if callback provided
+                                        onDebugInfoUpdate?.invoke(scrollY, isAtTop, pullOffset)
+                                    }
+                                    false // Let WebView handle normal scrolling
+                                }
+                            }
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                if (isDragging) {
+                                    isDragging = false
+                                    
+                                    // Trigger refresh if threshold met
+                                    if (totalDragDistance > refreshThreshold) {
+                                        isRefreshing = true
+                                        coroutineScope.launch {
+                                            (view as? WebView)?.reload()
+                                            delay(1000)
+                                            isRefreshing = false
+                                        }
+                                    }
+                                    
+                                    // Animate pull offset back to 0
+                                    coroutineScope.launch {
+                                        val start = pullOffset
+                                        val duration = 200L
+                                        val startTime = System.currentTimeMillis()
+                                        val currentScrollY = scrollY
+                                        val wasAtTop = currentScrollY == 0
+                                        
+                                        while (pullOffset > 0) {
+                                            val elapsed = System.currentTimeMillis() - startTime
+                                            val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+                                            pullOffset = start * (1f - progress)
+                                            
+                                            // Update debug info during animation
+                                            onDebugInfoUpdate?.invoke(currentScrollY, wasAtTop, pullOffset)
+                                            
+                                            if (progress >= 1f) {
+                                                pullOffset = 0f
+                                                // Final update with 0 offset
+                                                onDebugInfoUpdate?.invoke(currentScrollY, wasAtTop, pullOffset)
+                                                break
+                                            }
+                                            delay(16)
+                                        }
+                                    }
+                                    
+                                    true // Consume the up event
+                                } else {
+                                    false // Let WebView handle it
+                                }
+                            }
+                            else -> false
+                        }
                     }
                     
                     loadUrl(url)
@@ -242,17 +304,29 @@ actual fun WebViewWithBackHandler(
         
         // Refresh indicator
         if (isRefreshing || pullOffset > 0) {
-            CircularProgressIndicator(
+            // Background overlay to make indicator more visible
+            Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset { IntOffset(0, (pullOffset * 0.5f).roundToInt()) }
-                    .size(32.dp)
+                    .offset { IntOffset(0, (pullOffset * 0.3f).roundToInt()) }
+                    .size(56.dp)
                     .graphicsLayer {
-                        alpha = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleX = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                        scaleY = (pullOffset / refreshThreshold).coerceIn(0f, 1f)
-                    }
-            )
+                        alpha = (pullOffset / refreshThreshold).coerceIn(0.3f, 0.9f)
+                    },
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }

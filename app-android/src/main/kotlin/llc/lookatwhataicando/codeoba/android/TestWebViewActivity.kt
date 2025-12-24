@@ -3,6 +3,7 @@ package llc.lookatwhataicando.codeoba.android
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
+import android.view.MotionEvent
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -12,15 +13,19 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,15 +37,24 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Test activity with WebView and editable address bar.
@@ -149,9 +163,18 @@ fun TestWebView(
     onWebViewCreated: (WebView) -> Unit = {},
     onUrlChanged: (String) -> Unit = {}
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
+    var isRefreshing by remember { mutableStateOf(false) }
+    var pullOffset by remember { mutableFloatStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val minDragToActivate = with(LocalDensity.current) { 20.dp.toPx() }
+    
+    Box(modifier = modifier) {
+        AndroidView(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(0, pullOffset.roundToInt()) },
+            factory = { context ->
             WebView(context).apply {
                 Log.d("TestWebViewActivity", "Creating WebView")
                 
@@ -233,6 +256,106 @@ fun TestWebView(
                     }
                 }
                 
+                // Implement pull-to-refresh with touch listener
+                var downY = 0f
+                var downX = 0f
+                var totalDragDistance = 0f
+                var isDragging = false
+                
+                setOnTouchListener { view, event ->
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            downY = event.y
+                            downX = event.x
+                            totalDragDistance = 0f
+                            isDragging = false
+                            false // Let WebView handle it
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            val currentY = event.y
+                            val currentX = event.x
+                            val deltaY = currentY - downY
+                            val deltaX = currentX - downX
+                            
+                            // CRITICAL: Always check if we're at the top of the page
+                            // This must be checked on EVERY move, not just when starting
+                            val isAtTop = (view as? WebView)?.scrollY == 0
+                            
+                            // Stricter vertical drag detection to avoid drawer conflicts
+                            // Require significantly more vertical than horizontal movement
+                            val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 2.5f
+                            
+                            // Only activate pull-to-refresh after minimum drag threshold
+                            // This prevents conflicts with text selection
+                            val hasMinimumDrag = kotlin.math.abs(deltaY) >= minDragToActivate
+                            
+                            if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag && hasMinimumDrag) {
+                                isDragging = true
+                                totalDragDistance = deltaY
+                                
+                                // Apply resistance - more aggressive after threshold
+                                val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                
+                                true // Consume touch to prevent scrolling
+                            } else if (isDragging && isAtTop) {
+                                // Continue drag ONLY if still at top
+                                // If user scrolled away, stop the pull-to-refresh
+                                totalDragDistance = deltaY
+                                val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                true
+                            } else {
+                                // Stop dragging if we're no longer at top
+                                if (isDragging && !isAtTop) {
+                                    isDragging = false
+                                    pullOffset = 0f
+                                }
+                                false
+                            }
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            if (isDragging) {
+                                isDragging = false
+                                
+                                // Trigger refresh if threshold met
+                                if (totalDragDistance > refreshThreshold) {
+                                    isRefreshing = true
+                                    coroutineScope.launch {
+                                        (view as? WebView)?.reload()
+                                        delay(1000)
+                                        isRefreshing = false
+                                    }
+                                }
+                                
+                                // Animate back
+                                coroutineScope.launch {
+                                    val start = pullOffset
+                                    val duration = 200L
+                                    val startTime = System.currentTimeMillis()
+                                    
+                                    while (pullOffset > 0) {
+                                        val elapsed = System.currentTimeMillis() - startTime
+                                        val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+                                        pullOffset = start * (1f - progress)
+                                        
+                                        if (progress >= 1f) {
+                                            pullOffset = 0f
+                                            break
+                                        }
+                                        delay(16)
+                                    }
+                                }
+                                
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        else -> false
+                    }
+                }
+                
                 Log.d("TestWebViewActivity", "Loading URL: $url")
                 loadUrl(url)
                 onWebViewCreated(this)
@@ -247,4 +370,32 @@ fun TestWebView(
             }
         }
     )
+        
+        // Refresh indicator
+        if (isRefreshing || pullOffset > 0) {
+            // Background overlay to make indicator more visible
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset { IntOffset(0, (pullOffset * 0.3f).roundToInt()) }
+                    .size(56.dp)
+                    .graphicsLayer {
+                        alpha = (pullOffset / refreshThreshold).coerceIn(0.3f, 0.9f)
+                    },
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
 }

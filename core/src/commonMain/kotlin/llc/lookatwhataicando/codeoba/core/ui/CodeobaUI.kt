@@ -240,7 +240,7 @@ fun CodeobaUI(
                     )
                 }
                 1 -> {
-                    // Agent tab: Browser view
+                    // Agents tab: Browser view
                     AgentTabContent(
                         modifier = Modifier
                             .fillMaxSize()

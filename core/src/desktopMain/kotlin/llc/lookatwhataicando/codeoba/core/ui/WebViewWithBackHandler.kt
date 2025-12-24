@@ -18,9 +18,11 @@ import javax.swing.JPanel
 actual fun WebViewWithBackHandler(
     url: String,
     modifier: Modifier,
-    onWebViewCreated: ((Any?) -> Unit)?
+    onWebViewCreated: ((Any?) -> Unit)?,
+    onDebugInfoUpdate: ((scrollY: Int, isAtTop: Boolean, pullOffset: Float) -> Unit)?
 ) {
     // Desktop back navigation is handled by browser controls
     // Just delegate to the standard WebView
+    // Note: Desktop doesn't support pull-to-refresh, so debug callback is ignored
     WebView(url = url, modifier = modifier)
 }
