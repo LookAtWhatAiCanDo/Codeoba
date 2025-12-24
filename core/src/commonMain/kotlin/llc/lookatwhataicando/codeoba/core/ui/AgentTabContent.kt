@@ -2,6 +2,8 @@ package llc.lookatwhataicando.codeoba.core.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -9,8 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Agent tab content displaying the GitHub Copilot Agents page in a browser.
- * Provides easy navigation with gestures support.
+ * Agents tab content displaying the GitHub Copilot Agents page in a browser.
+ * Provides easy navigation with gestures support and a refresh button.
  * 
  * @param onWebViewCreated Callback when WebView is created, provides the WebView instance
  */
@@ -27,6 +29,9 @@ fun AgentTabContent(
     var debugPullOffset by remember { mutableFloatStateOf(0f) }
     var tapCount by remember { mutableIntStateOf(0) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
+    
+    // WebView reference for refresh button
+    var webViewRef by remember { mutableStateOf<Any?>(null) }
     
     Column(modifier = modifier.fillMaxSize()) {
         // Header
@@ -71,6 +76,27 @@ fun AgentTabContent(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
+                
+                // Refresh button
+                IconButton(
+                    onClick = {
+                        // Reload the WebView using platform-specific handling
+                        webViewRef?.let { view ->
+                            // Try to call reload() via reflection for platform compatibility
+                            try {
+                                val reloadMethod = view::class.java.getMethod("reload")
+                                reloadMethod.invoke(view)
+                            } catch (e: Exception) {
+                                // Silently fail if reload method not available
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh page"
+                    )
+                }
             }
         }
         
@@ -78,7 +104,10 @@ fun AgentTabContent(
         WebViewWithBackHandler(
             url = "https://github.com/copilot/agents",
             modifier = Modifier.fillMaxSize(),
-            onWebViewCreated = onWebViewCreated,
+            onWebViewCreated = { view ->
+                webViewRef = view
+                onWebViewCreated?.invoke(view)
+            },
             onDebugInfoUpdate = if (showDebugInfo.value) {
                 { scrollY, isAtTop, pullOffset ->
                     debugScrollY = scrollY
