@@ -258,14 +258,21 @@ actual fun WebViewWithBackHandler(
                                         val start = pullOffset
                                         val duration = 200L
                                         val startTime = System.currentTimeMillis()
+                                        val currentScrollY = scrollY
+                                        val wasAtTop = currentScrollY == 0
                                         
                                         while (pullOffset > 0) {
                                             val elapsed = System.currentTimeMillis() - startTime
                                             val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
                                             pullOffset = start * (1f - progress)
                                             
+                                            // Update debug info during animation
+                                            onDebugInfoUpdate?.invoke(currentScrollY, wasAtTop, pullOffset)
+                                            
                                             if (progress >= 1f) {
                                                 pullOffset = 0f
+                                                // Final update with 0 offset
+                                                onDebugInfoUpdate?.invoke(currentScrollY, wasAtTop, pullOffset)
                                                 break
                                             }
                                             delay(16)
