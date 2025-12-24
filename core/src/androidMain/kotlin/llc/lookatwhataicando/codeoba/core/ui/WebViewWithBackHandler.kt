@@ -60,6 +60,7 @@ actual fun WebViewWithBackHandler(
     val coroutineScope = rememberCoroutineScope()
     
     val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val minDragToActivate = with(LocalDensity.current) { 20.dp.toPx() }
     
     // Handle back navigation
     BackHandler(enabled = canGoBack) {
@@ -194,7 +195,11 @@ actual fun WebViewWithBackHandler(
                                 // This allows the drawer to work when dragging more horizontally
                                 val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f
                                 
-                                if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag) {
+                                // Only activate pull-to-refresh after minimum drag threshold
+                                // This prevents conflicts with text selection and other gestures
+                                val hasMinimumDrag = kotlin.math.abs(deltaY) >= minDragToActivate
+                                
+                                if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag && hasMinimumDrag) {
                                     // Start pull-to-refresh
                                     isDragging = true
                                     totalDragDistance = deltaY
@@ -204,6 +209,12 @@ actual fun WebViewWithBackHandler(
                                     pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                     
                                     // Consume touch event to prevent scrolling
+                                    true
+                                } else if (isDragging) {
+                                    // Continue drag if already started
+                                    totalDragDistance = deltaY
+                                    val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                    pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                     true
                                 } else {
                                     false // Let WebView handle normal scrolling

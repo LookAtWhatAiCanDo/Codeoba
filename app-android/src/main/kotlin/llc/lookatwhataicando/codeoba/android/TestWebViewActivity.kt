@@ -167,6 +167,7 @@ fun TestWebView(
     var pullOffset by remember { mutableFloatStateOf(0f) }
     val coroutineScope = rememberCoroutineScope()
     val refreshThreshold = with(LocalDensity.current) { 120.dp.toPx() }
+    val minDragToActivate = with(LocalDensity.current) { 20.dp.toPx() }
     
     Box(modifier = modifier) {
         AndroidView(
@@ -282,7 +283,11 @@ fun TestWebView(
                             // Favor vertical drags to avoid drawer conflicts
                             val isVerticalDrag = kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f
                             
-                            if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag) {
+                            // Only activate pull-to-refresh after minimum drag threshold
+                            // This prevents conflicts with text selection
+                            val hasMinimumDrag = kotlin.math.abs(deltaY) >= minDragToActivate
+                            
+                            if (isAtTop && deltaY > 0 && !isRefreshing && isVerticalDrag && hasMinimumDrag) {
                                 isDragging = true
                                 totalDragDistance = deltaY
                                 
@@ -291,6 +296,12 @@ fun TestWebView(
                                 pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
                                 
                                 true // Consume touch to prevent scrolling
+                            } else if (isDragging) {
+                                // Continue drag if already started
+                                totalDragDistance = deltaY
+                                val resistance = if (totalDragDistance > refreshThreshold) 0.2f else 0.6f
+                                pullOffset = (totalDragDistance * resistance).coerceAtLeast(0f)
+                                true
                             } else {
                                 false
                             }
