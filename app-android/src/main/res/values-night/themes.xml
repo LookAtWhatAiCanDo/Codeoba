@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Base application theme using Material3 with dynamic colors -->
-    <style name="Theme.Codeoba" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Dark theme using Material3 with dynamic colors -->
+    <style name="Theme.Codeoba" parent="android:Theme.Material.NoActionBar">
         <!-- Enable edge-to-edge display -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-        <!-- Status bar configuration for light mode -->
+        <!-- Status bar configuration for dark mode -->
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <!-- Use light icons (white) on dark background -->
+        <item name="android:windowLightStatusBar">false</item>
         <!-- Navigation bar configuration -->
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <!-- Add status bar scrim for better contrast -->
         <item name="android:enforceStatusBarContrast">true</item>
     </style>

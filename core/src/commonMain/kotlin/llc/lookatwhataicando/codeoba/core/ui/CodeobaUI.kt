@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +36,9 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -41,6 +46,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -71,6 +77,8 @@ import llc.lookatwhataicando.codeoba.core.mirror
 fun CodeobaUI(
     app: CodeobaApp,
     config: RealtimeConfig,
+    currentThemeMode: String = "SYSTEM",
+    onThemeChange: ((String) -> Unit)? = null,
     onTestWebViewClick: (() -> Unit)? = null
 ) {
     val connectionState by app.connectionState.collectAsState()
@@ -90,7 +98,6 @@ fun CodeobaUI(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                // Placeholder drawer content
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -101,6 +108,20 @@ fun CodeobaUI(
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
                     HorizontalDivider()
+                    
+                    // Theme Selector
+                    if (onThemeChange != null) {
+                        Text(
+                            "Theme",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                        ThemeSelector(
+                            currentMode = currentThemeMode,
+                            onModeSelected = onThemeChange
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    }
                     
                     // Test WebView menu item
                     if (onTestWebViewClick != null) {
@@ -150,7 +171,8 @@ fun CodeobaUI(
                                     enabled = connectionState !is ConnectionState.Connecting
                                 )
                             }
-                        }
+                        },
+                        windowInsets = WindowInsets(0, 0, 0, 0)
                     )
                     
                     // Tabs below the top bar
@@ -612,6 +634,42 @@ fun AudioRoutePanel(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ThemeSelector(
+    currentMode: String,
+    onModeSelected: (String) -> Unit
+) {
+    val themeModes = listOf("LIGHT", "DARK", "SYSTEM")
+    val themeLabels = mapOf(
+        "LIGHT" to "☀️ Light",
+        "DARK" to "🌙 Dark",
+        "SYSTEM" to "⚙️ System"
+    )
+    
+    val selectedIndex = themeModes.indexOf(currentMode).takeIf { it >= 0 } ?: 2
+    
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        themeModes.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = index == selectedIndex,
+                onClick = { onModeSelected(mode) },
+                shape = SegmentedButtonDefaults.itemShape(
+                    index = index,
+                    count = themeModes.size
+                ),
+                icon = {}
+            ) {
+                Text(
+                    text = themeLabels[mode] ?: mode,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
         }
     }

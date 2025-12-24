@@ -10,13 +10,19 @@ import android.util.Base64
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +47,7 @@ class MainActivity : ComponentActivity() {
     
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var codeobaApp: CodeobaApp
+    private lateinit var themePreferenceManager: ThemePreferenceManager
     
     companion object {
         private const val TAG = "MainActivity"
@@ -85,6 +92,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Enable edge-to-edge display
+        enableEdgeToEdge()
+        
+        // Initialize theme preference manager
+        themePreferenceManager = ThemePreferenceManager(this)
+        
         // Request required permissions
         requestRequiredPermissions()
         
@@ -105,7 +118,29 @@ class MainActivity : ComponentActivity() {
         )
         
         setContent {
-            MaterialTheme {
+            val themeMode = themePreferenceManager.currentThemeMode()
+            val isDarkTheme = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            
+            // Use dynamic colors on Android 12+ (API 31+), fallback to default color scheme
+            val colorScheme = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (isDarkTheme) {
+                    dynamicDarkColorScheme(this)
+                } else {
+                    dynamicLightColorScheme(this)
+                }
+            } else {
+                if (isDarkTheme) {
+                    darkColorScheme()
+                } else {
+                    lightColorScheme()
+                }
+            }
+            
+            MaterialTheme(colorScheme = colorScheme) {
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbarHostState) }
                 ) { padding ->
@@ -123,6 +158,18 @@ class MainActivity : ComponentActivity() {
                         CodeobaUI(
                             app = codeobaApp,
                             config = config,
+                            currentThemeMode = themeMode.name,
+                            onThemeChange = { modeName ->
+                                try {
+                                    val newMode = ThemeMode.valueOf(modeName)
+                                    themePreferenceManager.setThemeMode(newMode)
+                                } catch (e: IllegalArgumentException) {
+                                    Log.e(TAG, "Invalid theme mode: $modeName", e)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Invalid theme mode: $modeName")
+                                    }
+                                }
+                            },
                             onTestWebViewClick = {
                                 // Launch test WebView activity
                                 startActivity(
