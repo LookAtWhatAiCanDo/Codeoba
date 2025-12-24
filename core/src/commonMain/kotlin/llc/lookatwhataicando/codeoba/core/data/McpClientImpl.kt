@@ -9,7 +9,7 @@ import llc.lookatwhataicando.codeoba.core.domain.McpResult
 
 /**
  * Implementation of McpClient with GitHub API integration.
- * Handles tool execution for repository operations.
+ * Handles tool execution for repository operations with approval flow.
  */
 class McpClientImpl(
     private val githubToken: String
@@ -17,6 +17,7 @@ class McpClientImpl(
     
     private val githubClient: GitHubApiClient = GitHubApiClientImpl(githubToken)
     private val json = Json { ignoreUnknownKeys = true }
+    val approvalManager = ApprovalManager()
     
     // Track current repository context
     private var currentOwner: String? = null
@@ -24,6 +25,37 @@ class McpClientImpl(
     private var currentBranch: String = "main"
     
     override suspend fun handleToolCall(name: String, argsJson: String): McpResult {
+        return try {
+            // Check if approval is required
+            val requiresApproval = ApprovalPolicy.requiresApproval(name)
+            
+            if (requiresApproval) {
+                // Request approval
+                val requestId = approvalManager.requestApproval(name, argsJson, true)
+                
+                // Wait for approval
+                when (val result = approvalManager.waitForApproval(requestId)) {
+                    is ApprovalResult.Approved -> {
+                        // Execute the tool
+                        executeToolCall(name, argsJson)
+                    }
+                    is ApprovalResult.Denied -> {
+                        McpResult.Failure("Operation denied: ${result.reason}")
+                    }
+                    is ApprovalResult.Timeout -> {
+                        McpResult.Failure("Approval timeout: No response received")
+                    }
+                }
+            } else {
+                // Execute without approval
+                executeToolCall(name, argsJson)
+            }
+        } catch (e: Exception) {
+            McpResult.Failure("Tool execution error: ${e.message}")
+        }
+    }
+    
+    private suspend fun executeToolCall(name: String, argsJson: String): McpResult {
         return try {
             // Parse JSON arguments
             val jsonElement = json.parseToJsonElement(argsJson).jsonObject
