@@ -49,7 +49,7 @@ This document tracks the **current implementation status and roadmap** for Codeo
 | Phase 1: Realtime Connection (Android) | ✅ Complete | 100% |
 | Phase 2: Android Audio & Playback | 🟡 In Progress | 90% |
 | Phase 2.5: Tabbed UI with Agent Browser | ✅ Complete | 100% |
-| Phase 3: MCP Protocol | 🔴 Not Started | 0% |
+| Phase 3: MCP Protocol | 🟡 In Progress | 75% |
 | Phase 4: iOS Implementation | 🔴 Not Started | 0% |
 | Phase 5: Desktop WebRTC Integration | 🔴 Not Started | 0% |
 | Phase 6: Web Platform | 🔴 Not Started | 0% |
@@ -436,39 +436,105 @@ This section outlines the planned implementation sequence for remaining features
 
 **Goal:** Execute actual GitHub operations from voice commands
 
-**Status:** 🔴 Not Started
+**Status:** 🟡 In Progress (as of December 24, 2025)
 
-**Completion:** 0% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3) for detailed tracking)
+**Completion:** ~75% (see [GitHub Issues](https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3) for detailed tracking)
 
 **Tasks:**
-1. **MCP Client Protocol**
-   - JSON-RPC communication (stdio or HTTP)
-   - Tool definition schema
-   - Effort: ~2 days
+1. ✅ **MCP Client Protocol** (~2 days) → See Issue #TBD - COMPLETE
+   - ✅ JSON-RPC communication protocol implemented
+   - ✅ Tool definition schemas for all operations
+   - ✅ Parameter validation and serialization
+   - ✅ HTTP transport layer using Ktor
+   - Completed: December 24, 2025
 
-2. **GitHub API Integration**
-   - Repository operations
-   - File CRUD
-   - Branch/PR management
-   - Effort: ~2 days
+2. ✅ **GitHub API Integration** (~2 days) → See Issue #TBD - COMPLETE
+   - ✅ Ktor-based GitHub API client implementation
+   - ✅ Repository operations (open, clone)
+   - ✅ File CRUD operations (create, edit, read)
+   - ✅ Branch management operations
+   - ✅ Pull request operations
+   - ✅ Secure token handling via environment variables
+   - ✅ Comprehensive error handling
+   - Completed: December 24, 2025
 
-3. **Tool Execution Pipeline**
-   - Parameter validation
-   - Result parsing
-   - Error handling
-   - Effort: ~1 day
+3. ✅ **Tool Execution Pipeline** (~1 day) → See Issue #TBD - COMPLETE
+   - ✅ Parameter validation for all tools
+   - ✅ Result parsing and mapping to McpResult
+   - ✅ Error handling with retry logic
+   - ✅ Repository context tracking (owner, repo, branch)
+   - ✅ Exponential backoff for transient failures
+   - ✅ Rate limit handling
+   - Completed: December 24, 2025
 
-**AI Prompt for Phase 3:**
+4. ✅ **Approval Flow** (~0.5 day) → See Issue #TBD - COMPLETE
+   - ✅ ApprovalManager for request/response handling
+   - ✅ Approval policy to determine sensitive operations
+   - ✅ Timeout support for approval requests
+   - ✅ Auto-approval for read-only operations
+   - Completed: December 24, 2025
+
+5. 🔴 **Testing** (~1-2 days) → See Issue #TBD
+   - Unit tests for tool parameter validation
+   - Unit tests for JSON-RPC protocol
+   - Mock tests for GitHub API integration
+   - Integration tests for end-to-end flow
+   - Manual testing with real GitHub repositories
+
+**AI Prompt for Phase 3 Testing:**
 ```
-Implement MCP protocol in McpClientImpl.kt:
-1. Establish JSON-RPC connection to MCP server
-2. Define tool schemas for: open_repo, create_file, edit_file, create_branch, create_pr
-3. Implement handleToolCall to invoke MCP tools with parameters
-4. Parse MCP responses and map to McpResult.Success/Failure
-5. Integrate with GitHub API for actual operations
-6. Add comprehensive error handling
-7. Test full flow: voice → transcript → tool call → GitHub action
+Create comprehensive tests for MCP protocol implementation:
+1. Unit tests for tool parameter validation (McpToolSchemas)
+2. Unit tests for JSON-RPC message serialization/deserialization
+3. Mock tests for GitHub API client operations
+4. Unit tests for approval flow (ApprovalManager)
+5. Integration tests: voice → transcript → tool call → GitHub action
+6. Test error handling and retry logic
 ```
+
+**Implementation Details:**
+
+**MCP Tool Schemas:**
+- `open_repo` - Open/clone GitHub repository
+- `create_file` - Create new file in repository  
+- `edit_file` - Modify existing file in repository
+- `create_branch` - Create new branch
+- `create_pr` - Create pull request
+
+**GitHub API Client (`GitHubApiClientImpl.kt`):**
+- Uses Ktor HTTP client with content negotiation
+- GitHub API v3 (REST API) with API version 2022-11-28
+- Base64 encoding for file content
+- Comprehensive error codes and messages
+- Bearer token authentication
+
+**Retry Policy:**
+- Exponential backoff with configurable parameters
+- Retries on 5xx errors, 429 (rate limit), and network errors
+- Default: 3 attempts with 1s initial delay, max 10s delay
+- Automatic retry on transient failures
+
+**Approval Flow:**
+- Approval required for: create_file, edit_file, create_branch, create_pr
+- Auto-approved for: open_repo (read-only)
+- 30-second timeout for approval requests
+- Approval state management with mutex for thread safety
+
+**What Works:**
+- ✅ Complete MCP protocol layer with JSON-RPC
+- ✅ Full GitHub API integration for all operations
+- ✅ Approval flow with timeout and auto-approval
+- ✅ Retry logic with exponential backoff
+- ✅ Repository context tracking
+- ✅ Parameter validation and error handling
+
+**Key Files:**
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/McpClientImpl.kt` (main implementation)
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/McpToolSchemas.kt` (tool schemas)
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/GitHubApiClientImpl.kt` (GitHub API)
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/ApprovalManager.kt` (approval flow)
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/RetryPolicy.kt` (retry logic)
+- `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/mcp/JsonRpcProtocol.kt` (protocol messages)
 
 > **📋 Note:** Detailed issue tracking available at: https://github.com/LookAtWhatAiCanDo/Codeoba/issues?q=is%3Aissue+label%3Aphase-3
 
@@ -611,10 +677,13 @@ These components have interface definitions but stub implementations:
 - **Recommendation:** Use WebSocket fallback for Desktop instead of WebRTC
 
 ### 2. MCP Client (`McpClientImpl.kt`)
-- Mock tool execution responses
-- No real GitHub API calls
-- Simulated success/failure
-- **Location:** `core/src/commonMain/kotlin/com/codeoba/core/data/McpClientImpl.kt`
+- ✅ Complete GitHub API integration (December 24, 2025)
+- ✅ JSON-RPC protocol implementation
+- ✅ Tool schemas for all operations
+- ✅ Approval flow with timeout support
+- ✅ Retry logic with exponential backoff
+- 🔴 Missing: Unit and integration tests
+- **Location:** `core/src/commonMain/kotlin/llc/lookatwhataicando/codeoba/core/data/McpClientImpl.kt`
 
 ### 3. Desktop Audio Streaming (`DesktopAudioCaptureService.kt`)
 - JavaSound TargetDataLine configured
@@ -660,8 +729,11 @@ Track progress by updating this table as features are completed:
 | 2 | Android PTT & Text Input | ✅ Complete | PTT controls WebRTC audio track, text input sends via data channel. Completed Dec 18, 2025 |
 | 2 | Android Integration Testing | 🔴 Not Started | See Issue #17 |
 | 2.5 | Tabbed UI with Agent Browser | ✅ Complete | Android WebView fully functional, Desktop limited by JavaFX WebKit. Completed Dec 23, 2025 |
-| 3 | MCP Protocol | 🔴 Not Started | - |
-| 3 | GitHub API Integration | 🔴 Not Started | - |
+| 3 | MCP Protocol Layer | ✅ Complete | JSON-RPC protocol, tool schemas, GitHub API client. Completed Dec 24, 2025 |
+| 3 | GitHub API Integration | ✅ Complete | Full CRUD operations for repos, files, branches, PRs. Completed Dec 24, 2025 |
+| 3 | MCP Approval Flow | ✅ Complete | Approval manager with timeout support and auto-approval. Completed Dec 24, 2025 |
+| 3 | MCP Retry Logic | ✅ Complete | Exponential backoff for transient failures. Completed Dec 24, 2025 |
+| 3 | MCP Testing | 🔴 Not Started | Unit and integration tests needed |
 | 4 | iOS Platform | 🔴 Not Started | - |
 | 4 | iOS Audio Capture | 🔴 Not Started | - |
 | 4 | iOS Build Setup | 🔴 Not Started | - |

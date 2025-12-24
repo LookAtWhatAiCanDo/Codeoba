@@ -82,7 +82,9 @@ class McpClientImpl(
                 return McpResult.Failure("Repository URL is required")
             }
             
-            val result = githubClient.openRepository(params.repoUrl, params.branch)
+            val result = RetryPolicy.executeWithRetry {
+                githubClient.openRepository(params.repoUrl, params.branch)
+            }
             
             when (result) {
                 is GitHubApiResult.Success -> {
@@ -122,14 +124,16 @@ class McpClientImpl(
             
             val message = params.message ?: "Create ${params.path}"
             
-            val result = githubClient.createFile(
-                owner = owner,
-                repo = repo,
-                path = params.path,
-                content = params.content,
-                message = message,
-                branch = currentBranch
-            )
+            val result = RetryPolicy.executeWithRetry {
+                githubClient.createFile(
+                    owner = owner,
+                    repo = repo,
+                    path = params.path,
+                    content = params.content,
+                    message = message,
+                    branch = currentBranch
+                )
+            }
             
             when (result) {
                 is GitHubApiResult.Success -> {
@@ -177,15 +181,17 @@ class McpClientImpl(
             
             val message = params.message ?: "Update ${params.path}"
             
-            val result = githubClient.updateFile(
-                owner = owner,
-                repo = repo,
-                path = params.path,
-                content = params.content,
-                message = message,
-                branch = currentBranch,
-                sha = sha
-            )
+            val result = RetryPolicy.executeWithRetry {
+                githubClient.updateFile(
+                    owner = owner,
+                    repo = repo,
+                    path = params.path,
+                    content = params.content,
+                    message = message,
+                    branch = currentBranch,
+                    sha = sha
+                )
+            }
             
             when (result) {
                 is GitHubApiResult.Success -> {
@@ -215,12 +221,14 @@ class McpClientImpl(
             
             val fromBranch = params.fromBranch ?: currentBranch
             
-            val result = githubClient.createBranch(
-                owner = owner,
-                repo = repo,
-                branchName = params.branchName,
-                fromRef = fromBranch
-            )
+            val result = RetryPolicy.executeWithRetry {
+                githubClient.createBranch(
+                    owner = owner,
+                    repo = repo,
+                    branchName = params.branchName,
+                    fromRef = fromBranch
+                )
+            }
             
             when (result) {
                 is GitHubApiResult.Success -> {
@@ -251,14 +259,16 @@ class McpClientImpl(
             val owner = currentOwner ?: return McpResult.Failure("No repository opened. Use open_repo first.")
             val repo = currentRepo ?: return McpResult.Failure("No repository opened. Use open_repo first.")
             
-            val result = githubClient.createPullRequest(
-                owner = owner,
-                repo = repo,
-                title = params.title,
-                body = params.body,
-                head = params.headBranch,
-                base = params.baseBranch
-            )
+            val result = RetryPolicy.executeWithRetry {
+                githubClient.createPullRequest(
+                    owner = owner,
+                    repo = repo,
+                    title = params.title,
+                    body = params.body,
+                    head = params.headBranch,
+                    base = params.baseBranch
+                )
+            }
             
             when (result) {
                 is GitHubApiResult.Success -> {
