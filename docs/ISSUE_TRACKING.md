@@ -78,8 +78,9 @@ Epic (Phase)
 
 **Examples:**
 - Phase 1: Core Realtime Integration
-- Phase 2: MCP Protocol Implementation
-- Phase 3: iOS Implementation
+- Phase 2: Android Audio Streaming & Playback
+- Phase 3: MCP Protocol Implementation
+- Phase 4: iOS Implementation
 
 **Tracking:**
 - Documented in IMPLEMENTATION_STATUS.md
@@ -231,10 +232,12 @@ When starting a new phase (e.g., Phase 2):
 
 ### Phase Labels (Optional)
 - `phase-1` - Core Realtime Integration
-- `phase-2` - MCP Protocol
-- `phase-3` - iOS Implementation
-- `phase-4` - Web Platform
-- `phase-5` - Production Polish
+- `phase-2` - Android Audio Streaming & Playback
+- `phase-3` - MCP Protocol Implementation
+- `phase-4` - iOS Implementation
+- `phase-5` - Desktop WebRTC Integration
+- `phase-6` - Web Platform
+- `phase-7` - Production Polish
 
 ### Platform Labels (Optional)
 - `android` - Android-specific
