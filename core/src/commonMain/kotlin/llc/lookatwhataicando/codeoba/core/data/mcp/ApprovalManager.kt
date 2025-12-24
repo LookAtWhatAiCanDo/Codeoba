@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.UUID
+import kotlin.random.Random
 
 /**
  * Manages approval requests for sensitive MCP operations
@@ -32,7 +32,8 @@ class ApprovalManager {
             return "auto-approved"
         }
         
-        val requestId = UUID.randomUUID().toString()
+        // Generate random ID using multiplatform-compatible approach
+        val requestId = generateRequestId()
         
         mutex.withLock {
             pendingApprovals[requestId] = ApprovalState.Pending
@@ -47,6 +48,15 @@ class ApprovalManager {
         )
         
         return requestId
+    }
+    
+    /**
+     * Generate a unique request ID using multiplatform-compatible approach
+     */
+    private fun generateRequestId(): String {
+        val timestamp = System.currentTimeMillis()
+        val random = Random.nextInt(100000, 999999)
+        return "approval-$timestamp-$random"
     }
     
     /**

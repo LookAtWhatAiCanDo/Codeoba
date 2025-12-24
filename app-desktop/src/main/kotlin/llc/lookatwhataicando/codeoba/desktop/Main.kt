@@ -21,9 +21,9 @@ import java.util.Properties
 fun main() = application {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
-    // Get GitHub token from environment or use OpenAI key as fallback for now
-    val githubToken = System.getenv("GITHUB_TOKEN") 
-        ?: getApiKey() // TODO: Get separate GitHub token
+    // Get GitHub token from environment variable
+    val githubToken = System.getenv("GITHUB_TOKEN")
+        ?: error("GITHUB_TOKEN environment variable not set. Set GITHUB_TOKEN for MCP operations. See docs/DEVELOPMENT.md")
     
     val codeobaApp = CodeobaApp(
         audioCaptureService = DesktopAudioCaptureService(),

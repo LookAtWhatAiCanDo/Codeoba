@@ -164,13 +164,15 @@ class McpClientImpl(
             val owner = currentOwner ?: return McpResult.Failure("No repository opened. Use open_repo first.")
             val repo = currentRepo ?: return McpResult.Failure("No repository opened. Use open_repo first.")
             
-            // Get current file SHA
-            val getResult = githubClient.getFile(
-                owner = owner,
-                repo = repo,
-                path = params.path,
-                branch = currentBranch
-            )
+            // Get current file SHA with retry
+            val getResult = RetryPolicy.executeWithRetry {
+                githubClient.getFile(
+                    owner = owner,
+                    repo = repo,
+                    path = params.path,
+                    branch = currentBranch
+                )
+            }
             
             val sha = when (getResult) {
                 is GitHubApiResult.Success -> getResult.data.sha
