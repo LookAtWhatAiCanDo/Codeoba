@@ -108,9 +108,8 @@ class MainActivity : ComponentActivity() {
         val audioCaptureService = AndroidAudioCaptureService(this, scope)
         audioCaptureService.realtimeClient = realtimeClient // Wire up for PTT control
         
-        // Get GitHub token from environment variable
-        val githubToken = System.getenv("GITHUB_TOKEN")
-            ?: error("GITHUB_TOKEN environment variable not set. Set GITHUB_TOKEN for MCP operations. See docs/DEVELOPMENT.md")
+        // Get GitHub token (similar pattern to OpenAI API key)
+        val githubToken = getGitHubToken()
         
         codeobaApp = CodeobaApp(
             audioCaptureService = audioCaptureService,
@@ -236,6 +235,19 @@ class MainActivity : ComponentActivity() {
             return defaultKey
         } else {
             error("OPENAI_API_KEY not configured. Add DANGEROUS_OPENAI_API_KEY to local.properties. See docs/dev-setup.md")
+        }
+    }
+    
+    /**
+     * Gets the GitHub token from BuildConfig.
+     * Falls back to BuildConfig default if not found.
+     */
+    private fun getGitHubToken(): String {
+        val defaultToken = BuildConfig.DANGEROUS_GITHUB_TOKEN
+        if (defaultToken.isNotBlank()) {
+            return defaultToken
+        } else {
+            error("GITHUB_TOKEN not configured. Add DANGEROUS_GITHUB_TOKEN to local.properties for MCP operations.")
         }
     }
     

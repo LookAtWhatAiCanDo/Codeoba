@@ -54,39 +54,29 @@ You need a GitHub Personal Access Token (PAT) with the following permissions:
 5. Click "Generate token"
 6. **Copy the token immediately** (you won't see it again)
 
-### Environment Variable Configuration
+### Configuration via local.properties
 
-Set the `GITHUB_TOKEN` environment variable with your GitHub PAT:
+Add your GitHub token to the `local.properties` file in the project root:
 
-**Linux/macOS:**
-```bash
-export GITHUB_TOKEN=ghp_your_token_here
+```properties
+DANGEROUS_GITHUB_TOKEN=ghp_your_token_here
 ```
 
-**Windows (PowerShell):**
-```powershell
-$env:GITHUB_TOKEN="ghp_your_token_here"
-```
+This file is gitignored and will not be committed to version control.
 
-**Windows (Command Prompt):**
-```cmd
-set GITHUB_TOKEN=ghp_your_token_here
+**Complete local.properties example:**
+```properties
+DANGEROUS_OPENAI_API_KEY=sk-your-openai-key
+DANGEROUS_GITHUB_TOKEN=ghp_your-github-token
 ```
-
-For persistent configuration, add to your shell profile:
-- Linux/macOS: Add to `~/.bashrc`, `~/.zshrc`, or `~/.profile`
-- Windows: Set via System Properties → Environment Variables
 
 **Android:**
 ```bash
-# Set before running the app
-export GITHUB_TOKEN=ghp_your_token_here
 ./gradlew :app-android:installDebug
 ```
 
 **Desktop:**
 ```bash
-export GITHUB_TOKEN=ghp_your_token_here
 ./gradlew :app-desktop:run
 ```
 
@@ -230,8 +220,8 @@ All GitHub API operations include automatic retry logic for transient failures:
 
 ### Common Errors
 
-**"GITHUB_TOKEN environment variable not set"**
-- Solution: Set the `GITHUB_TOKEN` environment variable with your GitHub PAT
+**"GITHUB_TOKEN not configured"**
+- Solution: Add `DANGEROUS_GITHUB_TOKEN` to your `local.properties` file
 
 **"No repository opened. Use open_repo first."**
 - Solution: Open a repository with `open_repo` before performing file/branch/PR operations
@@ -309,7 +299,7 @@ If you get build errors related to MCP:
 
 If GitHub API calls fail with 403 or 401:
 
-1. Verify token is set correctly: `echo $GITHUB_TOKEN`
+1. Verify token is set in `local.properties` as `DANGEROUS_GITHUB_TOKEN`
 2. Check token permissions on GitHub
 3. Regenerate token if needed
 

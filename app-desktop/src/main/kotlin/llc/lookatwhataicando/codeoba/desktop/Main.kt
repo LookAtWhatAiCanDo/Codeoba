@@ -21,9 +21,8 @@ import java.util.Properties
 fun main() = application {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
-    // Get GitHub token from environment variable
-    val githubToken = System.getenv("GITHUB_TOKEN")
-        ?: error("GITHUB_TOKEN environment variable not set. Set GITHUB_TOKEN for MCP operations. See docs/DEVELOPMENT.md")
+    // Get GitHub token from local.properties
+    val githubToken = getGitHubToken()
     
     val codeobaApp = CodeobaApp(
         audioCaptureService = DesktopAudioCaptureService(),
@@ -84,3 +83,21 @@ private fun getApiKey(): String {
     
     error("OPENAI_API_KEY not configured. Set OPENAI_API_KEY environment variable or add DANGEROUS_OPENAI_API_KEY to local.properties. See docs/dev-setup.md")
 }
+
+/**
+ * Gets the GitHub token from local.properties.
+ */
+private fun getGitHubToken(): String {
+    // Check local.properties file
+    val localPropertiesFile = File("local.properties")
+    if (localPropertiesFile.exists()) {
+        val properties = Properties()
+        localPropertiesFile.inputStream().use { properties.load(it) }
+        properties.getProperty("DANGEROUS_GITHUB_TOKEN")?.let { 
+            if (it.isNotBlank()) return it 
+        }
+    }
+    
+    error("GITHUB_TOKEN not configured. Add DANGEROUS_GITHUB_TOKEN to local.properties for MCP operations.")
+}
+
