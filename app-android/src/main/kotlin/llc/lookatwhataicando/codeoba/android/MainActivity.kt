@@ -203,6 +203,10 @@ class MainActivity : ComponentActivity() {
             logger.w("MCP Client", "No GitHub token configured, MCP features disabled")
             // Return stub implementation that doesn't connect
             object : llc.lookatwhataicando.codeoba.core.domain.McpClient {
+                override suspend fun connect() {
+                    // No-op for stub
+                }
+                
                 override suspend fun handleToolCall(name: String, argsJson: String) = 
                     llc.lookatwhataicando.codeoba.core.domain.McpResult.Failure(
                         "GitHub token not configured. Add DANGEROUS_GITHUB_TOKEN to local.properties"

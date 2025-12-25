@@ -10,7 +10,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
 import llc.lookatwhataicando.codeoba.core.domain.Logger
 import llc.lookatwhataicando.codeoba.core.log
-import java.util.UUID
+import kotlin.random.Random
 
 /**
  * HTTP transport layer for MCP communication.
@@ -37,7 +37,7 @@ class McpTransport(
      * Send a JSON-RPC request to the MCP server.
      */
     suspend fun sendRequest(method: String, params: JsonObject? = null): JsonRpcResponse {
-        val requestId = UUID.randomUUID().toString()
+        val requestId = generateRequestId()
         val request = JsonRpcRequest(
             method = method,
             params = params,
@@ -67,6 +67,15 @@ class McpTransport(
             logger.log("MCP Transport", "Request failed: ${e.message}")
             throw McpTransportException("Failed to send MCP request: ${e.message}", e)
         }
+    }
+    
+    /**
+     * Generate a unique request ID for JSON-RPC.
+     * Uses a simple random hex string for multiplatform compatibility.
+     */
+    private fun generateRequestId(): String {
+        val bytes = Random.nextBytes(16)
+        return bytes.joinToString("") { "%02x".format(it) }
     }
     
     /**

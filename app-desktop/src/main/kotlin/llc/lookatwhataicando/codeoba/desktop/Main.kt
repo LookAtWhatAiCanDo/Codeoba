@@ -72,6 +72,10 @@ private fun createMcpClient(logger: llc.lookatwhataicando.codeoba.core.domain.Lo
         logger.w("MCP Client", "No GitHub token configured, MCP features disabled")
         // Return stub implementation that doesn't connect
         object : llc.lookatwhataicando.codeoba.core.domain.McpClient {
+            override suspend fun connect() {
+                // No-op for stub
+            }
+            
             override suspend fun handleToolCall(name: String, argsJson: String) = 
                 llc.lookatwhataicando.codeoba.core.domain.McpResult.Failure(
                     "GitHub token not configured. Set GITHUB_TOKEN environment variable or add DANGEROUS_GITHUB_TOKEN to local.properties"

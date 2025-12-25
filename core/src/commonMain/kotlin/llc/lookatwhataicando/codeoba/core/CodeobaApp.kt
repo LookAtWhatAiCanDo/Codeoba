@@ -52,6 +52,16 @@ class CodeobaApp(
             }
         }
         
+        // Initialize MCP client connection
+        scope.launch {
+            try {
+                mcpClient.connect()
+                addEventLogEntry(EventLogEntry.Info("MCP client initialized"))
+            } catch (e: Exception) {
+                addEventLogEntry(EventLogEntry.Info("MCP client initialization deferred: ${e.message}"))
+            }
+        }
+        
         // Note: With WebRTC JavaAudioDeviceModule, audio capture and transmission
         // is handled automatically by WebRTC. No need to manually pipe audio frames.
     }

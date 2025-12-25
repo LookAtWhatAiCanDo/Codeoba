@@ -21,7 +21,7 @@ class McpClientImpl(
     private val logger: Logger
 ) : McpClient {
     
-    private var transport: McpTransport? = null
+    private lateinit var transport: McpTransport
     private var isInitialized = false
     private val toolsCache = mutableMapOf<String, ToolDefinition>()
     
@@ -33,7 +33,7 @@ class McpClientImpl(
     /**
      * Initialize connection to the MCP server and discover available tools.
      */
-    suspend fun connect() {
+    override suspend fun connect() {
         if (isInitialized) {
             logger.log("MCP Client", "Already initialized")
             return
@@ -53,8 +53,7 @@ class McpClientImpl(
                 })
             }
             
-            val initResponse = transport?.sendRequest("initialize", initParams)
-                ?: throw McpClientException("Transport not initialized")
+            val initResponse = transport.sendRequest("initialize", initParams)
             
             if (initResponse.error != null) {
                 throw McpClientException("Initialization failed: ${initResponse.error.message}")
@@ -78,8 +77,7 @@ class McpClientImpl(
     private suspend fun discoverTools() {
         logger.log("MCP Client", "Discovering available tools")
         
-        val response = transport?.sendRequest("tools/list")
-            ?: throw McpClientException("Transport not initialized")
+        val response = transport.sendRequest("tools/list")
         
         if (response.error != null) {
             throw McpClientException("Failed to list tools: ${response.error.message}")
@@ -124,7 +122,9 @@ class McpClientImpl(
         try {
             // Parse arguments JSON
             val arguments = json.parseToJsonElement(argsJson) as? JsonObject
-                ?: throw McpClientException("Invalid arguments JSON")
+                ?: throw McpClientException(
+                    "Expected JSON object for tool arguments, got: ${argsJson.take(100)}${if (argsJson.length > 100) "..." else ""}"
+                )
             
             // Build tool call params
             val params = buildJsonObject {
@@ -133,8 +133,7 @@ class McpClientImpl(
             }
             
             // Execute tool call
-            val response = transport?.sendRequest("tools/call", params)
-                ?: throw McpClientException("Transport not initialized")
+            val response = transport.sendRequest("tools/call", params)
             
             if (response.error != null) {
                 logger.log("MCP Client", "Tool call failed: ${response.error.message}")
@@ -174,8 +173,9 @@ class McpClientImpl(
      * Close the MCP connection.
      */
     fun disconnect() {
-        transport?.close()
-        transport = null
+        if (::transport.isInitialized) {
+            transport.close()
+        }
         isInitialized = false
         toolsCache.clear()
         logger.log("MCP Client", "Disconnected")
