@@ -77,6 +77,9 @@ Create a `local.properties` file in the project root (this file is gitignored):
 # For Android: Provides default API key (stored encrypted on first run)
 DANGEROUS_OPENAI_API_KEY=sk-your-api-key-here
 
+# Optional: GitHub token for MCP operations (Phase 3+)
+DANGEROUS_GITHUB_TOKEN=ghp-your-github-token-here
+
 # Optional: Custom Realtime endpoint
 realtime.endpoint=wss://api.openai.com/v1/realtime
 ```
@@ -86,19 +89,26 @@ The prefix reminds developers that this is a development convenience. In product
 - Android: Users should enter their own API key through the app UI
 - Desktop: Use environment variables or secure configuration management
 
+**GitHub Token (MCP):**
+- Required for Phase 3+ to enable voice-driven GitHub operations
+- Generate a Personal Access Token at https://github.com/settings/tokens
+- Token should have `repo` scope for repository operations
+- If not configured, MCP features will be disabled gracefully
+
 #### Alternative: Environment Variables (Desktop/CI)
 
 For desktop or CI environments:
 
 ```bash
 export OPENAI_API_KEY=sk-your-api-key-here
+export GITHUB_TOKEN=ghp-your-github-token-here  # optional, for MCP
 export REALTIME_ENDPOINT=wss://api.openai.com/v1/realtime  # optional
 ```
 
 Or use system properties:
 
 ```bash
-./gradlew :app-desktop:run -Dopenai.api.key=sk-your-api-key-here
+./gradlew :app-desktop:run -Dopenai.api.key=sk-your-api-key-here -Dgithub.token=ghp-your-token
 ```
 
 #### Getting an OpenAI API Key
