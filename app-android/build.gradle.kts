@@ -24,11 +24,13 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         
-        // Load API key from local.properties for development
-        // This provides a default value that can be overridden at runtime
+        // Load API keys from local.properties for development
+        // These provide default values that can be overridden at runtime
         val localProperties = gradleLocalProperties(rootDir, providers)
         val dangerousOpenAiKey = localProperties.getProperty("DANGEROUS_OPENAI_API_KEY") ?: ""
+        val dangerousGithubToken = localProperties.getProperty("DANGEROUS_GITHUB_TOKEN") ?: ""
         buildConfigField("String", "DANGEROUS_OPENAI_API_KEY", "\"$dangerousOpenAiKey\"")
+        buildConfigField("String", "DANGEROUS_GITHUB_TOKEN", "\"$dangerousGithubToken\"")
     }
     
     buildTypes {

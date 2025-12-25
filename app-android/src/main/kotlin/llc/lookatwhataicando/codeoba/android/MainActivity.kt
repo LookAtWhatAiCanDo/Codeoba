@@ -108,11 +108,13 @@ class MainActivity : ComponentActivity() {
         val audioCaptureService = AndroidAudioCaptureService(this, scope)
         audioCaptureService.realtimeClient = realtimeClient // Wire up for PTT control
         
+        val logger = llc.lookatwhataicando.codeoba.core.domain.createLogger()
+        
         codeobaApp = CodeobaApp(
             audioCaptureService = audioCaptureService,
             audioRouteManager = AndroidAudioRouteManager(this),
             realtimeClient = realtimeClient,
-            mcpClient = McpClientImpl(),
+            mcpClient = createMcpClient(logger),
             companionProxy = CompanionProxyStub(),
             scope = scope
         )
@@ -184,6 +186,38 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    
+    /**
+     * Creates MCP client with GitHub token if configured, otherwise returns a stub.
+     */
+    private fun createMcpClient(logger: llc.lookatwhataicando.codeoba.core.domain.Logger): llc.lookatwhataicando.codeoba.core.domain.McpClient {
+        val githubToken = getGithubToken()
+        return if (githubToken != null) {
+            logger.i("MCP Client", "Initializing with GitHub token")
+            McpClientImpl(
+                githubToken = githubToken,
+                logger = logger
+            )
+        } else {
+            logger.w("MCP Client", "No GitHub token configured, MCP features disabled")
+            // Return stub implementation that doesn't connect
+            object : llc.lookatwhataicando.codeoba.core.domain.McpClient {
+                override suspend fun handleToolCall(name: String, argsJson: String) = 
+                    llc.lookatwhataicando.codeoba.core.domain.McpResult.Failure(
+                        "GitHub token not configured. Add DANGEROUS_GITHUB_TOKEN to local.properties"
+                    )
+            }
+        }
+    }
+    
+    /**
+     * Gets the GitHub token from BuildConfig.
+     * Returns null if not configured.
+     */
+    private fun getGithubToken(): String? {
+        val token = BuildConfig.DANGEROUS_GITHUB_TOKEN
+        return if (token.isNotBlank()) token else null
     }
     
     /**
