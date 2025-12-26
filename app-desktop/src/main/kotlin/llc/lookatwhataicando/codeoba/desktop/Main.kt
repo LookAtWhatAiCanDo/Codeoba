@@ -11,6 +11,7 @@ import llc.lookatwhataicando.codeoba.core.CodeobaApp
 import llc.lookatwhataicando.codeoba.core.data.CompanionProxyStub
 import llc.lookatwhataicando.codeoba.core.data.McpClientImpl
 import llc.lookatwhataicando.codeoba.core.data.realtime.RealtimeClientImpl
+import llc.lookatwhataicando.codeoba.core.domain.createLogger
 import llc.lookatwhataicando.codeoba.core.domain.realtime.RealtimeConfig
 import llc.lookatwhataicando.codeoba.core.platform.DesktopAudioCaptureService
 import llc.lookatwhataicando.codeoba.core.platform.DesktopAudioRouteManager
@@ -20,12 +21,13 @@ import java.util.Properties
 
 fun main() = application {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    val logger = createLogger()
     
     val codeobaApp = CodeobaApp(
         audioCaptureService = DesktopAudioCaptureService(),
         audioRouteManager = DesktopAudioRouteManager(),
         realtimeClient = RealtimeClientImpl(),
-        mcpClient = McpClientImpl(),
+        mcpClient = createMcpClient(logger),
         companionProxy = CompanionProxyStub(),
         scope = scope
     )
@@ -53,6 +55,59 @@ fun main() = application {
             }
         }
     }
+}
+
+/**
+ * Creates MCP client with GitHub token if configured, otherwise returns a stub.
+ */
+private fun createMcpClient(logger: llc.lookatwhataicando.codeoba.core.domain.Logger): llc.lookatwhataicando.codeoba.core.domain.McpClient {
+    val githubToken = getGithubToken()
+    return if (githubToken != null) {
+        logger.i("MCP Client", "Initializing with GitHub token")
+        McpClientImpl(
+            githubToken = githubToken,
+            logger = logger
+        )
+    } else {
+        logger.w("MCP Client", "No GitHub token configured, MCP features disabled")
+        // Return stub implementation that doesn't connect
+        object : llc.lookatwhataicando.codeoba.core.domain.McpClient {
+            override suspend fun connect() {
+                // No-op for stub
+            }
+            
+            override suspend fun handleToolCall(name: String, argsJson: String) = 
+                llc.lookatwhataicando.codeoba.core.domain.McpResult.Failure(
+                    "GitHub token not configured. Set GITHUB_TOKEN environment variable or add DANGEROUS_GITHUB_TOKEN to local.properties"
+                )
+        }
+    }
+}
+
+/**
+ * Gets the GitHub token from various sources in priority order:
+ * 1. GITHUB_TOKEN environment variable
+ * 2. github.token system property
+ * 3. DANGEROUS_GITHUB_TOKEN from local.properties
+ */
+private fun getGithubToken(): String? {
+    // Check environment variable
+    System.getenv("GITHUB_TOKEN")?.let { if (it.isNotBlank()) return it }
+    
+    // Check system property
+    System.getProperty("github.token")?.let { if (it.isNotBlank()) return it }
+    
+    // Check local.properties file
+    val localPropertiesFile = File("local.properties")
+    if (localPropertiesFile.exists()) {
+        val properties = Properties()
+        localPropertiesFile.inputStream().use { properties.load(it) }
+        properties.getProperty("DANGEROUS_GITHUB_TOKEN")?.let { 
+            if (it.isNotBlank()) return it 
+        }
+    }
+    
+    return null
 }
 
 /**
