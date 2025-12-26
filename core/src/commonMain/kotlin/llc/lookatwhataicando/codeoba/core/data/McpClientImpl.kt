@@ -35,7 +35,7 @@ class McpClientImpl(
      */
     override suspend fun connect() {
         if (isInitialized) {
-            logger.log("MCP Client", "Already initialized")
+            logger.d("MCP Client", "Already initialized")
             return
         }
         
@@ -43,7 +43,7 @@ class McpClientImpl(
             transport = McpTransport(mcpServerUrl, githubToken, logger)
             
             // Step 1: Initialize connection with server
-            logger.log("MCP Client", "Initializing connection to $mcpServerUrl")
+            logger.i("MCP Client", "Initializing connection to $mcpServerUrl")
             val initParams = buildJsonObject {
                 put("protocolVersion", "2024-11-05")
                 put("capabilities", buildJsonObject {})
@@ -59,14 +59,14 @@ class McpClientImpl(
                 throw McpClientException("Initialization failed: ${initResponse.error.message}")
             }
             
-            logger.log("MCP Client", "Connection initialized successfully")
+            logger.i("MCP Client", "Connection initialized successfully")
             
             // Step 2: Discover available tools
             discoverTools()
             
             isInitialized = true
         } catch (e: Exception) {
-            logger.log("MCP Client", "Failed to connect: ${e.message}")
+            logger.e("MCP Client", "Failed to connect: ${e.message}", e)
             throw McpClientException("Failed to connect to MCP server: ${e.message}", e)
         }
     }
@@ -75,7 +75,7 @@ class McpClientImpl(
      * Discover and cache available tools from the MCP server.
      */
     private suspend fun discoverTools() {
-        logger.log("MCP Client", "Discovering available tools")
+        logger.d("MCP Client", "Discovering available tools")
         
         val response = transport.sendRequest("tools/list")
         
@@ -90,9 +90,9 @@ class McpClientImpl(
             toolsCache.clear()
             toolsListResult.tools.forEach { tool ->
                 toolsCache[tool.name] = tool
-                logger.log("MCP Client", "Discovered tool: ${tool.name}")
+                logger.d("MCP Client", "Discovered tool: ${tool.name}")
             }
-            logger.log("MCP Client", "Discovered ${toolsCache.size} tools")
+            logger.i("MCP Client", "Discovered ${toolsCache.size} tools")
         } catch (e: Exception) {
             throw McpClientException("Failed to parse tools list: ${e.message}", e)
         }
@@ -113,11 +113,11 @@ class McpClientImpl(
         
         // Check if tool exists
         if (!toolsCache.containsKey(name)) {
-            logger.log("MCP Client", "Unknown tool: $name")
+            logger.w("MCP Client", "Unknown tool: $name")
             return McpResult.Failure("Unknown tool: $name. Available tools: ${toolsCache.keys.joinToString()}")
         }
         
-        logger.log("MCP Client", "Executing tool: $name with args: $argsJson")
+        logger.d("MCP Client", "Executing tool: $name with args: $argsJson")
         
         try {
             // Parse arguments JSON
@@ -136,7 +136,7 @@ class McpClientImpl(
             val response = transport.sendRequest("tools/call", params)
             
             if (response.error != null) {
-                logger.log("MCP Client", "Tool call failed: ${response.error.message}")
+                logger.w("MCP Client", "Tool call failed: ${response.error.message}")
                 return McpResult.Failure("Tool execution failed: ${response.error.message}")
             }
             
@@ -147,7 +147,7 @@ class McpClientImpl(
             if (toolCallResult.isError == true) {
                 val errorMessage = toolCallResult.content.firstOrNull()?.text 
                     ?: "Tool reported an error"
-                logger.log("MCP Client", "Tool returned error: $errorMessage")
+                logger.w("MCP Client", "Tool returned error: $errorMessage")
                 return McpResult.Failure(errorMessage)
             }
             
@@ -157,14 +157,14 @@ class McpClientImpl(
                 .joinToString("\n")
                 .ifBlank { "Tool executed successfully" }
             
-            logger.log("MCP Client", "Tool executed successfully: $summary")
+            logger.i("MCP Client", "Tool executed successfully: $summary")
             return McpResult.Success(summary)
             
         } catch (e: McpTransportException) {
-            logger.log("MCP Client", "Transport error: ${e.message}")
+            logger.e("MCP Client", "Transport error: ${e.message}", e)
             return McpResult.Failure("Network error: ${e.message}")
         } catch (e: Exception) {
-            logger.log("MCP Client", "Unexpected error: ${e.message}")
+            logger.e("MCP Client", "Unexpected error: ${e.message}", e)
             return McpResult.Failure("Failed to execute tool: ${e.message}")
         }
     }
@@ -178,7 +178,7 @@ class McpClientImpl(
         }
         isInitialized = false
         toolsCache.clear()
-        logger.log("MCP Client", "Disconnected")
+        logger.d("MCP Client", "Disconnected")
     }
 }
 

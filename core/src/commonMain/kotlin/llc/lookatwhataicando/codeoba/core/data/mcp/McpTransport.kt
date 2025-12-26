@@ -44,27 +44,29 @@ class McpTransport(
             id = requestId
         )
         
-        logger.log("MCP Transport", "Sending request: method=$method, id=$requestId")
+        logger.d("MCP Transport", "Sending request: method=$method, id=$requestId")
         
         return try {
             val response: HttpResponse = client.post(serverUrl) {
                 contentType(ContentType.Application.Json)
+                // GitHub MCP server requires both content types in Accept header
+                header("Accept", "application/json, text/event-stream")
                 header("Authorization", "Bearer $authToken")
                 setBody(json.encodeToString(JsonRpcRequest.serializer(), request))
             }
             
             val responseText = response.bodyAsText()
-            logger.log("MCP Transport", "Received response: status=${response.status}, body length=${responseText.length}")
+            logger.d("MCP Transport", "Received response: status=${response.status}, body length=${responseText.length}")
             
             val jsonResponse = json.decodeFromString(JsonRpcResponse.serializer(), responseText)
             
             if (jsonResponse.error != null) {
-                logger.log("MCP Transport", "Error in response: ${jsonResponse.error.message}")
+                logger.w("MCP Transport", "Error in response: ${jsonResponse.error.message}")
             }
             
             jsonResponse
         } catch (e: Exception) {
-            logger.log("MCP Transport", "Request failed: ${e.message}")
+            logger.e("MCP Transport", "Request failed: ${e.message}", e)
             throw McpTransportException("Failed to send MCP request: ${e.message}", e)
         }
     }
