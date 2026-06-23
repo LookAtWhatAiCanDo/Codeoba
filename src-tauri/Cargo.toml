@@ -29,4 +29,6 @@ ort = "2.0.0-rc.12"
 tokenizers = "0.19"
 wasmtime = "22"
 ed25519-dalek = "2"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
 
