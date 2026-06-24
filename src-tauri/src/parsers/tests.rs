@@ -750,3 +750,55 @@ fn test_mock_subprocess_agent_run() {
     assert_eq!(session.turns[0].assistant_message, "Hi");
 }
 
+#[test]
+fn test_cmd_get_sources() {
+    let sources = crate::commands::get_sources();
+    assert!(!sources.is_empty());
+    assert!(sources.iter().any(|s| s.id == "claude" || s.id == "cursor"));
+}
+
+#[test]
+fn test_cmd_credentials() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let original_home = std::env::var_os("HOME");
+    std::env::set_var("HOME", temp_dir.path());
+
+    crate::commands::save_credential("test_key".to_string(), Some("test_secret".to_string()));
+    let val = crate::commands::get_credential("test_key".to_string());
+    assert_eq!(val, Some("test_secret".to_string()));
+
+    crate::commands::save_credential("test_key".to_string(), None);
+    let val2 = crate::commands::get_credential("test_key".to_string());
+    assert_eq!(val2, None);
+
+    if let Some(h) = original_home {
+        std::env::set_var("HOME", h);
+    } else {
+        std::env::remove_var("HOME");
+    }
+}
+
+#[test]
+fn test_cmd_get_all_sessions() {
+    tauri::async_runtime::block_on(async {
+        with_mock_home(|mock_home| async move {
+            let claude_dir = mock_home.join(".claude/projects");
+            fs::create_dir_all(&claude_dir).unwrap();
+
+            let log_file = claude_dir.join("test-session.jsonl");
+            fs::write(
+                &log_file,
+                r#"{"type":"user","timestamp":"2026-05-20T02:00:00Z","message":{"role":"user","content":"Hello"},"sessionId":"session123","cwd":"/path/to/project","slug":"test-session"}
+{"type":"assistant","timestamp":"2026-05-20T02:01:00Z","message":{"role":"assistant","content":[{"type":"text","text":"Hi"}]}}
+"#,
+            ).unwrap();
+
+            let sessions = crate::commands::get_all_sessions().await.unwrap();
+            assert!(!sessions.is_empty());
+            let s = sessions.iter().find(|x| x.id == "session123");
+            assert!(s.is_some());
+        }).await;
+    });
+}
+
+
