@@ -61,7 +61,7 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
     
     // Try to use custom tokenizer if loaded
     let cached = {
-        let guard = get_custom_tokenizers().read().unwrap();
+        let guard = get_custom_tokenizers().read().expect("Failed to lock CUSTOM_TOKENIZERS read lock");
         guard.get(family).cloned()
     };
 
@@ -73,7 +73,7 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
 
     // Try loading it on cache miss
     if let Some(tokenizer) = load_custom_tokenizer(family) {
-        let mut guard = get_custom_tokenizers().write().unwrap();
+        let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
         guard.insert(family.to_string(), tokenizer.clone());
         if let Ok(encoding) = tokenizer.encode(text, true) {
             return encoding.get_ids().len() as i64;
@@ -125,6 +125,7 @@ mod tests {
 
     #[test]
     fn test_load_custom_tokenizer() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap();
         // Create a temporary mock home directory
         let temp_dir = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -158,7 +159,7 @@ mod tests {
 
         // Clear custom tokenizers cache to force reload
         {
-            let mut guard = get_custom_tokenizers().write().unwrap();
+            let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
             guard.clear();
         }
 

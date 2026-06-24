@@ -6,6 +6,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub struct WatcherState {
     pub watcher: Mutex<Option<RecommendedWatcher>>,
+    pub last_generations: Mutex<std::collections::HashMap<String, u64>>,
 }
 
 pub fn start_watcher(app_handle: AppHandle) -> Result<(), String> {
@@ -94,10 +95,48 @@ fn handle_file_change(app_handle: &AppHandle, path: &Path) {
         if matches_filter {
             let file_path = path_str.to_string();
             let app_handle_clone = app_handle.clone();
+            let source_id = source.id().to_string();
+
+            // Get next generation count for this file to debounce
+            let state = app_handle.state::<WatcherState>();
+            let gen = if let Ok(mut guard) = state.last_generations.lock() {
+                let entry = guard.entry(file_path.clone()).or_insert(0);
+                *entry += 1;
+                *entry
+            } else {
+                0
+            };
+
+            if gen == 0 {
+                return;
+            }
 
             tauri::async_runtime::spawn(async move {
-                if let Some(session) = source.parse_session(&file_path).await {
-                    let _ = app_handle_clone.emit("session-updated", &session);
+                // Sleep to debounce rapid sequential filesystem events (e.g. 500ms)
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                // Check if this generation is still the latest one
+                let state = app_handle_clone.state::<WatcherState>();
+                let is_latest = if let Ok(mut guard) = state.last_generations.lock() {
+                    let latest = guard.get(&file_path) == Some(&gen);
+                    if latest {
+                        guard.remove(&file_path);
+                    }
+                    latest
+                } else {
+                    false
+                };
+
+                if is_latest {
+                    // Re-fetch the sources list to find the matching source adapter
+                    let sources = get_sources_list();
+                    if let Some(src) = sources.iter().find(|s| s.id() == source_id) {
+                        if let Some(session) = src.parse_session(&file_path).await {
+                            let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
+                            let _ = idx_state.update_session(session.clone()).await;
+                            let _ = app_handle_clone.emit("session-updated", &session);
+                        }
+                    }
                 }
             });
             break;

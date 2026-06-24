@@ -135,6 +135,7 @@ where
     F: FnOnce(PathBuf) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
+    let _lock = crate::HOME_MUTEX.lock().unwrap();
     let temp_dir = tempfile::tempdir().unwrap();
     let original_home = std::env::var_os("HOME");
     let original_userprofile = std::env::var_os("USERPROFILE");
@@ -759,6 +760,7 @@ fn test_cmd_get_sources() {
 
 #[test]
 fn test_cmd_credentials() {
+    let _lock = crate::HOME_MUTEX.lock().unwrap();
     let temp_dir = tempfile::tempdir().unwrap();
     let original_home = std::env::var_os("HOME");
     std::env::set_var("HOME", temp_dir.path());
@@ -800,5 +802,292 @@ fn test_cmd_get_all_sessions() {
         }).await;
     });
 }
+
+#[test]
+fn test_hash_semantic_embedder() {
+    let embedder = crate::search::semantic::HashSemanticEmbedder::new(384);
+
+    let text1 = "how to build a project with kotlin";
+    let text2 = "how do I build kotlin projects";
+    let text3 = "apples grow on trees in the autumn";
+
+    let emb1 = embedder.get_embeddings(text1);
+    let emb2 = embedder.get_embeddings(text2);
+    let emb3 = embedder.get_embeddings(text3);
+
+    assert_eq!(emb1.len(), 384);
+    assert_eq!(emb2.len(), 384);
+    assert_eq!(emb3.len(), 384);
+
+    fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+        if a.len() != b.len() || a.is_empty() {
+            return 0.0;
+        }
+        let mut dot_product = 0.0;
+        let mut norm_a = 0.0;
+        let mut norm_b = 0.0;
+        for i in 0..a.len() {
+            dot_product += a[i] * b[i];
+            norm_a += a[i] * a[i];
+            norm_b += b[i] * b[i];
+        }
+        if norm_a == 0.0 || norm_b == 0.0 {
+            return 0.0;
+        }
+        dot_product / (norm_a.sqrt() * norm_b.sqrt())
+    }
+
+    let sim_similar = cosine_similarity(&emb1, &emb2);
+    let sim_disjoint = cosine_similarity(&emb1, &emb3);
+
+    println!("simSimilar: {}, simDisjoint: {}", sim_similar, sim_disjoint);
+    assert!(sim_similar > sim_disjoint, "Similar similarity ({}) should be greater than disjoint similarity ({})", sim_similar, sim_disjoint);
+}
+
+#[test]
+fn test_word_piece_tokenizer() {
+    use std::io::Write;
+    let mut temp_vocab = tempfile::NamedTempFile::new().unwrap();
+    writeln!(temp_vocab, "[PAD]").unwrap();
+    writeln!(temp_vocab, "[UNK]").unwrap();
+    writeln!(temp_vocab, "[CLS]").unwrap();
+    writeln!(temp_vocab, "[SEP]").unwrap();
+    writeln!(temp_vocab, "how").unwrap();
+    writeln!(temp_vocab, "to").unwrap();
+    writeln!(temp_vocab, "build").unwrap();
+    writeln!(temp_vocab, "project").unwrap();
+    writeln!(temp_vocab, "##s").unwrap();
+    writeln!(temp_vocab, "kotlin").unwrap();
+    
+    let tokenizer = crate::search::tokenizer::WordPieceTokenizer::new(temp_vocab.path()).unwrap();
+    let tokenized = tokenizer.tokenize_to_ids("how to build projects", 8);
+
+    let ids = tokenized.input_ids;
+    assert!(!ids.is_empty(), "Token IDs should not be empty");
+    assert_eq!(ids[0], 2, "First token should be [CLS]");
+    assert_eq!(tokenized.attention_mask[0], 1, "Attention mask for CLS should be 1");
+    assert_eq!(tokenized.attention_mask[6], 1, "Attention mask for SEP should be 1");
+    assert_eq!(tokenized.attention_mask[7], 0, "Attention mask for padding should be 0");
+}
+
+#[test]
+fn test_onnx_semantic_embedder() {
+    let home = crate::parsers::get_home_dir();
+    let model_path = home.join(".codeoba/models/model_quantized.onnx");
+    let vocab_path = home.join(".codeoba/models/vocab.txt");
+
+    if model_path.exists() && vocab_path.exists() {
+        let mut embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).unwrap();
+        let text1 = "how to build a project with kotlin";
+        let text2 = "how do I build kotlin projects";
+        let text3 = "apples grow on trees in the autumn";
+
+        let emb1 = embedder.get_embeddings(text1).unwrap();
+        let emb2 = embedder.get_embeddings(text2).unwrap();
+        let emb3 = embedder.get_embeddings(text3).unwrap();
+
+        assert_eq!(emb1.len(), 384, "Embedding size should be 384");
+
+        let mut sum1 = 0.0;
+        for v in &emb1 {
+            sum1 += v * v;
+        }
+        assert!((sum1 - 1.0f32).abs() < 1e-3, "Vector should be unit normalized, but got magnitude {}", sum1);
+
+        fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+            if a.len() != b.len() || a.is_empty() {
+                return 0.0;
+            }
+            let mut dot_product = 0.0;
+            let mut norm_a = 0.0;
+            let mut norm_b = 0.0;
+            for i in 0..a.len() {
+                dot_product += a[i] * b[i];
+                norm_a += a[i] * a[i];
+                norm_b += b[i] * b[i];
+            }
+            if norm_a == 0.0 || norm_b == 0.0 {
+                return 0.0;
+            }
+            dot_product / (norm_a.sqrt() * norm_b.sqrt())
+        }
+
+        let sim_similar = cosine_similarity(&emb1, &emb2);
+        let sim_disjoint = cosine_similarity(&emb1, &emb3);
+        println!("ONNX Semantic Similarities: sim(1,2) = {}, sim(1,3) = {}", sim_similar, sim_disjoint);
+
+        assert!(sim_similar > sim_disjoint, "Similar similarity ({}) should be greater than disjoint similarity ({})", sim_similar, sim_disjoint);
+    } else {
+        println!("Skipping test_onnx_semantic_embedder: model not downloaded.");
+    }
+}
+
+#[test]
+fn test_lexical_search_engine_filters() {
+    let active_session = crate::models::Session {
+        id: "session-active".to_string(),
+        source_id: "claude".to_string(),
+        file_path: "/path/to/active.jsonl".to_string(),
+        timestamp: 1000,
+        updated_at: 1000,
+        cwd: Some("/workspace".to_string()),
+        thread_name: Some("Active Session".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "1".to_string(),
+                user_message: "user message".to_string(),
+                assistant_message: "assistant response".to_string(),
+                timestamp: 1000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+    };
+
+    let archived_session = crate::models::Session {
+        id: "session-archived".to_string(),
+        source_id: "claude".to_string(),
+        file_path: "/path/to/archived.jsonl".to_string(),
+        timestamp: 2000,
+        updated_at: 2000,
+        cwd: Some("/workspace".to_string()),
+        thread_name: Some("Archived Session".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "2".to_string(),
+                user_message: "user message".to_string(),
+                assistant_message: "assistant response".to_string(),
+                timestamp: 2000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: true,
+        is_pinned: false,
+        summary: None,
+    };
+
+    let sessions = vec![active_session, archived_session];
+
+    // 1. ALL filter returns both
+    let mut filter_all = crate::search::SearchFilter::default();
+    filter_all.archival_filter = crate::search::ArchivalFilter::All;
+    let all_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_all);
+    assert_eq!(all_results.len(), 2);
+
+    // 2. ACTIVE filter returns only active
+    let mut filter_active = crate::search::SearchFilter::default();
+    filter_active.archival_filter = crate::search::ArchivalFilter::Active;
+    let active_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_active);
+    assert_eq!(active_results.len(), 1);
+    assert_eq!(active_results[0].session.id, "session-active");
+
+    // 3. ARCHIVED filter returns only archived
+    let mut filter_archived = crate::search::SearchFilter::default();
+    filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
+    let archived_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_archived);
+    assert_eq!(archived_results.len(), 1);
+    assert_eq!(archived_results[0].session.id, "session-archived");
+}
+
+#[test]
+fn test_semantic_search_engine_filters() {
+    let active_session = crate::models::Session {
+        id: "session-active".to_string(),
+        source_id: "claude".to_string(),
+        file_path: "/path/to/active.jsonl".to_string(),
+        timestamp: 1000,
+        updated_at: 1000,
+        cwd: Some("/workspace".to_string()),
+        thread_name: Some("Active Session".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "1".to_string(),
+                user_message: "user message".to_string(),
+                assistant_message: "assistant response".to_string(),
+                timestamp: 1000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+    };
+
+    let archived_session = crate::models::Session {
+        id: "session-archived".to_string(),
+        source_id: "claude".to_string(),
+        file_path: "/path/to/archived.jsonl".to_string(),
+        timestamp: 2000,
+        updated_at: 2000,
+        cwd: Some("/workspace".to_string()),
+        thread_name: Some("Archived Session".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "2".to_string(),
+                user_message: "user message".to_string(),
+                assistant_message: "assistant response".to_string(),
+                timestamp: 2000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: true,
+        is_pinned: false,
+        summary: None,
+    };
+
+    let sessions = vec![active_session, archived_session];
+    let embedder = crate::search::semantic::HashSemanticEmbedder::new(384);
+
+    let mut embeddings = std::collections::HashMap::new();
+    for session in &sessions {
+        let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
+        let thread_emb = embedder.get_embeddings(thread_name);
+        let mut turn_embeddings = Vec::new();
+        for turn in &session.turns {
+            let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
+            turn_embeddings.push(embedder.get_embeddings(&text));
+        }
+        embeddings.insert(
+            session.id.clone(),
+            crate::search::SessionVectorIndex {
+                thread_name_embedding: thread_emb,
+                turn_embeddings,
+            },
+        );
+    }
+
+    let query_vector = embedder.get_embeddings("message");
+
+    // 1. ALL filter returns both
+    let mut filter_all = crate::search::SearchFilter::default();
+    filter_all.archival_filter = crate::search::ArchivalFilter::All;
+    let all_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_all);
+    assert_eq!(all_results.len(), 2);
+
+    // 2. ACTIVE filter returns only active
+    let mut filter_active = crate::search::SearchFilter::default();
+    filter_active.archival_filter = crate::search::ArchivalFilter::Active;
+    let active_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_active);
+    assert_eq!(active_results.len(), 1);
+    assert_eq!(active_results[0].session.id, "session-active");
+
+    // 3. ARCHIVED filter returns only archived
+    let mut filter_archived = crate::search::SearchFilter::default();
+    filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
+    let archived_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_archived);
+    assert_eq!(archived_results.len(), 1);
+    assert_eq!(archived_results[0].session.id, "session-archived");
+}
+
 
 

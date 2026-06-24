@@ -258,7 +258,7 @@ impl CursorSource {
         }
 
         let cwd = {
-            let map = self.composer_to_workspace.read().unwrap();
+            let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
             map.get(composer_id).cloned()
         };
 
@@ -365,7 +365,7 @@ impl SourceAdapter for CursorSource {
 
         // If the workspace map is populated, respect it as an allowlist.
         {
-            let known_ids = self.active_composer_ids.read().unwrap();
+            let known_ids = self.active_composer_ids.read().expect("Failed to lock active_composer_ids read lock");
             if !known_ids.is_empty() && !known_ids.contains(composer_id) {
                 return None;
             }
@@ -375,7 +375,36 @@ impl SourceAdapter for CursorSource {
         let rows = self.query_db(&global_db, &sql);
         let value_str = rows.first()?.get("value")?;
 
-        self.parse_session_from_json(composer_id, value_str)
+        let key = format!("composerData:{}", composer_id);
+        let hash = format!("{:x}", md5::compute(value_str.as_bytes()));
+        let size = value_str.len() as i64;
+
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_db(
+            self.id(),
+            &key,
+            &hash,
+            size,
+        ) {
+            let cwd = {
+                let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+                map.get(composer_id).cloned()
+            };
+            if cwd.is_some() {
+                cached.cwd = cwd;
+            }
+            return Some(cached);
+        }
+
+        let session = self.parse_session_from_json(composer_id, value_str)?;
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            &key,
+            0,
+            size,
+            &hash,
+            session.clone(),
+        );
+        Some(session)
     }
 
     async fn parse_all_sessions(&self) -> Vec<Session> {
@@ -384,19 +413,22 @@ impl SourceAdapter for CursorSource {
             return Vec::new();
         }
 
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
+
         let rows = self.query_db(
             &global_db,
             "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%';",
         );
         if rows.is_empty() {
+            crate::parsers::cache::get_cache_manager().end_scan(self.id());
             return Vec::new();
         }
 
         let (ws_map, active_ids) = self.build_workspace_map();
         {
-            let mut map_guard = self.composer_to_workspace.write().unwrap();
+            let mut map_guard = self.composer_to_workspace.write().expect("Failed to lock composer_to_workspace write lock");
             *map_guard = ws_map;
-            let mut ids_guard = self.active_composer_ids.write().unwrap();
+            let mut ids_guard = self.active_composer_ids.write().expect("Failed to lock active_composer_ids write lock");
             *ids_guard = active_ids.clone();
         }
 
@@ -416,10 +448,37 @@ impl SourceAdapter for CursorSource {
                 continue;
             }
 
+            let hash = format!("{:x}", md5::compute(value_str.as_bytes()));
+            let size = value_str.len() as i64;
+            if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_db(
+                self.id(),
+                key,
+                &hash,
+                size,
+            ) {
+                let cwd = {
+                    let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+                    map.get(composer_id).cloned()
+                };
+                cached.cwd = cwd;
+                sessions.push(cached);
+                continue;
+            }
+
             if let Some(session) = self.parse_session_from_json(composer_id, value_str) {
+                crate::parsers::cache::get_cache_manager().put_cached_session(
+                    self.id(),
+                    key,
+                    0,
+                    size,
+                    &hash,
+                    session.clone(),
+                );
                 sessions.push(session);
             }
         }
+
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
 
         sessions
     }

@@ -11,6 +11,7 @@ pub mod antigravity;
 pub mod aider;
 pub mod copilot;
 pub mod codex;
+pub mod cache;
 
 #[cfg(test)]
 mod tests;

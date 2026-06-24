@@ -7,7 +7,7 @@ use keyring::Entry;
 const SERVICE_NAME: &str = "Codeoba";
 
 fn get_fallback_file_path() -> PathBuf {
-    let home = dirs::home_dir().unwrap_or_default();
+    let home = crate::parsers::get_home_dir();
     home.join(".codeoba/config.json")
 }
 

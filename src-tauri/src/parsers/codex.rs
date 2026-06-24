@@ -42,14 +42,14 @@ impl CodexSource {
             0
         };
 
-        let last_mod = { *self.last_index_file_modified.read().unwrap() };
+        let last_mod = { *self.last_index_file_modified.read().expect("Failed to lock last_index_file_modified read lock") };
         if last_mod == 0 || current_modified > last_mod {
             self.build_session_title_map();
-            let mut mod_guard = self.last_index_file_modified.write().unwrap();
+            let mut mod_guard = self.last_index_file_modified.write().expect("Failed to lock last_index_file_modified write lock");
             *mod_guard = current_modified;
         }
 
-        let map = self.session_title_map.read().unwrap();
+        let map = self.session_title_map.read().expect("Failed to lock session_title_map read lock");
         map.get(session_id).cloned().unwrap_or_else(|| "Codex Session".to_string())
     }
 
@@ -74,7 +74,7 @@ impl CodexSource {
                 }
             }
         }
-        let mut map_guard = self.session_title_map.write().unwrap();
+        let mut map_guard = self.session_title_map.write().expect("Failed to lock session_title_map write lock");
         *map_guard = map;
     }
 }
@@ -148,12 +148,39 @@ impl SourceAdapter for CodexSource {
 
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
         let path = Path::new(file_path);
-        let content_str = fs::read_to_string(path).ok()?;
         let metadata = path.metadata().ok()?;
-        let mut created_time = metadata.modified().ok()
+        let last_modified = metadata.modified().ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
+        let size = metadata.len() as i64;
+
+        let mut cache_modified = last_modified;
+        let mut cache_size = size;
+
+        let index_file = self.get_base_dir().join("session_index.jsonl");
+        if index_file.exists() && index_file.is_file() {
+            if let Ok(idx_meta) = index_file.metadata() {
+                let idx_modified = idx_meta.modified().ok()
+                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                cache_modified += idx_modified;
+                cache_size += idx_meta.len() as i64;
+            }
+        }
+
+        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+            self.id(),
+            file_path,
+            cache_modified,
+            cache_size,
+        ) {
+            return Some(cached);
+        }
+
+        let content_str = fs::read_to_string(path).ok()?;
+        let mut created_time = last_modified;
         let updated_time = created_time;
 
         let mut session_id = path.file_stem()?
@@ -302,7 +329,7 @@ impl SourceAdapter for CodexSource {
         
         let is_archived = path.parent().and_then(|p| p.file_name()).and_then(|s| s.to_str()) == Some("archived_sessions");
 
-        Some(Session {
+        let session = Session {
             id: session_id,
             source_id: self.id().to_string(),
             file_path: file_path.to_string(),
@@ -314,7 +341,18 @@ impl SourceAdapter for CodexSource {
             is_archived,
             is_pinned: false,
             summary: None,
-        })
+        };
+
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            file_path,
+            cache_modified,
+            cache_size,
+            "",
+            session.clone(),
+        );
+
+        Some(session)
     }
 
     async fn parse_all_sessions(&self) -> Vec<Session> {
@@ -324,6 +362,8 @@ impl SourceAdapter for CodexSource {
         }
 
         self.build_session_title_map();
+
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut sessions = Vec::new();
         let default_paths = self.get_default_log_paths();
@@ -351,6 +391,8 @@ impl SourceAdapter for CodexSource {
                 }
             }
         }
+
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
 
         sessions
     }

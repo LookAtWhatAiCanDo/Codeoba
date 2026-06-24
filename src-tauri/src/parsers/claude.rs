@@ -80,6 +80,8 @@ impl SourceAdapter for ClaudeSource {
             return Vec::new();
         }
 
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
+
         let mut sessions = Vec::new();
         if let Ok(entries) = fs::read_dir(&base_dir) {
             for entry in entries.flatten() {
@@ -92,6 +94,9 @@ impl SourceAdapter for ClaudeSource {
                 }
             }
         }
+
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
+
         sessions
     }
 }
@@ -110,6 +115,16 @@ impl ClaudeSource {
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
+        let size = metadata.len() as i64;
+
+        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+        ) {
+            return Some(cached);
+        }
 
         let reader = BufReader::new(file);
         let mut raw_turns = Vec::new();
@@ -336,7 +351,7 @@ impl ClaudeSource {
             "Claude Session".to_string()
         };
 
-        Some(Session {
+        let session = Session {
             id: session_id,
             source_id: self.id().to_string(),
             file_path: file_path.to_string(),
@@ -348,7 +363,18 @@ impl ClaudeSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
-        })
+        };
+
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+            "",
+            session.clone(),
+        );
+
+        Some(session)
     }
 
     fn format_slug(&self, slug: &str) -> String {

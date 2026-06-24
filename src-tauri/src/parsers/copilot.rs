@@ -106,6 +106,16 @@ impl SourceAdapter for CopilotSource {
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
+        let size = metadata.len() as i64;
+
+        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+        ) {
+            return Some(cached);
+        }
 
         let mut session_id = parent_dir.file_name()?.to_string_lossy().to_string();
         let mut thread_name = "GitHub Copilot Session".to_string();
@@ -380,7 +390,7 @@ impl SourceAdapter for CopilotSource {
         let first_time = events_list.first().map(|e| e.timestamp).unwrap_or(created_time);
         let last_time = events_list.last().map(|e| e.timestamp).unwrap_or(updated_time);
 
-        Some(Session {
+        let session = Session {
             id: session_id,
             source_id: self.id().to_string(),
             file_path: file_path.to_string(),
@@ -392,7 +402,18 @@ impl SourceAdapter for CopilotSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
-        })
+        };
+
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+            "",
+            session.clone(),
+        );
+
+        Some(session)
     }
 
     async fn parse_all_sessions(&self) -> Vec<Session> {
@@ -400,6 +421,8 @@ impl SourceAdapter for CopilotSource {
         if !base_dir.exists() || !base_dir.is_dir() {
             return Vec::new();
         }
+
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut sessions = Vec::new();
         let mut walk_stack = vec![base_dir];
@@ -417,6 +440,9 @@ impl SourceAdapter for CopilotSource {
                 }
             }
         }
+
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
+
         sessions
     }
 }

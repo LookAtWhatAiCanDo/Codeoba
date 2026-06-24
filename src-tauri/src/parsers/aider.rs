@@ -72,7 +72,7 @@ impl SourceAdapter for AiderSource {
     }
 
     fn is_available(&self) -> bool {
-        self.is_app_installed() || !self.active_aider_paths.read().unwrap().is_empty()
+        self.is_app_installed() || !self.active_aider_paths.read().expect("Failed to lock active_aider_paths read lock").is_empty()
     }
 
     fn get_default_log_paths(&self) -> Vec<String> {
@@ -80,7 +80,7 @@ impl SourceAdapter for AiderSource {
     }
 
     fn get_watch_paths(&self) -> Vec<String> {
-        self.active_aider_paths.read().unwrap().clone()
+        self.active_aider_paths.read().expect("Failed to lock active_aider_paths read lock").clone()
     }
 
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
@@ -88,7 +88,7 @@ impl SourceAdapter for AiderSource {
     }
 
     fn is_app_installed(&self) -> bool {
-        if !self.active_aider_paths.read().unwrap().is_empty() {
+        if !self.active_aider_paths.read().expect("Failed to lock active_aider_paths read lock").is_empty() {
             return true;
         }
         crate::parsers::is_executable_installed("aider")
@@ -96,7 +96,7 @@ impl SourceAdapter for AiderSource {
 
     fn delete_data_paths(&self) -> bool {
         let mut success = true;
-        let paths = self.active_aider_paths.read().unwrap().clone();
+        let paths = self.active_aider_paths.read().expect("Failed to lock active_aider_paths read lock").clone();
         for path_str in paths {
             let file = Path::new(&path_str).join(".aider.chat.history.md");
             if file.exists() {
@@ -105,13 +105,13 @@ impl SourceAdapter for AiderSource {
                 }
             }
         }
-        let mut paths_guard = self.active_aider_paths.write().unwrap();
+        let mut paths_guard = self.active_aider_paths.write().expect("Failed to lock active_aider_paths write lock");
         paths_guard.clear();
         success
     }
 
     fn get_data_paths_to_delete(&self) -> Vec<String> {
-        let paths = self.active_aider_paths.read().unwrap().clone();
+        let paths = self.active_aider_paths.read().expect("Failed to lock active_aider_paths read lock").clone();
         paths.iter().map(|p| Path::new(p).join(".aider.chat.history.md").to_string_lossy().to_string()).collect()
     }
 
@@ -121,12 +121,24 @@ impl SourceAdapter for AiderSource {
             return None;
         }
 
-        let text = fs::read_to_string(path).ok()?;
         let metadata = path.metadata().ok()?;
-        let mut created_time = metadata.modified().ok()
+        let last_modified = metadata.modified().ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
+        let size = metadata.len() as i64;
+
+        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+        ) {
+            return Some(cached);
+        }
+
+        let text = fs::read_to_string(path).ok()?;
+        let mut created_time = last_modified;
         let updated_time = created_time;
 
         let start_re = regex::Regex::new(r"(?i)Aider chat started at (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})").unwrap();
@@ -261,7 +273,7 @@ impl SourceAdapter for AiderSource {
         let project_name = path.parent().and_then(|p| p.file_name()).and_then(|s| s.to_str()).unwrap_or("Project");
         let thread_name = format!("{} (Aider)", project_name);
 
-        Some(Session {
+        let session = Session {
             id: session_id,
             source_id: self.id().to_string(),
             file_path: file_path.to_string(),
@@ -273,7 +285,18 @@ impl SourceAdapter for AiderSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
-        })
+        };
+
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            file_path,
+            last_modified,
+            size,
+            "",
+            session.clone(),
+        );
+
+        Some(session)
     }
 
     async fn parse_all_sessions(&self) -> Vec<Session> {
@@ -286,6 +309,8 @@ impl SourceAdapter for AiderSource {
             find_aider_files(&dir, 1, 5, &mut files);
         }
 
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
+
         for path in files {
             if let Some(session) = self.parse_session(&path.to_string_lossy()).await {
                 sessions.push(session);
@@ -295,7 +320,9 @@ impl SourceAdapter for AiderSource {
             }
         }
 
-        let mut paths_guard = self.active_aider_paths.write().unwrap();
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
+
+        let mut paths_guard = self.active_aider_paths.write().expect("Failed to lock active_aider_paths write lock");
         *paths_guard = active_dirs.into_iter().collect();
 
         sessions

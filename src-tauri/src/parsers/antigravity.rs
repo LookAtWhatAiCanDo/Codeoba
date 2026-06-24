@@ -43,18 +43,18 @@ impl AntigravitySource {
             0
         };
 
-        let last_mod = { *self.last_pb_file_modified.read().unwrap() };
+        let last_mod = { *self.last_pb_file_modified.read().expect("Failed to lock last_pb_file_modified read lock") };
         if last_mod == 0 || current_modified > last_mod {
             let map = self.build_antigravity_title_map();
             {
-                let mut map_guard = self.antigravity_title_map.write().unwrap();
+                let mut map_guard = self.antigravity_title_map.write().expect("Failed to lock antigravity_title_map write lock");
                 *map_guard = map;
-                let mut mod_guard = self.last_pb_file_modified.write().unwrap();
+                let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
                 *mod_guard = current_modified;
             }
         }
 
-        let map = self.antigravity_title_map.read().unwrap();
+        let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
         map.get(session_id).cloned().unwrap_or_else(|| "Antigravity Session".to_string())
     }
 
@@ -355,13 +355,6 @@ impl SourceAdapter for AntigravitySource {
 
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
         let path = Path::new(file_path);
-        let content_str = fs::read_to_string(path).ok()?;
-        let metadata = path.metadata().ok()?;
-        let last_modified = metadata.modified().ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
-
         let session_id = path.parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
@@ -369,6 +362,52 @@ impl SourceAdapter for AntigravitySource {
             .and_then(|s| s.to_str())
             .unwrap_or_else(|| path.file_stem().and_then(|s| s.to_str()).unwrap_or(""))
             .to_string();
+
+        let metadata = path.metadata().ok()?;
+        let last_modified = metadata.modified().ok()
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let size = metadata.len() as i64;
+
+        let mut cache_modified = last_modified;
+        let mut cache_size = size;
+
+        let home = crate::parsers::get_home_dir();
+        let annotation_file = home.join(format!(".gemini/antigravity/annotations/{}.pbtxt", session_id));
+        if annotation_file.exists() && annotation_file.is_file() {
+            if let Ok(anno_meta) = annotation_file.metadata() {
+                let anno_modified = anno_meta.modified().ok()
+                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                cache_modified += anno_modified;
+                cache_size += anno_meta.len() as i64;
+            }
+        }
+
+        let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
+        if pb_file.exists() && pb_file.is_file() {
+            if let Ok(pb_meta) = pb_file.metadata() {
+                let pb_modified = pb_meta.modified().ok()
+                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                cache_modified += pb_modified;
+                cache_size += pb_meta.len() as i64;
+            }
+        }
+
+        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+            self.id(),
+            file_path,
+            cache_modified,
+            cache_size,
+        ) {
+            return Some(cached);
+        }
+
+        let content_str = fs::read_to_string(path).ok()?;
 
         let mut events = Vec::new();
         let mut cwd: Option<String> = None;
@@ -639,7 +678,7 @@ impl SourceAdapter for AntigravitySource {
             false
         };
 
-        Some(Session {
+        let session = Session {
             id: session_id.clone(),
             source_id: self.id().to_string(),
             file_path: file_path.to_string(),
@@ -651,7 +690,18 @@ impl SourceAdapter for AntigravitySource {
             is_archived,
             is_pinned: false,
             summary: None,
-        })
+        };
+
+        crate::parsers::cache::get_cache_manager().put_cached_session(
+            self.id(),
+            file_path,
+            cache_modified,
+            cache_size,
+            "",
+            session.clone(),
+        );
+
+        Some(session)
     }
 
     async fn parse_all_sessions(&self) -> Vec<Session> {
@@ -673,11 +723,13 @@ impl SourceAdapter for AntigravitySource {
             0
         };
         {
-            let mut mod_guard = self.last_pb_file_modified.write().unwrap();
+            let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
             *mod_guard = current_modified;
-            let mut map_guard = self.antigravity_title_map.write().unwrap();
+            let mut map_guard = self.antigravity_title_map.write().expect("Failed to lock antigravity_title_map write lock");
             *map_guard = self.build_antigravity_title_map();
         }
+
+        crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut sessions = Vec::new();
         let mut walk_stack = vec![base_dir];
@@ -695,6 +747,9 @@ impl SourceAdapter for AntigravitySource {
                 }
             }
         }
+
+        crate::parsers::cache::get_cache_manager().end_scan(self.id());
+
         sessions
     }
 }

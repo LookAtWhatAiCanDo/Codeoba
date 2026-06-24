@@ -1,7 +1,9 @@
 use crate::models::Session;
 use crate::parsers::get_sources_list;
 use crate::keyring;
+use crate::search::{SearchFilter, SearchResult, SearchIndexState};
 use serde::Serialize;
+use tauri::Manager;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -84,4 +86,50 @@ pub fn get_credential(key: String) -> Option<String> {
 #[tauri::command]
 pub fn save_credential(key: String, value: Option<String>) {
     keyring::put_secret(&key, value.as_deref());
+}
+
+#[tauri::command]
+pub async fn search_sessions(
+    app_handle: tauri::AppHandle,
+    query: String,
+    filter: SearchFilter,
+    use_semantic: bool,
+) -> Result<Vec<SearchResult>, String> {
+    let state = app_handle.state::<SearchIndexState>();
+    
+    let sessions: Vec<Session> = {
+        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        guard.values().cloned().collect()
+    };
+
+    if use_semantic {
+        let home = crate::parsers::get_home_dir();
+        let model_path = home.join(".codeoba/models/model_quantized.onnx");
+        let vocab_path = home.join(".codeoba/models/vocab.txt");
+
+        if !model_path.exists() || !vocab_path.exists() {
+            return Err("Semantic search is unavailable: ONNX model/vocab not found under ~/.codeoba/models/. Please download the model or use lexical search.".to_string());
+        }
+        let mut onnx_embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)?;
+        let query_vector = onnx_embedder.get_embeddings(&query)?;
+
+        let embeddings_guard = state.embeddings.read().map_err(|e| e.to_string())?;
+        let results = crate::search::semantic::semantic_search(
+            &sessions,
+            &embeddings_guard,
+            &query_vector,
+            0.35,
+            &filter,
+        );
+        Ok(results)
+    } else {
+        let results = crate::search::lexical::lexical_search(&sessions, &query, &filter);
+        Ok(results)
+    }
+}
+
+#[tauri::command]
+pub async fn rebuild_index(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let state = app_handle.state::<SearchIndexState>();
+    state.rebuild(true).await
 }
