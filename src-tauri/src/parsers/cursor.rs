@@ -274,6 +274,7 @@ impl CursorSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
+            snippet: None,
         })
     }
 }

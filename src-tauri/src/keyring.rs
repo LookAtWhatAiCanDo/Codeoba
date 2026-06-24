@@ -101,3 +101,25 @@ pub fn delete_secret(key: &str) {
         save_fallback_config(&config);
     }
 }
+
+/// Thread-safe initialization of the encryption key to prevent keyring race conditions.
+pub fn get_or_create_cache_key() -> [u8; 32] {
+    let key_name = "cache_encryption_key";
+    if let Some(key_hex) = get_secret(key_name) {
+        if let Ok(bytes) = hex::decode(key_hex) {
+            if bytes.len() == 32 {
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&bytes);
+                return key;
+            }
+        }
+    }
+    
+    // Generate new key
+    use aes_gcm::aead::{KeyInit, OsRng};
+    let key = aes_gcm::Aes256Gcm::generate_key(&mut OsRng);
+    let key_bytes: [u8; 32] = key.into();
+    let key_hex = hex::encode(key_bytes);
+    put_secret(key_name, Some(&key_hex));
+    key_bytes
+}

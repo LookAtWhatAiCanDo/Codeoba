@@ -1,0 +1,435 @@
+import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { 
+  Folder, 
+  Copy, 
+  Check, 
+  Clock, 
+  ExternalLink,
+  MessageSquare,
+  Cpu,
+  Bookmark
+} from "lucide-solid";
+import { MarkdownRenderer } from "./MarkdownRenderer";
+import { logFE } from "../utils/logger";
+
+interface Turn {
+  turnId: string;
+  userMessage: string;
+  assistantMessage: string;
+  timestamp: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+}
+
+interface Session {
+  id: string;
+  sourceId: string;
+  filePath: string;
+  timestamp: number;
+  updatedAt: number;
+  cwd?: string | null;
+  threadName?: string | null;
+  turns: Turn[];
+  isArchived: boolean;
+  isPinned: boolean;
+}
+
+interface DetailPaneProps {
+  session: Session | null;
+  onCopyPath: (path: string) => void;
+  loadTime: string | null;
+  isLoading: boolean;
+  sidebarCollapsed?: boolean;
+}
+
+export const DetailPane = (props: DetailPaneProps) => {
+  const [copiedPath, setCopiedPath] = createSignal(false);
+  const [copiedSession, setCopiedSession] = createSignal(false);
+  const [visibleTurns, setVisibleTurns] = createSignal(10);
+
+  let scrollContainerRef: HTMLDivElement | undefined;
+  const visibilitySetters = new Map<Element, (v: boolean) => void>();
+  const heightCache = new Map<string, number>();
+  let observer: IntersectionObserver | undefined;
+
+  onMount(() => {
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const setter = visibilitySetters.get(entry.target);
+        if (setter) {
+          setter(entry.isIntersecting);
+        }
+      });
+    }, {
+      rootMargin: "500px 0px" // Render turns 500px above/below viewport to prevent flickers
+    });
+  });
+
+  onCleanup(() => {
+    if (observer) {
+      observer.disconnect();
+    }
+  });
+
+  const registerElement = (el: HTMLElement, setVisible: (v: boolean) => void, _turnId: string) => {
+    visibilitySetters.set(el, setVisible);
+    if (observer) {
+      observer.observe(el);
+    }
+  };
+
+  const unregisterElement = (el: HTMLElement) => {
+    visibilitySetters.delete(el);
+    if (observer) {
+      observer.unobserve(el);
+    }
+  };
+
+  const getCachedHeight = (turnId: string) => heightCache.get(turnId);
+  const setCachedHeight = (turnId: string, h: number) => heightCache.set(turnId, h);
+
+  // Reset pagination and scroll to bottom when session changes
+  createEffect(() => {
+    const id = props.session?.id;
+    if (id) {
+      setVisibleTurns(10);
+      
+      // Auto-scroll to bottom of conversation turns
+      setTimeout(() => {
+        if (scrollContainerRef) {
+          scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
+          logFE("info", `Auto-scrolled session detail scrollbar to bottom`);
+        }
+      }, 50);
+    }
+  });
+
+  // Extract folder name from CWD as "Workspace"
+  const getWorkspaceName = () => {
+    if (!props.session?.cwd) return "Local Workspace";
+    const parts = props.session.cwd.split(/[/\\]/);
+    return parts.filter(Boolean).pop() || "Workspace";
+  };
+
+  const handleCopyPath = () => {
+    if (props.session) {
+      props.onCopyPath(props.session.filePath);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
+    }
+  };
+
+  const handleCopyFullSession = () => {
+    if (props.session) {
+      const formatted = props.session.turns.map(turn => {
+        return `### User\n\n${turn.userMessage}\n\n### Assistant\n\n${turn.assistantMessage}\n`;
+      }).join("\n---\n\n");
+      
+      navigator.clipboard.writeText(formatted);
+      setCopiedSession(true);
+      setTimeout(() => setCopiedSession(false), 2000);
+    }
+  };
+
+  const formatFullDate = (timestampMs: number) => {
+    let time = timestampMs;
+    if (time < 20000000000) {
+      time *= 1000;
+    }
+    return new Date(time).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short"
+    });
+  };
+
+  const slicedTurns = createMemo(() => {
+    if (!props.session) return [];
+    return props.session.turns.slice(-visibleTurns());
+  });
+
+  return (
+    <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0">
+      <Show 
+        when={!props.isLoading} 
+        fallback={
+          <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 animate-pulse">
+            {/* Header Skeleton */}
+            <div class="h-[76px] px-6 border-b border-border/60 flex items-center justify-between flex-shrink-0">
+              <div class="flex flex-col gap-2">
+                <div class="h-3.5 w-40 bg-surface rounded" />
+                <div class="h-2.5 w-60 bg-surface rounded" />
+              </div>
+            </div>
+            
+            {/* Messages Scroll Area Skeleton */}
+            <div class="flex-grow px-8 py-6 space-y-6 overflow-y-auto">
+              <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex gap-6">
+                <div class="h-4 w-24 bg-surface rounded" />
+                <div class="h-4 w-32 bg-surface rounded" />
+                <div class="h-4 w-20 bg-surface rounded" />
+              </div>
+
+              {[1, 2].map((_i) => (
+                <div class="space-y-4">
+                  <div class="flex flex-col items-start max-w-2xl">
+                    <div class="h-3 w-16 bg-surface rounded mb-2 ml-3" />
+                    <div class="w-96 h-12 bg-surface border border-border/50 rounded-2xl" />
+                  </div>
+                  <div class="flex flex-col items-start max-w-3xl pl-6">
+                    <div class="h-3 w-20 bg-surface rounded mb-2 ml-3" />
+                    <div class="w-full h-32 bg-surface/50 border border-border/30 rounded-2xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <Show 
+          when={props.session} 
+          fallback={
+            <div class="flex-grow h-full flex flex-col items-center justify-center bg-background/95 text-text-secondary select-none">
+              <MessageSquare class="w-16 h-16 mb-4 text-border animate-pulse" />
+              <p class="text-[15px] font-medium tracking-wide">Select a conversation thread to view details</p>
+            </div>
+          }
+        >
+          {/* Top Header / Action Bar */}
+          <div class={`h-[76px] border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 ${
+            props.sidebarCollapsed ? "pl-[340px] pr-6" : "px-6"
+          }`}>
+            <div class="min-w-0 flex flex-col gap-0.5 pt-2">
+              <div class="flex items-center gap-1.5 text-xs text-text-secondary/80">
+                <span class="hover:text-text-primary transition-colors cursor-default">
+                  {getWorkspaceName()}
+                </span>
+                <span class="text-border">/</span>
+                <span class="truncate font-medium text-text-primary max-w-[240px] cursor-default">
+                  {props.session!.threadName || "Untitled Session"}
+                </span>
+              </div>
+              
+              <Show when={props.session!.cwd}>
+                <div class="flex items-center gap-1.5 text-[11px] text-text-secondary/60">
+                  <Folder class="w-3.5 h-3.5 flex-shrink-0" />
+                  <span class="truncate hover:text-text-primary transition-colors" title={props.session!.cwd!}>
+                    {props.session!.cwd}
+                  </span>
+                </div>
+              </Show>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                onClick={handleCopyPath}
+                title="Copy Log File Path"
+                class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+              >
+                <Show when={copiedPath()} fallback={<ExternalLink class="w-3.5 h-3.5" />}>
+                  <Check class="w-3.5 h-3.5 text-emerald-400" />
+                </Show>
+                <span>Path</span>
+              </button>
+
+              <button
+                onClick={handleCopyFullSession}
+                title="Copy Entire Transcript"
+                class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+              >
+                <Show when={copiedSession()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                  <Check class="w-3.5 h-3.5 text-emerald-400" />
+                </Show>
+                <span>Transcript</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Conversation Turns Scrollable Area */}
+          <div 
+            ref={scrollContainerRef}
+            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth"
+          >
+            {/* Session Metadata Panel */}
+            <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
+              <div class="flex items-center gap-1.5">
+                <Bookmark class="w-3.5 h-3.5 text-accent" />
+                <span class="font-semibold text-text-primary">Source:</span>
+                <span class="capitalize">{props.session!.sourceId}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <Clock class="w-3.5 h-3.5 text-accent" />
+                <span class="font-semibold text-text-primary">Created:</span>
+                <span>{formatFullDate(props.session!.timestamp)}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <Cpu class="w-3.5 h-3.5 text-accent" />
+                <span class="font-semibold text-text-primary">Total Turns:</span>
+                <span>{props.session!.turns.length}</span>
+              </div>
+              <Show when={props.loadTime}>
+                <div class="flex items-center gap-1.5">
+                  <Clock class="w-3.5 h-3.5 text-accent animate-pulse" />
+                  <span class="font-semibold text-text-primary">Load Time:</span>
+                  <span class="font-mono text-accent">{props.loadTime}</span>
+                </div>
+              </Show>
+            </div>
+
+            {/* Pagination Trigger */}
+            <Show when={props.session!.turns.length > visibleTurns()}>
+              <div class="flex justify-center pb-4 border-b border-border/40 gap-3">
+                <button
+                  onClick={() => setVisibleTurns(prev => Math.min(props.session!.turns.length, prev + 20))}
+                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm"
+                >
+                  Load 20 older messages ({props.session!.turns.length - visibleTurns()} remaining)
+                </button>
+                <button
+                  onClick={() => setVisibleTurns(props.session!.turns.length)}
+                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm"
+                >
+                  Show all
+                </button>
+              </div>
+            </Show>
+
+            {/* Render Virtualized Conversation Bubbles */}
+            <For each={slicedTurns()}>
+              {(turn, index) => {
+                const actualIndex = createMemo(() => props.session!.turns.length - visibleTurns() + index());
+                return (
+                  <VirtualTurn
+                    turn={turn}
+                    actualIndex={actualIndex()}
+                    formatFullDate={formatFullDate}
+                    sourceId={props.session!.sourceId}
+                    registerElement={registerElement}
+                    unregisterElement={unregisterElement}
+                    getCachedHeight={getCachedHeight}
+                    setCachedHeight={setCachedHeight}
+                  />
+                );
+              }}
+            </For>
+          </div>
+        </Show>
+      </Show>
+    </div>
+  );
+};
+
+interface VirtualTurnProps {
+  turn: Turn;
+  actualIndex: number;
+  formatFullDate: (timestamp: number) => string;
+  sourceId: string;
+  registerElement: (el: HTMLElement, setVisible: (v: boolean) => void, turnId: string) => void;
+  unregisterElement: (el: HTMLElement) => void;
+  getCachedHeight: (turnId: string) => number | undefined;
+  setCachedHeight: (turnId: string, h: number) => void;
+}
+
+const VirtualTurn = (props: VirtualTurnProps) => {
+  let elementRef: HTMLDivElement | undefined;
+  const [isVisible, setIsVisible] = createSignal(false);
+  const turnKey = createMemo(() => props.turn.turnId || String(props.actualIndex));
+
+  createEffect(() => {
+    const el = elementRef;
+    if (el) {
+      props.registerElement(el, setIsVisible, turnKey());
+      onCleanup(() => {
+        props.unregisterElement(el);
+      });
+    }
+  });
+
+  // Track height of this turn when it goes offscreen
+  createEffect(() => {
+    const visible = isVisible();
+    const el = elementRef;
+    if (!visible && el) {
+      const cached = props.getCachedHeight(turnKey());
+      if (cached) {
+        el.style.height = `${cached}px`;
+      }
+    } else if (visible && el) {
+      el.style.height = "auto";
+      
+      const ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const h = entry.target.getBoundingClientRect().height;
+          if (h > 0) {
+            props.setCachedHeight(turnKey(), h);
+          }
+        }
+      });
+      ro.observe(el);
+      onCleanup(() => ro.disconnect());
+    }
+  });
+
+  return (
+    <div 
+      ref={elementRef}
+      data-turn-id={turnKey()}
+      class="space-y-4"
+      style={props.actualIndex >= 2 ? {
+        "content-visibility": "auto",
+        "contain-intrinsic-size": "auto 200px"
+      } : undefined}
+    >
+      <Show 
+        when={isVisible()} 
+        fallback={
+          // Empty skeleton shell while virtualized out to minimize memory
+          <div class="w-full py-6 flex items-center justify-center text-text-secondary/20">
+            <div class="flex gap-1.5">
+              <div class="w-2 h-2 rounded-full bg-current animate-pulse" />
+              <div class="w-2 h-2 rounded-full bg-current animate-pulse delay-75" />
+              <div class="w-2 h-2 rounded-full bg-current animate-pulse delay-150" />
+            </div>
+          </div>
+        }
+      >
+        {/* User message block */}
+        <div class="flex flex-col items-start max-w-4xl animate-in fade-in duration-200">
+          <div class="flex items-center gap-2 mb-1.5 pl-3">
+            <div class="w-2 h-2 rounded-full bg-accent" />
+            <span class="text-[12px] font-semibold text-text-primary tracking-wide">
+              User
+            </span>
+            <span class="text-[10px] text-text-secondary/50">
+              {props.formatFullDate(props.turn.timestamp)}
+            </span>
+          </div>
+          <div class="w-full bg-surface border border-border/50 p-4 rounded-2xl text-[14.5px] leading-relaxed text-text-primary/90 font-sans shadow-sm">
+            <p class="whitespace-pre-wrap">{props.turn.userMessage}</p>
+          </div>
+        </div>
+
+        {/* Assistant message block */}
+        <div class="flex flex-col items-start max-w-4xl pl-2 md:pl-6 animate-in fade-in duration-200">
+          <div class="flex items-center justify-between w-full mb-1.5 pl-3 pr-2">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-emerald-400" />
+              <span class="text-[12px] font-semibold text-text-primary tracking-wide">
+                Assistant
+              </span>
+            </div>
+            <Show when={props.turn.inputTokens || props.turn.outputTokens}>
+              <div class="flex items-center gap-1.5 text-[10px] text-text-secondary/50 font-mono">
+                {props.turn.inputTokens && <span>in: {props.turn.inputTokens}</span>}
+                {props.turn.inputTokens && props.turn.outputTokens && <span>•</span>}
+                {props.turn.outputTokens && <span>out: {props.turn.outputTokens}</span>}
+              </div>
+            </Show>
+          </div>
+          <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
+            <MarkdownRenderer content={props.turn.assistantMessage} />
+          </div>
+        </div>
+      </Show>
+    </div>
+  );
+};

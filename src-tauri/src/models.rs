@@ -47,4 +47,6 @@ pub struct Session {
     #[serde(default)]
     pub is_pinned: bool,
     pub summary: Option<SessionSummary>,
+    #[serde(default)]
+    pub snippet: Option<String>,
 }

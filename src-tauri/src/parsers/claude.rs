@@ -363,6 +363,7 @@ impl ClaudeSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
+            snippet: None,
         };
 
         crate::parsers::cache::get_cache_manager().put_cached_session(

@@ -1,50 +1,609 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { createSignal, createEffect, onMount, onCleanup, Show, createMemo } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { Sidebar } from "./components/Sidebar";
+import { DetailPane } from "./components/DetailPane";
+import { Dashboard } from "./components/Dashboard";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { logFE } from "./utils/logger";
+import { 
+  Layers, 
+  Terminal, 
+  AlertCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ArrowLeft,
+  ArrowRight,
+  Home,
+  RotateCw,
+  Settings
+} from "lucide-solid";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+interface Turn {
+  turnId: string;
+  userMessage: string;
+  assistantMessage: string;
+  timestamp: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+interface Session {
+  id: string;
+  sourceId: string;
+  filePath: string;
+  timestamp: number;
+  updatedAt: number;
+  cwd?: string | null;
+  threadName?: string | null;
+  turns: Turn[];
+  isArchived: boolean;
+  isPinned: boolean;
+}
+
+interface SearchResult {
+  session: Session;
+  matchedTurnIndexes: number[];
+  score: number;
+}
+
+interface SourceMetadata {
+  id: string;
+  displayName: string;
+  isAvailable: boolean;
+  isAppInstalled: boolean;
+}
+
+
+
+function App() {
+  const [theme, setTheme] = createSignal(localStorage.getItem("codeoba-theme") || "obsidian");
+  const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
+  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
+  const [showSettings, setShowSettings] = createSignal(false);
+  const [similarityThreshold, setSimilarityThreshold] = createSignal(
+    parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
+  );
+
+  const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
+  const [historyIndex, setHistoryIndex] = createSignal<number>(0);
+
+  const [sources, setSources] = createSignal<SourceMetadata[]>([]);
+  const [sessions, setSessions] = createSignal<Session[]>([]);
+  const [searchResults, setSearchResults] = createSignal<SearchResult[] | null>(null);
+  const [selectedSession, setSelectedSession] = createSignal<Session | null>(null);
+  
+  const [searchQuery, setSearchQuery] = createSignal("");
+  const [isSemantic, setIsSemantic] = createSignal(false);
+  const [selectedSources, setSelectedSources] = createSignal<Set<string>>(new Set());
+  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived">("active");
+  
+  const [isLoading, setIsLoading] = createSignal(true);
+  const [isRebuilding, setIsRebuilding] = createSignal(false);
+  const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
+  const [indexingProgress, setIndexingProgress] = createSignal<{
+    step: string;
+    progress: number;
+    currentSource: string;
+  } | null>(null);
+  const [loadTime, setLoadTime] = createSignal<string | null>(null);
+  const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
+
+  // Sync theme selection to DOM
+  createEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme());
+    localStorage.setItem("codeoba-theme", theme());
+  });
+
+  // Sync sidebar width selection to localStorage
+  createEffect(() => {
+    localStorage.setItem("codeoba-sidebar-width", String(sidebarWidth()));
+  });
+
+  // Sync sidebar collapsed selection to localStorage
+  createEffect(() => {
+    localStorage.setItem("codeoba-sidebar-collapsed", String(sidebarCollapsed()));
+  });
+
+  // Sync similarity threshold to localStorage
+  createEffect(() => {
+    localStorage.setItem("codeoba-similarity-threshold", String(similarityThreshold()));
+  });
+
+  // Load backend metadata & sessions on startup, and register listeners
+  onMount(async () => {
+    // Hide startup skeleton once UI is mounted
+    const skeleton = document.getElementById("sk-container");
+    if (skeleton) {
+      skeleton.classList.add("sk-fade-out");
+      setTimeout(() => {
+        skeleton.remove();
+      }, 250);
+    }
+
+    let unlistenSession: (() => void) | undefined;
+    let unlistenProgress: (() => void) | undefined;
+
+    // Register progress and live listeners immediately
+    try {
+      unlistenSession = await listen<Session>("session-updated", (event) => {
+        const updated = event.payload;
+        logFE("info", `Live event update: ${updated.id}`);
+
+        // Update sessions state list
+        setSessions(prev => {
+          const index = prev.findIndex(s => s.id === updated.id);
+          const list = [...prev];
+          if (index !== -1) {
+            list[index] = updated;
+          } else {
+            list.unshift(updated);
+          }
+          list.sort((a, b) => b.updatedAt - a.updatedAt);
+          return list;
+        });
+
+        // Update selected view if open
+        const current = selectedSession();
+        if (current && current.id === updated.id) {
+          setSelectedSession(updated);
+        }
+      });
+
+      unlistenProgress = await listen<{
+        step: string;
+        progress: number;
+        currentSource: string;
+      }>("indexing-progress", (event) => {
+        const payload = event.payload;
+        setIndexingProgress(payload);
+
+        if (payload.step === "complete") {
+          // Re-fetch sessions from backend once rebuild is complete
+          invoke<Session[]>("get_all_sessions").then((list) => {
+            setSessions(list);
+          });
+          // Hide progress indicator after a short delay
+          setTimeout(() => {
+            setIndexingProgress(null);
+          }, 1500);
+        }
+      });
+    } catch (err) {
+      console.error("Failed to register listeners:", err);
+    }
+
+    onCleanup(() => {
+      if (unlistenSession) unlistenSession();
+      if (unlistenProgress) unlistenProgress();
+    });
+
+    try {
+      setIsLoading(true);
+      const metadata = await invoke<SourceMetadata[]>("get_sources");
+      setSources(metadata);
+
+      const list = await invoke<Session[]>("get_all_sessions");
+      setSessions(list);
+      
+      setErrorMsg(null);
+
+      // Get initial indexing progress state
+      try {
+        const initialProgress = await invoke<any>("get_indexing_progress");
+        if (initialProgress) {
+          setIndexingProgress(initialProgress);
+          if (initialProgress.step === "complete") {
+            setIsRebuilding(false);
+            // Wait 4 seconds then clear
+            setTimeout(() => {
+              setIndexingProgress(current => {
+                if (current && current.step === "complete") {
+                  return null;
+                }
+                return current;
+              });
+            }, 4000);
+          } else {
+            setIsRebuilding(true);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial indexing progress:", err);
+      }
+    } catch (err: any) {
+      console.error("Failed to load sessions:", err);
+      setErrorMsg(String(err));
+    } finally {
+      setIsLoading(false);
+    }
+
+    // Trigger background rebuild on launch only if not already rebuilding
+    const progress = indexingProgress();
+    const isAlreadyIndexing = progress && progress.step !== "complete";
+    if (!isAlreadyIndexing) {
+      handleRebuildIndex();
+    }
+  });
+
+  // Handle debounced search changes
+  createEffect(() => {
+    const query = searchQuery();
+    const sem = isSemantic();
+    const sources = selectedSources();
+    const filter = archivalFilter();
+    const thresh = similarityThreshold();
+
+    if (query.trim() === "") {
+      setSearchResults(null);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      performSearch(query, sem, sources, filter, thresh);
+    }, 250);
+
+    onCleanup(() => clearTimeout(delayDebounce));
+  });
+
+  const performSearch = async (
+    query: string,
+    sem: boolean,
+    sourcesSet: Set<string>,
+    filterType: "all" | "active" | "archived",
+    thresh: number
+  ) => {
+    try {
+      setErrorMsg(null);
+      const filter = {
+        sourceIds: Array.from(sourcesSet),
+        minTimestamp: 0,
+        maxTimestamp: null,
+        cwdFilter: null,
+        matchCase: false,
+        wholeWord: false,
+        useRegex: false,
+        archivalFilter: filterType,
+        sessionIds: null
+      };
+
+      const results = await invoke<SearchResult[]>("search_sessions", {
+        query,
+        filter,
+        useSemantic: sem,
+        similarityThreshold: thresh
+      });
+      setSearchResults(results);
+    } catch (err: any) {
+      logFE("error", `Search error: ${err}`);
+      setErrorMsg(String(err));
+    }
+  };
+
+  const handleToggleSource = (sourceId: string) => {
+    const next = new Set(selectedSources());
+    if (next.has(sourceId)) {
+      next.delete(sourceId);
+    } else {
+      next.add(sourceId);
+    }
+    setSelectedSources(next);
+  };
+
+  const handleRebuildIndex = async () => {
+    try {
+      setIsRebuilding(true);
+      setErrorMsg(null);
+      await invoke("rebuild_index");
+      
+      // Refresh session list
+      const list = await invoke<Session[]>("get_all_sessions");
+      setSessions(list);
+      
+      // Re-trigger search if query exists
+      const query = searchQuery();
+      if (query.trim() !== "") {
+        performSearch(query, isSemantic(), selectedSources(), archivalFilter(), similarityThreshold());
+      }
+    } catch (err: any) {
+      logFE("error", `Rebuild error: ${err}`);
+      setErrorMsg(String(err));
+    } finally {
+      setIsRebuilding(false);
+    }
+  };
+
+  const handleSelectSession = async (session: Session, skipHistory = false) => {
+    if (!skipHistory) {
+      const history = [...navHistory().slice(0, historyIndex() + 1)];
+      if (history[history.length - 1] !== session.id) {
+        history.push(session.id);
+        setNavHistory(history);
+        setHistoryIndex(history.length - 1);
+      }
+    }
+
+    const start = performance.now();
+    (window as any).sessionSelectionStart = start;
+    logFE("info", `Selecting session: ${session.id} (${session.threadName || 'Untitled'})`);
+    setLoadTime("Loading...");
+    setLoadingSessionId(session.id);
+    try {
+      const fullSession = await invoke<Session | null>("get_session", {
+        sourceId: session.sourceId,
+        filePath: session.filePath,
+      });
+      const fetchTime = performance.now() - start;
+      logFE("info", `Fetched session ${session.id} turns in ${fetchTime.toFixed(1)}ms`);
+
+      if (fullSession) {
+        setSelectedSession(fullSession);
+        
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const paintTime = performance.now() - start;
+            const msg = `${paintTime.toFixed(0)}ms (fetch: ${fetchTime.toFixed(0)}ms, render: ${(paintTime - fetchTime).toFixed(0)}ms)`;
+            logFE("info", `Rendered and painted session ${session.id} in ${paintTime.toFixed(1)}ms total. Detail metrics: ${msg}`);
+            setLoadTime(msg);
+            setLoadingSessionId(null);
+          });
+        });
+      } else {
+        setLoadTime(null);
+        setLoadingSessionId(null);
+      }
+    } catch (err: any) {
+      logFE("error", `Failed to load session details: ${err}`);
+      setErrorMsg("Failed to load session details");
+      setLoadTime(null);
+      setLoadingSessionId(null);
+    }
+  };
+
+  const handleGoHome = (skipHistory = false) => {
+    if (!skipHistory) {
+      const history = [...navHistory().slice(0, historyIndex() + 1)];
+      if (history[history.length - 1] !== "dashboard") {
+        history.push("dashboard");
+        setNavHistory(history);
+        setHistoryIndex(history.length - 1);
+      }
+    }
+    setSelectedSession(null);
+  };
+
+  const handleNavBack = () => {
+    if (historyIndex() > 0) {
+      const prevIdx = historyIndex() - 1;
+      setHistoryIndex(prevIdx);
+      const target = navHistory()[prevIdx];
+      if (target === "dashboard") {
+        handleGoHome(true);
+      } else {
+        const found = sessions().find(s => s.id === target) || 
+                      (searchResults()?.find(r => r.session.id === target)?.session);
+        if (found) {
+          handleSelectSession(found, true);
+        } else {
+          handleGoHome(true);
+        }
+      }
+    }
+  };
+
+  const handleNavForward = () => {
+    if (historyIndex() < navHistory().length - 1) {
+      const nextIdx = historyIndex() + 1;
+      setHistoryIndex(nextIdx);
+      const target = navHistory()[nextIdx];
+      if (target === "dashboard") {
+        handleGoHome(true);
+      } else {
+        const found = sessions().find(s => s.id === target) || 
+                      (searchResults()?.find(r => r.session.id === target)?.session);
+        if (found) {
+          handleSelectSession(found, true);
+        } else {
+          handleGoHome(true);
+        }
+      }
+    }
+  };
+
+  const filteredSessions = createMemo(() => {
+    if (searchResults() !== null) {
+      return searchResults()!.map(r => r.session);
+    }
+    return sessions().filter(s => {
+      // Source filter
+      if (selectedSources().size > 0 && !selectedSources().has(s.sourceId)) {
+        return false;
+      }
+      // Archival filter
+      if (archivalFilter() === "active" && s.isArchived) return false;
+      if (archivalFilter() === "archived" && !s.isArchived) return false;
+      return true;
+    });
+  });
+
+  const handleCopyPath = (path: string) => {
+    navigator.clipboard.writeText(path);
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div class="flex h-screen w-screen overflow-hidden bg-background text-text-primary">
+      {/* Titlebar/Navigation bar */}
+      <div class="absolute top-0 left-0 right-0 h-[76px] pointer-events-none z-50 flex items-center justify-between px-6 select-none border-b border-border/10 glass">
+        {/* Left Side App Brand & Controls */}
+        <div class="flex items-center gap-4 pointer-events-auto">
+          <div class="flex items-center gap-2">
+            <Terminal class="w-5 h-5 text-accent animate-pulse" />
+            <span class="font-bold tracking-widest text-[16px] text-text-primary">
+              CODEOBA
+            </span>
+          </div>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+          {/* Navigation Pill Container */}
+          <div class="flex items-center gap-1 bg-surface/60 border border-border/55 rounded-xl p-1">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
+              title={sidebarCollapsed() ? "Show Sidebar" : "Hide Sidebar"}
+              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+            >
+              <Show when={sidebarCollapsed()} fallback={<PanelLeftClose class="w-4 h-4" />}>
+                <PanelLeftOpen class="w-4 h-4" />
+              </Show>
+            </button>
+
+            <div class="w-[1px] h-4 bg-border/40 mx-1" />
+
+            <button
+              onClick={handleNavBack}
+              disabled={historyIndex() <= 0}
+              title="Go Back"
+              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+            >
+              <ArrowLeft class="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleNavForward}
+              disabled={historyIndex() >= navHistory().length - 1}
+              title="Go Forward"
+              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+            >
+              <ArrowRight class="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => handleGoHome()}
+              title="Go to Dashboard"
+              class={`p-1.5 hover:bg-surface border border-transparent hover:border-border/60 rounded-lg transition-all cursor-pointer ${
+                selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "text-text-secondary"
+              }`}
+            >
+              <Home class="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleRebuildIndex}
+              disabled={isRebuilding()}
+              title="Rebuild Session Index"
+              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RotateCw class={`w-4 h-4 ${isRebuilding() ? 'animate-spin text-accent' : ''}`} />
+            </button>
+
+            <div class="w-[1px] h-4 bg-border/40 mx-1" />
+
+            <button
+              onClick={() => setShowSettings(true)}
+              title="Settings"
+              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+            >
+              <Settings class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Right Side: Current View Title / Breadcrumbs */}
+        <div class="hidden md:flex items-center gap-2 pointer-events-auto text-xs font-medium text-text-secondary bg-surface/30 px-3 py-1.5 rounded-full border border-border/40">
+          <Show 
+            when={selectedSession()} 
+            fallback={
+              <span class="text-accent font-semibold flex items-center gap-1.5">
+                <Layers class="w-3.5 h-3.5" /> Workspace Dashboard
+              </span>
+            }
+          >
+            <span class="text-text-secondary/70 truncate max-w-[140px]" title={selectedSession()?.cwd || ""}>
+              {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
+            </span>
+            <span class="text-border">/</span>
+            <span class="text-text-primary truncate max-w-[200px]" title={selectedSession()?.threadName || "Untitled"}>
+              {selectedSession()?.threadName || "Untitled Turn"}
+            </span>
+          </Show>
+        </div>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+      {/* Main Grid: Sidebar + Detail Pane */}
+      <div class="flex w-full h-full min-h-0 min-w-0">
+        <Sidebar
+          sessions={sessions()}
+          searchResults={searchResults()}
+          selectedSessionId={selectedSession()?.id || null}
+          loadingSessionId={loadingSessionId()}
+          onSelectSession={handleSelectSession}
+          searchQuery={searchQuery()}
+          onSearchChange={setSearchQuery}
+          isSemantic={isSemantic()}
+          onSemanticToggle={() => setIsSemantic(!isSemantic())}
+          selectedSources={selectedSources()}
+          onToggleSource={handleToggleSource}
+          archivalFilter={archivalFilter()}
+          onArchivalFilterChange={setArchivalFilter}
+          sources={sources()}
+          isRebuilding={isRebuilding()}
+          onRebuildIndex={handleRebuildIndex}
+          indexingProgress={indexingProgress()}
+          width={sidebarWidth()}
+          onWidthChange={setSidebarWidth}
+          collapsed={sidebarCollapsed()}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+
+        <div class="flex-grow h-full flex flex-col min-w-0 overflow-hidden">
+          {/* Main Error Alert Bar */}
+          <Show when={errorMsg()}>
+            <div class="bg-red-500/10 border-b border-red-500/20 px-6 py-2.5 flex items-center gap-2 text-xs text-red-400 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
+              <AlertCircle class="w-4 h-4 flex-shrink-0" />
+              <span class="truncate">{errorMsg()}</span>
+              <button 
+                onClick={() => setErrorMsg(null)}
+                class="ml-auto hover:text-white font-medium cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </Show>
+
+          <Show 
+            when={!isLoading()} 
+            fallback={
+              <div class="flex-grow flex flex-col items-center justify-center text-text-secondary select-none animate-pulse">
+                <Layers class="w-12 h-12 text-border animate-bounce mb-3" />
+                <p class="text-sm font-medium tracking-wider">Scanning local session adapters...</p>
+              </div>
+            }
+          >
+            <Show when={selectedSession()} fallback={<Dashboard sessions={filteredSessions()} />}>
+              <DetailPane
+                session={selectedSession()}
+                onCopyPath={handleCopyPath}
+                loadTime={loadTime()}
+                isLoading={loadingSessionId() !== null}
+                sidebarCollapsed={sidebarCollapsed()}
+              />
+            </Show>
+          </Show>
+        </div>
+      </div>
+
+      <SettingsDialog
+        isOpen={showSettings()}
+        onClose={() => setShowSettings(false)}
+        theme={theme()}
+        onThemeChange={setTheme}
+        sources={sources()}
+        onRefreshSources={async () => {
+          const metadata = await invoke<SourceMetadata[]>("get_sources");
+          setSources(metadata);
+        }}
+        similarityThreshold={similarityThreshold()}
+        onSimilarityThresholdChange={setSimilarityThreshold}
+      />
+    </div>
   );
 }
 

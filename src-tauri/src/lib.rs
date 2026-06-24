@@ -1,4 +1,5 @@
 pub mod models;
+pub mod logging;
 pub mod parsers;
 pub mod keyring;
 pub mod tokenizer;
@@ -19,6 +20,17 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Delete the window state file preemptively before the Tauri builder or plugins initialize
+    if std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset") {
+        if let Some(mut path) = dirs::data_dir() {
+            path = path.join("com.whataicando.codeoba").join(".window-state.json");
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
+                crate::log_info!("Pre-emptively deleted window state file: {:?}", path);
+            }
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(watcher::WatcherState {
@@ -27,18 +39,32 @@ pub fn run() {
         })
         .manage(search::SearchIndexState::new())
         .setup(|app| {
+            // Ensure encryption key is created synchronously on startup to prevent background collisions
+            let _ = crate::keyring::get_or_create_cache_key();
+            
             let handle = app.handle().clone();
             let _ = watcher::start_watcher(handle.clone());
             
-            // Rebuild search index in background thread
+            // Load cached sessions in background thread on startup
             let handle_clone = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                let state = handle_clone.state::<search::SearchIndexState>();
-                let home = parsers::get_home_dir();
-                let model_path = home.join(".codeoba/models/model_quantized.onnx");
-                let vocab_path = home.join(".codeoba/models/vocab.txt");
-                let use_semantic = model_path.exists() && vocab_path.exists();
-                let _ = state.rebuild(use_semantic).await;
+            std::thread::spawn(move || {
+                tauri::async_runtime::block_on(async move {
+                    let state = handle_clone.state::<search::SearchIndexState>();
+                    
+                    // Load cached sessions in the background
+                    state.load_cached_sessions();
+                    
+                    let progress = search::IndexingProgress {
+                        step: "complete".to_string(),
+                        progress: 1.0,
+                        current_source: "Cache".to_string(),
+                    };
+                    if let Ok(mut guard) = state.last_progress.write() {
+                        *guard = Some(progress.clone());
+                    }
+                    use tauri::Emitter;
+                    let _ = handle_clone.emit("indexing-progress", progress);
+                });
             });
             
             Ok(())
@@ -52,7 +78,10 @@ pub fn run() {
             commands::get_credential,
             commands::save_credential,
             commands::search_sessions,
-            commands::rebuild_index
+            commands::rebuild_index,
+            commands::log_from_frontend,
+            commands::check_reset_window,
+            commands::get_indexing_progress
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

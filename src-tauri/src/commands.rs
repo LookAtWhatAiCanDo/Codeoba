@@ -29,42 +29,98 @@ pub fn get_sources() -> Vec<SourceMetadata> {
 }
 
 #[tauri::command]
-pub async fn get_all_sessions() -> Result<Vec<Session>, String> {
-    let sources = get_sources_list();
-    let mut handles = Vec::new();
+pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Vec<Session>, String> {
+    let state = app_handle.state::<SearchIndexState>();
+    let guard = state.sessions.read().map_err(|e| e.to_string())?;
+    
+    let mut all_sessions: Vec<Session> = guard.values().map(|s| {
+        let snippet = s.turns.last().map(|turn| {
+            let msg = if !turn.user_message.is_empty() {
+                &turn.user_message
+            } else {
+                &turn.assistant_message
+            };
+            let mut snippet_text = msg.chars().take(100).collect::<String>().replace('\n', " ");
+            if msg.chars().count() > 100 {
+                snippet_text.truncate(100);
+                snippet_text.push_str("...");
+            }
+            snippet_text
+        }).unwrap_or_else(|| "No messages in this session".to_string());
 
-    for source in sources {
-        if source.is_available() {
-            let handle = tauri::async_runtime::spawn(async move {
-                source.parse_all_sessions().await
-            });
-            handles.push(handle);
+        Session {
+            id: s.id.clone(),
+            source_id: s.source_id.clone(),
+            file_path: s.file_path.clone(),
+            timestamp: s.timestamp,
+            updated_at: s.updated_at,
+            cwd: s.cwd.clone(),
+            thread_name: s.thread_name.clone(),
+            turns: Vec::new(), // Clear turns to keep payload lightweight
+            is_archived: s.is_archived,
+            is_pinned: s.is_pinned,
+            summary: None,
+            snippet: Some(snippet),
         }
-    }
-
-    let mut all_sessions = Vec::new();
-    for handle in handles {
-        if let Ok(mut sessions) = handle.await {
-            all_sessions.append(&mut sessions);
-        }
-    }
-
+    }).collect();
+    
     // Sort sessions by updated_at descending
     all_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-
     Ok(all_sessions)
 }
 
 #[tauri::command]
-pub async fn get_session(source_id: String, file_path: String) -> Result<Option<Session>, String> {
+pub async fn get_session<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    source_id: String,
+    file_path: String,
+) -> Result<Option<Session>, String> {
+    let start_time = std::time::Instant::now();
+    crate::log_info!("[IPC] get_session: Started for source_id='{}', file_path='{}'", source_id, file_path);
+
+    let state = app_handle.state::<SearchIndexState>();
+    let in_memory_cached = {
+        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        guard.values().find(|s| s.source_id == source_id && s.file_path == file_path).cloned()
+    };
+
+    if let Some(session) = in_memory_cached {
+        let elapsed = start_time.elapsed();
+        crate::log_info!(
+            "[IPC] get_session: Completed in {:?} (loaded from SearchIndexState cache, turns: {})",
+            elapsed,
+            session.turns.len()
+        );
+        return Ok(Some(session));
+    }
+
+    // Not found in in-memory SearchIndexState. Fall back to parsing the file (which uses CacheManager cache checks internally)
+    crate::log_info!("[IPC] get_session: Cache miss in SearchIndexState. Falling back to parsing file...");
     let sources = get_sources_list();
     let source = sources.iter().find(|s| s.id() == source_id);
     match source {
         Some(s) => {
-            let session = s.parse_session(&file_path).await;
-            Ok(session)
+            let session_opt = s.parse_session(&file_path).await;
+            let elapsed = start_time.elapsed();
+            match &session_opt {
+                Some(session) => {
+                    crate::log_info!(
+                        "[IPC] get_session: Completed in {:?} (parsed via source adapter, turns: {})",
+                        elapsed,
+                        session.turns.len()
+                    );
+                }
+                None => {
+                    crate::log_info!("[IPC] get_session: Completed in {:?} (failed to parse file)", elapsed);
+                }
+            }
+            Ok(session_opt)
         }
-        None => Err(format!("Source adapter '{}' not found", source_id)),
+        None => {
+            let elapsed = start_time.elapsed();
+            crate::log_error!("[IPC] get_session: Completed with error in {:?}: Source adapter '{}' not found", elapsed, source_id);
+            Err(format!("Source adapter '{}' not found", source_id))
+        }
     }
 }
 
@@ -89,11 +145,12 @@ pub fn save_credential(key: String, value: Option<String>) {
 }
 
 #[tauri::command]
-pub async fn search_sessions(
-    app_handle: tauri::AppHandle,
+pub async fn search_sessions<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
     query: String,
     filter: SearchFilter,
     use_semantic: bool,
+    similarity_threshold: Option<f64>,
 ) -> Result<Vec<SearchResult>, String> {
     let state = app_handle.state::<SearchIndexState>();
     
@@ -114,11 +171,12 @@ pub async fn search_sessions(
         let query_vector = onnx_embedder.get_embeddings(&query)?;
 
         let embeddings_guard = state.embeddings.read().map_err(|e| e.to_string())?;
+        let threshold = similarity_threshold.unwrap_or(0.35) as f32;
         let results = crate::search::semantic::semantic_search(
             &sessions,
             &embeddings_guard,
             &query_vector,
-            0.35,
+            threshold,
             &filter,
         );
         Ok(results)
@@ -129,7 +187,33 @@ pub async fn search_sessions(
 }
 
 #[tauri::command]
-pub async fn rebuild_index(app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn rebuild_index<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
     let state = app_handle.state::<SearchIndexState>();
-    state.rebuild(true).await
+    state.rebuild(true, Some(app_handle.clone())).await
+}
+
+#[tauri::command]
+pub fn log_from_frontend(level: String, message: String) {
+    let formatted = format!("[FE-{}] {}", level.to_uppercase(), message);
+    if level == "error" {
+        crate::log_error!("{}", formatted);
+    } else if level == "warn" {
+        crate::log_warn!("{}", formatted);
+    } else {
+        crate::log_info!("{}", formatted);
+    }
+}
+
+#[tauri::command]
+pub fn check_reset_window() -> bool {
+    std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset")
+}
+
+#[tauri::command]
+pub fn get_indexing_progress<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<Option<crate::search::IndexingProgress>, String> {
+    let state = app_handle.state::<crate::search::SearchIndexState>();
+    let guard = state.last_progress.read().map_err(|e| e.to_string())?;
+    Ok(guard.clone())
 }

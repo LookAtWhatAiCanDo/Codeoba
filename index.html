@@ -4,10 +4,453 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>Codeoba</title>
+    
+    <!-- Preload Outfit and JetBrains Mono Fonts to prevent FOUT (Flash of Unstyled Text) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    
+    <script>
+      (function() {
+        // Read theme settings to prevent theme flash
+        const theme = localStorage.getItem('codeoba-theme') || 'obsidian';
+        document.documentElement.setAttribute('data-theme', theme);
+
+        // Read sidebar layout configuration to prevent visual layout shifts (CLS)
+        const collapsed = localStorage.getItem('codeoba-sidebar-collapsed') === 'true';
+        const sidebarWidth = collapsed ? '0px' : (localStorage.getItem('codeoba-sidebar-width') || '380') + 'px';
+        document.documentElement.style.setProperty('--sk-sidebar-width', sidebarWidth);
+        document.documentElement.style.setProperty('--sk-sidebar-display', collapsed ? 'none' : 'flex');
+      })();
+    </script>
+
+    <style>
+      /* Inline theme colors mapping to CSS variables in App.css */
+      :root {
+        --background: #0d0e12;
+        --surface: #16181f;
+        --border: #242733;
+        --text-primary: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --accent: #6366f1;
+      }
+      [data-theme="nordic-frost"] {
+        --background: #0b1116;
+        --surface: #111b24;
+        --border: #1d2d3d;
+        --text-primary: #eceff4;
+        --text-secondary: #d8dee9;
+        --accent: #88c0d0;
+      }
+      [data-theme="emerald-forest"] {
+        --background: #09110f;
+        --surface: #10201a;
+        --border: #1a332a;
+        --text-primary: #ecfdf5;
+        --text-secondary: #a7f3d0;
+        --accent: #10b981;
+      }
+      [data-theme="sunset-copper"] {
+        --background: #130f0d;
+        --surface: #1d1814;
+        --border: #302720;
+        --text-primary: #fffbeb;
+        --text-secondary: #fde68a;
+        --accent: #f59e0b;
+      }
+      [data-theme="royal-amethyst"] {
+        --background: #100d18;
+        --surface: #1a1626;
+        --border: #2b253e;
+        --text-primary: #faf5ff;
+        --text-secondary: #e9d5ff;
+        --accent: #a855f7;
+      }
+      [data-theme="dracula"] {
+        --background: #1e1e2e;
+        --surface: #252538;
+        --border: #313244;
+        --text-primary: #cdd6f4;
+        --text-secondary: #a6adc8;
+        --accent: #cba6f7;
+      }
+      [data-theme="cyberpunk-neon"] {
+        --background: #080710;
+        --surface: #100f20;
+        --border: #222040;
+        --text-primary: #ffffff;
+        --text-secondary: #00ffff;
+        --accent: #ff007f;
+      }
+      [data-theme="monochrome-slate"] {
+        --background: #0f172a;
+        --surface: #1e293b;
+        --border: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --accent: #64748b;
+      }
+
+      /* Base app-shell styling */
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--background);
+        font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+        color: var(--text-primary);
+        overflow: hidden;
+      }
+      
+      .sk-container {
+        display: flex;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 100;
+        background-color: var(--background);
+        transition: opacity 250ms ease-out;
+      }
+      
+      .sk-container.sk-fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .sk-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 76px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(22, 24, 31, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        z-index: 50;
+        box-sizing: border-box;
+      }
+
+      [data-theme="nordic-frost"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(17, 27, 36, 0.7); }
+      [data-theme="emerald-forest"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(16, 32, 26, 0.7); }
+      [data-theme="sunset-copper"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(29, 24, 20, 0.7); }
+      [data-theme="royal-amethyst"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(26, 22, 38, 0.7); }
+      [data-theme="dracula"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(37, 37, 56, 0.7); }
+      [data-theme="cyberpunk-neon"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(16, 15, 32, 0.7); }
+      [data-theme="monochrome-slate"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(30, 41, 59, 0.7); }
+
+      .sk-logo {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      
+      .sk-logo-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .sk-logo-svg {
+        stroke: var(--accent);
+      }
+      
+      .sk-logo-text {
+        font-weight: 700;
+        font-size: 16px;
+        letter-spacing: 0.1em;
+        color: var(--text-primary);
+      }
+      
+      .sk-nav-container {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background-color: rgba(22, 24, 31, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 4px;
+      }
+      
+      [data-theme="nordic-frost"] .sk-nav-container { background-color: rgba(17, 27, 36, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="emerald-forest"] .sk-nav-container { background-color: rgba(16, 32, 26, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="sunset-copper"] .sk-nav-container { background-color: rgba(29, 24, 20, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="royal-amethyst"] .sk-nav-container { background-color: rgba(26, 22, 38, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="dracula"] .sk-nav-container { background-color: rgba(37, 37, 56, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="cyberpunk-neon"] .sk-nav-container { background-color: rgba(16, 15, 32, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+      [data-theme="monochrome-slate"] .sk-nav-container { background-color: rgba(30, 41, 59, 0.6); border-color: rgba(255, 255, 255, 0.05); }
+
+      .sk-nav-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: default;
+      }
+      
+      .sk-nav-btn-active {
+        color: var(--accent);
+        background-color: rgba(99, 102, 241, 0.1);
+        border-color: rgba(99, 102, 241, 0.2);
+      }
+      [data-theme="nordic-frost"] .sk-nav-btn-active { background-color: rgba(136, 192, 208, 0.15); border-color: rgba(136, 192, 208, 0.2); }
+      [data-theme="emerald-forest"] .sk-nav-btn-active { background-color: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.2); }
+      [data-theme="sunset-copper"] .sk-nav-btn-active { background-color: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.2); }
+      [data-theme="royal-amethyst"] .sk-nav-btn-active { background-color: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.2); }
+      [data-theme="dracula"] .sk-nav-btn-active { background-color: rgba(203, 166, 247, 0.15); border-color: rgba(203, 166, 247, 0.2); }
+      [data-theme="cyberpunk-neon"] .sk-nav-btn-active { background-color: rgba(255, 0, 127, 0.2); border-color: rgba(255, 0, 127, 0.25); }
+      [data-theme="monochrome-slate"] .sk-nav-btn-active { background-color: rgba(100, 116, 139, 0.15); border-color: rgba(100, 116, 139, 0.2); }
+
+      .sk-nav-btn:disabled {
+        opacity: 0.2;
+      }
+      
+      .sk-nav-divider {
+        width: 1px;
+        height: 16px;
+        background-color: rgba(255, 255, 255, 0.1);
+        margin: 0 4px;
+      }
+      
+      .sk-breadcrumbs {
+        display: flex;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 9999px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+      
+      .sk-breadcrumbs-svg {
+        stroke: var(--accent);
+        margin-right: 6px;
+      }
+      
+      .sk-sidebar {
+        height: 100%;
+        border-right: 1px solid var(--border);
+        background-color: var(--background);
+        padding-top: 76px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      
+      .sk-sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .sk-sidebar-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .sk-sidebar-title {
+        width: 80px;
+        height: 20px;
+        background-color: var(--surface);
+        border-radius: 4px;
+      }
+      
+      .sk-sidebar-btn {
+        width: 28px;
+        height: 28px;
+        background-color: var(--surface);
+        border-radius: 8px;
+      }
+      
+      .sk-search-bar {
+        width: 100%;
+        height: 36px;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      
+      .sk-list {
+        flex-grow: 1;
+        overflow: hidden;
+        padding: 12px;
+      }
+      
+      .sk-card {
+        height: 84px;
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        padding: 12px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .sk-line-1 {
+        width: 60%;
+        height: 14px;
+        background-color: var(--border);
+        border-radius: 4px;
+      }
+      
+      .sk-line-2 {
+        width: 85%;
+        height: 10px;
+        background-color: var(--border);
+        opacity: 0.6;
+        border-radius: 4px;
+      }
+      
+      .sk-line-3 {
+        width: 40%;
+        height: 10px;
+        background-color: var(--border);
+        opacity: 0.4;
+        border-radius: 4px;
+      }
+      
+      .sk-content {
+        flex-grow: 1;
+        height: 100%;
+        padding-top: 76px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .sk-spinner-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      
+      .sk-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(255, 255, 255, 0.05);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: sk-spin 1s linear infinite;
+      }
+      
+      .sk-spinner-text {
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+      }
+      
+      @keyframes sk-spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .sk-pulse {
+        animation: sk-pulsing 1.5s ease-in-out infinite;
+      }
+      
+      @keyframes sk-pulsing {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+      }
+    </style>
   </head>
 
   <body>
+    <div id="sk-container" class="sk-container">
+      <!-- Titlebar/Navigation bar -->
+      <header class="sk-header">
+        <div class="sk-logo">
+          <div class="sk-logo-brand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sk-logo-svg"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+            <span class="sk-logo-text">CODEOBA</span>
+          </div>
+          
+          <div class="sk-nav-container">
+            <button class="sk-nav-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button>
+            <div class="sk-nav-divider"></div>
+            <button class="sk-nav-btn" disabled><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></button>
+            <button class="sk-nav-btn" disabled><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+            <button class="sk-nav-btn sk-nav-btn-active"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button>
+            <button class="sk-nav-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8"/><polyline points="15 3 21 3 21 9"/></svg></button>
+            <div class="sk-nav-divider"></div>
+            <button class="sk-nav-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        
+        <div class="sk-breadcrumbs">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sk-breadcrumbs-svg"><path d="m12 3-10 5L12 13l10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+          Workspace Dashboard
+        </div>
+      </header>
+
+      <!-- Main Grid: Sidebar + Content -->
+      <aside class="sk-sidebar" style="width: var(--sk-sidebar-width); min-width: var(--sk-sidebar-width); max-width: var(--sk-sidebar-width); display: var(--sk-sidebar-display);">
+        <div class="sk-sidebar-header">
+          <div class="sk-sidebar-title-row">
+            <div class="sk-sidebar-title"></div>
+            <div class="sk-sidebar-btn"></div>
+          </div>
+          <div class="sk-search-bar"></div>
+        </div>
+        <div class="sk-list">
+          <div class="sk-card sk-pulse">
+            <div class="sk-line-1"></div>
+            <div class="sk-line-2"></div>
+            <div class="sk-line-3"></div>
+          </div>
+          <div class="sk-card sk-pulse" style="animation-delay: 0.15s;">
+            <div class="sk-line-1"></div>
+            <div class="sk-line-2"></div>
+            <div class="sk-line-3"></div>
+          </div>
+          <div class="sk-card sk-pulse" style="animation-delay: 0.3s;">
+            <div class="sk-line-1"></div>
+            <div class="sk-line-2"></div>
+            <div class="sk-line-3"></div>
+          </div>
+          <div class="sk-card sk-pulse" style="animation-delay: 0.45s;">
+            <div class="sk-line-1"></div>
+            <div class="sk-line-2"></div>
+            <div class="sk-line-3"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main content area -->
+      <main class="sk-content">
+        <div class="sk-spinner-container">
+          <div class="sk-spinner"></div>
+          <p class="sk-spinner-text">Scanning local session adapters...</p>
+        </div>
+      </main>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -3,9 +3,9 @@ use std::sync::{OnceLock, RwLock};
 use tokenizers::Tokenizer;
 use std::collections::HashMap;
 
-static CUSTOM_TOKENIZERS: OnceLock<RwLock<HashMap<String, Tokenizer>>> = OnceLock::new();
+static CUSTOM_TOKENIZERS: OnceLock<RwLock<HashMap<String, Option<Tokenizer>>>> = OnceLock::new();
 
-fn get_custom_tokenizers() -> &'static RwLock<HashMap<String, Tokenizer>> {
+fn get_custom_tokenizers() -> &'static RwLock<HashMap<String, Option<Tokenizer>>> {
     CUSTOM_TOKENIZERS.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
@@ -59,24 +59,29 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
 
     let family = get_model_family(model_name);
     
-    // Try to use custom tokenizer if loaded
+    // Try to use custom tokenizer if loaded (cached as Some(Some(tokenizer)) or Some(None))
     let cached = {
         let guard = get_custom_tokenizers().read().expect("Failed to lock CUSTOM_TOKENIZERS read lock");
         guard.get(family).cloned()
     };
 
-    if let Some(tokenizer) = cached {
-        if let Ok(encoding) = tokenizer.encode(text, true) {
-            return encoding.get_ids().len() as i64;
+    if let Some(opt_tokenizer) = cached {
+        if let Some(tokenizer) = opt_tokenizer {
+            if let Ok(encoding) = tokenizer.encode(text, true) {
+                return encoding.get_ids().len() as i64;
+            }
         }
-    }
-
-    // Try loading it on cache miss
-    if let Some(tokenizer) = load_custom_tokenizer(family) {
-        let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
-        guard.insert(family.to_string(), tokenizer.clone());
-        if let Ok(encoding) = tokenizer.encode(text, true) {
-            return encoding.get_ids().len() as i64;
+    } else {
+        // Try loading it on cache miss
+        let tokenizer_opt = load_custom_tokenizer(family);
+        {
+            let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
+            guard.insert(family.to_string(), tokenizer_opt.clone());
+        }
+        if let Some(tokenizer) = tokenizer_opt {
+            if let Ok(encoding) = tokenizer.encode(text, true) {
+                return encoding.get_ids().len() as i64;
+            }
         }
     }
 

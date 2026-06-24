@@ -795,7 +795,15 @@ fn test_cmd_get_all_sessions() {
 "#,
             ).unwrap();
 
-            let sessions = crate::commands::get_all_sessions().await.unwrap();
+            use tauri::Manager;
+            let app = tauri::test::mock_builder().build(tauri::test::mock_context(tauri::test::noop_assets())).unwrap();
+            app.manage(crate::search::SearchIndexState::new());
+            let handle = app.handle().clone();
+
+            let state = handle.state::<crate::search::SearchIndexState>();
+            state.rebuild(false, None::<tauri::AppHandle>).await.unwrap();
+
+            let sessions = crate::commands::get_all_sessions(handle).await.unwrap();
             assert!(!sessions.is_empty());
             let s = sessions.iter().find(|x| x.id == "session123");
             assert!(s.is_some());
@@ -946,6 +954,7 @@ fn test_lexical_search_engine_filters() {
         is_archived: false,
         is_pinned: false,
         summary: None,
+        snippet: None,
     };
 
     let archived_session = crate::models::Session {
@@ -970,6 +979,7 @@ fn test_lexical_search_engine_filters() {
         is_archived: true,
         is_pinned: false,
         summary: None,
+        snippet: None,
     };
 
     let sessions = vec![active_session, archived_session];
@@ -1019,6 +1029,7 @@ fn test_semantic_search_engine_filters() {
         is_archived: false,
         is_pinned: false,
         summary: None,
+        snippet: None,
     };
 
     let archived_session = crate::models::Session {
@@ -1043,6 +1054,7 @@ fn test_semantic_search_engine_filters() {
         is_archived: true,
         is_pinned: false,
         summary: None,
+        snippet: None,
     };
 
     let sessions = vec![active_session, archived_session];

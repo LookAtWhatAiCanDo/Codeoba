@@ -1,8 +1,8 @@
-# Codeoba — Tauri Desktop App (React + Rust)
+# Codeoba — Tauri Desktop App (SolidJS + Rust)
 
 Codeoba is a platform-agnostic, zero-dependency, 100% local search application that aggregates and indexes conversation transcripts from major AI coding assistants (Claude Code, Cursor, Aider, Copilot, Codex, and Google Antigravity) into a unified desktop dashboard.
 
-This is the Tauri-based port of the desktop application, combining a highly efficient Rust backend core with a modern React + TypeScript + Tailwind CSS frontend.
+This is the Tauri-based port of the desktop application, combining a highly efficient Rust backend core with a modern SolidJS + TypeScript + Tailwind CSS frontend.
 
 ---
 
@@ -32,7 +32,55 @@ Launch the hot-reloading development server and compile/run the native desktop s
 ```bash
 npm run tauri dev
 ```
-*This command starts the Vite local server on port `1420` and loads the React UI into the native operating system webview. Changes to frontend views will hot-reload instantly. Changes to the Rust backend will trigger an automatic recompilation and restart.*
+*This command starts the Vite local server on port `1420` and loads the SolidJS UI into the native operating system webview. Changes to frontend views will hot-reload instantly. Changes to the Rust backend will trigger an automatic recompilation and restart.*
+
+---
+
+## 📖 Command-Line Interface (CLI) Usage
+
+Codeoba can be configured or executed directly from your terminal using custom command-line options.
+
+### 1. Terminal Search (Headless CLI)
+You can run search operations directly in your shell without spawning the desktop graphical interface:
+```bash
+# Perform a standard lexical (keyword-based) search
+cargo run --manifest-path src-tauri/Cargo.toml -- search "your search query"
+
+# Perform an ONNX-powered semantic vector search
+cargo run --manifest-path src-tauri/Cargo.toml -- search "your search query" --semantic
+```
+
+### 2. Reset Window Geometry & Layout
+If you need to reset the app's window sizes, positions, and sidebar widths back to the default 3/4 monitor dimensions (for instance, after screen configurations change or monitors are disconnected), pass the reset argument.
+
+Because of how package managers (`npm`), the Tauri CLI, and the Rust compiler (`cargo`) chain command-line arguments, the number of double-dash (`--`) separators required varies depending on how you run the application:
+
+*   **Using `npm run tauri dev` (requires 3 separators):**
+    ```bash
+    # npm consumes the first --, Tauri CLI consumes the second --, and the third -- passes the flag to the app binary
+    npm run tauri dev -- -- -- --reset-window
+    
+    # Or with the short reset flag
+    npm run tauri dev -- -- -- --reset
+    ```
+
+*   **Using `npx tauri dev` (requires 2 separators):**
+    ```bash
+    # Tauri CLI consumes the first --, and the second -- passes the flag to the app binary
+    npx tauri dev -- -- --reset-window
+    ```
+
+*   **Using `cargo run` directly (requires 1 separator):**
+    ```bash
+    # Cargo consumes the -- and passes the flag to the app binary
+    cargo run --manifest-path src-tauri/Cargo.toml -- --reset-window
+    ```
+
+*   **Running the compiled production binary (no separator needed):**
+    ```bash
+    # Arguments are passed directly to the native executable
+    ./codeoba-tauri --reset-window
+    ```
 
 ---
 
@@ -51,11 +99,11 @@ To compile and package the application into a single platform-specific installer
 ```bash
 npm run tauri build
 ```
-*Tauri automatically compiles the Rust source code in `--release` mode, minifies frontend React assets, bundles them into the binary, and signs the resulting package if code-signing certificates are configured.*
+*Tauri automatically compiles the Rust source code in `--release` mode, minifies frontend SolidJS assets, bundles them into the binary, and signs the resulting package if code-signing certificates are configured.*
 
 ---
 
 ## 🏗️ Project Architecture Map
 
-*   **`src/` (Frontend)**: Styled with Tailwind CSS, React components manage search layouts, settings panes, markdown renderings, and UI themes.
+*   **`src/` (Frontend)**: Styled with Tailwind CSS, SolidJS components manage search layouts, settings panes, markdown renderings, and UI themes.
 *   **`src-tauri/` (Backend)**: Rust crate that manages directory watchers (`notify`), SQLite cache databases (`rusqlite`), credential stores (`keyring`), ONNX semantic vector inference (`ort`), and signed WASM plugin loading (`wasmtime`).

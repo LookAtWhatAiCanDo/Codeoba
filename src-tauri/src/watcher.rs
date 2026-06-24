@@ -41,7 +41,7 @@ pub fn start_watcher(app_handle: AppHandle) -> Result<(), String> {
                 }
             }
             Err(e) => {
-                eprintln!("Watcher error: {:?}", e);
+                crate::log_error!("Watcher error: {:?}", e);
             }
         }
     })

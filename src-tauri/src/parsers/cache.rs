@@ -38,6 +38,8 @@ pub struct SessionCacheManager {
     active_caches: Mutex<HashMap<String, HashMap<String, CacheEntry>>>,
     // source_id -> seen file_paths
     seen_paths: Mutex<HashMap<String, HashSet<String>>>,
+    hit_counter: Mutex<HashMap<String, usize>>,
+    miss_counter: Mutex<HashMap<String, usize>>,
 }
 
 static CACHE_MANAGER: OnceLock<SessionCacheManager> = OnceLock::new();
@@ -46,25 +48,13 @@ pub fn get_cache_manager() -> &'static SessionCacheManager {
     CACHE_MANAGER.get_or_init(|| SessionCacheManager {
         active_caches: Mutex::new(HashMap::new()),
         seen_paths: Mutex::new(HashMap::new()),
+        hit_counter: Mutex::new(HashMap::new()),
+        miss_counter: Mutex::new(HashMap::new()),
     })
 }
 
 fn get_or_create_cache_key() -> [u8; 32] {
-    let key_name = "cache_encryption_key";
-    if let Some(key_hex) = crate::keyring::get_secret(key_name) {
-        if let Ok(bytes) = hex::decode(key_hex) {
-            if bytes.len() == 32 {
-                let mut key = [0u8; 32];
-                key.copy_from_slice(&bytes);
-                return key;
-            }
-        }
-    }
-    let key = Aes256Gcm::generate_key(&mut OsRng);
-    let key_bytes: [u8; 32] = key.into();
-    let key_hex = hex::encode(key_bytes);
-    crate::keyring::put_secret(key_name, Some(&key_hex));
-    key_bytes
+    crate::keyring::get_or_create_cache_key()
 }
 
 impl SessionCacheManager {
@@ -79,7 +69,8 @@ impl SessionCacheManager {
         self.get_cache_dir().join(format!("cache_{}.json", source_id))
     }
 
-    fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
+    pub fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
+        let start = std::time::Instant::now();
         let path = self.get_cache_file(source_id);
         if !path.exists() {
             return HashMap::new();
@@ -98,11 +89,13 @@ impl SessionCacheManager {
             if let Ok(plaintext_str) = String::from_utf8(encrypted_data) {
                 if let Ok(source_cache) = serde_json::from_str::<SourceCache>(&plaintext_str) {
                     if source_cache.version == CURRENT_CACHE_VERSION {
-                        return source_cache
+                        let res: HashMap<_, _> = source_cache
                             .entries
                             .into_iter()
                             .map(|e| (e.file_path.clone(), e))
                             .collect();
+                        crate::log_info!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, start.elapsed());
+                        return res;
                     }
                 }
             }
@@ -123,28 +116,32 @@ impl SessionCacheManager {
                 if let Ok(plaintext_str) = String::from_utf8(fallback_data) {
                     if let Ok(source_cache) = serde_json::from_str::<SourceCache>(&plaintext_str) {
                         if source_cache.version == CURRENT_CACHE_VERSION {
-                            return source_cache
+                            let res: HashMap<_, _> = source_cache
                                 .entries
                                 .into_iter()
                                 .map(|e| (e.file_path.clone(), e))
                                 .collect();
+                            crate::log_info!("[load_cache] Loaded plaintext fallback cache for '{}' in {:?}", source_id, start.elapsed());
+                            return res;
                         }
                     }
                 }
-                eprintln!("Warning: Failed to decrypt session cache for '{}'. Discarding cache.", source_id);
+                crate::log_warn!("Warning: Failed to decrypt session cache for '{}'. Discarding cache.", source_id);
                 return HashMap::new();
             }
         };
 
         if let Ok(source_cache) = serde_json::from_slice::<SourceCache>(&plaintext) {
             if source_cache.version == CURRENT_CACHE_VERSION {
-                return source_cache
+                let res: HashMap<_, _> = source_cache
                     .entries
                     .into_iter()
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
+                crate::log_info!("[load_cache] Decrypted and parsed cache for '{}' in {:?}", source_id, start.elapsed());
+                return res;
             } else {
-                eprintln!("Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.", source_id, CURRENT_CACHE_VERSION, source_cache.version);
+                crate::log_error!("Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.", source_id, CURRENT_CACHE_VERSION, source_cache.version);
             }
         }
         HashMap::new()
@@ -210,7 +207,13 @@ impl SessionCacheManager {
                     set.insert(file_path.to_string());
                 }
             }
+            if let Ok(mut hit_guard) = self.hit_counter.lock() {
+                *hit_guard.entry(source_id.to_string()).or_insert(0) += 1;
+            }
             return Some(entry.session);
+        }
+        if let Ok(mut miss_guard) = self.miss_counter.lock() {
+            *miss_guard.entry(source_id.to_string()).or_insert(0) += 1;
         }
         None
     }
@@ -238,7 +241,13 @@ impl SessionCacheManager {
                     set.insert(file_path.to_string());
                 }
             }
+            if let Ok(mut hit_guard) = self.hit_counter.lock() {
+                *hit_guard.entry(source_id.to_string()).or_insert(0) += 1;
+            }
             return Some(entry.session);
+        }
+        if let Ok(mut miss_guard) = self.miss_counter.lock() {
+            *miss_guard.entry(source_id.to_string()).or_insert(0) += 1;
         }
         None
     }
@@ -312,6 +321,25 @@ impl SessionCacheManager {
         };
 
         self.save_cache(source_id, entries_to_save);
+
+        let hits = if let Ok(guard) = self.hit_counter.lock() {
+            guard.get(source_id).cloned().unwrap_or(0)
+        } else {
+            0
+        };
+        let misses = if let Ok(guard) = self.miss_counter.lock() {
+            guard.get(source_id).cloned().unwrap_or(0)
+        } else {
+            0
+        };
+        crate::log_info!("[cache] Source '{}': {} hits, {} misses", source_id, hits, misses);
+
+        if let Ok(mut guard) = self.hit_counter.lock() {
+            guard.insert(source_id.to_string(), 0);
+        }
+        if let Ok(mut guard) = self.miss_counter.lock() {
+            guard.insert(source_id.to_string(), 0);
+        }
 
         // Clear memory cache
         if let Ok(mut active_guard) = self.active_caches.lock() {

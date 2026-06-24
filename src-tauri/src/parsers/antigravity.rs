@@ -30,6 +30,13 @@ impl AntigravitySource {
     }
 
     pub(crate) fn get_session_title(&self, session_id: &str) -> String {
+        {
+            let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
+            if let Some(title) = map.get(session_id) {
+                return title.clone();
+            }
+        }
+
         let home = crate::parsers::get_home_dir();
         let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
         let current_modified = if pb_file.exists() && pb_file.is_file() {
@@ -225,7 +232,8 @@ fn skip_field(bytes: &[u8], offset: &mut usize, wire_type: u8, limit: usize) {
 }
 
 fn clean(text: &str) -> String {
-    let re = regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap();
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
         format!("\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n", bytes)
@@ -386,24 +394,13 @@ impl SourceAdapter for AntigravitySource {
             }
         }
 
-        let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
-        if pb_file.exists() && pb_file.is_file() {
-            if let Ok(pb_meta) = pb_file.metadata() {
-                let pb_modified = pb_meta.modified().ok()
-                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                    .map(|d| d.as_millis() as i64)
-                    .unwrap_or(0);
-                cache_modified += pb_modified;
-                cache_size += pb_meta.len() as i64;
-            }
-        }
-
-        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
             self.id(),
             file_path,
             cache_modified,
             cache_size,
         ) {
+            cached.thread_name = Some(self.get_session_title(&session_id));
             return Some(cached);
         }
 
@@ -413,13 +410,19 @@ impl SourceAdapter for AntigravitySource {
         let mut cwd: Option<String> = None;
         let mut current_model: Option<String> = None;
 
-        let user_req_re = regex::Regex::new(
-            r"(?i)^\s*<USER_REQUEST>([\s\S]*?)</USER_REQUEST>\s*(?:<ADDITIONAL_METADATA>|<USER_SETTINGS_CHANGE>|$)"
-        ).unwrap();
+        static USER_REQ_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let user_req_re = USER_REQ_RE.get_or_init(|| {
+            regex::Regex::new(
+                r"(?i)^\s*<USER_REQUEST>([\s\S]*?)</USER_REQUEST>\s*(?:<ADDITIONAL_METADATA>|<USER_SETTINGS_CHANGE>|$)"
+            ).unwrap()
+        });
 
-        let sys_msg_re = regex::Regex::new(
-            r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$"
-        ).unwrap();
+        static SYS_MSG_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let sys_msg_re = SYS_MSG_RE.get_or_init(|| {
+            regex::Regex::new(
+                r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$"
+            ).unwrap()
+        });
 
         for line in content_str.lines() {
             if line.trim().is_empty() {
@@ -690,6 +693,7 @@ impl SourceAdapter for AntigravitySource {
             is_archived,
             is_pinned: false,
             summary: None,
+            snippet: None,
         };
 
         crate::parsers::cache::get_cache_manager().put_cached_session(

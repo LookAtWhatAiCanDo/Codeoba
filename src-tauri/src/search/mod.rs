@@ -112,9 +112,18 @@ pub struct SessionVectorIndex {
     pub turn_embeddings: Vec<Vec<f32>>,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexingProgress {
+    pub step: String,
+    pub progress: f32,
+    pub current_source: String,
+}
+
 pub struct SearchIndexState {
     pub sessions: RwLock<HashMap<String, crate::models::Session>>,
     pub embeddings: RwLock<HashMap<String, SessionVectorIndex>>,
+    pub last_progress: RwLock<Option<IndexingProgress>>,
 }
 
 impl SearchIndexState {
@@ -122,11 +131,56 @@ impl SearchIndexState {
         Self {
             sessions: RwLock::new(HashMap::new()),
             embeddings: RwLock::new(HashMap::new()),
+            last_progress: RwLock::new(None),
         }
     }
 
-    pub async fn rebuild(&self, use_semantic: bool) -> Result<(), String> {
+    pub fn load_cached_sessions(&self) {
+        let start = std::time::Instant::now();
+        let sources = crate::parsers::get_sources_list();
+        let mut session_map = HashMap::new();
+        
+        let cache_mgr = crate::parsers::cache::get_cache_manager();
+        for source in &sources {
+            if source.is_available() {
+                let cache = cache_mgr.load_cache(source.id());
+                for entry in cache.into_values() {
+                    session_map.insert(entry.session.id.clone(), entry.session);
+                }
+            }
+        }
+        
+        let count = session_map.len();
+        if let Ok(mut guard) = self.sessions.write() {
+            *guard = session_map;
+        }
+        crate::log_info!("[SearchIndexState] Loaded {} cached sessions in {:?}", count, start.elapsed());
+    }
+
+    pub async fn rebuild<R: tauri::Runtime>(
+        &self, 
+        use_semantic: bool,
+        app_handle: Option<tauri::AppHandle<R>>,
+    ) -> Result<(), String> {
         let total_start = std::time::Instant::now();
+        
+        let emit_progress = |step: &str, progress: f32, current_source: &str| {
+            let info = IndexingProgress {
+                step: step.to_string(),
+                progress,
+                current_source: current_source.to_string(),
+            };
+            if let Ok(mut guard) = self.last_progress.write() {
+                *guard = Some(info.clone());
+            }
+            if let Some(ref handle) = app_handle {
+                use tauri::Emitter;
+                let _ = handle.emit("indexing-progress", info);
+            }
+        };
+
+        emit_progress("start", 0.0, "Initializing search index...");
+
         let home = crate::parsers::get_home_dir();
         let model_path = home.join(".codeoba/models/model_quantized.onnx");
         let vocab_path = home.join(".codeoba/models/vocab.txt");
@@ -136,7 +190,7 @@ impl SearchIndexState {
         let mut onnx_embedder = if run_embeddings {
             let onnx_load_start = std::time::Instant::now();
             let embedder = semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).ok();
-            println!("[rebuild] ONNX embedder load time: {:?}", onnx_load_start.elapsed());
+            crate::log_info!("[rebuild] ONNX embedder load time: {:?}", onnx_load_start.elapsed());
             embedder
         } else {
             None
@@ -147,7 +201,7 @@ impl SearchIndexState {
             let mgr = cache::EmbeddingCacheManager::new(model_id);
             let cache_load_start = std::time::Instant::now();
             mgr.load_cache();
-            println!("[rebuild] Cache load time: {:?}", cache_load_start.elapsed());
+            crate::log_info!("[rebuild] Cache load time: {:?}", cache_load_start.elapsed());
             Some(mgr)
         } else {
             None
@@ -156,14 +210,24 @@ impl SearchIndexState {
         let parse_start = std::time::Instant::now();
         let sources = crate::parsers::get_sources_list();
         let mut all_sessions = Vec::new();
-        for source in &sources {
-            if source.is_available() {
-                let source_start = std::time::Instant::now();
-                all_sessions.extend(source.parse_all_sessions().await);
-                println!("[rebuild] Parsed source '{}' in {:?}", source.id(), source_start.elapsed());
-            }
+        
+        let available_sources: Vec<_> = sources.iter().filter(|s| s.is_available()).collect();
+        let total_sources = available_sources.len() as f32;
+        let mut current_idx = 0;
+
+        for source in available_sources {
+            current_idx += 1;
+            let pct = 0.05 + (current_idx as f32 / total_sources) * 0.70; // 5% to 75%
+            emit_progress("parsing", pct, source.display_name());
+
+            let source_start = std::time::Instant::now();
+            all_sessions.extend(source.parse_all_sessions().await);
+            crate::log_info!("[rebuild] Parsed source '{}' in {:?}", source.id(), source_start.elapsed());
+            tokio::task::yield_now().await;
         }
-        println!("[rebuild] Total parsing time: {:?}", parse_start.elapsed());
+        crate::log_info!("[rebuild] Total parsing time: {:?}", parse_start.elapsed());
+
+        emit_progress("embedding", 0.80, "Calculating semantic embeddings...");
 
         let embed_start = std::time::Instant::now();
         let hash_embedder = semantic::HashSemanticEmbedder::new(384);
@@ -253,6 +317,7 @@ impl SearchIndexState {
             }
 
             session_map.insert(session.id.clone(), session);
+            tokio::task::yield_now().await;
         }
 
         if run_embeddings {
@@ -266,14 +331,14 @@ impl SearchIndexState {
                 }
             }
 
-            println!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", onnx_invocations, cache_hits, embed_start.elapsed());
+            crate::log_info!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", onnx_invocations, cache_hits, embed_start.elapsed());
 
             let cache_save_start = std::time::Instant::now();
             if let Some(ref cache) = cache_mgr {
                 cache.prune_orphans(&active_texts);
                 cache.save_cache();
             }
-            println!("[rebuild] Cache save time: {:?}", cache_save_start.elapsed());
+            crate::log_info!("[rebuild] Cache save time: {:?}", cache_save_start.elapsed());
         }
 
         if let Ok(mut sessions_guard) = self.sessions.write() {
@@ -283,7 +348,8 @@ impl SearchIndexState {
             *embeddings_guard = embedding_map;
         }
 
-        println!("[rebuild] Total rebuild time: {:?}", total_start.elapsed());
+        emit_progress("complete", 1.0, "Index rebuild complete.");
+        crate::log_info!("[rebuild] Total rebuild time: {:?}", total_start.elapsed());
         Ok(())
     }
 

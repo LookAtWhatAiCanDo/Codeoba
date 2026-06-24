@@ -22,22 +22,7 @@ pub struct EmbeddingCacheManager {
 }
 
 fn get_or_create_cache_key() -> [u8; 32] {
-    let key_name = "cache_encryption_key";
-    if let Some(key_hex) = crate::keyring::get_secret(key_name) {
-        if let Ok(bytes) = hex::decode(key_hex) {
-            if bytes.len() == 32 {
-                let mut key = [0u8; 32];
-                key.copy_from_slice(&bytes);
-                return key;
-            }
-        }
-    }
-    // Generate new key
-    let key = Aes256Gcm::generate_key(&mut OsRng);
-    let key_bytes: [u8; 32] = key.into();
-    let key_hex = hex::encode(key_bytes);
-    crate::keyring::put_secret(key_name, Some(&key_hex));
-    key_bytes
+    crate::keyring::get_or_create_cache_key()
 }
 
 impl EmbeddingCacheManager {
@@ -86,7 +71,7 @@ impl EmbeddingCacheManager {
         let plaintext = match cipher.decrypt(nonce, ciphertext) {
             Ok(p) => p,
             Err(_) => {
-                eprintln!("Warning: Failed to decrypt embedding cache. Discarding cache.");
+                crate::log_warn!("Warning: Failed to decrypt embedding cache. Discarding cache.");
                 return;
             }
         };

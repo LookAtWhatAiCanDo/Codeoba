@@ -18,9 +18,12 @@ fn main() {
         println!("Mode:  {}", if use_semantic { "Semantic" } else { "Lexical" });
         println!("Indexing sessions... please wait...");
 
+        // Initialize cache key synchronously to prevent background race conditions
+        let _ = codeoba_tauri_lib::keyring::get_or_create_cache_key();
+
         tauri::async_runtime::block_on(async {
             let state = codeoba_tauri_lib::search::SearchIndexState::new();
-            if let Err(e) = state.rebuild(use_semantic).await {
+            if let Err(e) = state.rebuild(use_semantic, None::<tauri::AppHandle>).await {
                 println!("Error building index: {}", e);
                 return;
             }

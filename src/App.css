@@ -1,1 +1,198 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+}
+
+:root {
+  /* Default Theme: Obsidian */
+  --background: #0d0e12;
+  --surface: #16181f;
+  --border: #242733;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="nordic-frost"] {
+  --background: #0b1116;
+  --surface: #111b24;
+  --border: #1d2d3d;
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --accent: #88c0d0;
+  --accent-hover: #81a1c1;
+  --accent-light: rgba(136, 192, 208, 0.15);
+}
+
+[data-theme="emerald-forest"] {
+  --background: #09110f;
+  --surface: #10201a;
+  --border: #1a332a;
+  --text-primary: #ecfdf5;
+  --text-secondary: #a7f3d0;
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.15);
+}
+
+[data-theme="sunset-copper"] {
+  --background: #130f0d;
+  --surface: #1d1814;
+  --border: #302720;
+  --text-primary: #fffbeb;
+  --text-secondary: #fde68a;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-light: rgba(245, 158, 11, 0.15);
+}
+
+[data-theme="royal-amethyst"] {
+  --background: #100d18;
+  --surface: #1a1626;
+  --border: #2b253e;
+  --text-primary: #faf5ff;
+  --text-secondary: #e9d5ff;
+  --accent: #a855f7;
+  --accent-hover: #9333ea;
+  --accent-light: rgba(168, 85, 247, 0.15);
+}
+
+[data-theme="dracula"] {
+  --background: #1e1e2e;
+  --surface: #252538;
+  --border: #313244;
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --accent: #cba6f7;
+  --accent-hover: #f5c2e7;
+  --accent-light: rgba(203, 166, 247, 0.15);
+}
+
+[data-theme="cyberpunk-neon"] {
+  --background: #080710;
+  --surface: #100f20;
+  --border: #222040;
+  --text-primary: #ffffff;
+  --text-secondary: #00ffff;
+  --accent: #ff007f;
+  --accent-hover: #e60073;
+  --accent-light: rgba(255, 0, 127, 0.2);
+}
+
+[data-theme="monochrome-slate"] {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent: #64748b;
+  --accent-hover: #475569;
+  --accent-light: rgba(100, 116, 139, 0.15);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Effect */
+.glass {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Premium Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Markdown styling inside detail pane */
+.markdown-body {
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.6;
+}
+
+.markdown-body pre {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.markdown-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-body p {
+  margin-bottom: 12px;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 12px 0;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.markdown-body th, .markdown-body td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+}
+
+.markdown-body th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Syntax Highlighting overrides */
+code[class*="language-"],
+pre[class*="language-"] {
+  font-family: 'JetBrains Mono', monospace !important;
+  text-shadow: none !important;
+  background: transparent !important;
+}

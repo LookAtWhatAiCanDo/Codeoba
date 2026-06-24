@@ -19,7 +19,8 @@ impl CopilotSource {
 }
 
 fn clean(text: &str) -> String {
-    let re = regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap();
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
         format!("\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n", bytes)
@@ -402,6 +403,7 @@ impl SourceAdapter for CopilotSource {
             is_archived: false,
             is_pinned: false,
             summary: None,
+            snippet: None,
         };
 
         crate::parsers::cache::get_cache_manager().put_cached_session(
