@@ -336,29 +336,40 @@ impl SourceAdapter for CopilotSource {
                 }
 
                 let assistant_message = assistant_parts.join("\n\n");
+                let active_model = turn_model.unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), active_time_ms.to_string());
-                extra_data.insert("model".to_string(), turn_model.unwrap_or_else(|| "Unknown".to_string()));
+                extra_data.insert("model".to_string(), active_model.clone());
+
+                let input_toks = crate::tokenizer::estimate_tokens(&ev.text, &active_model);
+                let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &active_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: ev.text.clone(),
                     assistant_message,
                     timestamp: ev.timestamp,
+                    input_tokens: Some(input_toks),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;
                 idx = next_idx;
             } else {
+                let active_model = ev.model.clone().unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
-                extra_data.insert("model".to_string(), ev.model.clone().unwrap_or_else(|| "Unknown".to_string()));
+                extra_data.insert("model".to_string(), active_model.clone());
+
+                let output_toks = crate::tokenizer::estimate_tokens(&ev.text, &active_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
                     assistant_message: ev.text.clone(),
                     timestamp: ev.timestamp,
+                    input_tokens: Some(0),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;

@@ -249,38 +249,49 @@ impl ClaudeSource {
                 let assistant_text = assistant_parts.join("\n\n");
                 let compute_time_ms = (last_timestamp - user_raw.timestamp).max(0);
                 
+                let active_model = model_name.clone().unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), compute_time_ms.to_string());
-                extra_data.insert("model".to_string(), model_name.unwrap_or_else(|| "Unknown".to_string()));
+                extra_data.insert("model".to_string(), active_model.clone());
                 if has_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
                     extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
                 }
+
+                let input_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
+                let output_toks = crate::tokenizer::estimate_tokens(&assistant_text, &active_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: user_raw.text.clone(),
                     assistant_message: assistant_text,
                     timestamp: user_raw.timestamp,
+                    input_tokens: Some(input_toks),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;
                 current_idx = next_idx;
             } else {
                 // Assistant only / orphan turn
+                let active_model = user_raw.model.clone().unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
-                extra_data.insert("model".to_string(), user_raw.model.clone().unwrap_or_else(|| "Unknown".to_string()));
+                extra_data.insert("model".to_string(), active_model.clone());
                 if user_raw.is_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
                     extra_data.insert("compactionTimeMs".to_string(), user_raw.compaction_time_ms.to_string());
                 }
+
+                let output_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
                     assistant_message: user_raw.text.clone(),
                     timestamp: user_raw.timestamp,
+                    input_tokens: Some(0),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;

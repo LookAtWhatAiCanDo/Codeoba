@@ -44,9 +44,14 @@ To ensure the project context remains accurate:
     * `aider.rs`: Aider Markdown history parser.
     * `copilot.rs` & `codex.rs`: Stream log event deserializers.
   - `src/search/`: Vector ONNX and lexical search logic.
+  - `src/tokenizer.rs`: Offline BPE-based token count estimator (family scales, Hugging Face config loader).
+  - `src/bin/calibrate.rs`: Subprocess integration and token calibration CLI.
   - `src/watcher.rs`: Native OS filesystem file monitoring.
   - `src/keyring.rs`: Keychain and Credential Manager secure integrations.
   - `src/premium/`: Signed WASM premium code verification and runner.
+
+- **`docs/` (Architectural Documentation)**
+  - `tokenization_calibration.md`: Hybrid Offline/Online tokenization calibration & simulation system design.
 
 ---
 

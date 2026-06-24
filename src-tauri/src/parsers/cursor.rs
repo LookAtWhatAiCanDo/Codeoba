@@ -203,7 +203,7 @@ impl CursorSource {
                 .to_string();
 
             let mut extra_data = HashMap::new();
-            extra_data.insert("model".to_string(), model_name);
+            extra_data.insert("model".to_string(), model_name.clone());
             extra_data.insert("computeTimeMs".to_string(), "0".to_string());
 
             if item_type == 1 {
@@ -223,20 +223,29 @@ impl CursorSource {
                 } else {
                     idx += 1;
                 }
+                let input_toks = crate::tokenizer::estimate_tokens(text, &model_name);
+                let output_toks = crate::tokenizer::estimate_tokens(&assistant_text, &model_name);
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", composer_id, turn_count),
                     user_message: text.to_string(),
                     assistant_message: assistant_text,
                     timestamp: created_at,
+                    input_tokens: Some(input_toks),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;
             } else {
+                let output_toks = crate::tokenizer::estimate_tokens(text, &model_name);
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", composer_id, turn_count),
                     user_message: String::new(),
                     assistant_message: text.to_string(),
                     timestamp: created_at,
+                    input_tokens: Some(0),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;

@@ -1,6 +1,7 @@
 pub mod models;
 pub mod parsers;
 pub mod keyring;
+pub mod tokenizer;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]

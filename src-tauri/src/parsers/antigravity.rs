@@ -577,17 +577,22 @@ impl SourceAdapter for AntigravitySource {
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), active_time_ms.to_string());
                 let final_model = turn_model.unwrap_or_else(|| "Unknown".to_string());
-                extra_data.insert("model".to_string(), final_model);
+                extra_data.insert("model".to_string(), final_model.clone());
                 if has_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
                     extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
                 }
+
+                let input_toks = crate::tokenizer::estimate_tokens(&ev.text, &final_model);
+                let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &final_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: ev.text.clone(),
                     assistant_message,
                     timestamp: ev.timestamp,
+                    input_tokens: Some(input_toks),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;
@@ -596,17 +601,21 @@ impl SourceAdapter for AntigravitySource {
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
                 let final_model = ev.model.clone().unwrap_or_else(|| "Unknown".to_string());
-                extra_data.insert("model".to_string(), final_model);
+                extra_data.insert("model".to_string(), final_model.clone());
                 if ev.is_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
                     extra_data.insert("compactionTimeMs".to_string(), ev.compaction_time_ms.to_string());
                 }
+
+                let output_toks = crate::tokenizer::estimate_tokens(&ev.text, &final_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
                     assistant_message: ev.text.clone(),
                     timestamp: ev.timestamp,
+                    input_tokens: Some(0),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;

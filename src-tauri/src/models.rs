@@ -24,6 +24,10 @@ pub struct Turn {
     pub assistant_message: String,
     pub timestamp: i64,
     #[serde(default)]
+    pub input_tokens: Option<i64>,
+    #[serde(default)]
+    pub output_tokens: Option<i64>,
+    #[serde(default)]
     pub extra_data: HashMap<String, String>,
 }
 

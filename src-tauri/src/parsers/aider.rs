@@ -223,11 +223,16 @@ impl SourceAdapter for AiderSource {
                 extra_data.insert("computeTimeMs".to_string(), compute_time_ms.to_string());
                 extra_data.insert("model".to_string(), "Unknown".to_string());
 
+                let input_toks = crate::tokenizer::estimate_tokens(&user_raw.text, "Unknown");
+                let output_toks = crate::tokenizer::estimate_tokens(&assistant_text, "Unknown");
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: user_raw.text.clone(),
                     assistant_message: assistant_text,
                     timestamp: user_raw.timestamp,
+                    input_tokens: Some(input_toks),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;
@@ -236,11 +241,15 @@ impl SourceAdapter for AiderSource {
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
                 extra_data.insert("model".to_string(), "Unknown".to_string());
 
+                let output_toks = crate::tokenizer::estimate_tokens(&user_raw.text, "Unknown");
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
                     assistant_message: user_raw.text.clone(),
                     timestamp: user_raw.timestamp,
+                    input_tokens: Some(0),
+                    output_tokens: Some(output_toks),
                     extra_data,
                 });
                 turn_count += 1;

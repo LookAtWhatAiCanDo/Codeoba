@@ -685,3 +685,68 @@ fn test_antigravity_tool_tags_edge_cases_parser() {
         timestamp: 456,
     });
 }
+
+#[test]
+fn test_mock_subprocess_agent_run() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let log_file = temp_dir.path().join("mock_session.jsonl");
+
+    // Write a mock agent script
+    let script_file = temp_dir.path().join("mock_agent.sh");
+    let script_content = format!(
+        "#!/bin/sh\n\
+         echo 'Prompt tokens: 1000, Completion tokens: 300'\n\
+         echo '{{\"type\":\"user\",\"timestamp\":\"2026-05-20T02:00:00Z\",\"message\":{{\"role\":\"user\",\"content\":\"Hello\"}},\"sessionId\":\"mock123\"}}' > '{}'\n\
+         echo '{{\"type\":\"assistant\",\"timestamp\":\"2026-05-20T02:01:00Z\",\"message\":{{\"role\":\"assistant\",\"content\":[{{\"type\":\"text\",\"text\":\"Hi\"}}]}}}}' >> '{}'\n",
+        log_file.to_string_lossy(),
+        log_file.to_string_lossy()
+    );
+    
+    fs::write(&script_file, script_content).unwrap();
+
+    // Make the script executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&script_file).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&script_file, perms).unwrap();
+    }
+
+    // Run the subprocess
+    let output = std::process::Command::new(&script_file)
+        .output()
+        .expect("Failed to execute mock agent");
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    
+    // Parse stdout for token metrics
+    let mut reported_prompt_tokens = 0;
+    let mut reported_completion_tokens = 0;
+    for line in stdout_str.lines() {
+        if line.contains("Prompt tokens:") {
+            let parts: Vec<&str> = line.split(',').collect();
+            for part in parts {
+                if part.contains("Prompt tokens:") {
+                    reported_prompt_tokens = part.split(':').nth(1).unwrap().trim().parse::<i64>().unwrap_or(0);
+                } else if part.contains("Completion tokens:") {
+                    reported_completion_tokens = part.split(':').nth(1).unwrap().trim().parse::<i64>().unwrap_or(0);
+                }
+            }
+        }
+    }
+
+    assert_eq!(reported_prompt_tokens, 1000);
+    assert_eq!(reported_completion_tokens, 300);
+
+    // Verify parser successfully reads the generated log file
+    let source = ClaudeSource;
+    let session = tauri::async_runtime::block_on(async {
+        source.parse_session(&log_file.to_string_lossy()).await
+    }).unwrap();
+
+    assert_eq!(session.turns.len(), 1);
+    assert_eq!(session.turns[0].user_message, "Hello");
+    assert_eq!(session.turns[0].assistant_message, "Hi");
+}
+
