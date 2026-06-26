@@ -17,7 +17,7 @@ permissions:
 
 env:
   ESAXX_DYNAMIC_LINK: '1'
-  ORT_CACHE_DIR: ${{ github.workspace }}/src-tauri/target/ort_cache
+  ORT_CACHE_DIR: ${{ github.workspace }}/ort_cache
 
 jobs:
   build:
@@ -61,6 +61,14 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
           prefix-key: ${{ hashFiles('.github/workflows/build-desktop.yml') }}
+
+      - name: Cache ORT Binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/ort_cache
+          key: ${{ runner.os }}-ort-cache-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ort-cache-
 
       - name: Install Linux System Dependencies
         if: matrix.platform == 'linux'
@@ -140,6 +148,17 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            echo "macOS platform detected. Resolving active SDK and toolchain paths..."
+            CLANG_RT_DIR=$(dirname $(find $(xcode-select -p) -name "libclang_rt.osx.a" | head -n 1))
+            if [ -n "$CLANG_RT_DIR" ]; then
+              echo "Adding Clang runtime directory to LIBRARY_PATH: $CLANG_RT_DIR"
+              export LIBRARY_PATH="$CLANG_RT_DIR:$LIBRARY_PATH"
+            else
+              echo "WARNING: Could not locate libclang_rt.osx.a"
+            fi
+          fi
+
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             echo "Release tag detected. Building signed/notarized production binaries..."
             npm run tauri build

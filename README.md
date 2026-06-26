@@ -152,7 +152,7 @@ To support compilation of native C/C++ dependencies in Rust (such as `esaxx-rs` 
 * **Dynamic MSVC C Runtime Linking (`ESAXX_DYNAMIC_LINK=1`):**  
   Windows MSVC builds use the dynamic CRT (`/MD`) by default. However, some dependencies like `esaxx-rs` historically force static CRT linking (`/MT`), causing `LNK2038` linker mismatches. The workflow compiles a patched dynamic-link-enabled fork and sets `ESAXX_DYNAMIC_LINK: '1'` globally to ensure consistent CRT linkage.
 * **Workspace-Relative ONNX Runtime Caching (`ORT_CACHE_DIR`):**  
-  By default, `ort` downloads its prebuilt ONNX Runtime binaries into the runner's user home directory (which is not cached). This causes missing binary linker errors on subsequent builds. We redirect downloads to `src-tauri/target/ort_cache` so that the binaries are persisted and restored together with Cargo's compiled target objects.
+  By default, `ort` downloads its prebuilt ONNX Runtime binaries into the runner's user home directory (which is not cached). This causes missing binary linker errors on subsequent builds. We redirect downloads to `ort_cache` at the workspace root and cache it separately via `actions/cache` to ensure the binaries are always present alongside Cargo's compiled target objects.
 * **Automatic Workflow Cache Invalidation:**  
   The Rust cache step uses `prefix-key: ${{ hashFiles('.github/workflows/build-desktop.yml') }}`. This automatically invalidates the cache whenever the build configuration or environment variables are modified, preventing stale caching issues.
 
