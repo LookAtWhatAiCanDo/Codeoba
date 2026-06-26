@@ -107,3 +107,42 @@ npm run tauri build
 
 *   **`src/` (Frontend)**: Styled with Tailwind CSS, SolidJS components manage search layouts, settings panes, markdown renderings, and UI themes.
 *   **`src-tauri/` (Backend)**: Rust crate that manages directory watchers (`notify`), SQLite cache databases (`rusqlite`), credential stores (`keyring`), ONNX semantic vector inference (`ort`), and signed WASM plugin loading (`wasmtime`).
+
+---
+
+## 🔄 CI/CD Release Pipeline
+
+### 1. GitHub Actions CI/CD Pipeline
+A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It automatically triggers, packages, signs (using Apple Developer certificates for macOS and keyless Azure Trusted Signing for Windows via OIDC), and drafts a new GitHub Release when you push a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+For complete instructions on setting up Azure OIDC credentials, registering the app client, and exporting Apple developer certificates, see the detailed [App Signing Guide](docs/APP_SIGNING.md).
+
+#### Required GitHub Secrets and Variables
+To allow the release action to compile, sign, and notarize the packages successfully, configure the following secrets and variables under **Settings > Secrets and variables > Actions** in your GitHub repository:
+
+##### Secrets (Sensitive)
+| Secret Name | Description | Platform |
+|---|---|---|
+| `MACOS_CERTIFICATE_P12` | Base64-encoded Developer ID Application `.p12` file. | macOS |
+| `MACOS_CERTIFICATE_PASSWORD` | Password for the Developer ID Application `.p12` file. | macOS |
+| `MACOS_INSTALLER_CERTIFICATE_P12` | Base64-encoded Developer ID Installer `.p12` file. | macOS |
+| `MACOS_INSTALLER_CERTIFICATE_PASSWORD` | Password for the Developer ID Installer `.p12` file. | macOS |
+| `APPLE_ID_PASSWORD` | App-specific password generated on `appleid.apple.com`. | macOS |
+| `AZURE_CLIENT_ID` | Application (client) ID of your Entra ID app registration. | Windows |
+| `AZURE_TENANT_ID` | Directory (tenant) ID of your Azure subscription. | Windows |
+| `AZURE_SUBSCRIPTION_ID` | ID of your active Azure subscription. | Windows |
+
+##### Variables (Non-Sensitive)
+| Variable Name | Description | Platform |
+|---|---|---|
+| `APPLE_ID` | Your Apple Developer email address. | macOS |
+| `APPLE_TEAM_ID` | Your 10-character Apple Developer Team ID. | macOS |
+| `AZURE_SIGNING_ACCOUNT_NAME` | The name of your Azure Artifact Signing Account. | Windows |
+| `AZURE_CERTIFICATE_PROFILE_NAME` | The name of your Azure Certificate Profile. | Windows |
+| `AZURE_TRUSTED_SIGNING_ENDPOINT` | Azure signing service endpoint (e.g. `https://cus.codesigning.azure.net/`). | Windows |
+
