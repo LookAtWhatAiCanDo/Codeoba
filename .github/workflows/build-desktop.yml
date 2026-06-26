@@ -18,6 +18,7 @@ permissions:
 env:
   ESAXX_DYNAMIC_LINK: '1'
   ORT_CACHE_DIR: ${{ github.workspace }}/ort_cache
+  CARGO_NET_RETRY: 10
 
 jobs:
   build:
@@ -161,7 +162,7 @@ jobs:
 
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             echo "Release tag detected. Building signed/notarized production binaries..."
-            npm run tauri build
+            npm run tauri build -- --verbose
           else
             echo "Standard commit. Building unsigned development package..."
             unset APPLE_SIGNING_IDENTITY
