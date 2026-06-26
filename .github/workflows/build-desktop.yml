@@ -55,6 +55,12 @@ jobs:
           node-version: 24
           cache: 'npm'
 
+      - name: Sync version from Git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          CODEOBA_TAURI_UPDATE_PUBLIC_KEY: ${{ vars.CODEOBA_TAURI_UPDATE_PUBLIC_KEY }}
+        run: node scripts/sync-version.cjs
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -147,8 +153,8 @@ jobs:
           APPLE_ID: ${{ vars.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD }}
         run: |
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
             echo "macOS platform detected. Resolving active SDK and toolchain paths..."
@@ -163,6 +169,8 @@ jobs:
 
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             echo "Release tag detected. Building signed/notarized production binaries..."
+            export TAURI_SIGNING_PRIVATE_KEY="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY"
+            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD"
             TAURI_ARGS="--verbose"
             if [[ "$SKIP_STAPLING" == "true" ]]; then
               TAURI_ARGS="$TAURI_ARGS --skip-stapling"

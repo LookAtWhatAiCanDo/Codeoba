@@ -217,3 +217,14 @@ pub fn get_indexing_progress<R: tauri::Runtime>(
     let guard = state.last_progress.read().map_err(|e| e.to_string())?;
     Ok(guard.clone())
 }
+
+#[tauri::command]
+pub fn is_updater_active<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> bool {
+    let config = app_handle.config();
+    if let Some(updater_config) = config.plugins.0.get("updater") {
+        if let Some(active) = updater_config.get("active") {
+            return active.as_bool().unwrap_or(false);
+        }
+    }
+    false
+}

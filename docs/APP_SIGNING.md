@@ -2,6 +2,12 @@
 
 This document contains company-wide instructions for signing desktop applications built under **What AI Can Do, LLC** in the **Codeoba-Tauri** repository for macOS and Windows.
 
+> [!NOTE]
+> **Open Security & Kerckhoffs's Principle ("The Enemy Knows the System")**
+> This signing and release architecture is documented openly and transparently. In alignment with Kerckhoffs's Principle, the security of our distribution pipeline does not rely on the secrecy of the design (Security through Obscurity), but rather on the cryptographic integrity of our keys and identity federation.
+>
+> We invite and encourage security experts to review this documentation, our build scripts, and our OIDC configurations, and submit feedback or pull requests for any security enhancements.
+
 ---
 
 ### ⚠️ Platform Signing Models: The Core Difference
@@ -391,3 +397,82 @@ Azure automatically packages and exports logs to your storage account hourly.
        --file /dev/stdout \
        --auth-mode login
      ```
+
+---
+
+## 🔒 Tauri Update Signing Keys (Auto-Updates)
+
+To secure auto-updates, Tauri compiles a public key into the application binary. When checking for updates, the client downloads the release payload and verifies its signature against this public key before running the installer.
+
+> [!TIP]
+> **Environment Isolation (Best Practice)**:
+> It is highly recommended to maintain **two separate key pairs**:
+> 1. **Development/Staging Key Pair**: The public key is committed in [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) by default in the repository. Local builds and staging releases will use this key.
+> 2. **Production Key Pair**: The private key is saved in GitHub Secrets as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY`, and its corresponding public key is saved in GitHub Repository Variables (non-sensitive) as `CODEOBA_TAURI_UPDATE_PUBLIC_KEY`.
+>
+> **Defaulting Updater to Inactive in Dev**:
+> To keep local development silent and avoid unsolicited remote update checks when developers clone and run the app, [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) defaults `"active": false` under the `"updater"` plugin configuration.
+> 
+> To manually test the updater locally during development, temporarily change `"active": false` to `"active": true` under `plugins.updater` in `src-tauri/tauri.conf.json`.
+> 
+> During tagged production release builds, the CI pipeline's version sync script automatically updates `tauri.conf.json` to set `"active": true`, points the endpoints list strictly to `https://codeoba.com/api/update`, and injects the production public key before compilation.
+
+### 1. Generating a Key Pair (Automated)
+
+To automate the key generation and write the public key directly into `src-tauri/tauri.conf.json`, run:
+```bash
+# Option A: Run with automatic password generation (Recommended)
+npm run generate-keys
+
+# Option B: Run with your own password specified (note the -- separator for npm)
+npm run generate-keys -- "yourSecurePasswordHere"
+```
+The script will automatically generate the keys, write the public key configuration into `src-tauri/tauri.conf.json`, print your secure password, and display the next steps for configuring GitHub Secrets.
+
+---
+
+### Alternative: Generating a Key Pair (Manual)
+
+If you prefer to generate the key pair manually without script automation, run:
+```bash
+npm run tauri signer generate -- -w secrets/codeoba-updater.key
+```
+
+> [!WARNING]
+> If a key file already exists at `secrets/codeoba-updater.key`, the manual command will abort to prevent accidental overwrites. If you explicitly intend to overwrite the existing key, append the `--force` flag:
+> ```bash
+> npm run tauri signer generate -- -w secrets/codeoba-updater.key --force
+> ```
+> *Note: Overwriting an active release signing key will break update checks for any installed clients compiled with the old public key, unless you strictly follow the Key Rotation Protocol below.*
+
+* **Password**: You will be prompted to enter a password. This password is your **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD`**.
+* **Public Key**: Printed to stdout. Paste this value into [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) under `plugins.updater.pubkey`.
+* **Private Key**: Saved to `secrets/codeoba-updater.key`. Upload the complete text contents of this file to GitHub Secrets as **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY`**.
+
+---
+
+### 2. Key Rotation Protocol (If Compromised)
+
+If your private key is compromised, you must rotate it. However, because older installed client versions still hold the **old public key**, a direct key cutover will cause all existing users to reject new updates (since the new signature will not match their old compiled public key).
+
+To migrate existing users seamlessly, you must use a **Two-Step Transition Release (Bridge Release)**:
+
+#### Step 1: Build the Bridge Release (e.g. `v1.2.0`)
+1. Generate your new key pair locally (`npx tauri signer generate`).
+2. Update the public key (`pubkey` in `tauri.conf.json`) to the **new** public key.
+3. Keep the **old** private key configured in your GitHub Repository Secrets (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY`).
+4. Push the release tag (e.g., `v1.2.0`). This compiles the application with the **new public key** inside, but signs the installer and `latest.json` manifest with the **old private key**.
+5. Existing users running older versions (e.g., `v1.1.0`) will successfully download and verify this update because it was signed with the old private key they expect. Once installed, they are now running `v1.2.0` and possess the new public key.
+
+#### Step 2: Perform the Hard Cutover (e.g. `v1.3.0`)
+1. Update your GitHub Secrets: replace `CODEOBA_TAURI_UPDATE_PRIVATE_KEY` and `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD` with the **new** private key and password.
+2. Build and release your next version (e.g., `v1.3.0`).
+3. Users on `v1.2.0` (who now have the new public key) will check for updates, verify `v1.3.0`'s new signature successfully, and upgrade.
+
+#### Step 3: Configure the Update Server for Backward Compatibility
+For users who skipped the bridge release (e.g. they remained offline during `v1.2.0` and are trying to upgrade directly from `v1.1.0` to `v1.3.0`), a direct update check will fail signature verification. 
+
+To prevent this, the backend update server (`/api/update`) must act as a router:
+* The update handler inspects the client's current version (passed in the request headers or query).
+* If the client version is **less than the bridge release** (`< 1.2.0`), the server returns the update payload pointing to `v1.2.0` (signed with the old key).
+* If the client version is **equal to or greater than the bridge release** (`>= 1.2.0`), the server returns the update payload pointing to the latest version (`v1.3.0` signed with the new key).

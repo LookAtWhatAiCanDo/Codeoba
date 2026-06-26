@@ -24,3 +24,8 @@ secrets/
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri update keys
+src-tauri/*.key
+src-tauri/*.key.pub
+

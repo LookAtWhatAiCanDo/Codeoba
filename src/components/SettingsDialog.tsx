@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show, onMount } from "solid-js";
 import { 
   X, 
   Trash2, 
@@ -11,6 +11,7 @@ import {
   Settings
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
+import { check } from "@tauri-apps/plugin-updater";
 import { logFE } from "../utils/logger";
 
 interface SourceMetadata {
@@ -29,6 +30,7 @@ interface SettingsDialogProps {
   onRefreshSources: () => void;
   similarityThreshold?: number;
   onSimilarityThresholdChange?: (val: number) => void;
+  onUpdateAvailable?: (update: any) => void;
 }
 
 type Category = "general" | "sources" | "semantic" | "permissions";
@@ -49,6 +51,16 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [deletingSourceId, setDeletingSourceId] = createSignal<string | null>(null);
   const [checkingUpdates, setCheckingUpdates] = createSignal(false);
   const [updateCheckResult, setUpdateCheckResult] = createSignal<string | null>(null);
+  const [updaterActive, setUpdaterActive] = createSignal(false);
+
+  onMount(async () => {
+    try {
+      const active = await invoke<boolean>("is_updater_active");
+      setUpdaterActive(active);
+    } catch (err) {
+      logFE("error", `Failed to query updater active state: ${err}`);
+    }
+  });
 
   // General Settings
   const [cacheEnabled, setCacheEnabled] = createSignal(
@@ -111,13 +123,28 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     handleThresholdChange(0.35);
   };
 
-  const handleCheckUpdates = () => {
+  const handleCheckUpdates = async () => {
     setCheckingUpdates(true);
     setUpdateCheckResult(null);
-    setTimeout(() => {
+    try {
+      logFE("info", "Settings: Checking for updates...");
+      const update = await check();
       setCheckingUpdates(false);
-      setUpdateCheckResult("Codeoba is up to date! (v0.1.0)");
-    }, 1500);
+      if (update && update.available) {
+        logFE("info", `Settings: Update found: ${update.version}`);
+        setUpdateCheckResult(`Update found: v${update.version}`);
+        if (props.onUpdateAvailable) {
+          props.onUpdateAvailable(update);
+        }
+      } else {
+        logFE("info", "Settings: No update available");
+        setUpdateCheckResult("Codeoba is up to date!");
+      }
+    } catch (err: any) {
+      logFE("error", `Settings: Update check failed: ${err}`);
+      setCheckingUpdates(false);
+      setUpdateCheckResult(`Error checking updates: ${err}`);
+    }
   };
 
   const handleToggleSourceDecision = (sourceId: string, decision: "allow" | "deny" | "ask") => {
@@ -295,41 +322,43 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Auto Update Check */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-text-primary">Auto-Updates</h4>
-                      <p class="text-[10px] text-text-secondary/70">Automatically check for new versions on startup.</p>
+                <Show when={updaterActive()}>
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <h4 class="text-xs font-bold text-text-primary">Auto-Updates</h4>
+                        <p class="text-[10px] text-text-secondary/70">Automatically check for new versions on startup.</p>
+                      </div>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={autoUpdateEnabled()} 
+                          onChange={(e) => handleToggleAutoUpdate(e.currentTarget.checked)}
+                          class="sr-only peer"
+                        />
+                        <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                      </label>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={autoUpdateEnabled()} 
-                        onChange={(e) => handleToggleAutoUpdate(e.currentTarget.checked)}
-                        class="sr-only peer"
-                      />
-                      <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
-                    </label>
-                  </div>
-                  <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
-                    <span class="text-text-secondary">Current Version: v0.1.0</span>
-                    <button
-                      onClick={handleCheckUpdates}
-                      disabled={checkingUpdates()}
-                      class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Show when={checkingUpdates()} fallback={<span>Check for Updates</span>}>
-                        <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                        <span>Checking...</span>
-                      </Show>
-                    </button>
-                  </div>
-                  <Show when={updateCheckResult()}>
-                    <div class="text-[11px] font-semibold text-emerald-400">
-                      {updateCheckResult()}
+                    <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
+                      <span class="text-text-secondary">Current Version: v0.1.0</span>
+                      <button
+                        onClick={handleCheckUpdates}
+                        disabled={checkingUpdates()}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Show when={checkingUpdates()} fallback={<span>Check for Updates</span>}>
+                          <RefreshCw class="w-3.5 h-3.5 animate-spin" />
+                          <span>Checking...</span>
+                        </Show>
+                      </button>
                     </div>
-                  </Show>
-                </div>
+                    <Show when={updateCheckResult()}>
+                      <div class="text-[11px] font-semibold text-emerald-400">
+                        {updateCheckResult()}
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
 
                 {/* Log Parsing Mode */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">

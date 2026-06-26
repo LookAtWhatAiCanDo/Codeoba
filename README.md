@@ -110,9 +110,43 @@ npm run tauri build
 
 ---
 
-## 🔄 CI/CD Release Pipeline
+## 🔄 Auto-Updates & CI/CD Release Pipeline
 
-### 1. GitHub Actions CI/CD Pipeline
+Codeoba features secure, cryptographically-signed auto-updates hosted on GitHub Releases, powered by the Tauri v2 Updater.
+
+### 1. Cryptographic Update Signing
+By default, the repository's [tauri.conf.json](src-tauri/tauri.conf.json) points to the development/staging proxy at:
+`https://dev.codeoba.com/api/update`
+
+During tagged production builds, the CI pipeline automatically rewrites this configuration to target the production update proxy at:
+`https://codeoba.com/api/update`
+
+This proxy handles client telemetry logging and retrieves the signed `latest.json` bundle configuration directly from GitHub Releases. Update packages must be signed using a **Minisign** keypair:
+*   The public key is configured inside [tauri.conf.json](src-tauri/tauri.conf.json) under `plugins.updater.pubkey`.
+*   The private key is stored locally (ignored by Git) and must be provided as an environment variable (`TAURI_SIGNING_PRIVATE_KEY`) to compile updates.
+
+#### Local/Staging Testing
+By default, the updater is disabled in the repository configuration (`"active": false` under `"updater"` in `tauri.conf.json`) to prevent unwanted network checks during development.
+
+To test update checking and download progress triggers locally:
+1. Set the `MOCK_LATEST_RELEASE` flag (e.g. `9.9.9` or `true`) inside `.secret.local` in `Codeoba-Backend`.
+2. Run the local Firebase emulator (hosting on port `5000`).
+3. In [tauri.conf.json](src-tauri/tauri.conf.json) under `plugins.updater`:
+   - Change `"active": false` to `"active": true`.
+   - Configure the update target:
+     - **Staging/Dev**: Point the `endpoints` array to `["https://dev.codeoba.com/api/update"]` (pre-configured to use dev keys).
+     - **Local Testing**: Point the `endpoints` array to `["http://localhost:5000/api/update"]`.
+
+To sign updates locally during a build, run:
+```bash
+# Set private key and password (if any) before compiling
+export TAURI_SIGNING_PRIVATE_KEY="your_private_key_content"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="your_key_password"
+npm run tauri build
+```
+This generates the platform installer together with a `.sig` signature file and updater configuration block.
+
+### 2. GitHub Actions CI/CD Pipeline
 A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It automatically triggers, packages, signs (using Apple Developer certificates for macOS and keyless Azure Trusted Signing for Windows via OIDC), and drafts a new GitHub Release when you push a version tag:
 
 ```bash
@@ -128,6 +162,8 @@ To allow the release action to compile, sign, and notarize the packages successf
 ##### Secrets (Sensitive)
 | Secret Name | Description | Platform |
 |---|---|---|
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY` | Minisign private key content (copied from `codeoba-updater.key`). | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD` | The password used to encrypt the minisign key (if any). | All (Updater) |
 | `MACOS_CERTIFICATE_P12` | Base64-encoded Developer ID Application `.p12` file. | macOS |
 | `MACOS_CERTIFICATE_PASSWORD` | Password for the Developer ID Application `.p12` file. | macOS |
 | `MACOS_INSTALLER_CERTIFICATE_P12` | Base64-encoded Developer ID Installer `.p12` file. | macOS |
@@ -146,8 +182,8 @@ To allow the release action to compile, sign, and notarize the packages successf
 | `AZURE_CERTIFICATE_PROFILE_NAME` | The name of your Azure Certificate Profile. | Windows |
 | `AZURE_TRUSTED_SIGNING_ENDPOINT` | Azure signing service endpoint (e.g. `https://cus.codesigning.azure.net/`). | Windows |
 
-### 2. CI/CD Linker & Cache Optimizations
-To support compilation of native C/C++ dependencies in Rust (such as `esaxx-rs` and `ort`/ONNX Runtime) across different operating systems, the workflow has been optimized with the following configurations:
+### 3. CI/CD Linker, Cache, and Notarization Optimizations
+To support compilation of native C/C++ dependencies in Rust (such as `esaxx-rs` and `ort`/ONNX Runtime) and run efficient packaging pipelines across different operating systems, the workflow has been optimized with the following configurations:
 
 * **Dynamic MSVC C Runtime Linking (`ESAXX_DYNAMIC_LINK=1`):**  
   Windows MSVC builds use the dynamic CRT (`/MD`) by default. However, some dependencies like `esaxx-rs` historically force static CRT linking (`/MT`), causing `LNK2038` linker mismatches. The workflow compiles a patched dynamic-link-enabled fork and sets `ESAXX_DYNAMIC_LINK: '1'` globally to ensure consistent CRT linkage.
@@ -155,4 +191,6 @@ To support compilation of native C/C++ dependencies in Rust (such as `esaxx-rs` 
   By default, `ort` downloads its prebuilt ONNX Runtime binaries into the runner's user home directory (which is not cached). This causes missing binary linker errors on subsequent builds. We redirect downloads to `ort_cache` at the workspace root and cache it separately via `actions/cache` to ensure the binaries are always present alongside Cargo's compiled target objects.
 * **Automatic Workflow Cache Invalidation:**  
   The Rust cache step uses `prefix-key: ${{ hashFiles('.github/workflows/build-desktop.yml') }}`. This automatically invalidates the cache whenever the build configuration or environment variables are modified, preventing stale caching issues.
+* **Skip Notarization Polling (`SKIP_STAPLING: 'true'`):**  
+  By default, macOS notarization wait times can be highly unpredictable, taking hours for complex binaries that contain JIT compilers or embedded ML runtimes (such as `wasmtime` and `ort`). The workflow introduces a global `SKIP_STAPLING` environment variable (default: `'true'`). When enabled, the workflow runs `tauri build -- --skip-stapling`, which submits the bundle to Apple's notarization server but returns immediately. Gatekeeper will verify the notarization online when online macOS clients first run the app. Setting `SKIP_STAPLING` to `'false'` restores full polling and stapling.
 

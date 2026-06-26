@@ -8,6 +8,8 @@
     "opener:default",
     "core:window:allow-set-size",
     "core:window:allow-center",
-    "core:window:allow-show"
+    "core:window:allow-show",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

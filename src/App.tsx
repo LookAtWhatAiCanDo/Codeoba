@@ -1,6 +1,8 @@
 import { createSignal, createEffect, onMount, onCleanup, Show, createMemo } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { Sidebar } from "./components/Sidebar";
 import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
@@ -16,7 +18,9 @@ import {
   ArrowRight,
   Home,
   RotateCw,
-  Settings
+  Settings,
+  X,
+  Download
 } from "lucide-solid";
 import "./App.css";
 
@@ -65,6 +69,13 @@ function App() {
   const [similarityThreshold, setSimilarityThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
+
+  // Auto-update states
+  const [updateManifest, setUpdateManifest] = createSignal<any>(null);
+  const [showUpdateModal, setShowUpdateModal] = createSignal(false);
+  const [isUpdating, setIsUpdating] = createSignal(false);
+  const [updateProgress, setUpdateProgress] = createSignal(0);
+  const [updateError, setUpdateError] = createSignal<string | null>(null);
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
   const [historyIndex, setHistoryIndex] = createSignal<number>(0);
@@ -225,7 +236,75 @@ function App() {
     if (!isAlreadyIndexing) {
       handleRebuildIndex();
     }
+
+    // Background update check if enabled
+    const autoUpdate = localStorage.getItem("codeoba-auto-update") !== "false";
+    if (autoUpdate) {
+      setTimeout(async () => {
+        try {
+          const updaterActive = await invoke<boolean>("is_updater_active");
+          if (!updaterActive) {
+            logFE("info", "Updater is disabled in configuration, skipping background check.");
+            return;
+          }
+
+          logFE("info", "Checking for updates in background...");
+          const update = await check();
+          if (update && update.available) {
+            logFE("info", `Update found: ${update.version}`);
+            setUpdateManifest(update);
+            setShowUpdateModal(true);
+          } else {
+            logFE("info", "No update available at startup");
+          }
+        } catch (err: any) {
+          logFE("error", `Background update check failed: ${err}`);
+        }
+      }, 3000); // delay check slightly after startup
+    }
   });
+
+  const handleStartUpdate = async () => {
+    const update = updateManifest();
+    if (!update) return;
+
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateProgress(0);
+
+    try {
+      logFE("info", `Starting download and installation for v${update.version}...`);
+      
+      let downloaded = 0;
+      let contentLength = 0;
+      
+      await update.downloadAndInstall((event: any) => {
+        switch (event.event) {
+          case "Started":
+            contentLength = event.data?.contentLength || 0;
+            logFE("info", `Download started. Size: ${contentLength}`);
+            break;
+          case "Progress":
+            downloaded += event.data?.chunkLength || 0;
+            if (contentLength > 0) {
+              setUpdateProgress(Math.round((downloaded / contentLength) * 100));
+            }
+            break;
+          case "Finished":
+            logFE("info", "Download finished.");
+            setUpdateProgress(100);
+            break;
+        }
+      });
+
+      logFE("info", "Update installation completed successfully. Relaunching...");
+      await relaunch();
+    } catch (err: any) {
+      logFE("error", `Failed to download and install update: ${err}`);
+      setUpdateError(String(err));
+      setIsUpdating(false);
+    }
+  };
 
   // Handle debounced search changes
   createEffect(() => {
@@ -602,7 +681,105 @@ function App() {
         }}
         similarityThreshold={similarityThreshold()}
         onSimilarityThresholdChange={setSimilarityThreshold}
+        onUpdateAvailable={(update) => {
+          setUpdateManifest(update);
+          setShowUpdateModal(true);
+          setShowSettings(false);
+        }}
       />
+
+      {/* Update Modal Overlay */}
+      <Show when={showUpdateModal() && updateManifest()}>
+        <div class="fixed inset-0 bg-black/75 z-[60] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
+          <div class="w-[460px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            
+            {/* Close button - only show if NOT currently installing an update */}
+            <Show when={!isUpdating()}>
+              <button 
+                onClick={() => setShowUpdateModal(false)}
+                class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </Show>
+
+            {/* Header info */}
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
+                <RotateCw class={`w-5 h-5 ${isUpdating() ? 'animate-spin' : ''}`} />
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
+                  Update Available
+                </h3>
+                <p class="text-[10px] text-text-secondary/70">A new version of Codeoba is ready to install.</p>
+              </div>
+            </div>
+
+            {/* Version Details */}
+            <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-2 text-xs">
+              <div class="flex items-center justify-between font-semibold">
+                <span class="text-text-secondary">New Version:</span>
+                <span class="text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full text-[10px]">
+                  v{updateManifest().version}
+                </span>
+              </div>
+              
+              <Show when={updateManifest().body}>
+                <div class="border-t border-border/30 pt-2 space-y-1">
+                  <span class="text-text-secondary font-semibold">Release Notes:</span>
+                  <div class="text-[10px] text-text-secondary/90 leading-relaxed max-h-32 overflow-y-auto font-mono whitespace-pre-line bg-background/30 p-2 rounded-lg border border-border/20">
+                    {updateManifest().body}
+                  </div>
+                </div>
+              </Show>
+            </div>
+
+            {/* Status & Progress Bar */}
+            <Show when={isUpdating()}>
+              <div class="space-y-2">
+                <div class="flex justify-between text-[10px] font-semibold text-text-secondary">
+                  <span>Downloading & Installing...</span>
+                  <span class="text-accent">{updateProgress()}%</span>
+                </div>
+                <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/40">
+                  <div 
+                    class="h-full bg-accent transition-all duration-300 rounded-full"
+                    style={{ width: `${updateProgress()}%` }}
+                  />
+                </div>
+              </div>
+            </Show>
+
+            {/* Error Message */}
+            <Show when={updateError()}>
+              <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[10px] text-red-400">
+                <AlertCircle class="w-4 h-4 flex-shrink-0" />
+                <span class="truncate flex-1">{updateError()}</span>
+              </div>
+            </Show>
+
+            {/* Actions */}
+            <div class="flex gap-3 w-full pt-1">
+              <Show when={!isUpdating()}>
+                <button
+                  onClick={() => setShowUpdateModal(false)}
+                  class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={handleStartUpdate}
+                  class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                >
+                  <Download class="w-3.5 h-3.5" />
+                  <span>Update Now</span>
+                </button>
+              </Show>
+            </div>
+          </div>
+        </div>
+      </Show>
     </div>
   );
 }

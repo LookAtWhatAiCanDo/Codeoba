@@ -31,8 +31,28 @@ pub fn run() {
         }
     }
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let context = tauri::generate_context!();
+    
+    // Check if the updater is active from configuration
+    let updater_active = if let Some(updater_config) = context.config().plugins.0.get("updater") {
+        updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false)
+    } else {
+        false
+    };
+
+    let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init());
+
+    if updater_active {
+        crate::log_info!("Updater is active in configuration. Registering updater and process plugins...");
+        builder = builder
+            .plugin(tauri_plugin_process::init())
+            .plugin(tauri_plugin_updater::Builder::new().build());
+    } else {
+        crate::log_info!("Updater is disabled in configuration. Skipping updater and process plugin registration.");
+    }
+
+    builder
         .manage(watcher::WatcherState {
             watcher: std::sync::Mutex::new(None),
             last_generations: std::sync::Mutex::new(std::collections::HashMap::new()),
@@ -81,8 +101,9 @@ pub fn run() {
             commands::rebuild_index,
             commands::log_from_frontend,
             commands::check_reset_window,
-            commands::get_indexing_progress
+            commands::get_indexing_progress,
+            commands::is_updater_active
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
