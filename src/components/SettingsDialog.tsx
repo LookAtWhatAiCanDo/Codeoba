@@ -127,23 +127,46 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setCheckingUpdates(true);
     setUpdateCheckResult(null);
     try {
-      logFE("info", "Settings: Checking for updates...");
+      logFE("info", "Settings: Initiating check for updates. Current version: v0.1.0");
+      logFE("info", "Settings: Querying the update service...");
       const update = await check();
       setCheckingUpdates(false);
       if (update && update.available) {
-        logFE("info", `Settings: Update found: ${update.version}`);
+        logFE("info", `Settings: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);
         setUpdateCheckResult(`Update found: v${update.version}`);
         if (props.onUpdateAvailable) {
           props.onUpdateAvailable(update);
         }
       } else {
-        logFE("info", "Settings: No update available");
+        logFE("info", "Settings: Update check successful. The application is up to date.");
         setUpdateCheckResult("Codeoba is up to date!");
       }
     } catch (err: any) {
-      logFE("error", `Settings: Update check failed: ${err}`);
+      logFE("error", `Settings: Update check failed. Error details: ${err}`);
       setCheckingUpdates(false);
       setUpdateCheckResult(`Error checking updates: ${err}`);
+      
+      // Attempt diagnostic connection to extract actual HTTP response status and body
+      try {
+        logFE("info", "Settings: Attempting diagnostic connection to find root cause...");
+        const endpoints = await invoke<string[]>("get_resolved_updater_endpoints");
+        if (endpoints && endpoints.length > 0) {
+          logFE("info", `Settings: Diagnostic fetch hitting resolved endpoint: ${endpoints[0]}`);
+          const diagResponse = await fetch(endpoints[0], {
+            method: "GET",
+            signal: AbortSignal.timeout(5000)
+          });
+          if (!diagResponse.ok) {
+            const bodyText = await diagResponse.text();
+            logFE("error", `Settings: Diagnostic fetch returned HTTP ${diagResponse.status}: ${bodyText}`);
+            setUpdateCheckResult(`Error checking updates: ${bodyText}`);
+          } else {
+            logFE("info", "Settings: Diagnostic fetch succeeded. Update manifest exists but is likely not compatible.");
+          }
+        }
+      } catch (diagErr: any) {
+        logFE("error", `Settings: Diagnostic connection failed: ${diagErr.message || diagErr}`);
+      }
     }
   };
 
@@ -353,7 +376,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       </button>
                     </div>
                     <Show when={updateCheckResult()}>
-                      <div class="text-[11px] font-semibold text-emerald-400">
+                      <div 
+                        class="text-[11px] font-semibold"
+                        classList={{
+                          "text-red-400": updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"),
+                          "text-emerald-400": !(updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"))
+                        }}
+                      >
                         {updateCheckResult()}
                       </div>
                     </Show>

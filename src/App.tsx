@@ -244,21 +244,22 @@ function App() {
         try {
           const updaterActive = await invoke<boolean>("is_updater_active");
           if (!updaterActive) {
-            logFE("info", "Updater is disabled in configuration, skipping background check.");
+            logFE("info", "Background Updater: Updater is disabled in configuration, skipping background check.");
             return;
           }
 
-          logFE("info", "Checking for updates in background...");
+          logFE("info", "Background Updater: Initiating background check. Current version: v0.1.0");
+          logFE("info", "Background Updater: Querying the update service...");
           const update = await check();
           if (update && update.available) {
-            logFE("info", `Update found: ${update.version}`);
+            logFE("info", `Background Updater: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);
             setUpdateManifest(update);
             setShowUpdateModal(true);
           } else {
-            logFE("info", "No update available at startup");
+            logFE("info", "Background Updater: Update check successful. The application is up to date.");
           }
         } catch (err: any) {
-          logFE("error", `Background update check failed: ${err}`);
+          logFE("error", `Background Updater: Update check failed. Error details: ${err}`);
         }
       }, 3000); // delay check slightly after startup
     }

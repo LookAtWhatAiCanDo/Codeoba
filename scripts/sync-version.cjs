@@ -31,7 +31,22 @@ if (isDev) {
     process.exit(0);
   }
   version = tag.substring(1);
-  console.log(`Syncing project versions to release version: ${version}`);
+  
+  // Read current version from package.json to verify match
+  const pkgPath = path.join(__dirname, '../package.json');
+  if (!fs.existsSync(pkgPath)) {
+    console.error(`Error: package.json not found at ${pkgPath}`);
+    process.exit(1);
+  }
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  
+  if (pkg.version !== version) {
+    console.error(`❌ Error: Pushed tag version "v${version}" does not match package.json version "${pkg.version}".`);
+    console.error(`To ensure version consistency, please run "npm run bump -- ${version} --commit" locally first, push to main, and then push the version tag.`);
+    process.exit(1);
+  }
+  
+  console.log(`Project version matches release version: ${version}`);
 }
 
 // 1. Update package.json

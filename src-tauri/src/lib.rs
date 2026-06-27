@@ -102,7 +102,8 @@ pub fn run() {
             commands::log_from_frontend,
             commands::check_reset_window,
             commands::get_indexing_progress,
-            commands::is_updater_active
+            commands::is_updater_active,
+            commands::get_resolved_updater_endpoints
         ])
         .run(context)
         .expect("error while running tauri application");

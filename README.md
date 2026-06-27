@@ -95,11 +95,19 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 📦 Building for Production
 
-To compile and package the application into a single platform-specific installer (`.dmg`/`.pkg` on macOS, `.msi` on Windows, `.deb` on Linux):
+To compile and package the application locally (without requiring updater signing keys):
 ```bash
+npm run build:local
+```
+
+For production builds (where updates are signed and verified using Minisign):
+```bash
+# Set private key and password before compiling
+export TAURI_SIGNING_PRIVATE_KEY="your_private_key_content"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="your_key_password"
 npm run tauri build
 ```
-*Tauri automatically compiles the Rust source code in `--release` mode, minifies frontend SolidJS assets, bundles them into the binary, and signs the resulting package if code-signing certificates are configured.*
+*Tauri compiles the Rust source code in `--release` mode, minifies frontend SolidJS assets, bundles them into the binary, and packages the installer (`.dmg` on macOS, `.msi` on Windows, `.deb` on Linux).*
 
 ---
 
@@ -150,11 +158,26 @@ This generates the platform installer together with a `.sig` signature file and 
 A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It triggers automatically under two conditions:
 
 1. **Staging / Dev Releases (Pushes to `main`)**: When code is pushed to `main`, the pipeline automatically builds and signs the packages using the staging key pair, publishes them under a unique pre-release tag (e.g. `v0.1.0-124`), and prunes previous dev pre-releases and tags to keep the release list clean. Staging clients query `dev.codeoba.com/api/update` to receive updates.
-2. **Tagged Production Releases (`v*`)**: When you push a version tag, it compiles, signs (using Apple Developer ID certificates for macOS and keyless Azure Trusted Signing for Windows via OIDC), and creates a production GitHub Release:
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
+2. **Tagged Production Releases (`v*`)**: To publish a new stable production release:
+   
+   *   **Step 1: Bump the Version**: Synchronize the version across all project files to the target version (e.g. `0.1.3`) using the bump helper script:
+       ```bash
+       # Bump files locally
+       npm run bump -- 0.1.3
+       
+       # Bump files and automatically commit the change to main
+       npm run bump -- 0.1.3 --commit
+       ```
+       *(This consistently updates `package.json`, `package-lock.json`, `tauri.conf.json`, and `Cargo.toml`).*
+   *   **Step 2: Tag and Push**: Create and push a git tag matching the new version:
+       ```bash
+       git tag v0.1.3
+       git push origin v0.1.3
+       ```
+       *The pipeline compiles the stable binary using the tag name as the compiled version (e.g., `0.1.3`), and uploads the production `latest.json` manifest directly to the release page.*
+
+       > [!IMPORTANT]
+       > **Version Match Guard:** The CI release pipeline validates that the pushed tag version (e.g. `v0.1.3`) matches the static version in `package.json`. If they do not match, the CI job will fail immediately to prevent out-of-sync builds.
 
 For complete instructions on setting up credentials, OIDC, keypairs, and rotation, see the detailed [App Signing Guide](docs/APP_SIGNING.md).
 

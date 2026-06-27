@@ -228,3 +228,42 @@ pub fn is_updater_active<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> 
     }
     false
 }
+
+#[tauri::command]
+pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Vec<String> {
+    let config = app_handle.config();
+    let current_version = config.version.clone().unwrap_or_else(|| "0.1.0".to_string());
+    
+    // Resolve target and arch
+    let target = if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "macos") {
+        "darwin"
+    } else {
+        "linux"
+    };
+
+    let arch = if cfg!(target_arch = "x86_64") {
+        "x86_64"
+    } else if cfg!(target_arch = "aarch64") {
+        "aarch64"
+    } else {
+        "x86"
+    };
+
+    if let Some(updater_config) = config.plugins.0.get("updater") {
+        if let Some(endpoints) = updater_config.get("endpoints") {
+            if let Some(arr) = endpoints.as_array() {
+                return arr.iter()
+                    .filter_map(|val| val.as_str())
+                    .map(|s| {
+                        s.replace("{{current_version}}", &current_version)
+                         .replace("{{target}}", target)
+                         .replace("{{arch}}", arch)
+                    })
+                    .collect();
+            }
+        }
+    }
+    Vec::new()
+}
