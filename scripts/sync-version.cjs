@@ -64,7 +64,7 @@ if (fs.existsSync(confPath)) {
     conf.plugins.updater.active = true;
     
     if (isDev) {
-      conf.plugins.updater.endpoints = ["https://dev.codeoba.com/api/update"];
+      conf.plugins.updater.endpoints = ["https://dev.codeoba.com/api/update?version={{current_version}}&target={{target}}&arch={{arch}}"];
       // Override public key for dev if provided in environment
       const devPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV;
       if (devPubKey) {
@@ -72,7 +72,7 @@ if (fs.existsSync(confPath)) {
         console.log('Overrode updater public key to dev key');
       }
     } else {
-      conf.plugins.updater.endpoints = ["https://codeoba.com/api/update"];
+      conf.plugins.updater.endpoints = ["https://codeoba.com/api/update?version={{current_version}}&target={{target}}&arch={{arch}}"];
       // Override public key for production if provided in environment
       const prodPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD;
       if (prodPubKey) {
