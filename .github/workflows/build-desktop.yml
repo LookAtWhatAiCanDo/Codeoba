@@ -183,7 +183,7 @@ jobs:
             unset APPLE_ID
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
-            npm run tauri build
+            npm run tauri build -- --config '{"bundle": {"createUpdaterArtifacts": false}}'
           fi
 
       - name: Azure Login
