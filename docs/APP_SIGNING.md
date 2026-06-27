@@ -407,15 +407,19 @@ To secure auto-updates, Tauri compiles a public key into the application binary.
 > [!TIP]
 > **Environment Isolation (Best Practice)**:
 > It is highly recommended to maintain **two separate key pairs**:
-> 1. **Development/Staging Key Pair**: The public key is committed in [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) by default in the repository. Local builds and staging releases will use this key.
-> 2. **Production Key Pair**: The private key is saved in GitHub Secrets as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY`, and its corresponding public key is saved in GitHub Repository Variables (non-sensitive) as `CODEOBA_TAURI_UPDATE_PUBLIC_KEY`.
+> 1. **Development/Staging Key Pair**: 
+>    - The private key is saved in GitHub Secrets as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV`, and its password is saved as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV`.
+>    - The corresponding public key is saved in GitHub Repository Variables as `CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV` (which overrides the default value in `tauri.conf.json`).
+> 2. **Production Key Pair**: 
+>    - The private key is saved in GitHub Secrets as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD`, and its password is saved as `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD`.
+>    - The corresponding public key is saved in GitHub Repository Variables as `CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD`.
 >
 > **Defaulting Updater to Inactive in Dev**:
 > To keep local development silent and avoid unsolicited remote update checks when developers clone and run the app, [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) defaults `"active": false` under the `"updater"` plugin configuration.
 > 
 > To manually test the updater locally during development, temporarily change `"active": false` to `"active": true` under `plugins.updater` in `src-tauri/tauri.conf.json`.
 > 
-> During tagged production release builds, the CI pipeline's version sync script automatically updates `tauri.conf.json` to set `"active": true`, points the endpoints list strictly to `https://codeoba.com/api/update`, and injects the production public key before compilation.
+> During CI builds, the pipeline's version sync script automatically updates `tauri.conf.json` to set `"active": true`, configures the correct update proxy endpoint (`dev.codeoba.com/api/update` for main pushes and `codeoba.com/api/update` for tagged releases), and injects the corresponding environment's public key before compilation.
 
 ### 1. Generating a Key Pair (Automated)
 
@@ -445,9 +449,9 @@ npm run tauri signer generate -- -w secrets/codeoba-updater.key
 > ```
 > *Note: Overwriting an active release signing key will break update checks for any installed clients compiled with the old public key, unless you strictly follow the Key Rotation Protocol below.*
 
-* **Password**: You will be prompted to enter a password. This password is your **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD`**.
+* **Password**: You will be prompted to enter a password. This password is your **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV`** or **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD`**.
 * **Public Key**: Printed to stdout. Paste this value into [tauri.conf.json](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/tauri.conf.json) under `plugins.updater.pubkey`.
-* **Private Key**: Saved to `secrets/codeoba-updater.key`. Upload the complete text contents of this file to GitHub Secrets as **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY`**.
+* **Private Key**: Saved to `secrets/codeoba-updater.key`. Upload the complete text contents of this file to GitHub Secrets as **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV`** or **`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD`**.
 
 ---
 
@@ -460,12 +464,12 @@ To migrate existing users seamlessly, you must use a **Two-Step Transition Relea
 #### Step 1: Build the Bridge Release (e.g. `v1.2.0`)
 1. Generate your new key pair locally (`npx tauri signer generate`).
 2. Update the public key (`pubkey` in `tauri.conf.json`) to the **new** public key.
-3. Keep the **old** private key configured in your GitHub Repository Secrets (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY`).
+3. Keep the **old** private key configured in your GitHub Repository Secrets (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` or `_DEV`).
 4. Push the release tag (e.g., `v1.2.0`). This compiles the application with the **new public key** inside, but signs the installer and `latest.json` manifest with the **old private key**.
 5. Existing users running older versions (e.g., `v1.1.0`) will successfully download and verify this update because it was signed with the old private key they expect. Once installed, they are now running `v1.2.0` and possess the new public key.
 
 #### Step 2: Perform the Hard Cutover (e.g. `v1.3.0`)
-1. Update your GitHub Secrets: replace `CODEOBA_TAURI_UPDATE_PRIVATE_KEY` and `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD` with the **new** private key and password.
+1. Update your GitHub Secrets: replace `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` and `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD` with the **new** private key and password.
 2. Build and release your next version (e.g., `v1.3.0`).
 3. Users on `v1.2.0` (who now have the new public key) will check for updates, verify `v1.3.0`'s new signature successfully, and upgrade.
 
@@ -476,3 +480,88 @@ To prevent this, the backend update server (`/api/update`) must act as a router:
 * The update handler inspects the client's current version (passed in the request headers or query).
 * If the client version is **less than the bridge release** (`< 1.2.0`), the server returns the update payload pointing to `v1.2.0` (signed with the old key).
 * If the client version is **equal to or greater than the bridge release** (`>= 1.2.0`), the server returns the update payload pointing to the latest version (`v1.3.0` signed with the new key).
+
+---
+
+## 🛠️ Staging Releases & Pruning Pipeline (Pushes to `main`)
+
+To safely test the auto-update process without cluttering GitHub or hitting CDN caching issues, pushes to the `main` branch trigger a specialized **Staging Release & Pruning** workflow:
+
+### 1. Version Generation & Signing
+- The version is dynamically set to `v<package.json version>-<build_number>` (e.g., `v0.1.0-124`).
+- Built installers and updater assets are signed using the staging private key (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV`).
+
+### 2. Automatic Pruning of Old Dev Releases
+- Creating unique release tags avoids the Fastly CDN caching issue where overwritten assets under a single tag (like `dev-release`) are served stale.
+- To prevent spamming the GitHub Releases page with dozens of older dev builds, the release job uses the GitHub CLI (`gh`) to:
+  1. List all pre-releases matching the pattern `v*-*`.
+  2. Programmatically delete those old releases and remote Git tag references from GitHub.
+  3. Publish the new pre-release (e.g., `v0.1.0-124`).
+- Consequently, **only a single pre-release is ever visible** on the GitHub Releases list (the absolute latest staging version).
+
+### 3. Dynamic Resolving Staging Endpoint
+- **Concept**: By default, the update check endpoint fetches a static `latest.json` manifest from the latest GitHub release. However, dev/staging clients need to test updates without affecting the static production `latest.json`.
+- **How it works**: When the environment variable `CODEOBA_TAURI_LATEST_JSON_URL` is set to `"DYNAMIC_DEV"`, the backend Cloud Function (`checkLatestReleaseTauri`) intercepts the request and:
+  1. Queries the GitHub Releases API: `https://api.github.com/repos/LookAtWhatAiCanDo/Codeoba-Tauri/releases`.
+  2. Scans the list for the most recent pre-release matching the dev version pattern `v*-*` (e.g., `v0.1.0-124`).
+  3. Locates the `latest.json` asset uploaded specifically to that dev pre-release.
+  4. Returns the contents of that specific dev manifest to the client.
+
+#### ⚙️ Configuration Guide
+
+##### A. Local Emulator Testing
+To test the dynamic resolution locally with the Firebase Emulator:
+1. Open the backend's local secrets configuration file: `Codeoba-Backend/functions/.secret.local`
+2. Add the environment variable override:
+   ```env
+   CODEOBA_TAURI_LATEST_JSON_URL=DYNAMIC_DEV
+   ```
+3. Run the backend emulator using `./start-emulators.sh`.
+
+##### B. Deployed Staging Cloud Function (codeoba-dev)
+To configure the deployed staging Cloud Function, set the environment variable using the Google Cloud Console:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and navigate to **Cloud Functions**.
+2. Select your `update` or `checkLatestReleaseTauri` function under the `codeoba-dev` project.
+3. Click **Edit** -> Expand **Runtime, build, connections and security settings**.
+4. Under the **Runtime environment variables** section, add a new variable:
+   * **Name**: `CODEOBA_TAURI_LATEST_JSON_URL`
+   * **Value**: `DYNAMIC_DEV`
+5. Click **Next** and click **Deploy**.
+
+##### C. Production Cloud Function (codeoba-prod)
+Do **NOT** set the `CODEOBA_TAURI_LATEST_JSON_URL` variable in your production environment. 
+* Leave this variable **unset** (it will automatically default to the production GitHub release URL: `https://github.com/LookAtWhatAiCanDo/Codeoba-Tauri/releases/latest/download/latest.json`).
+
+#### 🔐 Setting up the GITHUB_TOKEN Secret to Avoid Rate Limits
+To prevent hitting GitHub's unauthenticated API rate limits (which can cause staging update checks to fail on shared Google Cloud IPs), you must configure a read-only **GitHub Personal Access Token (PAT)** as a secret in your staging project. This isolates the rate limit to your token and raises it to 5,000 requests/hour.
+
+##### Step 1: Generate a Read-Only GitHub PAT
+1. Log into GitHub, go to your profile photo -> **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
+2. Click **Generate new token**.
+3. Name it (e.g. `dev.codeoba.com Updater Token`).
+4. Set **Repository access** to **Only select repositories** -> Select `LookAtWhatAiCanDo/Codeoba-Tauri`.
+5. Under **Permissions** -> **Repository permissions**, grant **Metadata** -> `Read-only` (this is the minimum scope required to read public releases).
+6. Click **Generate token** and copy it.
+
+##### Step 2: Register the Secret in Firebase
+Store the token securely in Google Secret Manager using the Firebase CLI:
+1. Open your terminal in the `Codeoba-Backend/` directory.
+2. Select your staging project:
+   ```bash
+   firebase use codeoba-dev
+   ```
+3. Set the secret:
+   ```bash
+   firebase functions:secrets:set GITHUB_TOKEN
+   ```
+4. Paste the copied GitHub PAT token when prompted.
+
+This secret is automatically mounted to `process.env.GITHUB_TOKEN` for the `checkLatestRelease` function, securing and authenticating all staging update checks.
+
+##### Step 3: Local Emulator Testing (Optional)
+If testing dynamic resolution locally:
+1. Open `Codeoba-Backend/functions/.secret.local`.
+2. Add your token:
+   ```env
+   GITHUB_TOKEN=your_github_pat_value_here
+   ```

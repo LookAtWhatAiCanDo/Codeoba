@@ -27,19 +27,33 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'Production' || null }}
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            artifact-path: 'src-tauri/target/release/bundle/dmg/*.dmg'
+            artifact-path: |
+              src-tauri/target/release/bundle/dmg/*.dmg
+              src-tauri/target/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+              src-tauri/target/release/latest.json
             artifact-path-pkg: 'src-tauri/target/release/bundle/macos/*.pkg'
             platform: macos
           - os: windows-latest
-            artifact-path: 'src-tauri/target/release/bundle/msi/*.msi'
+            artifact-path: |
+              src-tauri/target/release/bundle/msi/*.msi
+              src-tauri/target/release/bundle/msi/*.msi.zip
+              src-tauri/target/release/bundle/msi/*.msi.zip.sig
+              src-tauri/target/release/latest.json
             platform: windows
           - os: ubuntu-24.04
-            artifact-path: 'src-tauri/target/release/bundle/deb/*.deb'
+            artifact-path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/deb/*.deb.tar.gz
+              src-tauri/target/release/bundle/deb/*.deb.tar.gz.sig
+              src-tauri/target/release/latest.json
             platform: linux
 
     defaults:
@@ -56,11 +70,23 @@ jobs:
           node-version: 24
           cache: 'npm'
 
-      - name: Sync version from Git tag
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Sync version and configure updater
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
         env:
-          CODEOBA_TAURI_UPDATE_PUBLIC_KEY: ${{ vars.CODEOBA_TAURI_UPDATE_PUBLIC_KEY }}
-        run: node scripts/sync-version.cjs
+          CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV: ${{ vars.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV }}
+          CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD: ${{ vars.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD }}
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            node scripts/sync-version.cjs
+          else
+            node scripts/sync-version.cjs --dev ${{ github.run_number }}
+          fi
+
+      - name: Set version output
+        id: get_version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -154,8 +180,10 @@ jobs:
           APPLE_ID: ${{ vars.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-          CODEOBA_TAURI_UPDATE_PRIVATE_KEY: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY }}
-          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD }}
+          CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD: ${{ secrets.CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD }}
         run: |
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
             echo "macOS platform detected. Resolving active SDK and toolchain paths..."
@@ -170,13 +198,22 @@ jobs:
 
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
             echo "Release tag detected. Building signed/notarized production binaries..."
-            export TAURI_SIGNING_PRIVATE_KEY="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY"
-            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD"
+            export TAURI_SIGNING_PRIVATE_KEY="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD"
+            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD"
             TAURI_ARGS="--verbose"
             if [[ "$SKIP_STAPLING" == "true" ]]; then
               TAURI_ARGS="$TAURI_ARGS --skip-stapling"
             fi
             npm run tauri build -- $TAURI_ARGS
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            echo "Main branch push detected. Building signed development/staging binaries..."
+            export TAURI_SIGNING_PRIVATE_KEY="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV"
+            export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV"
+            unset APPLE_SIGNING_IDENTITY
+            unset APPLE_ID
+            unset APPLE_PASSWORD
+            unset APPLE_TEAM_ID
+            npm run tauri build
           else
             echo "Standard commit. Building unsigned development package..."
             unset APPLE_SIGNING_IDENTITY
@@ -233,21 +270,41 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Prune old dev pre-releases
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/prune-dev-releases.cjs v${{ needs.build.outputs.version }}
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
 
+      - name: Merge Platform Updater Manifests
+        run: node scripts/merge-updater-manifests.cjs artifacts v${{ needs.build.outputs.version }}
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: v${{ needs.build.outputs.version }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.pkg
             artifacts/**/*.msi
             artifacts/**/*.deb
+            artifacts/**/*.app.tar.gz
+            artifacts/**/*.app.tar.gz.sig
+            artifacts/**/*.msi.zip
+            artifacts/**/*.msi.zip.sig
+            artifacts/**/*.deb.tar.gz
+            artifacts/**/*.deb.tar.gz.sig
+            artifacts/latest.json
           draft: false
-          prerelease: false
           generate_release_notes: true

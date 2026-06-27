@@ -147,14 +147,16 @@ npm run tauri build
 This generates the platform installer together with a `.sig` signature file and updater configuration block.
 
 ### 2. GitHub Actions CI/CD Pipeline
-A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It automatically triggers, packages, signs (using Apple Developer certificates for macOS and keyless Azure Trusted Signing for Windows via OIDC), and drafts a new GitHub Release when you push a version tag:
+A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It triggers automatically under two conditions:
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+1. **Staging / Dev Releases (Pushes to `main`)**: When code is pushed to `main`, the pipeline automatically builds and signs the packages using the staging key pair, publishes them under a unique pre-release tag (e.g. `v0.1.0-124`), and prunes previous dev pre-releases and tags to keep the release list clean. Staging clients query `dev.codeoba.com/api/update` to receive updates.
+2. **Tagged Production Releases (`v*`)**: When you push a version tag, it compiles, signs (using Apple Developer ID certificates for macOS and keyless Azure Trusted Signing for Windows via OIDC), and creates a production GitHub Release:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
 
-For complete instructions on setting up Azure OIDC credentials, registering the app client, and exporting Apple developer certificates, see the detailed [App Signing Guide](docs/APP_SIGNING.md).
+For complete instructions on setting up credentials, OIDC, keypairs, and rotation, see the detailed [App Signing Guide](docs/APP_SIGNING.md).
 
 #### Required GitHub Secrets and Variables
 To allow the release action to compile, sign, and notarize the packages successfully, configure the following secrets and variables under **Settings > Secrets and variables > Actions** in your GitHub repository:
@@ -162,8 +164,10 @@ To allow the release action to compile, sign, and notarize the packages successf
 ##### Secrets (Sensitive)
 | Secret Name | Description | Platform |
 |---|---|---|
-| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY` | Minisign private key content (copied from `codeoba-updater.key`). | All (Updater) |
-| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD` | The password used to encrypt the minisign key (if any). | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV` | Minisign private key content for staging/dev updates. | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_DEV` | The password used to encrypt the dev minisign key. | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` | Minisign private key content for production updates. | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD` | The password used to encrypt the production minisign key. | All (Updater) |
 | `MACOS_CERTIFICATE_P12` | Base64-encoded Developer ID Application `.p12` file. | macOS |
 | `MACOS_CERTIFICATE_PASSWORD` | Password for the Developer ID Application `.p12` file. | macOS |
 | `MACOS_INSTALLER_CERTIFICATE_P12` | Base64-encoded Developer ID Installer `.p12` file. | macOS |
@@ -176,6 +180,8 @@ To allow the release action to compile, sign, and notarize the packages successf
 ##### Variables (Non-Sensitive)
 | Variable Name | Description | Platform |
 |---|---|---|
+| `CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV` | Optional staging public key (overrides default in `tauri.conf.json`). | All (Updater) |
+| `CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD` | Production public key (compiled into production builds). | All (Updater) |
 | `APPLE_ID` | Your Apple Developer email address. | macOS |
 | `APPLE_TEAM_ID` | Your 10-character Apple Developer Team ID. | macOS |
 | `AZURE_SIGNING_ACCOUNT_NAME` | The name of your Azure Artifact Signing Account. | Windows |
