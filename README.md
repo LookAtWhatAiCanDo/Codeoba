@@ -168,7 +168,10 @@ A release pipeline is configured in [.github/workflows/build-desktop.yml](.githu
        # Bump files and automatically commit the change to main
        npm run bump -- 0.1.3 --commit
        ```
-       *(This consistently updates `package.json`, `package-lock.json`, `tauri.conf.json`, and `Cargo.toml`).*
+       *(This consistently updates `package.json`, `package-lock.json`, `tauri.conf.json`, `Cargo.toml`, and `Cargo.lock`).*
+
+        > [!TIP]
+        > **Automatic Stash Guard:** Running the bump command with the `--commit` flag automatically stashes any ongoing local changes (`git stash`) before modifying the files, commits the version changes cleanly, and then restores your workspace (`git stash pop`) in a `finally` block. This keeps the release commit isolated without polluting your active working directory.
    *   **Step 2: Tag and Push**: Create and push a git tag matching the new version:
        ```bash
        git tag v0.1.3
