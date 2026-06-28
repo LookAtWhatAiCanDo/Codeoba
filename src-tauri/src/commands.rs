@@ -33,48 +33,7 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
     let state = app_handle.state::<SearchIndexState>();
     let guard = state.sessions.read().map_err(|e| e.to_string())?;
     
-    let mut all_sessions: Vec<Session> = guard.values().map(|s| {
-        let snippet = s.turns.last().map(|turn| {
-            let msg = if !turn.user_message.is_empty() {
-                &turn.user_message
-            } else {
-                &turn.assistant_message
-            };
-            let mut snippet_text = msg.chars().take(100).collect::<String>().replace('\n', " ");
-            if msg.chars().count() > 100 {
-                snippet_text.truncate(100);
-                snippet_text.push_str("...");
-            }
-            snippet_text
-        }).unwrap_or_else(|| "No messages in this session".to_string());
-
-        let lightweight_turns: Vec<crate::models::Turn> = s.turns.iter().map(|turn| {
-            crate::models::Turn {
-                turn_id: turn.turn_id.clone(),
-                user_message: String::new(),
-                assistant_message: String::new(),
-                timestamp: turn.timestamp,
-                input_tokens: turn.input_tokens,
-                output_tokens: turn.output_tokens,
-                extra_data: turn.extra_data.clone(),
-            }
-        }).collect();
-
-        Session {
-            id: s.id.clone(),
-            source_id: s.source_id.clone(),
-            file_path: s.file_path.clone(),
-            timestamp: s.timestamp,
-            updated_at: s.updated_at,
-            cwd: s.cwd.clone(),
-            thread_name: s.thread_name.clone(),
-            turns: lightweight_turns,
-            is_archived: s.is_archived,
-            is_pinned: s.is_pinned,
-            summary: None,
-            snippet: Some(snippet),
-        }
-    }).collect();
+    let mut all_sessions: Vec<Session> = guard.values().map(|s| s.to_lightweight()).collect();
     
     // Sort sessions by updated_at descending
     all_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
@@ -171,7 +130,7 @@ pub async fn search_sessions<R: tauri::Runtime>(
         guard.values().cloned().collect()
     };
 
-    if use_semantic {
+    let mut results = if use_semantic {
         let home = crate::parsers::get_home_dir();
         let model_path = home.join(".codeoba/models/model_quantized.onnx");
         let vocab_path = home.join(".codeoba/models/vocab.txt");
@@ -184,18 +143,21 @@ pub async fn search_sessions<R: tauri::Runtime>(
 
         let embeddings_guard = state.embeddings.read().map_err(|e| e.to_string())?;
         let threshold = similarity_threshold.unwrap_or(0.35) as f32;
-        let results = crate::search::semantic::semantic_search(
+        crate::search::semantic::semantic_search(
             &sessions,
             &embeddings_guard,
             &query_vector,
             threshold,
             &filter,
-        );
-        Ok(results)
+        )
     } else {
-        let results = crate::search::lexical::lexical_search(&sessions, &query, &filter);
-        Ok(results)
+        crate::search::lexical::lexical_search(&sessions, &query, &filter)
+    };
+
+    for res in &mut results {
+        res.session = res.session.to_lightweight();
     }
+    Ok(results)
 }
 
 #[tauri::command]
