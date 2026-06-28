@@ -31,6 +31,8 @@ npm install
 Launch the hot-reloading development server and compile/run the native desktop shell wrapper:
 ```bash
 npm run tauri dev
+# or
+npm run tauri dev -- --release
 ```
 *This command starts the Vite local server on port `1420` and loads the SolidJS UI into the native operating system webview. Changes to frontend views will hot-reload instantly. Changes to the Rust backend will trigger an automatic recompilation and restart.*
 
