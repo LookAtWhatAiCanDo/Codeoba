@@ -288,7 +288,7 @@ export const Sidebar = (props: SidebarProps) => {
       {/* Drag Handle */}
       <div 
         onMouseDown={handleMouseDown}
-        class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors z-50 select-none"
+        class="absolute top-[76px] right-0 w-1 h-[calc(100%-76px)] cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors z-50 select-none"
       />
       {/* Sticky Header Section */}
       <div class="p-4 border-b border-border space-y-3 flex-shrink-0">
