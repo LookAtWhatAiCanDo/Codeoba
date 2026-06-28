@@ -1,0 +1,34 @@
+#!/usr/bin/expect -f
+
+# Usage: rpm-sign.exp <passphrase> <rpm_file>
+if {[llength $argv] < 2} {
+    send_user "Usage: rpm-sign.exp <passphrase> <rpm_file>\n"
+    exit 1
+}
+
+set passphrase [lindex $argv 0]
+set rpm_file [lindex $argv 1]
+
+# Spawn the rpmsign command
+spawn rpm --addsign $rpm_file
+
+# Interact with the prompts using robust glob patterns
+expect {
+    "*pass phrase*" {
+        # Temporarily disable console logging so the passphrase is never printed in logs
+        log_user 0
+        send -- "$passphrase\r"
+        log_user 1
+        exp_continue
+    }
+    "*Overwrite*" {
+        send -- "y\r"
+        exp_continue
+    }
+    eof
+}
+
+# Check child process exit code
+catch wait result
+set exit_status [lindex $result 3]
+exit $exit_status
