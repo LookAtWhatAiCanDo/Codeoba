@@ -246,7 +246,6 @@ function App() {
         try {
           const updaterActive = await invoke<boolean>("is_updater_active");
           if (!updaterActive) {
-            logFE("info", "Background Updater: Updater is disabled in configuration, skipping background check.");
             return;
           }
 
