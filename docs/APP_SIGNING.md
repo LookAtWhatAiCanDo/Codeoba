@@ -117,6 +117,15 @@ During workflow execution on the `macos-latest` runner:
 3. The build process runs `npm run tauri build`. Tauri detects the certificates in the keychain, signs the application, and uses `APPLE_ID` and `APPLE_ID_PASSWORD` to upload it to Apple's notarization servers.
 4. The temporary keychain is deleted during the cleanup step.
 
+### 3. Checking Notarization Status
+To check the status of notarization submissions, you can query Apple's notarization history:
+```bash
+xcrun notarytool history \
+  --apple-id "${APPLE_ID}" \
+  --team-id "${APPLE_TEAM_ID}" \
+  --password "${APPLE_ID_PASSWORD}"
+```
+
 ---
 
 ## Microsoft/Windows Setup (Artifact Signing & OIDC)
