@@ -48,6 +48,18 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
             snippet_text
         }).unwrap_or_else(|| "No messages in this session".to_string());
 
+        let lightweight_turns: Vec<crate::models::Turn> = s.turns.iter().map(|turn| {
+            crate::models::Turn {
+                turn_id: turn.turn_id.clone(),
+                user_message: String::new(),
+                assistant_message: String::new(),
+                timestamp: turn.timestamp,
+                input_tokens: turn.input_tokens,
+                output_tokens: turn.output_tokens,
+                extra_data: turn.extra_data.clone(),
+            }
+        }).collect();
+
         Session {
             id: s.id.clone(),
             source_id: s.source_id.clone(),
@@ -56,7 +68,7 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
             updated_at: s.updated_at,
             cwd: s.cwd.clone(),
             thread_name: s.thread_name.clone(),
-            turns: Vec::new(), // Clear turns to keep payload lightweight
+            turns: lightweight_turns,
             is_archived: s.is_archived,
             is_pinned: s.is_pinned,
             summary: None,

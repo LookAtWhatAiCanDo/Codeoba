@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::OnceLock;
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng, AeadCore},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 
@@ -79,30 +79,31 @@ impl SessionCacheManager {
             Ok(f) => f,
             Err(_) => return HashMap::new(),
         };
-        let mut encrypted_data = Vec::new();
+        let mut raw_data = Vec::new();
         use std::io::Read;
-        if file.read_to_end(&mut encrypted_data).is_err() {
+        if file.read_to_end(&mut raw_data).is_err() {
             return HashMap::new();
         }
 
-        if encrypted_data.len() < 12 {
-            if let Ok(plaintext_str) = String::from_utf8(encrypted_data) {
-                if let Ok(source_cache) = serde_json::from_str::<SourceCache>(&plaintext_str) {
-                    if source_cache.version == CURRENT_CACHE_VERSION {
-                        let res: HashMap<_, _> = source_cache
-                            .entries
-                            .into_iter()
-                            .map(|e| (e.file_path.clone(), e))
-                            .collect();
-                        crate::log_info!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, start.elapsed());
-                        return res;
-                    }
-                }
+        // 1. Try parsing directly as unencrypted JSON
+        if let Ok(source_cache) = serde_json::from_slice::<SourceCache>(&raw_data) {
+            if source_cache.version == CURRENT_CACHE_VERSION {
+                let res: HashMap<_, _> = source_cache
+                    .entries
+                    .into_iter()
+                    .map(|e| (e.file_path.clone(), e))
+                    .collect();
+                crate::log_info!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, start.elapsed());
+                return res;
             }
+        }
+
+        // 2. If parsing fails, check if we have enough bytes for an encrypted payload (nonce prefix)
+        if raw_data.len() < 12 {
             return HashMap::new();
         }
 
-        let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
+        let (nonce_bytes, ciphertext) = raw_data.split_at(12);
         let key_bytes = get_or_create_cache_key();
         let cipher = Aes256Gcm::new(&key_bytes.into());
         let nonce = Nonce::from_slice(nonce_bytes);
@@ -158,20 +159,7 @@ impl SessionCacheManager {
             Err(_) => return,
         };
 
-        let key_bytes = get_or_create_cache_key();
-        let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
-
-        let ciphertext = match cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
-            Ok(c) => c,
-            Err(_) => return,
-        };
-
-        let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
-        combined.extend_from_slice(&nonce_bytes);
-        combined.extend_from_slice(&ciphertext);
-
-        let _ = fs::write(path, combined);
+        let _ = fs::write(path, plaintext_json);
     }
 
     pub fn start_scan(&self, source_id: &str) {
