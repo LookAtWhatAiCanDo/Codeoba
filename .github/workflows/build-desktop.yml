@@ -19,6 +19,7 @@ env:
   ESAXX_DYNAMIC_LINK: '1'
   CARGO_NET_RETRY: 10
   SKIP_STAPLING: 'false'
+  MACOS_SIGNING_IDENTITY: ''
 
 jobs:
   build:
