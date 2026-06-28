@@ -464,9 +464,10 @@ To migrate existing users seamlessly, you must use a **Two-Step Transition Relea
 #### Step 1: Build the Bridge Release (e.g. `v1.2.0`)
 1. Generate your new key pair locally (`npx tauri signer generate`).
 2. Update the public key (`pubkey` in `tauri.conf.json`) to the **new** public key.
-3. Keep the **old** private key configured in your GitHub Repository Secrets (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` or `_DEV`).
-4. Push the release tag (e.g., `v1.2.0`). This compiles the application with the **new public key** inside, but signs the installer and `latest.json` manifest with the **old private key**.
-5. Existing users running older versions (e.g., `v1.1.0`) will successfully download and verify this update because it was signed with the old private key they expect. Once installed, they are now running `v1.2.0` and possess the new public key.
+3. Update the `dev_keys` or `prod_keys` array in [lib.rs](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/src/lib.rs) to include the **new** public key. (The verification system allows multiple active keys to handle rotations smoothly).
+4. Keep the **old** private key configured in your GitHub Repository Secrets (`CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` or `_DEV`).
+5. Push the release tag (e.g., `v1.2.0`). This compiles the application with the **new public key** inside, but signs the installer and `latest.json` manifest with the **old private key**.
+6. Existing users running older versions (e.g., `v1.1.0`) will successfully download and verify this update because it was signed with the old private key they expect. Once installed, they are now running `v1.2.0` and possess the new public key.
 
 #### Step 2: Perform the Hard Cutover (e.g. `v1.3.0`)
 1. Update your GitHub Secrets: replace `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PROD` and `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_PASSWORD_PROD` with the **new** private key and password.
@@ -565,3 +566,33 @@ If testing dynamic resolution locally:
    ```env
    GITHUB_TOKEN=your_github_pat_value_here
    ```
+
+---
+
+## 🧪 Local & Staging Update Testing Guide
+
+Here is how a legitimate developer can test the update mechanism locally:
+
+### Option A: Testing locally against a mock local server (localhost)
+If you want to test the update flow end-to-end completely on your local machine:
+1. **Generate local keys**: Run `npm run generate-keys` to generate a temporary key pair. This will write the public key into `tauri.conf.json`.
+2. **Register the key in Rust**: Copy the generated public key string from `tauri.conf.json` and append it to the `dev_keys` array in [lib.rs](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba-Tauri/src-tauri/src/lib.rs):
+   ```rust
+   let dev_keys = [
+       "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4Njg...",
+       "YOUR_NEW_LOCAL_PUBLIC_KEY", // <-- Paste here
+   ];
+   ```
+3. **Configure local server endpoint**: Set the `endpoints` array in `tauri.conf.json` to your local update mock server (e.g. `["http://localhost:4000/api/update"]`).
+4. **Enable updater**: Set `plugins.updater.active` to `true` in `tauri.conf.json`.
+5. **Run**: Run `npm run tauri dev`. The app passes the verification check because it uses a `localhost` endpoint and matches your added key.
+
+### Option B: Testing against the official staging server (dev.codeoba.com)
+If you want to test the update client checking staging releases:
+1. **Configure staging key**: In `tauri.conf.json`, set `pubkey` to the official dev key:
+   `"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK"`
+2. **Configure staging endpoint**: Set the `endpoints` array in `tauri.conf.json` to:
+   `["https://dev.codeoba.com/api/update"]`
+3. **Enable updater**: Set `plugins.updater.active` to `true` in `tauri.conf.json`.
+4. **Run**: Run `npm run tauri dev`. The verification passes because the endpoint matches the staging URL and uses the staging key.
+

@@ -134,16 +134,10 @@ This proxy handles client telemetry logging and retrieves the signed `latest.jso
 *   The private key is stored locally (ignored by Git) and must be provided as an environment variable (`TAURI_SIGNING_PRIVATE_KEY`) to compile updates.
 
 #### Local/Staging Testing
-By default, the updater is disabled in the repository configuration (`"active": false` under `"updater"` in `tauri.conf.json`) to prevent unwanted network checks during development.
+By default, the updater is disabled in the repository configuration (`"active": false` under `"updater"` in `tauri.conf.json`) to prevent unwanted network checks during development. Furthermore, the public key is cleared in the repo by default (`"pubkey": ""`).
 
-To test update checking and download progress triggers locally:
-1. Set the `MOCK_LATEST_RELEASE` flag (e.g. `9.9.9` or `true`) inside `.secret.local` in `Codeoba-Backend`.
-2. Run the local Firebase emulator (hosting on port `5000`).
-3. In [tauri.conf.json](src-tauri/tauri.conf.json) under `plugins.updater`:
-   - Change `"active": false` to `"active": true`.
-   - Configure the update target:
-     - **Staging/Dev**: Point the `endpoints` array to `["https://dev.codeoba.com/api/update"]` (pre-configured to use dev keys).
-     - **Local Testing**: Point the `endpoints` array to `["http://localhost:5000/api/update"]`.
+To test update checking and download progress triggers locally (against either `dev.codeoba.com` or a local mock server on `localhost`), you must follow the verification and key registration steps documented in the [Local & Staging Update Testing Guide](docs/APP_SIGNING.md#🧪-local--staging-update-testing-guide).
+
 
 To sign updates locally during a build, run:
 ```bash

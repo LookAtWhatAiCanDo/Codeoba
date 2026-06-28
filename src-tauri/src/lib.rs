@@ -18,6 +18,42 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
+    let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
+    
+    // Official Dev/Staging Keys (add rotated keys here)
+    let dev_keys = [
+        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK",
+    ];
+    // Official Prod Keys (add rotated keys here)
+    let prod_keys = [
+        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3NDkwMDJDQzI5MThGRDcKUldUWGo1SENMQUJKTjFYQ2NIcTdnVkhKODVzMm10NkFjRHRMaU81WWR2bjgwSFhHTkVtTjVQYmkK",
+    ];
+
+    let is_dev_key = dev_keys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+    let is_prod_key = prod_keys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+
+    for endpoint in endpoints {
+        let endpoint_lower = endpoint.to_lowercase();
+        // Dev/Staging pair verification (includes dev server and local addresses/emulators)
+        if endpoint_lower.starts_with("https://dev.codeoba.com/api/update")
+            || endpoint_lower.starts_with("http://localhost:")
+            || endpoint_lower.starts_with("http://127.0.0.1:")
+        {
+            if is_dev_key {
+                return true;
+            }
+        }
+        // Prod pair verification
+        if endpoint_lower.starts_with("https://codeoba.com/api/update") {
+            if is_prod_key {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Delete the window state file preemptively before the Tauri builder or plugins initialize
@@ -33,9 +69,25 @@ pub fn run() {
 
     let context = tauri::generate_context!();
     
-    // Check if the updater is active from configuration
+    // Check if the updater is active from configuration and passes validation
     let updater_active = if let Some(updater_config) = context.config().plugins.0.get("updater") {
-        updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false)
+        let active = updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        if active {
+            let pubkey = updater_config.get("pubkey").and_then(|v| v.as_str()).unwrap_or("");
+            let mut endpoints = Vec::new();
+            if let Some(endpoints_val) = updater_config.get("endpoints") {
+                if let Some(arr) = endpoints_val.as_array() {
+                    for val in arr {
+                        if let Some(s) = val.as_str() {
+                            endpoints.push(s.to_string());
+                        }
+                    }
+                }
+            }
+            validate_updater_config(pubkey, &endpoints)
+        } else {
+            false
+        }
     } else {
         false
     };
@@ -44,12 +96,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init());
 
     if updater_active {
-        crate::log_info!("Updater is active in configuration. Registering updater and process plugins...");
+        crate::log_info!("Updater is active in configuration and passed verification. Registering updater and process plugins...");
         builder = builder
             .plugin(tauri_plugin_process::init())
             .plugin(tauri_plugin_updater::Builder::new().build());
     } else {
-        crate::log_info!("Updater is disabled in configuration. Skipping updater and process plugin registration.");
+        crate::log_info!("Updater is disabled or failed config verification. Skipping updater and process plugin registration.");
     }
 
     builder

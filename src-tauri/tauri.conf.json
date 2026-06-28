@@ -40,7 +40,7 @@
   "plugins": {
     "updater": {
       "active": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK",
+      "pubkey": "",
       "endpoints": [
         "https://dev.codeoba.com/api/update"
       ],

@@ -222,11 +222,26 @@ pub fn get_indexing_progress<R: tauri::Runtime>(
 pub fn is_updater_active<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> bool {
     let config = app_handle.config();
     if let Some(updater_config) = config.plugins.0.get("updater") {
-        if let Some(active) = updater_config.get("active") {
-            return active.as_bool().unwrap_or(false);
+        let active = updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        if active {
+            let pubkey = updater_config.get("pubkey").and_then(|v| v.as_str()).unwrap_or("");
+            let mut endpoints = Vec::new();
+            if let Some(endpoints_val) = updater_config.get("endpoints") {
+                if let Some(arr) = endpoints_val.as_array() {
+                    for val in arr {
+                        if let Some(s) = val.as_str() {
+                            endpoints.push(s.to_string());
+                        }
+                    }
+                }
+            }
+            crate::validate_updater_config(pubkey, &endpoints)
+        } else {
+            false
         }
+    } else {
+        false
     }
-    false
 }
 
 #[tauri::command]

@@ -85,6 +85,11 @@ if (fs.existsSync(confPath)) {
       if (devPubKey) {
         conf.plugins.updater.pubkey = devPubKey;
         console.log('Overrode updater public key to dev key');
+      } else if (process.env.CI === 'true') {
+        console.error('❌ Error: CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV environment variable/repository variable is required in CI builds but is missing.');
+        process.exit(1);
+      } else {
+        console.warn('Warning: CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV environment variable not set for local dev sync.');
       }
     } else {
       conf.plugins.updater.endpoints = ["https://codeoba.com/api/update?version={{current_version}}&target={{target}}&arch={{arch}}"];
@@ -93,6 +98,11 @@ if (fs.existsSync(confPath)) {
       if (prodPubKey) {
         conf.plugins.updater.pubkey = prodPubKey;
         console.log('Overrode updater public key to production key');
+      } else if (process.env.CI === 'true') {
+        console.error('❌ Error: CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD environment variable/repository variable is required in CI builds but is missing.');
+        process.exit(1);
+      } else {
+        console.warn('Warning: CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD environment variable not set for local production sync.');
       }
     }
   }
