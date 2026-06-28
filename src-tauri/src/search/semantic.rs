@@ -1,12 +1,11 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
-use ndarray::Array2;
-use ort::session::Session as OrtSession;
-use ort::value::Value;
+use tract_onnx::prelude::tract_ndarray::Array2;
+use tract_onnx::prelude::*;
 use std::path::Path;
 
 pub struct OnnxSemanticEmbedder {
-    session: OrtSession,
+    runnable: SimplePlan<TypedFact, Box<dyn TypedOp>, TypedModel>,
     tokenizer: super::tokenizer::WordPieceTokenizer,
 }
 
@@ -14,12 +13,15 @@ impl OnnxSemanticEmbedder {
     pub fn new(model_path: &Path, vocab_path: &Path) -> Result<Self, String> {
         let tokenizer = super::tokenizer::WordPieceTokenizer::new(vocab_path)?;
         
-        let session = OrtSession::builder()
+        let runnable = tract_onnx::onnx()
+            .model_for_path(model_path)
             .map_err(|e| e.to_string())?
-            .commit_from_file(model_path)
+            .into_optimized()
+            .map_err(|e| e.to_string())?
+            .into_runnable()
             .map_err(|e| e.to_string())?;
 
-        Ok(Self { session, tokenizer })
+        Ok(Self { runnable, tokenizer })
     }
 
     pub fn get_embeddings(&mut self, text: &str) -> Result<Vec<f32>, String> {
@@ -33,24 +35,21 @@ impl OnnxSemanticEmbedder {
         let token_type_ids_array = Array2::from_shape_vec((1, seq_len), tokenized.token_type_ids)
             .map_err(|e| e.to_string())?;
 
-        let input_ids_val = Value::from_array(input_ids_array).map_err(|e| e.to_string())?;
-        let attention_mask_val = Value::from_array(attention_mask_array).map_err(|e| e.to_string())?;
-        let token_type_ids_val = Value::from_array(token_type_ids_array).map_err(|e| e.to_string())?;
+        let input_ids_val = Tensor::from(input_ids_array);
+        let attention_mask_val = Tensor::from(attention_mask_array);
+        let token_type_ids_val = Tensor::from(token_type_ids_array);
 
-        let inputs = ort::inputs![
-            "input_ids" => input_ids_val,
-            "attention_mask" => attention_mask_val,
-            "token_type_ids" => token_type_ids_val,
-        ];
-
-        let outputs = self.session.run(inputs).map_err(|e| e.to_string())?;
+        let outputs = self.runnable.run(tvec![
+            input_ids_val.into(),
+            attention_mask_val.into(),
+            token_type_ids_val.into(),
+        ]).map_err(|e| e.to_string())?;
         
-        let output_value = outputs.get("last_hidden_state")
-            .unwrap_or_else(|| &outputs[0]);
+        let output_value = &outputs[0];
 
-        let (shape, slice) = output_value.try_extract_tensor::<f32>().map_err(|e| e.to_string())?;
-        let dims = shape.as_ref();
-        let dim = dims[2] as usize;
+        let shape = output_value.shape();
+        let dim = shape[2] as usize;
+        let slice = output_value.as_slice::<f32>().map_err(|e| e.to_string())?;
 
         // Mean Pooling
         let mut sentence_embedding = vec![0.0f32; dim];
