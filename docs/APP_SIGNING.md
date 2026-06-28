@@ -362,8 +362,8 @@ gpg --full-generate-key
 - Select option: `RSA and RSA` (default).
 - Select key size: `4096` bits.
 - Set expiration: `0` (or choose a reasonable expiration date, e.g. 2 years).
-- Enter Real Name: `What AI Can Do, LLC`
-- Enter Email: `developer@whataicando.com`
+- Enter Real Name: `WhatAiCanDo Publisher`
+- Enter Email: `publish@whataicando.com`
 - Set a secure passphrase.
 
 Identify your generated key ID (8-character hex string) by running:
@@ -376,7 +376,7 @@ gpg --list-secret-keys --keyid-format LONG
 Export the private key as an ASCII-armored string, base64-encode it, and copy it to your clipboard:
 ```bash
 # Export and copy base64-encoded private key
-gpg --armor --export-secret-keys A1B2C3D4E5F67890 | base64 | pbcopy
+gpg --armor --export-secret-keys publish@whataicando.com | base64 | pbcopy
 ```
 
 Configure these secrets under **Settings -> Secrets and variables -> Actions** in the `Codeoba-Tauri` GitHub Repository:
@@ -389,7 +389,7 @@ Configure these secrets under **Settings -> Secrets and variables -> Actions** i
 #### Step 3: Export and Publish the Public GPG Key
 For users to verify the package signature, export the GPG public key:
 ```bash
-gpg --armor --export A1B2C3D4E5F67890 > codeoba-public.key
+gpg --armor --export publish@whataicando.com > codeoba-public.key
 ```
 Host this file on the public website (e.g. `https://whataicando.com/codeoba-public.key`) or include it in the GitHub Release assets.
 
@@ -400,10 +400,17 @@ To verify a signed `.deb` file on a Linux machine:
    gpg --import codeoba-public.key
    ```
 2. Verify the signature embedded inside the package using `dpkg-sig`:
-   ```bash
-   sudo apt-get install -y dpkg-sig
-   dpkg-sig --verify codeoba-tauri_0.1.4_amd64.deb
-   ```
+   - *Note for Ubuntu 24.04+ (Noble) / Debian 12+:* `dpkg-sig` has been removed from official repositories. Install it manually from the Ubuntu Jammy archives:
+     ```bash
+     sudo apt-get update && sudo apt-get install -y wget
+     wget http://archive.ubuntu.com/ubuntu/pool/universe/d/dpkg-sig/dpkg-sig_0.13.1+nmu2_all.deb
+     sudo apt-get install -y ./dpkg-sig_0.13.1+nmu2_all.deb
+     rm dpkg-sig_0.13.1+nmu2_all.deb
+     ```
+   - Run verification:
+     ```bash
+     dpkg-sig --verify codeoba-tauri_0.1.4_amd64.deb
+     ```
    *Expected output: A valid signature line indicating it was signed by `builder` with your key.*
 
 ---

@@ -297,7 +297,11 @@ jobs:
         if: startsWith(matrix.platform, 'linux') && startsWith(github.ref, 'refs/tags/v')
         run: |
           # Sign DEB package
-          sudo apt-get update && sudo apt-get install -y dpkg-sig
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget http://archive.ubuntu.com/ubuntu/pool/universe/d/dpkg-sig/dpkg-sig_0.13.1+nmu2_all.deb
+          sudo apt-get install -y ./dpkg-sig_0.13.1+nmu2_all.deb
+          rm dpkg-sig_0.13.1+nmu2_all.deb
           DEB_FILE=$(find src-tauri/target/${{ matrix.target }}/release/bundle/deb -name "*.deb" | head -n 1)
           if [ -n "$DEB_FILE" ]; then
             echo "Signing Debian package: $DEB_FILE"
