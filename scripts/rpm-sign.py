@@ -42,6 +42,13 @@ def sign_rpm(rpm_file, passphrase):
                     os.write(fd, passphrase.encode() + b"\n")
                     passphrase_sent = True
                     output = b"" # clear buffer
+                
+                # Check for overwrite prompts (e.g. from GPG when signature file exists)
+                elif b"Overwrite?" in output or b"y/N" in output:
+                    sys.stderr.write("[rpm-sign.py] Overwrite prompt detected! Sending 'y' to child PTY...\n")
+                    sys.stderr.flush()
+                    os.write(fd, b"y\n")
+                    output = b"" # clear buffer
             except OSError as e:
                 sys.stderr.write(f"[rpm-sign.py] PTY Read Error: {e}\n")
                 sys.stderr.flush()
