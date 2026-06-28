@@ -318,28 +318,22 @@ jobs:
             gpg --export --armor > /tmp/gpg-pubkey.asc
             sudo rpm --import /tmp/gpg-pubkey.asc
             
-            # Configure GPG agent to allow presetting and loopback passphrases
-            mkdir -p ~/.gnupg
-            echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
-            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            # Configure GPG agent and options for loopback/non-interactive pinentry
+            GPG_HOME="${GNUPGHOME:-$HOME/.gnupg}"
+            mkdir -p "$GPG_HOME"
+            echo "allow-loopback-pinentry" >> "$GPG_HOME"/gpg-agent.conf
+            echo "pinentry-mode loopback" >> "$GPG_HOME"/gpg.conf
             gpg-connect-agent reloadagent /bye
-            
-            # Cache GPG passphrase in the agent for all keygrips to bypass prompts
-            KEYGRIPS=$(gpg --with-keygrip --list-secret-keys | grep "Keygrip" | awk '{print $3}')
-            for keygrip in $KEYGRIPS; do
-              "$(gpgconf --list-dirs libexecdir)"/gpg-preset-passphrase --passphrase "${{ secrets.LINUX_GPG_PASSPHRASE }}" --preset "$keygrip"
-            done
             
             # Configure rpmmacros for signing
             echo "%_signature gpg" > ~/.rpmmacros
-            echo "%_gpg_path ~/.gnupg" >> ~/.rpmmacros
+            echo "%_gpg_path $GPG_HOME" >> ~/.rpmmacros
             echo "%_gpg_name ${{ steps.import-gpg.outputs.keyid }}" >> ~/.rpmmacros
             echo "%__gpg /usr/bin/gpg" >> ~/.rpmmacros
             echo "%__gpg_sign_cmd %{__gpg} --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase-fd 0 --sign %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} -u \"%{_gpg_name}\" --output %{__signature_filename} --detach-sign %{__plaintext_filename}" >> ~/.rpmmacros
             
-            # Run rpmsign (feed passphrase via pipe to satisfy rpm interactive prompt)
-            echo "${{ secrets.LINUX_GPG_PASSPHRASE }}" | rpm --addsign "$RPM_FILE"
+            # Run rpmsign helper script using pseudo-terminal to satisfy interactive prompt
+            python3 scripts/rpm-sign.py "$RPM_FILE" "${{ secrets.LINUX_GPG_PASSPHRASE }}"
           else
             echo "No RPM package found to sign."
           fi
