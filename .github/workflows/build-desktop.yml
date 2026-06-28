@@ -34,27 +34,52 @@ jobs:
       matrix:
         include:
           - os: macos-latest
+            target: universal-apple-darwin
             artifact-path: |
-              src-tauri/target/release/bundle/dmg/*.dmg
-              src-tauri/target/release/bundle/macos/*.app.tar.gz
-              src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
-              src-tauri/target/release/latest.json
-            artifact-path-pkg: 'src-tauri/target/release/bundle/macos/*.pkg'
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+              src-tauri/target/universal-apple-darwin/release/latest.json
+            artifact-path-pkg: 'src-tauri/target/universal-apple-darwin/release/bundle/macos/*.pkg'
             platform: macos
           - os: windows-latest
+            target: x86_64-pc-windows-msvc
             artifact-path: |
-              src-tauri/target/release/bundle/msi/*.msi
-              src-tauri/target/release/bundle/msi/*.msi.zip
-              src-tauri/target/release/bundle/msi/*.msi.zip.sig
-              src-tauri/target/release/latest.json
-            platform: windows
+              src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+              src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.zip
+              src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.zip.sig
+              src-tauri/target/x86_64-pc-windows-msvc/release/latest.json
+            platform: windows-x64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact-path: |
+              src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+              src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi.zip
+              src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi.zip.sig
+              src-tauri/target/aarch64-pc-windows-msvc/release/latest.json
+            platform: windows-arm64
           - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
             artifact-path: |
-              src-tauri/target/release/bundle/deb/*.deb
-              src-tauri/target/release/bundle/deb/*.deb.tar.gz
-              src-tauri/target/release/bundle/deb/*.deb.tar.gz.sig
-              src-tauri/target/release/latest.json
-            platform: linux
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.tar.gz
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.tar.gz.sig
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz.sig
+              src-tauri/target/x86_64-unknown-linux-gnu/release/latest.json
+            platform: linux-x64
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            artifact-path: |
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb.tar.gz
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/deb/*.deb.tar.gz.sig
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/rpm/*.rpm
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz
+              src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz.sig
+              src-tauri/target/aarch64-unknown-linux-gnu/release/latest.json
+            platform: linux-arm64
 
     defaults:
       run:
@@ -91,6 +116,14 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Rust Targets
+        run: |
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          elif [[ "${{ matrix.target }}" != "" ]]; then
+            rustup target add ${{ matrix.target }}
+          fi
+
       - name: Cache Cargo Dependencies
         uses: swatinem/rust-cache@v2
         with:
@@ -106,7 +139,7 @@ jobs:
             ${{ runner.os }}-ort-cache-
 
       - name: Install Linux System Dependencies
-        if: matrix.platform == 'linux'
+        if: startsWith(matrix.platform, 'linux')
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -114,7 +147,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            rpm
 
       - name: Install Node Modules
         run: npm ci
@@ -204,6 +238,7 @@ jobs:
             if [[ "$SKIP_STAPLING" == "true" ]]; then
               TAURI_ARGS="$TAURI_ARGS --skip-stapling"
             fi
+            TAURI_ARGS="$TAURI_ARGS --target ${{ matrix.target }}"
             npm run tauri build -- $TAURI_ARGS
           elif [[ $GITHUB_REF == refs/heads/main ]]; then
             echo "Main branch push detected. Building signed development/staging binaries..."
@@ -213,18 +248,18 @@ jobs:
             unset APPLE_ID
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
-            npm run tauri build
+            npm run tauri build -- --target ${{ matrix.target }}
           else
             echo "Standard commit. Building unsigned development package..."
             unset APPLE_SIGNING_IDENTITY
             unset APPLE_ID
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
-            npm run tauri build -- --config '{"bundle": {"createUpdaterArtifacts": false}}'
+            npm run tauri build -- --target ${{ matrix.target }} --config '{"bundle": {"createUpdaterArtifacts": false}}'
           fi
 
       - name: Azure Login
-        if: matrix.platform == 'windows' && startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(matrix.platform, 'windows') && startsWith(github.ref, 'refs/tags/v')
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -232,13 +267,13 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign MSI installer with Azure Artifact Signing
-        if: matrix.platform == 'windows' && startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(matrix.platform, 'windows') && startsWith(github.ref, 'refs/tags/v')
         uses: azure/artifact-signing-action@v2
         with:
           endpoint: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT || 'https://cus.codesigning.azure.net/' }}
           signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ vars.AZURE_CERTIFICATE_PROFILE_NAME }}
-          files-folder: 'src-tauri/target/release/bundle/msi'
+          files-folder: 'src-tauri/target/${{ matrix.target }}/release/bundle/msi'
           files-folder-filter: 'msi'
           file-digest: 'SHA512'
           timestamp-digest: 'SHA512'
@@ -259,10 +294,10 @@ jobs:
           retention-days: 7
 
       - name: Upload PKG Package Artifact (macOS only)
-        if: matrix.platform == 'macos' && hashFiles('src-tauri/target/release/bundle/macos/*.pkg') != ''
+        if: matrix.platform == 'macos' && hashFiles(format('src-tauri/target/{0}/release/bundle/macos/*.pkg', matrix.target)) != ''
         uses: actions/upload-artifact@v7
         with:
-          name: Codeoba-macos-pkg
+          name: Codeoba-Tauri-macos-pkg
           path: ${{ matrix.artifact-path-pkg }}
           retention-days: 7
 
@@ -299,12 +334,15 @@ jobs:
             artifacts/**/*.pkg
             artifacts/**/*.msi
             artifacts/**/*.deb
+            artifacts/**/*.rpm
             artifacts/**/*.app.tar.gz
             artifacts/**/*.app.tar.gz.sig
             artifacts/**/*.msi.zip
             artifacts/**/*.msi.zip.sig
             artifacts/**/*.deb.tar.gz
             artifacts/**/*.deb.tar.gz.sig
+            artifacts/**/*.rpm.tar.gz
+            artifacts/**/*.rpm.tar.gz.sig
             artifacts/latest.json
           draft: false
           generate_release_notes: true
