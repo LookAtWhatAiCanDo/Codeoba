@@ -23,16 +23,18 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
     
     // Official Dev/Staging Keys (add rotated keys here)
-    let dev_keys = [
+    let dev_pubkeys = [
+        // Active dev key used for local development & main branch CI builds (Added June 2026)
         "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK",
     ];
     // Official Prod Keys (add rotated keys here)
-    let prod_keys = [
-        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3NDkwMDJDQzI5MThGRDcKUldUWGo1SENMQUJKTjFYQ2NIcTdnVkhKODVzMm10NkFjRHRMaU81WWR2bjgwSFhHTkVtTjVQYmkK",
+    let prod_pubkeys = [
+        // Active production key (Added June 28, 2026 for release v0.1.6)
+        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNDQwODNBQ0MzQTQ0OEUKUldTT1JEck1PZ2hFZit2RU8xVkE0ei93Q3pzT1JhYjMwR0JFMzZOajJGcThDY21kdm0yTVdlaVAK",
     ];
 
-    let is_dev_key = dev_keys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
-    let is_prod_key = prod_keys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+    let is_dev_pubkey = dev_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+    let is_prod_pubkey = prod_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
 
     for endpoint in endpoints {
         let endpoint_lower = endpoint.to_lowercase();
@@ -41,13 +43,13 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
             || endpoint_lower.starts_with("http://localhost:")
             || endpoint_lower.starts_with("http://127.0.0.1:")
         {
-            if is_dev_key {
+            if is_dev_pubkey {
                 return true;
             }
         }
         // Prod pair verification
         if endpoint_lower.starts_with("https://codeoba.com/api/update") {
-            if is_prod_key {
+            if is_prod_pubkey {
                 return true;
             }
         }
