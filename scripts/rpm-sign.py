@@ -13,8 +13,26 @@ def sign_rpm(rpm_file, passphrase):
         os.execvp("rpm", ["rpm", "--addsign", rpm_file])
     else:
         # Parent process: Communicate with child through the master PTY (fd)
+        
+        # Disable echo to prevent the passphrase from being leaked/echoed in logs
+        try:
+            import termios
+            attr = termios.tcgetattr(fd)
+            attr[3] &= ~termios.ECHO
+            termios.tcsetattr(fd, termios.TCSANOW, attr)
+            sys.stderr.write("[rpm-sign.py] Successfully disabled PTY echoing.\n")
+            sys.stderr.flush()
+        except Exception as e:
+            sys.stderr.write(f"[rpm-sign.py] Warning: Could not disable PTY echo: {e}\n")
+            sys.stderr.flush()
+            
+        # Write the passphrase immediately to the PTY input buffer.
+        # This satisfies getpass() whether it reads from /dev/tty or falls back to stdin.
+        sys.stderr.write("[rpm-sign.py] Writing passphrase to PTY input buffer...\n")
+        sys.stderr.flush()
+        os.write(fd, passphrase.encode() + b"\n")
+        
         output = b""
-        passphrase_sent = False
         while True:
             try:
                 # Read output from child
@@ -30,22 +48,9 @@ def sign_rpm(rpm_file, passphrase):
                 
                 output += chunk
                 
-                # Log what we read for debugging in the runner output
-                sys.stderr.write(f"[rpm-sign.py] PTY Read: {repr(chunk)}\n")
-                sys.stderr.flush()
-                
-                # Check for passphrase prompts from either rpm or gpg
-                if not passphrase_sent and (b"Enter pass phrase:" in output or b"passphrase" in output or b"pass phrase:" in output):
-                    sys.stderr.write("[rpm-sign.py] Passphrase prompt detected! Sending passphrase to child PTY...\n")
-                    sys.stderr.flush()
-                    # Write passphrase followed by newline
-                    os.write(fd, passphrase.encode() + b"\n")
-                    passphrase_sent = True
-                    output = b"" # clear buffer
-                
                 # Check for overwrite prompts (e.g. from GPG when signature file exists)
-                elif b"Overwrite?" in output or b"y/N" in output:
-                    sys.stderr.write("[rpm-sign.py] Overwrite prompt detected! Sending 'y' to child PTY...\n")
+                if b"Overwrite?" in output or b"y/N" in output:
+                    sys.stderr.write("[rpm-sign.py] Overwrite prompt detected! Sending 'y' to PTY...\n")
                     sys.stderr.flush()
                     os.write(fd, b"y\n")
                     output = b"" # clear buffer
