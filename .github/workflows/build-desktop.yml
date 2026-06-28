@@ -323,7 +323,7 @@ jobs:
             mkdir -p "$GPG_HOME"
             echo "allow-loopback-pinentry" >> "$GPG_HOME"/gpg-agent.conf
             echo "pinentry-mode loopback" >> "$GPG_HOME"/gpg.conf
-            gpg-connect-agent reloadagent /bye
+            gpg-connect-agent reloadagent /bye || gpgconf --kill gpg-agent || true
             
             # Configure rpmmacros for signing
             echo "%_signature gpg" > ~/.rpmmacros
