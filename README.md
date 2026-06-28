@@ -154,6 +154,10 @@ This generates the platform installer together with a `.sig` signature file and 
 A release pipeline is configured in [.github/workflows/build-desktop.yml](.github/workflows/build-desktop.yml). It triggers automatically under two conditions:
 
 1. **Staging / Dev Releases (Pushes to `main`)**: When code is pushed to `main`, the pipeline automatically builds and signs the packages using the staging key pair, publishes them under a unique pre-release tag (e.g. `v0.1.0-124`), and prunes previous dev pre-releases and tags to keep the release list clean. Staging clients query `dev.codeoba.com/api/update` to receive updates.
+   * **Local Tag Cleanup:** To delete stale staging/dev tags from your local Git workspace (which aren't pruned automatically by standard git pulls), run:
+     ```bash
+     node scripts/prune-dev-releases.cjs --local
+     ```
 2. **Tagged Production Releases (`v*`)**: To publish a new stable production release:
    
    *   **Step 1: Bump the Version**: Synchronize the version across all project files to the target version (e.g. `0.1.3`) using the bump helper script:
