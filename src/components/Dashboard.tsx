@@ -62,12 +62,12 @@ export const Dashboard = (props: DashboardProps) => {
     const list = props.sessions;
     const totalConversations = list.length;
     let totalTurns = 0;
-    let totalUserChars = 0;
-    let totalAssistantChars = 0;
     let totalDurationMs = 0;
     let totalElapsedMs = 0;
     let totalCompactions = 0;
     let totalCompactionTimeMs = 0;
+    let promptTokens = 0;
+    let responseTokens = 0;
 
     // Model aggregation
     const modelMap = new Map<string, {
@@ -103,16 +103,31 @@ export const Dashboard = (props: DashboardProps) => {
           modelMap.set(modelName, mStats);
         }
         mStats.turnCount++;
-        mStats.promptChars += (turn.userMessage || "").length;
-        mStats.responseChars += (turn.assistantMessage || "").length;
         
-        // Tokens on turn
-        if ((turn.inputTokens !== undefined && turn.inputTokens !== null) || 
-            (turn.outputTokens !== undefined && turn.outputTokens !== null)) {
-          mStats.totalTokens += (turn.inputTokens || 0) + (turn.outputTokens || 0);
+        const turnUserLen = (turn.userMessage || "").length;
+        const turnAssistantLen = (turn.assistantMessage || "").length;
+        
+        mStats.promptChars += turnUserLen;
+        mStats.responseChars += turnAssistantLen;
+        
+        let turnInputTokens = 0;
+        let turnOutputTokens = 0;
+        
+        if (turn.inputTokens !== undefined && turn.inputTokens !== null) {
+          turnInputTokens = turn.inputTokens;
         } else {
-          mStats.totalTokens += Math.round(((turn.userMessage || "").length + (turn.assistantMessage || "").length) / 4);
+          turnInputTokens = Math.round((turnUserLen + 3) / 4);
         }
+        
+        if (turn.outputTokens !== undefined && turn.outputTokens !== null) {
+          turnOutputTokens = turn.outputTokens;
+        } else {
+          turnOutputTokens = Math.round((turnAssistantLen + 3) / 4);
+        }
+        
+        mStats.totalTokens += turnInputTokens + turnOutputTokens;
+        promptTokens += turnInputTokens;
+        responseTokens += turnOutputTokens;
 
         const compMsStr = extra ? extra["computeTimeMs"] : null;
         const compMs = compMsStr ? parseInt(compMsStr, 10) : null;
@@ -123,16 +138,8 @@ export const Dashboard = (props: DashboardProps) => {
           mStats.computeTimeMs += Math.max(2000, Math.min(60000, estMs));
         }
       }
-      
-      // Accumulate text length for fallback
-      for (const turn of session.turns) {
-        totalUserChars += (turn.userMessage || "").length;
-        totalAssistantChars += (turn.assistantMessage || "").length;
-      }
     }
 
-    const promptTokens = Math.round((totalUserChars + 3) / 4);
-    const responseTokens = Math.round((totalAssistantChars + 3) / 4);
     const totalEstTokens = promptTokens + responseTokens;
     const avgTurns = totalConversations > 0 ? totalTurns / totalConversations : 0;
     const avgDurationMs = totalConversations > 0 ? totalElapsedMs / totalConversations : 0;
