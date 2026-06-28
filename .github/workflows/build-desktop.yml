@@ -318,11 +318,18 @@ jobs:
             gpg --export --armor > /tmp/gpg-pubkey.asc
             sudo rpm --import /tmp/gpg-pubkey.asc
             
+            # Configure GPG agent and options for loopback/non-interactive pinentry
+            mkdir -p ~/.gnupg
+            echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            gpg-connect-agent reloadagent /bye
+            
             # Configure rpmmacros for signing
             echo "%_signature gpg" > ~/.rpmmacros
             echo "%_gpg_path ~/.gnupg" >> ~/.rpmmacros
             echo "%_gpg_name ${{ steps.import-gpg.outputs.keyid }}" >> ~/.rpmmacros
             echo "%__gpg /usr/bin/gpg" >> ~/.rpmmacros
+            echo "%__gpg_sign_cmd %{__gpg} --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase-fd 0 --sign %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} -u \"%{_gpg_name}\" --output %{__signature_filename} --detach-sign %{__plaintext_filename}" >> ~/.rpmmacros
             
             # Run rpmsign (bypass passphrase prompt by defining macro)
             rpm --define "_gpg_passphrase ${{ secrets.LINUX_GPG_PASSPHRASE }}" --addsign "$RPM_FILE"
