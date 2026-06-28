@@ -1,4 +1,5 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
+import { useI18n } from "../i18n/i18n";
 import { 
   Search, 
   Sparkles, 
@@ -150,6 +151,7 @@ export const getSessionModels = (session: Session): string[] => {
 };
 
 export const Sidebar = (props: SidebarProps) => {
+  const { t } = useI18n();
   const [showFilters, setShowFilters] = createSignal(false);
 
   const handleMouseDown = (e: MouseEvent) => {
@@ -206,17 +208,17 @@ export const Sidebar = (props: SidebarProps) => {
     }
 
     const diff = now - time;
-    if (diff < 60000) return "just now";
+    if (diff < 60000) return t("sidebar.justNow");
     
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return t("sidebar.minutesAgo", { count: minutes });
     
     const hours = Math.floor(diff / 3600000);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t("sidebar.hoursAgo", { count: hours });
     
     const days = Math.floor(diff / 86400000);
-    if (days === 1) return "yesterday";
-    if (days < 7) return `${days}d ago`;
+    if (days === 1) return t("sidebar.yesterday");
+    if (days < 7) return t("sidebar.daysAgo", { count: days });
 
     return new Date(time).toLocaleDateString(undefined, { 
       month: "short", 
@@ -244,7 +246,7 @@ export const Sidebar = (props: SidebarProps) => {
                lastTurn.assistantMessage.substring(0, 100).replace(/\s+/g, " ");
       }
     }
-    return "No messages in this session";
+    return t("sidebar.noMessages");
   };
 
   // Determine what to display based on search results and filters
@@ -294,12 +296,12 @@ export const Sidebar = (props: SidebarProps) => {
       <div class="p-4 border-b border-border space-y-3 flex-shrink-0">
         <div class="flex items-center justify-between">
           <span class="text-[18px] font-semibold text-text-primary tracking-wide">
-            Sessions
+            {t("sidebar.title")}
           </span>
           <button 
             onClick={() => props.onRebuildIndex()}
             disabled={props.isRebuilding}
-            title="Force Rebuild Index"
+            title={t("sidebar.forceRebuild")}
             class="p-1.5 hover:bg-surface border border-border/40 rounded-lg text-text-secondary hover:text-accent transition-all disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw class={`w-4 h-4 ${props.isRebuilding ? 'animate-spin text-accent' : ''}`} />
@@ -314,13 +316,13 @@ export const Sidebar = (props: SidebarProps) => {
               type="text"
               value={props.searchQuery}
               onInput={(e) => props.onSearchChange(e.currentTarget.value)}
-              placeholder="Search conversations..."
+              placeholder={t("sidebar.searchPlaceholder")}
               class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-4 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
             />
           </div>
           <button
             onClick={() => props.onSemanticToggle()}
-            title={props.isSemantic ? "Semantic Search Enabled" : "Lexical Search Enabled"}
+            title={props.isSemantic ? t("sidebar.semanticEnabled") : t("sidebar.lexicalEnabled")}
             class={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
               props.isSemantic 
                 ? "bg-accent/15 border-accent text-accent shadow-sm shadow-accent/20" 
@@ -347,7 +349,7 @@ export const Sidebar = (props: SidebarProps) => {
             {/* Source checkboxes */}
             <div class="space-y-1.5">
               <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Sources
+                {t("sidebar.sources")}
               </div>
               <div class="grid grid-cols-2 gap-1.5">
                 <For each={props.sources}>
@@ -378,7 +380,7 @@ export const Sidebar = (props: SidebarProps) => {
             {/* Archival segmented controls */}
             <div class="space-y-1.5">
               <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Status Filter
+                {t("sidebar.statusFilter")}
               </div>
               <div class="flex bg-surface p-1 rounded-lg border border-border/60">
                 <For each={["all", "active", "archived"] as const}>
@@ -391,7 +393,7 @@ export const Sidebar = (props: SidebarProps) => {
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      {tab}
+                      {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
                     </button>
                   )}
                 </For>

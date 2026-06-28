@@ -1,4 +1,5 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
+import { useI18n } from "../i18n/i18n";
 import { 
   Folder, 
   MessageSquare, 
@@ -53,6 +54,7 @@ interface ModelItemStats {
 type SortDimension = "turns" | "tokens" | "speed" | "duration" | "name";
 
 export const Dashboard = (props: DashboardProps) => {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = createSignal<"global" | "groups">("global");
   const [sortBy, setSortBy] = createSignal<SortDimension>("turns");
   const [sortAscending, setSortAscending] = createSignal(false);
@@ -96,7 +98,7 @@ export const Dashboard = (props: DashboardProps) => {
         }
 
         // Model stats
-        const modelName = (extra && extra["model"]) || "Unknown Model";
+        const modelName = (extra && extra["model"]) || t("dashboard.unknownModel");
         let mStats = modelMap.get(modelName);
         if (!mStats) {
           mStats = { turnCount: 0, promptChars: 0, responseChars: 0, computeTimeMs: 0, totalTokens: 0 };
@@ -244,7 +246,7 @@ export const Dashboard = (props: DashboardProps) => {
               : "text-text-secondary hover:text-text-primary"
           }`}
         >
-          Global Stats
+          {t("dashboard.globalStats")}
         </button>
         <button
           onClick={() => setActiveTab("groups")}
@@ -254,7 +256,7 @@ export const Dashboard = (props: DashboardProps) => {
               : "text-text-secondary hover:text-text-primary"
           }`}
         >
-          Groups Dashboard
+          {t("dashboard.adapterGroups")}
         </button>
       </div>
 
@@ -264,7 +266,7 @@ export const Dashboard = (props: DashboardProps) => {
           /* Groups Dashboard View */
           <div class="space-y-4 max-w-4xl">
             <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-              Logs by Source Adapter
+              {t("dashboard.adapterGroups")}
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <For each={stats().sourceGroups}>
@@ -276,12 +278,12 @@ export const Dashboard = (props: DashboardProps) => {
                       </div>
                       <div>
                         <h4 class="text-sm font-bold text-text-primary capitalize">{source}</h4>
-                        <span class="text-xs text-text-secondary">Active telemetry source adapter</span>
+                        <span class="text-xs text-text-secondary">{t("settings.sources.desc")}</span>
                       </div>
                     </div>
                     <div class="text-right">
                       <div class="text-[20px] font-bold text-text-primary">{count}</div>
-                      <span class="text-xs text-text-secondary">sessions</span>
+                      <span class="text-xs text-text-secondary">{t("sidebar.title").toLowerCase()}</span>
                     </div>
                   </div>
                 )}
@@ -293,52 +295,52 @@ export const Dashboard = (props: DashboardProps) => {
         {/* Global Stats Grid View */}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl flex-shrink-0">
           <StatCard
-            title="Total Conversations"
+            title={t("dashboard.totalConversations")}
             value={formatNumber(stats().totalConversations)}
-            subtitle="Indexed dialog histories"
+            subtitle={t("detailPane.selectSession")}
             icon={<Folder class="w-5 h-5" />}
           />
           <StatCard
-            title="Dialogue Exchanges"
+            title={t("dashboard.totalTurns")}
             value={formatNumber(stats().totalTurns)}
-            subtitle={`Avg. Depth: ${stats().avgTurns.toFixed(1)} turns / session`}
+            subtitle={`${t("dashboard.avgTurns")}: ${stats().avgTurns.toFixed(1)}`}
             icon={<MessageSquare class="w-5 h-5" />}
           />
           <StatCard
-            title="Avg. Generation Speed"
+            title={t("dashboard.avgSpeed")}
             value={stats().avgSpeedText}
-            subtitle="Tokens generated per second"
+            subtitle={t("settings.general.logModeDesc")}
             icon={<Bolt class="w-5 h-5" />}
           />
           <StatCard
-            title="Est. Total Tokens"
+            title={t("dashboard.totalEstTokens")}
             value={formatNumber(stats().totalEstTokens)}
             subtitle={`${formatNumber(stats().promptTokens)} in / ${formatNumber(stats().responseTokens)} out`}
             icon={<Cpu class="w-5 h-5" />}
           />
           <StatCard
-            title="Total Compute Time"
+            title={t("dashboard.totalCompactionTime")}
             value={formatDuration(stats().totalDurationMs)}
-            subtitle="Aggregated active agent work"
+            subtitle={t("settings.general.cacheDesc")}
             icon={<Clock class="w-5 h-5" />}
           />
           <StatCard
-            title="Avg. Session Duration"
+            title={t("dashboard.duration")}
             value={formatDuration(stats().avgDurationMs)}
-            subtitle="Average active work per session"
+            subtitle={t("settings.general.logModeDesc")}
             icon={<Clock class="w-5 h-5" />}
           />
           <StatCard
-            title="Context Compactions"
+            title={t("dashboard.totalCompactions")}
             value={formatNumber(stats().totalCompactions)}
-            subtitle="Context summaries triggered"
+            subtitle={t("settings.general.logMode")}
             icon={<Settings class="w-5 h-5" />}
           />
           <StatCard
-            title="Est. Compaction Time"
+            title={t("dashboard.totalCompactionTime")}
             value={formatDuration(stats().totalCompactionTimeMs)}
             subtitle={stats().totalCompactions > 0 
-              ? `Avg: ${((stats().totalCompactionTimeMs / stats().totalCompactions) / 1000).toFixed(2)}s per compaction`
+              ? `Avg: ${((stats().totalCompactionTimeMs / stats().totalCompactions) / 1000).toFixed(2)}s`
               : "Avg: 0s"
             }
             icon={<RefreshCw class="w-5 h-5" />}
@@ -349,12 +351,12 @@ export const Dashboard = (props: DashboardProps) => {
         <div class="space-y-4 max-w-5xl">
           <div class="flex items-center justify-between border-b border-border/40 pb-2 flex-shrink-0">
             <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-              Model Performance & Usage Breakdown
+              {t("dashboard.topModels")}
             </h3>
             
             {/* Sorting controls */}
             <div class="flex items-center gap-2">
-              <span class="text-xs text-text-secondary/70">Sort by:</span>
+              <span class="text-xs text-text-secondary/70">{t("dashboard.sort")}:</span>
               <For each={["turns", "tokens", "speed", "duration", "name"] as const}>
                 {(dim) => (
                   <button
@@ -365,7 +367,7 @@ export const Dashboard = (props: DashboardProps) => {
                         : "bg-surface border-border/40 text-text-secondary hover:text-text-primary"
                     }`}
                   >
-                    {dim}
+                    {t(`dashboard.${dim}`)}
                     <Show when={sortBy() === dim}>
                       <span class="ml-1 text-[10px]">{sortAscending() ? "▲" : "▼"}</span>
                     </Show>
@@ -380,7 +382,7 @@ export const Dashboard = (props: DashboardProps) => {
               each={sortedModelStats()}
               fallback={
                 <div class="p-6 text-center text-text-secondary text-sm">
-                  No active model telemetry parsed.
+                  {t("detailPane.noPermissions")}
                 </div>
               }
             >
@@ -397,16 +399,16 @@ export const Dashboard = (props: DashboardProps) => {
                   <div class="grid grid-cols-3 gap-6 text-xs text-text-secondary">
                     <div>
                       <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        Tokens
+                        {t("dashboard.tokens")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">{formatNumber(m.totalTokens)}</div>
                     </div>
                     <div>
                       <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        Dialogue Turns
+                        {t("dashboard.turns")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">
-                        {m.turnCount} turns
+                        {m.turnCount} {t("dashboard.turns").toLowerCase()}
                         <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
                           ({stats().totalTurns > 0 ? ((m.turnCount / stats().totalTurns) * 100).toFixed(1) : 0}%)
                         </span>
@@ -414,7 +416,7 @@ export const Dashboard = (props: DashboardProps) => {
                     </div>
                     <div>
                       <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        Compute Duration
+                        {t("dashboard.duration")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">
                         {formatDuration(m.computeTimeMs)}

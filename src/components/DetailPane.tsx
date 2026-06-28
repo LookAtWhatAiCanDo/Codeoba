@@ -15,6 +15,7 @@ import {
   FileText
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 
@@ -51,6 +52,7 @@ interface DetailPaneProps {
 }
 
 export const DetailPane = (props: DetailPaneProps) => {
+  const { t } = useI18n();
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedSession, setCopiedSession] = createSignal(false);
   const [visibleTurns, setVisibleTurns] = createSignal(10);
@@ -203,7 +205,7 @@ export const DetailPane = (props: DetailPaneProps) => {
           fallback={
             <div class="flex-grow h-full flex flex-col items-center justify-center bg-background/95 text-text-secondary select-none">
               <MessageSquare class="w-16 h-16 mb-4 text-border animate-pulse" />
-              <p class="text-[15px] font-medium tracking-wide">Select a conversation thread to view details</p>
+              <p class="text-[15px] font-medium tracking-wide">{t("detailPane.selectSession")}</p>
             </div>
           }
         >
@@ -218,17 +220,17 @@ export const DetailPane = (props: DetailPaneProps) => {
                 </span>
                 <span class="text-border">/</span>
                 <span class="truncate font-medium text-text-primary max-w-[240px] cursor-default">
-                  {props.session!.threadName || "Untitled Session"}
+                  {props.session!.threadName || t("detailPane.noSelection")}
                 </span>
                 <Show when={compactionCount() > 0}>
                   <span class="px-2 py-0.5 bg-accent/15 border border-accent/30 text-accent rounded-full text-[9px] font-bold select-none leading-none pt-[3px] pb-[3px]">
-                    Compactions: {compactionCount()}
+                    {t("dashboard.totalCompactions")}: {compactionCount()}
                   </span>
                 </Show>
               </div>
               
               <Show when={props.session!.cwd}>
-                <div class="flex items-center gap-1.5 text-[11px] text-text-secondary/60">
+                <div dir="ltr" class="flex items-center gap-1.5 text-[11px] text-text-secondary/60 text-left">
                   <Folder class="w-3.5 h-3.5 flex-shrink-0" />
                   <span class="truncate hover:text-text-primary transition-colors" title={props.session!.cwd!}>
                     {props.session!.cwd}
@@ -240,24 +242,24 @@ export const DetailPane = (props: DetailPaneProps) => {
             <div class="flex items-center gap-2">
               <button
                 onClick={handleCopyPath}
-                title="Copy Log File Path"
+                title={t("detailPane.copyPath")}
                 class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
               >
                 <Show when={copiedPath()} fallback={<ExternalLink class="w-3.5 h-3.5" />}>
                   <Check class="w-3.5 h-3.5 text-emerald-400" />
                 </Show>
-                <span>Path</span>
+                <span>{t("detailPane.copyPath").split(" ")[1] || "Path"}</span>
               </button>
 
               <button
                 onClick={handleCopyFullSession}
-                title="Copy Entire Transcript"
+                title={t("detailPane.copyCwd")}
                 class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
               >
                 <Show when={copiedSession()} fallback={<Copy class="w-3.5 h-3.5" />}>
                   <Check class="w-3.5 h-3.5 text-emerald-400" />
                 </Show>
-                <span>Transcript</span>
+                <span>{t("detailPane.copyCwd").split(" ")[1] || "Transcript"}</span>
               </button>
             </div>
           </div>
@@ -271,23 +273,23 @@ export const DetailPane = (props: DetailPaneProps) => {
             <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
               <div class="flex items-center gap-1.5">
                 <Bookmark class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">Source:</span>
+                <span class="font-semibold text-text-primary">{t("settings.sources.tab")}:</span>
                 <span class="capitalize">{props.session!.sourceId}</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">Created:</span>
+                <span class="font-semibold text-text-primary">{t("permissions.authorizedOn")}:</span>
                 <span>{formatFullDate(props.session!.timestamp)}</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <Cpu class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">Total Turns:</span>
+                <span class="font-semibold text-text-primary">{t("dashboard.totalTurns")}:</span>
                 <span>{props.session!.turns.length}</span>
               </div>
               <Show when={props.loadTime}>
                 <div class="flex items-center gap-1.5">
                   <Clock class="w-3.5 h-3.5 text-accent animate-pulse" />
-                  <span class="font-semibold text-text-primary">Load Time:</span>
+                  <span class="font-semibold text-text-primary">{t("dashboard.duration")}:</span>
                   <span class="font-mono text-accent">{props.loadTime}</span>
                 </div>
               </Show>
@@ -304,9 +306,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                 </button>
                 <button
                   onClick={() => setVisibleTurns(props.session!.turns.length)}
-                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm"
+                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm shadow-accent/5 capitalize"
                 >
-                  Show all
+                  {t("sidebar.filterAll")}
                 </button>
               </div>
             </Show>
@@ -350,6 +352,7 @@ interface VirtualTurnProps {
 }
 
 const VirtualTurn = (props: VirtualTurnProps) => {
+  const { t } = useI18n();
   let elementRef: HTMLDivElement | undefined;
   const [isVisible, setIsVisible] = createSignal(false);
   const turnKey = createMemo(() => props.turn.turnId || String(props.actualIndex));
@@ -417,7 +420,7 @@ const VirtualTurn = (props: VirtualTurnProps) => {
           <div class="flex items-center gap-2 mb-1.5 pl-3">
             <div class="w-2 h-2 rounded-full bg-accent" />
             <span class="text-[12px] font-semibold text-text-primary tracking-wide">
-              User
+              {t("common.user")}
             </span>
             <span class="text-[10px] text-text-secondary/50">
               {props.formatFullDate(props.turn.timestamp)}
@@ -434,7 +437,7 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             <div class="flex items-center gap-2">
               <div class="w-2 h-2 rounded-full bg-emerald-400" />
               <span class="text-[12px] font-semibold text-text-primary tracking-wide">
-                Assistant
+                {t("common.assistant")}
               </span>
             </div>
             <Show when={props.turn.inputTokens || props.turn.outputTokens}>
@@ -589,10 +592,9 @@ const ToolOutputBlock = (props: { tool: MessageToolPart; searchQuery?: string; s
         <span class="hover:underline">{props.tool.header}</span>
       </button>
 
-      {/* Level 3: Raw tool content */}
       <Show when={isOpen()}>
         <div class="ml-4 pl-1">
-          <pre class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner">
+          <pre dir="ltr" class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner text-left">
             <code>{props.tool.content}</code>
           </pre>
         </div>

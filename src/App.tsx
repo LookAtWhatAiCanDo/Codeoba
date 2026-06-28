@@ -10,6 +10,7 @@ import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { FileViewerDialog } from "./components/FileViewerDialog";
 import { logFE } from "./utils/logger";
+import { useI18n } from "./i18n/i18n";
 import { 
   Layers, 
   Terminal, 
@@ -64,6 +65,7 @@ interface SourceMetadata {
 
 
 function App() {
+  const { t } = useI18n();
   const [theme, setTheme] = createSignal(localStorage.getItem("codeoba-theme") || "obsidian");
   const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
@@ -409,7 +411,7 @@ function App() {
     const start = performance.now();
     (window as any).sessionSelectionStart = start;
     logFE("info", `Selecting session: ${session.id} (${session.threadName || 'Untitled'})`);
-    setLoadTime("Loading...");
+    setLoadTime(t("common.loading"));
     setLoadingSessionId(session.id);
     try {
       const fullSession = await invoke<Session | null>("get_session", {
@@ -437,7 +439,7 @@ function App() {
       }
     } catch (err: any) {
       logFE("error", `Failed to load session details: ${err}`);
-      setErrorMsg("Failed to load session details");
+      setErrorMsg(t("common.error"));
       setLoadTime(null);
       setLoadingSessionId(null);
     }
@@ -560,7 +562,7 @@ function App() {
 
             <button
               onClick={() => handleGoHome()}
-              title="Go to Dashboard"
+              title={t("dashboard.globalStats")}
               class={`p-1.5 hover:bg-surface border border-transparent hover:border-border/60 rounded-lg transition-all cursor-pointer ${
                 selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "text-text-secondary"
               }`}
@@ -571,7 +573,7 @@ function App() {
             <button
               onClick={handleRebuildIndex}
               disabled={isRebuilding()}
-              title="Rebuild Session Index"
+              title={t("sidebar.forceRebuild")}
               class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
             >
               <RotateCw class={`w-4 h-4 ${isRebuilding() ? 'animate-spin text-accent' : ''}`} />
@@ -581,7 +583,7 @@ function App() {
 
             <button
               onClick={() => setShowSettings(true)}
-              title="Settings"
+              title={t("settings.title")}
               class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
             >
               <Settings class="w-4 h-4" />
@@ -595,7 +597,7 @@ function App() {
             when={selectedSession()} 
             fallback={
               <span class="text-accent font-semibold flex items-center gap-1.5">
-                <Layers class="w-3.5 h-3.5" /> Workspace Dashboard
+                <Layers class="w-3.5 h-3.5" /> {t("dashboard.globalStats")}
               </span>
             }
           >
@@ -604,7 +606,7 @@ function App() {
             </span>
             <span class="text-border">/</span>
             <span class="text-text-primary truncate max-w-[200px]" title={selectedSession()?.threadName || "Untitled"}>
-              {selectedSession()?.threadName || "Untitled Turn"}
+              {selectedSession()?.threadName || "Untitled"}
             </span>
           </Show>
         </div>
@@ -645,7 +647,7 @@ function App() {
                 onClick={() => setErrorMsg(null)}
                 class="ml-auto hover:text-white font-medium cursor-pointer"
               >
-                Dismiss
+                {t("common.close")}
               </button>
             </div>
           </Show>
@@ -655,7 +657,7 @@ function App() {
             fallback={
               <div class="flex-grow flex flex-col items-center justify-center text-text-secondary select-none animate-pulse">
                 <Layers class="w-12 h-12 text-border animate-bounce mb-3" />
-                <p class="text-sm font-medium tracking-wider">Scanning local session adapters...</p>
+                <p class="text-sm font-medium tracking-wider">{t("dashboard.scanning")}</p>
               </div>
             }
           >
@@ -715,16 +717,16 @@ function App() {
               </div>
               <div>
                 <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
-                  Update Available
+                  {t("updater.title")}
                 </h3>
-                <p class="text-[10px] text-text-secondary/70">A new version of Codeoba is ready to install.</p>
+                <p class="text-[10px] text-text-secondary/70">{t("updater.description", { version: updateManifest().version })}</p>
               </div>
             </div>
 
             {/* Version Details */}
             <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-2 text-xs">
               <div class="flex items-center justify-between font-semibold">
-                <span class="text-text-secondary">New Version:</span>
+                <span class="text-text-secondary">Version:</span>
                 <span class="text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full text-[10px]">
                   v{updateManifest().version}
                 </span>
@@ -744,7 +746,7 @@ function App() {
             <Show when={isUpdating()}>
               <div class="space-y-2">
                 <div class="flex justify-between text-[10px] font-semibold text-text-secondary">
-                  <span>Downloading & Installing...</span>
+                  <span>{t("updater.downloading", { progress: updateProgress() })}</span>
                   <span class="text-accent">{updateProgress()}%</span>
                 </div>
                 <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/40">
@@ -760,7 +762,7 @@ function App() {
             <Show when={updateError()}>
               <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[10px] text-red-400">
                 <AlertCircle class="w-4 h-4 flex-shrink-0" />
-                <span class="truncate flex-1">{updateError()}</span>
+                <span class="truncate flex-1">{t("updater.failed", { error: updateError() || "" })}</span>
               </div>
             </Show>
 
@@ -771,14 +773,14 @@ function App() {
                   onClick={() => setShowUpdateModal(false)}
                   class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
                 >
-                  Later
+                  {t("updater.later")}
                 </button>
                 <button
                   onClick={handleStartUpdate}
                   class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                 >
                   <Download class="w-3.5 h-3.5" />
-                  <span>Update Now</span>
+                  <span>{t("updater.updateBtn")}</span>
                 </button>
               </Show>
             </div>

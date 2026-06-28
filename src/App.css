@@ -155,6 +155,8 @@ body {
   padding: 12px;
   margin: 12px 0;
   overflow-x: auto;
+  direction: ltr !important;
+  text-align: left !important;
 }
 
 .markdown-body code {

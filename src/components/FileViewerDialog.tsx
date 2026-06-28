@@ -3,12 +3,14 @@ import { X, ShieldAlert, ExternalLink, FileText } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { logFE } from "../utils/logger";
+import { useI18n } from "../i18n/i18n";
 
 interface FileViewerDialogProps {
   sessionCwd?: string | null;
 }
 
 export const FileViewerDialog = (props: FileViewerDialogProps) => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = createSignal(false);
   const [filePath, setFilePath] = createSignal("");
   const [canonicalPath, setCanonicalPath] = createSignal<string | null>(null);
@@ -157,7 +159,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
             <div class="flex items-center gap-3">
               <button
                 onClick={handleLaunchExternal}
-                title="Open in System Editor"
+                title={t("fileViewer.title")}
                 class="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-xs font-semibold text-text-secondary hover:text-accent transition-all cursor-pointer"
               >
                 <ExternalLink class="w-3.5 h-3.5" />
@@ -180,7 +182,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
               <div class="absolute inset-0 flex items-center justify-center bg-background/50">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-                  <span class="text-xs text-text-secondary font-semibold">Resolving file...</span>
+                  <span class="text-xs text-text-secondary font-semibold">{t("fileViewer.loading")}</span>
                 </div>
               </div>
             </Show>
@@ -190,7 +192,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
               <Show 
                 when={isMarkdown()} 
                 fallback={
-                  <pre class="w-full text-xs font-mono leading-relaxed text-text-primary/80 overflow-x-auto whitespace-pre p-2 bg-surface/10 rounded-2xl border border-border/20 select-text">
+                  <pre dir="ltr" class="w-full text-xs font-mono leading-relaxed text-text-primary/80 overflow-x-auto whitespace-pre p-2 bg-surface/10 rounded-2xl border border-border/20 select-text text-left">
                     <code>{content()}</code>
                   </pre>
                 }
@@ -208,11 +210,11 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                   <ShieldAlert class="w-8 h-8 animate-bounce" />
                 </div>
                 <div class="space-y-2">
-                  <h4 class="text-sm font-bold text-text-primary">Security Confirmation Required</h4>
+                  <h4 class="text-sm font-bold text-text-primary">{t("fileViewer.noPermissionTitle")}</h4>
                   <p class="text-xs text-text-secondary leading-relaxed">
-                    {confirmReason() || "The requested file lies outside of the workspace directory of your current session."}
+                    {confirmReason() || t("fileViewer.noPermissionDesc")}
                   </p>
-                  <pre class="bg-surface border border-border rounded-xl p-3 text-[10.5px] font-mono text-left truncate text-text-primary/90 mt-2 select-all">
+                  <pre dir="ltr" class="bg-surface border border-border rounded-xl p-3 text-[10.5px] font-mono text-left truncate text-text-primary/90 mt-2 select-all">
                     {canonicalPath()}
                   </pre>
                 </div>
@@ -220,15 +222,15 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                 <div class="flex flex-col w-full gap-2 pt-2">
                   <button
                     onClick={() => handleGrantPermission("allow")}
-                    class="w-full py-2.5 bg-accent hover:bg-accent-hover text-black font-semibold rounded-xl text-xs transition-all cursor-pointer shadow-lg hover:shadow-accent/20"
+                    class="w-full py-2.5 bg-accent hover:bg-accent-hover text-black font-semibold rounded-xl text-xs transition-all cursor-pointer shadow-lg hover:shadow-accent/20 animate-pulse"
                   >
-                    Allow & Preview File
+                    {t("fileViewer.grantPermission")}
                   </button>
                   <button
                     onClick={() => handleGrantPermission("deny")}
                     class="w-full py-2.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/30 text-text-secondary hover:text-red-400 font-semibold rounded-xl text-xs transition-all cursor-pointer"
                   >
-                    Block Preview
+                    {t("common.cancel")}
                   </button>
                 </div>
               </div>
@@ -241,14 +243,14 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                   <ShieldAlert class="w-6 h-6" />
                 </div>
                 <div class="space-y-1">
-                  <h4 class="text-sm font-bold text-text-primary">Unable to Open File</h4>
+                  <h4 class="text-sm font-bold text-text-primary">{t("common.error")}</h4>
                   <p class="text-xs text-text-secondary leading-relaxed">{errorMsg()}</p>
                 </div>
                 <button
                   onClick={handleClose}
                   class="px-4 py-2 bg-surface border border-border rounded-xl text-xs font-semibold hover:bg-background transition-all cursor-pointer"
                 >
-                  Close Viewer
+                  {t("common.close")}
                 </button>
               </div>
             </Show>

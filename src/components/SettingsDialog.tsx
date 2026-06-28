@@ -15,6 +15,7 @@ import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
+import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
 
 interface SourceMetadata {
   id: string;
@@ -49,6 +50,7 @@ const THEMES = [
 ];
 
 export const SettingsDialog = (props: SettingsDialogProps) => {
+  const { locale, setLocale, t } = useI18n();
   const [activeCategory, setActiveCategory] = createSignal<Category>("general");
   const [deletingSourceId, setDeletingSourceId] = createSignal<string | null>(null);
   const [checkingUpdates, setCheckingUpdates] = createSignal(false);
@@ -332,7 +334,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           <div class="w-[200px] border-r border-border/60 flex flex-col p-4 pt-6 gap-6 flex-shrink-0">
             <div class="flex items-center gap-2 px-2">
               <Settings class="w-4 h-4 text-accent" />
-              <span class="font-bold text-text-primary tracking-wide">Settings</span>
+              <span class="font-bold text-text-primary tracking-wide">{t("settings.title")}</span>
             </div>
             
             <div class="flex flex-col gap-1">
@@ -345,7 +347,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Palette class="w-3.5 h-3.5" />
-                <span>General Settings</span>
+                <span>{t("settings.general.title")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("sources")}
@@ -356,7 +358,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Layers class="w-3.5 h-3.5" />
-                <span>Sources & Adapters</span>
+                <span>{t("settings.sources.tab")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("semantic")}
@@ -367,7 +369,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Sliders class="w-3.5 h-3.5" />
-                <span>Semantic Search</span>
+                <span>{t("settings.semantic.title")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("permissions")}
@@ -378,7 +380,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Shield class="w-3.5 h-3.5" />
-                <span>Path Permissions</span>
+                <span>{t("permissions.title")}</span>
               </button>
             </div>
           </div>
@@ -389,15 +391,36 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               {/* General Settings Tab */}
               <div class="space-y-5">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  General Settings
+                  {t("settings.general.title")}
                 </h3>
+
+                {/* Language Selector */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">Language / Idioma</h4>
+                    <p class="text-[10px] text-text-secondary/70">Select the display language.</p>
+                  </div>
+                  <select
+                    value={locale()}
+                    onChange={(e) => setLocale(e.currentTarget.value as Locale)}
+                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
+                  >
+                    <For each={LOCALES}>
+                      {(lang) => (
+                        <option value={lang}>
+                          {LOCALE_NAMES[lang]}
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </div>
 
                 {/* Theme Selector Dot Bar */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h4 class="text-xs font-bold text-text-primary">Application Theme</h4>
-                      <p class="text-[10px] text-text-secondary/70">Select the visual appearance of the workspace.</p>
+                      <h4 class="text-xs font-bold text-text-primary">{t("settings.general.theme")}</h4>
+                      <p class="text-[10px] text-text-secondary/70">{t("settings.general.themeDesc")}</p>
                     </div>
                     <span class="text-xs font-semibold text-accent capitalize">
                       {THEMES.find(t => t.id === props.theme)?.name || props.theme}
@@ -421,8 +444,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 {/* Persistent cache switch */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
-                    <h4 class="text-xs font-bold text-text-primary">Persistent Startup Cache</h4>
-                    <p class="text-[10px] text-text-secondary/70">Speed up startup time by caching parsed sessions on disk.</p>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.cache")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.clearCacheDesc")}</p>
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -454,15 +477,15 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       </label>
                     </div>
                     <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
-                      <span class="text-text-secondary">Current Version: v{appVersion()}</span>
+                      <span class="text-text-secondary">{t("updater.current")}: v{appVersion()}</span>
                       <button
                         onClick={handleCheckUpdates}
                         disabled={checkingUpdates()}
                         class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <Show when={checkingUpdates()} fallback={<span>Check for Updates</span>}>
+                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.update") || "Check for Updates"}</span>}>
                           <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                          <span>Checking...</span>
+                          <span>{t("settings.general.checking")}</span>
                         </Show>
                       </button>
                     </div>
@@ -483,8 +506,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 {/* Log Parsing Mode */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
                   <div>
-                    <h4 class="text-xs font-bold text-text-primary">Log Parsing Mode</h4>
-                    <p class="text-[10px] text-text-secondary/70">Configure how conversation transcripts are processed and summarized.</p>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.logMode")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.logModeDesc")}</p>
                   </div>
                   <div class="flex bg-background p-1 rounded-lg border border-border/60">
                     <button
@@ -495,7 +518,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      Standard Parsing
+                      {t("settings.general.modeStandard")}
                     </button>
                     <button
                       onClick={() => handleParserModeChange("summarizing")}
@@ -505,7 +528,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      AI Summarizing
+                      {t("settings.general.modeCompact")}
                     </button>
                   </div>
                 </div>
@@ -516,7 +539,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               {/* Sources & Adapters Tab */}
               <div class="space-y-4">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  Sources & Adapters
+                  {t("settings.sources.title")}
                 </h3>
 
                 <div class="space-y-3">
@@ -528,13 +551,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                           <div class="min-w-0">
                             <h4 class="text-xs font-bold text-text-primary capitalize">{src.displayName}</h4>
                             <p class="text-[10px] text-text-secondary/70 truncate">
-                              Status: {src.isAvailable ? 'Monitoring active' : 'Not available'}
+                              {t("settings.sources.status")}: {src.isAvailable ? t("settings.sources.available") : t("settings.sources.notInstalled")}
                             </p>
                           </div>
 
                           <div class="flex items-center gap-2">
                             {/* Segmented controls for allow/deny/ask */}
-                            <div class="flex bg-background p-0.5 rounded-lg border border-border/50 text-[10px] font-semibold">
+                            <div class="flex bg-background p-0.5 rounded-lg border border-border/50 text-[10px] font-semibold text-text-primary">
                               <For each={["allow", "deny", "ask"] as const}>
                                 {(option) => (
                                   <button
@@ -554,7 +577,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             {/* Trash button to delete source cache */}
                             <button
                               onClick={() => setDeletingSourceId(src.id)}
-                              title="Delete Parser Cache Database"
+                              title={t("settings.sources.deleteData")}
                               class="p-2 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-text-secondary hover:text-red-400 transition-all cursor-pointer"
                             >
                               <Trash2 class="w-3.5 h-3.5" />
@@ -572,14 +595,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               {/* Semantic Settings Tab */}
               <div class="space-y-5">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  Semantic Search Settings
+                  {t("settings.semantic.title")}
                 </h3>
 
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
                   <div class="space-y-1">
-                    <h4 class="text-xs font-bold text-text-primary">Local Embedding Model</h4>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.downloadTitle")}</h4>
                     <p class="text-[10px] text-text-secondary/70">
-                      Semantic search uses the <code>all-MiniLM-L6-v2</code> transformer model (~23MB) to run similarity searches offline.
+                      {t("settings.semantic.downloadDesc")}
                     </p>
                   </div>
 
@@ -588,19 +611,19 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     fallback={
                       <div class="space-y-3">
                         <div class="flex items-center justify-between text-xs p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400">
-                          <span>Embedding model is not downloaded.</span>
+                          <span>{t("settings.semantic.statusNotDownloaded")}</span>
                           <button
                             onClick={handleDownloadModel}
                             disabled={downloading()}
                             class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/40 text-black font-semibold rounded-xl text-xs transition-all cursor-pointer"
                           >
-                            {downloading() ? "Downloading..." : "Download Model"}
+                            {downloading() ? t("settings.general.checking") : t("settings.semantic.downloadBtn")}
                           </button>
                         </div>
                         <Show when={downloadProgress() !== null}>
                           <div class="space-y-1">
                             <div class="flex justify-between text-[10px] font-bold text-text-secondary">
-                              <span>Downloading Xenova all-MiniLM-L6-v2...</span>
+                              <span>{t("settings.semantic.downloading")}</span>
                               <span>{Math.round(downloadProgress()! * 100)}%</span>
                             </div>
                             <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/50">
@@ -620,12 +643,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     }
                   >
                     <div class="flex items-center justify-between text-xs p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                      <span>Model status: Installed & ready</span>
+                      <span>{t("settings.semantic.statusInstalled")}</span>
                       <button
                         onClick={handleDeleteModel}
                         class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
                       >
-                        Delete Model
+                        {t("settings.semantic.deleteModel")}
                       </button>
                     </div>
                   </Show>
@@ -634,9 +657,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <Show when={modelDownloaded()}>
                   <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
                     <div class="space-y-1">
-                      <h4 class="text-xs font-bold text-text-primary">Similarity Threshold</h4>
+                      <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.threshold")}</h4>
                       <p class="text-[10px] text-text-secondary/70">
-                        Configure the minimum confidence score required for search matches. Lower values return more results (fuzzier), higher values return fewer results (stricter).
+                        {t("settings.semantic.thresholdDesc")}
                       </p>
                     </div>
 
@@ -673,14 +696,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-border/30 pb-2 mb-2 flex-shrink-0">
                   <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-                    Workspace Path Permissions
+                    {t("permissions.title")}
                   </h3>
                   <Show when={permissions().length > 0}>
                     <button
                       onClick={handleClearAllPermissions}
                       class="px-2.5 py-1.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-red-400 transition-all text-xs font-semibold cursor-pointer"
                     >
-                      Clear All
+                      {t("settings.permissions.clearAll")}
                     </button>
                   </Show>
                 </div>
@@ -689,7 +712,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   when={permissions().length > 0}
                   fallback={
                     <div class="flex-grow flex flex-col items-center justify-center p-8 text-text-secondary select-none text-xs">
-                      No custom path permissions saved.
+                      {t("settings.permissions.noPermissions")}
                     </div>
                   }
                 >
@@ -702,8 +725,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                               {p.path}
                             </div>
                             <div class="flex gap-4 text-[10px] text-text-secondary/70">
-                              <span>Preview: <span class={p.preview === 'allow' ? 'text-accent font-semibold' : ''}>{p.preview}</span></span>
-                              <span>External Open: <span class={p.external === 'allow' ? 'text-accent font-semibold' : ''}>{p.external}</span></span>
+                              <span>{t("fileViewer.title")}: <span class={p.preview === 'allow' ? 'text-accent font-semibold' : ''}>{p.preview}</span></span>
+                              <span>External: <span class={p.external === 'allow' ? 'text-accent font-semibold' : ''}>{p.external}</span></span>
                             </div>
                           </div>
 
@@ -726,9 +749,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             </Show>
                             <button
                               onClick={() => handleResetPermission(p.path, "all")}
-                              class="px-2.5 py-1.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-red-400 transition-all font-semibold cursor-pointer"
+                              class="px-2.5 py-1.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-red-400 transition-all font-semibold cursor-pointer shadow-red-500/5 shadow"
                             >
-                              Clear
+                              {t("common.delete")}
                             </button>
                           </div>
                         </div>
@@ -746,25 +769,25 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               <div class="w-[400px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col items-center gap-4 text-center shadow-2xl animate-in zoom-in-95 duration-200">
                 <AlertTriangle class="w-12 h-12 text-red-500 animate-pulse" />
                 <h3 class="text-base font-bold text-red-500 uppercase tracking-wide">
-                  Delete Data Permanently?
+                  {t("settings.sources.deleteData")}?
                 </h3>
                 <p class="text-xs text-text-secondary/80 leading-relaxed">
-                  Are you sure you want to permanently delete the database and session cache files for <span class="font-bold text-text-primary capitalize">{deletingSourceId()}</span>?
+                  {t("detailPane.confirmDelete")}
                   <br /><br />
-                  This action is irreversible and requires a full rebuild index to reload the data.
+                  <span class="font-bold text-text-primary capitalize">{deletingSourceId()}</span>
                 </p>
                 <div class="flex gap-3 w-full pt-2">
                   <button
                     onClick={() => setDeletingSourceId(null)}
                     class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     onClick={() => handleDeleteSourceData(deletingSourceId()!)}
                     class="flex-1 py-2 bg-red-500 hover:bg-red-600 border border-red-600 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer shadow-md"
                   >
-                    Delete Data
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>

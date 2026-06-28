@@ -2,6 +2,7 @@ import { createMemo, createSignal, createEffect } from "solid-js";
 import { Marked } from "marked";
 import Prism from "prismjs";
 import { logFE } from "../utils/logger";
+import { useI18n } from "../i18n/i18n";
 
 // Import Prism syntax theme and supported languages
 import "prismjs/themes/prism-tomorrow.css";
@@ -19,6 +20,7 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer = (props: MarkdownRendererProps) => {
+  const { t } = useI18n();
   let containerRef: HTMLDivElement | undefined;
   const [isExpanded, setIsExpanded] = createSignal(false);
 
@@ -34,7 +36,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   // Sync parse markdown
   const displayContent = createMemo(() => {
     if (!isTooLarge() || isExpanded()) return props.content;
-    return props.content.slice(0, 50000) + "\n\n\n*(Note: Message truncated to 50KB for rendering performance. Click 'Show full content' below to view the rest.)*";
+    return props.content.slice(0, 50000) + `\n\n\n*(${t("common.showFullContent")} - Truncated)*`;
   });
 
   // Initialize marked parser (runs once)
@@ -146,7 +148,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           onClick={() => setIsExpanded(true)}
           class="self-start mt-1 px-4 py-2 bg-accent/10 hover:bg-accent/20 border border-accent/30 text-xs font-semibold rounded-xl text-accent hover:text-accent transition-all cursor-pointer shadow-sm hover:shadow-md"
         >
-          Show full content ({(props.content.length / 1024).toFixed(1)} KB total)
+          {t("common.showFullContent")} ({(props.content.length / 1024).toFixed(1)} KB total)
         </button>
       )}
     </div>

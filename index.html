@@ -17,6 +17,15 @@
         const theme = localStorage.getItem('codeoba-theme') || 'obsidian';
         document.documentElement.setAttribute('data-theme', theme);
 
+        // Read language settings to prevent layout flash / RTL shifts
+        const lang = localStorage.getItem('codeoba-language') || 'en';
+        document.documentElement.setAttribute('lang', lang);
+        if (lang === 'ar') {
+          document.documentElement.setAttribute('dir', 'rtl');
+        } else {
+          document.documentElement.setAttribute('dir', 'ltr');
+        }
+
         // Read sidebar layout configuration to prevent visual layout shifts (CLS)
         const collapsed = localStorage.getItem('codeoba-sidebar-collapsed') === 'true';
         const sidebarWidth = collapsed ? '0px' : (localStorage.getItem('codeoba-sidebar-width') || '380') + 'px';
