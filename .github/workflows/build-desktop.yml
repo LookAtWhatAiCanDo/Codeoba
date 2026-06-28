@@ -318,31 +318,23 @@ jobs:
             gpg --export --armor > /tmp/gpg-pubkey.asc
             sudo rpm --import /tmp/gpg-pubkey.asc
             
-            # Configure GPG agent and options for loopback/non-interactive pinentry
+            # Configure GPG agent
             GPG_HOME="${GNUPGHOME:-$HOME/.gnupg}"
-            mkdir -p "$GPG_HOME"
-            echo "allow-loopback-pinentry" >> "$GPG_HOME"/gpg-agent.conf
-            echo "pinentry-mode loopback" >> "$GPG_HOME"/gpg.conf
-            gpg-connect-agent reloadagent /bye || gpgconf --kill gpg-agent || true
             
-            # Configure rpmmacros for signing
+            # Configure rpmmacros for signing using the cached passphrase from gpg-agent
             echo "%_signature gpg" > ~/.rpmmacros
             echo "%_gpg_path $GPG_HOME" >> ~/.rpmmacros
             echo "%_gpg_name ${{ steps.import-gpg.outputs.keyid }}" >> ~/.rpmmacros
             echo "%__gpg /usr/bin/gpg" >> ~/.rpmmacros
-            echo "%__gpg_sign_cmd %{__gpg} --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase-fd 0 --yes --sign %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} -u \"%{_gpg_name}\" --output %{__signature_filename} --detach-sign %{__plaintext_filename}" >> ~/.rpmmacros
+            echo "%__gpg_sign_cmd %{__gpg} --batch --no-verbose --no-armor --yes --sign %{?_gpg_digest_algo:--digest-algo %{_gpg_digest_algo}} -u \"%{_gpg_name}\" --output %{__signature_filename} --detach-sign %{__plaintext_filename}" >> ~/.rpmmacros
             
-            # Install expect utility
-            sudo apt-get install -y expect || (sudo apt-get update && sudo apt-get install -y expect)
-            
-            # Run rpmsign helper script using expect to satisfy interactive prompt
-            chmod +x scripts/rpm-sign.exp
-            scripts/rpm-sign.exp "$RPM_FILE"
+            # Run rpmsign directly with stdin redirected from /dev/null
+            # Since stdin is redirected, rpmsign's getpass() bypasses immediately,
+            # and GPG signs successfully using the cached passphrase in gpg-agent.
+            rpm --addsign "$RPM_FILE" < /dev/null
           else
             echo "No RPM package found to sign."
           fi
-        env:
-          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
 
       - name: Clean Up Credentials
         if: always() && matrix.platform == 'macos' && startsWith(github.ref, 'refs/tags/v')
