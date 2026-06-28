@@ -50,8 +50,10 @@ impl CursorSource {
     }
 
     fn query_db(&self, db_path: &Path, sql: &str) -> Vec<HashMap<String, String>> {
+        let path_str = db_path.to_string_lossy();
+        let uri_path = format!("file:{}?mode=ro", path_str);
         let conn = match Connection::open_with_flags(
-            db_path,
+            Path::new(&uri_path),
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         ) {
             Ok(c) => c,

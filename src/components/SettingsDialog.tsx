@@ -1,4 +1,4 @@
-import { createSignal, For, Show, onMount } from "solid-js";
+import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
 import { 
   X, 
   Trash2, 
@@ -11,6 +11,7 @@ import {
   Settings
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
@@ -55,29 +56,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [updaterActive, setUpdaterActive] = createSignal(false);
   const [appVersion, setAppVersion] = createSignal("0.1.0");
 
-  onMount(async () => {
-    try {
-      const active = await invoke<boolean>("is_updater_active");
-      setUpdaterActive(active);
-      const v = await getVersion();
-      setAppVersion(v);
-    } catch (err) {
-      logFE("error", `Failed to query updater active/version state: ${err}`);
-    }
-  });
-
-  // General Settings
-  const [cacheEnabled, setCacheEnabled] = createSignal(
-    localStorage.getItem("codeoba-cache-enabled") !== "false"
-  );
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = createSignal(
-    localStorage.getItem("codeoba-auto-update") !== "false"
-  );
-  const [parserMode, setParserMode] = createSignal(
-    localStorage.getItem("codeoba-parser-mode") || "standard"
-  );
-
   // Semantic Settings
+  const [modelDownloaded, setModelDownloaded] = createSignal(false);
+  const [downloading, setDownloading] = createSignal(false);
+  const [downloadProgress, setDownloadProgress] = createSignal<number | null>(null);
+  const [downloadError, setDownloadError] = createSignal<string | null>(null);
+
   const [localThreshold, setLocalThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
@@ -91,10 +75,110 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
-  // Path Permissions (mock list stored in localStorage)
-  const [permissions, setPermissions] = createSignal<Array<{ path: string; preview: string; external: string }>>(
-    JSON.parse(localStorage.getItem("codeoba-path-permissions") || "[]")
+  const handleDownloadModel = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    setDownloadProgress(0);
+    try {
+      logFE("info", "Starting semantic search model download");
+      await invoke("download_semantic_model");
+      setModelDownloaded(true);
+    } catch (err: any) {
+      logFE("error", `Semantic search model download failed: ${err}`);
+      setDownloadError(err.toString());
+      setDownloading(false);
+    }
+  };
+
+  const handleDeleteModel = async () => {
+    try {
+      await invoke("delete_semantic_model");
+      setModelDownloaded(false);
+      logFE("info", "Deleted semantic search model files.");
+    } catch (err) {
+      logFE("error", `Failed to delete model files: ${err}`);
+    }
+  };
+
+  onMount(async () => {
+    try {
+      const active = await invoke<boolean>("is_updater_active");
+      setUpdaterActive(active);
+      const v = await getVersion();
+      setAppVersion(v);
+
+      // Check model status
+      const status = await invoke<boolean>("get_semantic_model_status");
+      setModelDownloaded(status);
+
+      // Load path permissions
+      await refreshPermissions();
+    } catch (err) {
+      logFE("error", `Failed to query startup settings state: ${err}`);
+    }
+
+    // Listen for model download progress
+    const unlistenPromise = listen<number>("semantic-model-download-progress", (event) => {
+      setDownloadProgress(event.payload);
+      if (event.payload >= 1.0) {
+        setDownloading(false);
+        setDownloadProgress(null);
+        setModelDownloaded(true);
+      }
+    });
+
+    onCleanup(async () => {
+      const unlisten = await unlistenPromise;
+      unlisten();
+    });
+  });
+
+  // General Settings
+  const [cacheEnabled, setCacheEnabled] = createSignal(
+    localStorage.getItem("codeoba-cache-enabled") !== "false"
   );
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = createSignal(
+    localStorage.getItem("codeoba-auto-update") !== "false"
+  );
+  const [parserMode, setParserMode] = createSignal(
+    localStorage.getItem("codeoba-parser-mode") || "standard"
+  );
+
+  // Path Permissions
+  const [permissions, setPermissions] = createSignal<Array<{ path: string; preview: string; external: string }>>([]);
+
+  const refreshPermissions = async () => {
+    try {
+      const backendPermissions = await invoke<Array<{
+        canonical_path: string;
+        action: string;
+        decision: string;
+        timestamp: number;
+      }>>("get_all_permissions");
+
+      const grouped: Record<string, { preview: string; external: string }> = {};
+      backendPermissions.forEach(entry => {
+        if (!grouped[entry.canonical_path]) {
+          grouped[entry.canonical_path] = { preview: "ask", external: "ask" };
+        }
+        if (entry.action === "preview") {
+          grouped[entry.canonical_path].preview = entry.decision;
+        } else if (entry.action === "external_open") {
+          grouped[entry.canonical_path].external = entry.decision;
+        }
+      });
+
+      const list = Object.entries(grouped).map(([path, val]) => ({
+        path,
+        preview: val.preview,
+        external: val.external,
+      }));
+
+      setPermissions(list);
+    } catch (err) {
+      logFE("error", `Failed to load path permissions: ${err}`);
+    }
+  };
 
   // Source decisions (mock list stored in localStorage)
   const [sourceDecisions, setSourceDecisions] = createSignal<Record<string, "allow" | "deny" | "ask">>(
@@ -197,24 +281,27 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
-  const handleResetPermission = (path: string, type: "preview" | "external" | "all") => {
-    let list = [...permissions()];
-    if (type === "all") {
-      list = list.filter(p => p.path !== path);
-    } else {
-      const item = list.find(p => p.path === path);
-      if (item) {
-        if (type === "preview") item.preview = "ask";
-        if (type === "external") item.external = "ask";
+  const handleResetPermission = async (path: string, type: "preview" | "external" | "all") => {
+    try {
+      if (type === "all") {
+        await invoke("delete_permission", { canonicalPath: path });
+      } else {
+        const action = type === "preview" ? "preview" : "external_open";
+        await invoke("delete_permission", { canonicalPath: path, action });
       }
+      await refreshPermissions();
+    } catch (err) {
+      logFE("error", `Failed to reset permission: ${err}`);
     }
-    setPermissions(list);
-    localStorage.setItem("codeoba-path-permissions", JSON.stringify(list));
   };
 
-  const handleClearAllPermissions = () => {
-    setPermissions([]);
-    localStorage.setItem("codeoba-path-permissions", "[]");
+  const handleClearAllPermissions = async () => {
+    try {
+      await invoke("clear_all_permissions");
+      await refreshPermissions();
+    } catch (err) {
+      logFE("error", `Failed to clear permissions: ${err}`);
+    }
   };
 
   const getSourceDecision = (sourceId: string) => {
@@ -490,36 +577,94 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
                   <div class="space-y-1">
-                    <h4 class="text-xs font-bold text-text-primary">Similarity Threshold</h4>
+                    <h4 class="text-xs font-bold text-text-primary">Local Embedding Model</h4>
                     <p class="text-[10px] text-text-secondary/70">
-                      Configure the minimum confidence score required for search matches. Lower values return more results (fuzzier), higher values return fewer results (stricter).
+                      Semantic search uses the <code>all-MiniLM-L6-v2</code> transformer model (~23MB) to run similarity searches offline.
                     </p>
                   </div>
 
-                  <div class="flex items-center gap-4">
-                    <input 
-                      type="range"
-                      min="0.0"
-                      max="1.0"
-                      step="0.05"
-                      value={similarityThreshold()}
-                      onInput={(e) => handleThresholdChange(parseFloat(e.currentTarget.value))}
-                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
-                      {similarityThreshold().toFixed(2)}
+                  <Show 
+                    when={modelDownloaded()} 
+                    fallback={
+                      <div class="space-y-3">
+                        <div class="flex items-center justify-between text-xs p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400">
+                          <span>Embedding model is not downloaded.</span>
+                          <button
+                            onClick={handleDownloadModel}
+                            disabled={downloading()}
+                            class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/40 text-black font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                          >
+                            {downloading() ? "Downloading..." : "Download Model"}
+                          </button>
+                        </div>
+                        <Show when={downloadProgress() !== null}>
+                          <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold text-text-secondary">
+                              <span>Downloading Xenova all-MiniLM-L6-v2...</span>
+                              <span>{Math.round(downloadProgress()! * 100)}%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/50">
+                              <div 
+                                class="h-full bg-accent transition-all duration-100" 
+                                style={{ width: `${downloadProgress()! * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </Show>
+                        <Show when={downloadError()}>
+                          <div class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                            {downloadError()}
+                          </div>
+                        </Show>
+                      </div>
+                    }
+                  >
+                    <div class="flex items-center justify-between text-xs p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                      <span>Model status: Installed & ready</span>
+                      <button
+                        onClick={handleDeleteModel}
+                        class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
+                      >
+                        Delete Model
+                      </button>
+                    </div>
+                  </Show>
+                </div>
+
+                <Show when={modelDownloaded()}>
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
+                    <div class="space-y-1">
+                      <h4 class="text-xs font-bold text-text-primary">Similarity Threshold</h4>
+                      <p class="text-[10px] text-text-secondary/70">
+                        Configure the minimum confidence score required for search matches. Lower values return more results (fuzzier), higher values return fewer results (stricter).
+                      </p>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                      <input 
+                        type="range"
+                        min="0.0"
+                        max="1.0"
+                        step="0.05"
+                        value={similarityThreshold()}
+                        onInput={(e) => handleThresholdChange(parseFloat(e.currentTarget.value))}
+                        class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                      />
+                      <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
+                        {similarityThreshold().toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div class="flex justify-end pt-1 border-t border-border/20">
+                      <button
+                        onClick={handleRestoreThresholdDefault}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
+                      >
+                        Restore to Default
+                      </button>
                     </div>
                   </div>
-
-                  <div class="flex justify-end pt-1 border-t border-border/20">
-                    <button
-                      onClick={handleRestoreThresholdDefault}
-                      class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
-                    >
-                      Restore to Default
-                    </button>
-                  </div>
-                </div>
+                </Show>
               </div>
             </Show>
 

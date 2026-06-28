@@ -12,6 +12,8 @@ pub mod aider;
 pub mod copilot;
 pub mod codex;
 pub mod cache;
+pub mod resolver;
+pub mod permissions;
 
 #[cfg(test)]
 mod tests;

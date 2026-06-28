@@ -114,10 +114,30 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     });
   });
 
+  const handleLinkClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest("a");
+    if (anchor) {
+      const href = anchor.getAttribute("href");
+      if (href) {
+        // Intercept local paths, file scheme or tilde indicators
+        if (href.startsWith("file:") || href.startsWith("/") || href.startsWith("~")) {
+          e.preventDefault();
+          logFE("info", `MarkdownRenderer: Intercepted local file click: ${href}`);
+          const event = new CustomEvent("open-local-file", {
+            detail: { href }
+          });
+          window.dispatchEvent(event);
+        }
+      }
+    }
+  };
+
   return (
     <div class="flex flex-col gap-3 w-full">
       <div
         ref={containerRef}
+        onClick={handleLinkClick}
         class="markdown-body text-text-primary overflow-x-hidden break-words font-sans text-[15px]"
         innerHTML={htmlContent()}
       />

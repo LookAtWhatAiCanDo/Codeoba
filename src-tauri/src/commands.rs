@@ -282,3 +282,166 @@ pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppH
     }
     Vec::new()
 }
+
+#[tauri::command]
+pub fn get_semantic_model_status() -> bool {
+    crate::search::downloader::is_model_downloaded()
+}
+
+#[tauri::command]
+pub async fn download_semantic_model<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
+    crate::search::downloader::download_model(app_handle).await
+}
+
+#[tauri::command]
+pub fn delete_semantic_model() {
+    crate::search::downloader::delete_model_files();
+}
+
+use crate::parsers::resolver::{resolve_local_file_link, LocalFileResolution};
+use crate::parsers::permissions;
+
+#[derive(serde::Serialize)]
+pub struct FileReadResponse {
+    status: String, // "allowed" | "confirmation_required" | "denied" | "rejected"
+    content: Option<String>,
+    #[serde(rename = "canonicalPath")]
+    canonical_path: Option<String>,
+    reason: Option<String>,
+}
+
+#[tauri::command]
+pub fn resolve_and_read_file(
+    raw_path: String,
+    session_cwd: Option<String>,
+) -> Result<FileReadResponse, String> {
+    let base_dir = session_cwd.as_ref().map(std::path::Path::new);
+    let trusted_root = base_dir;
+
+    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root);
+    
+    match resolution {
+        LocalFileResolution::Allowed(path) => {
+            read_resolved_file(path)
+        }
+        LocalFileResolution::ConfirmationRequired(path, reason) => {
+            let path_str = path.to_string_lossy().to_string();
+            match permissions::check_permission(&path_str, "preview") {
+                Some(ref dec) if dec == "allow" => read_resolved_file(path),
+                Some(ref dec) if dec == "deny" => Ok(FileReadResponse {
+                    status: "denied".to_string(),
+                    content: None,
+                    canonical_path: Some(path_str),
+                    reason: Some("Permission denied by saved preferences.".to_string()),
+                }),
+                _ => Ok(FileReadResponse {
+                    status: "confirmation_required".to_string(),
+                    content: None,
+                    canonical_path: Some(path_str),
+                    reason: Some(reason),
+                }),
+            }
+        }
+        LocalFileResolution::Rejected(reason) => {
+            Ok(FileReadResponse {
+                status: "rejected".to_string(),
+                content: None,
+                canonical_path: None,
+                reason: Some(reason),
+            })
+        }
+    }
+}
+
+fn read_resolved_file(path: std::path::PathBuf) -> Result<FileReadResponse, String> {
+    let metadata = std::fs::metadata(&path).map_err(|e| format!("Failed to read metadata: {}", e))?;
+    if metadata.len() > 5_242_881 {
+        return Err("File exceeds maximum preview limit of 5MB".to_string());
+    }
+    let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let content = String::from_utf8_lossy(&bytes).into_owned();
+    Ok(FileReadResponse {
+        status: "allowed".to_string(),
+        content: Some(content),
+        canonical_path: Some(path.to_string_lossy().to_string()),
+        reason: None,
+    })
+}
+
+#[tauri::command]
+pub fn save_file_permission(canonical_path: String, action: String, decision: String) {
+    permissions::add_permission(&canonical_path, &action, &decision);
+}
+
+#[tauri::command]
+pub fn get_all_permissions() -> Vec<permissions::PermissionEntry> {
+    permissions::load_permissions()
+}
+
+#[tauri::command]
+pub fn delete_permission(canonical_path: String, action: Option<String>) {
+    permissions::delete_permission(&canonical_path, action.as_deref());
+}
+
+#[tauri::command]
+pub fn clear_all_permissions() {
+    permissions::clear_all_permissions();
+}
+
+#[tauri::command]
+pub fn open_file_externally(raw_path: String, session_cwd: Option<String>) -> Result<(), String> {
+    let base_dir = session_cwd.as_ref().map(std::path::Path::new);
+    let trusted_root = base_dir;
+
+    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root);
+    
+    let path = match resolution {
+        LocalFileResolution::Allowed(path) => path,
+        LocalFileResolution::ConfirmationRequired(path, reason) => {
+            let path_str = path.to_string_lossy().to_string();
+            match permissions::check_permission(&path_str, "external_open") {
+                Some(ref dec) if dec == "allow" => path,
+                Some(ref dec) if dec == "deny" => return Err("Permission denied by saved preferences.".to_string()),
+                _ => return Err(format!("Confirmation required: {}", reason)),
+            }
+        }
+        LocalFileResolution::Rejected(reason) => return Err(reason),
+    };
+
+    let path_str = path.to_string_lossy().to_string();
+    
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(&["/c", "start", "", &path_str])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn start_local_auth_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<u16, String> {
+    crate::premium::loopback::start_server(app_handle)
+}
+
+#[tauri::command]
+pub fn stop_local_auth_server() {
+    crate::premium::loopback::stop_server();
+}
+

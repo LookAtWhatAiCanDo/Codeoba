@@ -6,6 +6,7 @@ pub mod tokenizer;
 pub mod commands;
 pub mod watcher;
 pub mod search;
+pub mod premium;
 
 #[cfg(test)]
 pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -93,7 +94,8 @@ pub fn run() {
     };
 
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build());
 
     if updater_active {
         crate::log_info!("Updater is active in configuration and passed verification. Registering updater and process plugins...");
@@ -155,7 +157,18 @@ pub fn run() {
             commands::check_reset_window,
             commands::get_indexing_progress,
             commands::is_updater_active,
-            commands::get_resolved_updater_endpoints
+            commands::get_resolved_updater_endpoints,
+            commands::get_semantic_model_status,
+            commands::download_semantic_model,
+            commands::delete_semantic_model,
+            commands::resolve_and_read_file,
+            commands::save_file_permission,
+            commands::get_all_permissions,
+            commands::delete_permission,
+            commands::clear_all_permissions,
+            commands::open_file_externally,
+            commands::start_local_auth_server,
+            commands::stop_local_auth_server
         ])
         .run(context)
         .expect("error while running tauri application");

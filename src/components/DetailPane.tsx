@@ -7,10 +7,16 @@ import {
   ExternalLink,
   MessageSquare,
   Cpu,
-  Bookmark
+  Bookmark,
+  ChevronDown,
+  ChevronRight,
+  Terminal,
+  Search,
+  FileText
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { logFE } from "../utils/logger";
+import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 
 interface Turn {
   turnId: string;
@@ -19,6 +25,7 @@ interface Turn {
   timestamp: number;
   inputTokens?: number | null;
   outputTokens?: number | null;
+  extraData?: Record<string, string>;
 }
 
 interface Session {
@@ -40,12 +47,18 @@ interface DetailPaneProps {
   loadTime: string | null;
   isLoading: boolean;
   sidebarCollapsed?: boolean;
+  searchQuery?: string;
 }
 
 export const DetailPane = (props: DetailPaneProps) => {
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedSession, setCopiedSession] = createSignal(false);
   const [visibleTurns, setVisibleTurns] = createSignal(10);
+
+  const compactionCount = createMemo(() => {
+    if (!props.session) return 0;
+    return props.session.turns.filter(t => t.extraData?.isCompaction === "true").length;
+  });
 
   let scrollContainerRef: HTMLDivElement | undefined;
   const visibilitySetters = new Map<Element, (v: boolean) => void>();
@@ -207,6 +220,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <span class="truncate font-medium text-text-primary max-w-[240px] cursor-default">
                   {props.session!.threadName || "Untitled Session"}
                 </span>
+                <Show when={compactionCount() > 0}>
+                  <span class="px-2 py-0.5 bg-accent/15 border border-accent/30 text-accent rounded-full text-[9px] font-bold select-none leading-none pt-[3px] pb-[3px]">
+                    Compactions: {compactionCount()}
+                  </span>
+                </Show>
               </div>
               
               <Show when={props.session!.cwd}>
@@ -307,6 +325,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     unregisterElement={unregisterElement}
                     getCachedHeight={getCachedHeight}
                     setCachedHeight={setCachedHeight}
+                    searchQuery={props.searchQuery}
                   />
                 );
               }}
@@ -327,6 +346,7 @@ interface VirtualTurnProps {
   unregisterElement: (el: HTMLElement) => void;
   getCachedHeight: (turnId: string) => number | undefined;
   setCachedHeight: (turnId: string, h: number) => void;
+  searchQuery?: string;
 }
 
 const VirtualTurn = (props: VirtualTurnProps) => {
@@ -426,8 +446,155 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             </Show>
           </div>
           <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
-            <MarkdownRenderer content={props.turn.assistantMessage} />
+            <AssistantMessageRenderer message={props.turn.assistantMessage} searchQuery={props.searchQuery} />
           </div>
+        </div>
+      </Show>
+    </div>
+  );
+};
+
+const AssistantMessageRenderer = (props: { message: string; searchQuery?: string }) => {
+  const parts = createMemo(() => parseAssistantMessage(props.message));
+  
+  const groupedParts = createMemo(() => {
+    const list = parts();
+    const result: Array<{ type: "text"; content: string } | { type: "toolGroup"; tools: MessageToolPart[] }> = [];
+    let currentToolGroup: MessageToolPart[] = [];
+    
+    for (const part of list) {
+      if (part.type === "tool") {
+        currentToolGroup.push(part);
+      } else {
+        if (currentToolGroup.length > 0) {
+          result.push({ type: "toolGroup", tools: currentToolGroup });
+          currentToolGroup = [];
+        }
+        result.push(part);
+      }
+    }
+    
+    if (currentToolGroup.length > 0) {
+      result.push({ type: "toolGroup", tools: currentToolGroup });
+    }
+    
+    return result;
+  });
+
+  return (
+    <div class="space-y-4">
+      <For each={groupedParts()}>
+        {(part) => {
+          if (part.type === "text") {
+            return <MarkdownRenderer content={part.content} />;
+          } else {
+            return <WorkedForBlock tools={part.tools} searchQuery={props.searchQuery} />;
+          }
+        }}
+      </For>
+    </div>
+  );
+};
+
+const WorkedForBlock = (props: { tools: MessageToolPart[]; searchQuery?: string }) => {
+  const matchesSearch = createMemo(() => {
+    if (!props.searchQuery || props.searchQuery.trim() === "") return false;
+    const q = props.searchQuery.toLowerCase();
+    return props.tools.some(tool => 
+      tool.header.toLowerCase().includes(q) || 
+      tool.content.toLowerCase().includes(q)
+    );
+  });
+
+  const [isExpanded, setIsExpanded] = createSignal(false);
+
+  createEffect(() => {
+    if (matchesSearch()) {
+      setIsExpanded(true);
+    }
+  });
+
+  const title = createMemo(() => {
+    return `Worked (${props.tools.length} tool execution${props.tools.length > 1 ? 's' : ''})`;
+  });
+
+  return (
+    <div class="border border-border/40 rounded-2xl overflow-hidden bg-background/40 my-3">
+      {/* Level 1: Chevron-toggle header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded())}
+        class="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-surface/50 transition-all text-xs font-semibold text-text-secondary hover:text-text-primary cursor-pointer select-none"
+      >
+        <Show when={isExpanded()} fallback={<ChevronRight class="w-3.5 h-3.5" />}>
+          <ChevronDown class="w-3.5 h-3.5" />
+        </Show>
+        <Cpu class="w-3.5 h-3.5 text-accent/80" />
+        <span>{title()}</span>
+      </button>
+
+      {/* Level 2 & 3 content */}
+      <Show when={isExpanded()}>
+        <div class="px-4 pb-4 pt-1 space-y-3 relative">
+          {/* Thread connector line */}
+          <div class="absolute left-6 top-0 bottom-4 w-[1px] bg-border/50 opacity-50" />
+          
+          <div class="space-y-3 pl-6">
+            <For each={props.tools}>
+              {(tool) => (
+                <ToolOutputBlock tool={tool} searchQuery={props.searchQuery} startExpanded={matchesSearch()} />
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
+    </div>
+  );
+};
+
+const ToolOutputBlock = (props: { tool: MessageToolPart; searchQuery?: string; startExpanded: boolean }) => {
+  const matchesSearch = createMemo(() => {
+    if (!props.searchQuery || props.searchQuery.trim() === "") return false;
+    const q = props.searchQuery.toLowerCase();
+    return props.tool.header.toLowerCase().includes(q) || props.tool.content.toLowerCase().includes(q);
+  });
+
+  const [isOpen, setIsOpen] = createSignal(props.startExpanded || matchesSearch());
+
+  createEffect(() => {
+    if (matchesSearch()) {
+      setIsOpen(true);
+    }
+  });
+
+  const icon = createMemo(() => {
+    const type = props.tool.toolType.toLowerCase();
+    if (type.includes("command") || type.includes("shell") || type.includes("terminal")) {
+      return <Terminal class="w-3.5 h-3.5 text-accent-hover" />;
+    }
+    if (type.includes("search") || type.includes("find") || type.includes("grep")) {
+      return <Search class="w-3.5 h-3.5 text-sky-400" />;
+    }
+    return <FileText class="w-3.5 h-3.5 text-text-secondary/70" />;
+  });
+
+  return (
+    <div class="space-y-1.5">
+      {/* Level 2: Tool header */}
+      <button
+        onClick={() => setIsOpen(!isOpen())}
+        class="flex items-center gap-2 hover:text-text-primary text-text-secondary transition-all text-xs font-semibold cursor-pointer select-none text-left"
+      >
+        <span class="opacity-60">{isOpen() ? "▼" : "▶"}</span>
+        {icon()}
+        <span class="hover:underline">{props.tool.header}</span>
+      </button>
+
+      {/* Level 3: Raw tool content */}
+      <Show when={isOpen()}>
+        <div class="ml-4 pl-1">
+          <pre class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner">
+            <code>{props.tool.content}</code>
+          </pre>
         </div>
       </Show>
     </div>

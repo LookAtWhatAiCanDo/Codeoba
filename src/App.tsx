@@ -8,6 +8,7 @@ import { Sidebar } from "./components/Sidebar";
 import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { FileViewerDialog } from "./components/FileViewerDialog";
 import { logFE } from "./utils/logger";
 import { 
   Layers, 
@@ -666,6 +667,7 @@ function App() {
                 loadTime={loadTime()}
                 isLoading={loadingSessionId() !== null}
                 sidebarCollapsed={sidebarCollapsed()}
+                searchQuery={searchQuery()}
               />
             </Show>
           </Show>
@@ -690,6 +692,7 @@ function App() {
           setShowSettings(false);
         }}
       />
+      <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
 
       {/* Update Modal Overlay */}
       <Show when={showUpdateModal() && updateManifest()}>

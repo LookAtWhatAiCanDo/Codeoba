@@ -2,6 +2,7 @@ pub mod lexical;
 pub mod tokenizer;
 pub mod cache;
 pub mod semantic;
+pub mod downloader;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -187,11 +188,11 @@ impl SearchIndexState {
 
         let run_embeddings = use_semantic && model_path.exists() && vocab_path.exists();
 
-        let mut onnx_embedder = if run_embeddings {
+        let onnx_embedder = if run_embeddings {
             let onnx_load_start = std::time::Instant::now();
             let embedder = semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).ok();
             crate::log_info!("[rebuild] ONNX embedder load time: {:?}", onnx_load_start.elapsed());
-            embedder
+            embedder.map(|emb| std::sync::Arc::new(tokio::sync::Mutex::new(emb)))
         } else {
             None
         };
@@ -202,7 +203,7 @@ impl SearchIndexState {
             let cache_load_start = std::time::Instant::now();
             mgr.load_cache();
             crate::log_info!("[rebuild] Cache load time: {:?}", cache_load_start.elapsed());
-            Some(mgr)
+            Some(std::sync::Arc::new(mgr))
         } else {
             None
         };
@@ -230,7 +231,6 @@ impl SearchIndexState {
         emit_progress("embedding", 0.80, "Calculating semantic embeddings...");
 
         let embed_start = std::time::Instant::now();
-        let hash_embedder = semantic::HashSemanticEmbedder::new(384);
 
         let mut session_map = HashMap::new();
         let mut embedding_map = HashMap::new();
@@ -250,9 +250,10 @@ impl SearchIndexState {
             }
         };
 
-        let mut onnx_invocations = 0;
-        let mut cache_hits = 0;
+        let onnx_invocations = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let cache_hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
+        let mut sessions_to_embed = Vec::new();
         for session in all_sessions {
             let mut reused = false;
             if run_embeddings {
@@ -267,59 +268,85 @@ impl SearchIndexState {
                 }
             }
 
-            if reused {
-                continue;
+            if !reused {
+                sessions_to_embed.push(session);
             }
+        }
 
-            if run_embeddings {
-                if let Some(ref cache) = cache_mgr {
+        let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(4));
+        let mut tasks = Vec::new();
+
+        for session in sessions_to_embed {
+            let sem = semaphore.clone();
+            let onnx_emb = onnx_embedder.clone();
+            let cache = cache_mgr.clone();
+            let onnx_invs = onnx_invocations.clone();
+            let c_hits = cache_hits.clone();
+
+            tasks.push(tokio::spawn(async move {
+                let _permit = sem.acquire().await.unwrap();
+                
+                let mut vec_index = None;
+                if let Some(ref cache_ref) = cache {
+                    let hash_emb = semantic::HashSemanticEmbedder::new(384);
                     let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
-                    let thread_emb = if let Some(v) = cache.get(thread_name) {
-                        cache_hits += 1;
+                    let thread_emb = if let Some(v) = cache_ref.get(thread_name) {
+                        c_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         v
                     } else {
-                        let v = if let Some(ref mut onnx) = onnx_embedder {
-                            onnx_invocations += 1;
-                            onnx.get_embeddings(thread_name).unwrap_or_else(|_| hash_embedder.get_embeddings(thread_name))
+                        let v = if let Some(ref onnx_mutex) = onnx_emb {
+                            onnx_invs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            let mut onnx_guard = onnx_mutex.lock().await;
+                            onnx_guard.get_embeddings(thread_name).unwrap_or_else(|_| hash_emb.get_embeddings(thread_name))
                         } else {
-                            hash_embedder.get_embeddings(thread_name)
+                            hash_emb.get_embeddings(thread_name)
                         };
-                        cache.put(thread_name, v.clone());
+                        cache_ref.put(thread_name, v.clone());
                         v
                     };
 
                     let mut turn_embs = Vec::new();
                     for turn in &session.turns {
                         let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
-                        let turn_emb = if let Some(v) = cache.get(&text) {
-                            cache_hits += 1;
+                        let turn_emb = if let Some(v) = cache_ref.get(&text) {
+                            c_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             v
                         } else {
-                            let v = if let Some(ref mut onnx) = onnx_embedder {
-                                onnx_invocations += 1;
-                                onnx.get_embeddings(&text).unwrap_or_else(|_| hash_embedder.get_embeddings(&text))
+                            let v = if let Some(ref onnx_mutex) = onnx_emb {
+                                onnx_invs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                let mut onnx_guard = onnx_mutex.lock().await;
+                                onnx_guard.get_embeddings(&text).unwrap_or_else(|_| hash_emb.get_embeddings(&text))
                             } else {
-                                hash_embedder.get_embeddings(&text)
+                                hash_emb.get_embeddings(&text)
                             };
-                            cache.put(&text, v.clone());
+                            cache_ref.put(&text, v.clone());
                             v
                         };
                         turn_embs.push(turn_emb);
                     }
 
-                    let vec_index = SessionVectorIndex {
+                    vec_index = Some(SessionVectorIndex {
                         thread_name_embedding: thread_emb,
                         turn_embeddings: turn_embs,
-                    };
-
-                    embedding_map.insert(session.id.clone(), vec_index);
+                    });
                 }
-            }
-
-            session_map.insert(session.id.clone(), session);
-            tokio::task::yield_now().await;
+                
+                (session, vec_index)
+            }));
         }
 
+        for task in tasks {
+            if let Ok((session, vec_index)) = task.await {
+                if let Some(vi) = vec_index {
+                    embedding_map.insert(session.id.clone(), vi);
+                }
+                session_map.insert(session.id.clone(), session);
+            }
+        }
+
+        let final_onnx_invocations = onnx_invocations.load(std::sync::atomic::Ordering::Relaxed);
+        let final_cache_hits = cache_hits.load(std::sync::atomic::Ordering::Relaxed);
+        
         if run_embeddings {
             let mut active_texts = std::collections::HashSet::new();
             for session in session_map.values() {
@@ -331,7 +358,7 @@ impl SearchIndexState {
                 }
             }
 
-            crate::log_info!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", onnx_invocations, cache_hits, embed_start.elapsed());
+            crate::log_info!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", final_onnx_invocations, final_cache_hits, embed_start.elapsed());
 
             let cache_save_start = std::time::Instant::now();
             if let Some(ref cache) = cache_mgr {
