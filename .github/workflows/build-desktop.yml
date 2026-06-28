@@ -22,7 +22,7 @@ env:
 
 jobs:
   build:
-    name: Build & Package (${{ matrix.os }})
+    name: Build & Package (${{ matrix.platform-name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'Production' || null }}
@@ -41,6 +41,7 @@ jobs:
               src-tauri/target/universal-apple-darwin/release/latest.json
             artifact-path-pkg: 'src-tauri/target/universal-apple-darwin/release/bundle/macos/*.pkg'
             platform: macos
+            platform-name: macos-universal
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact-path: |
@@ -49,6 +50,7 @@ jobs:
               src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi.zip.sig
               src-tauri/target/x86_64-pc-windows-msvc/release/latest.json
             platform: windows-x64
+            platform-name: windows-x86_64
 
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
@@ -61,6 +63,7 @@ jobs:
               src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz.sig
               src-tauri/target/x86_64-unknown-linux-gnu/release/latest.json
             platform: linux-x64
+            platform-name: linux-x86_64
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             artifact-path: |
@@ -72,6 +75,7 @@ jobs:
               src-tauri/target/aarch64-unknown-linux-gnu/release/bundle/rpm/*.rpm.tar.gz.sig
               src-tauri/target/aarch64-unknown-linux-gnu/release/latest.json
             platform: linux-arm64
+            platform-name: linux-arm64
 
     defaults:
       run:

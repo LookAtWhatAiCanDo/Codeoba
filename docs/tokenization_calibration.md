@@ -48,13 +48,8 @@ To ensure our offline estimations are accurate and to verify our log parsers wor
 
 ---
 
-## 3. Verification & Calibration CLI
-To run the automated test suite, use:
+## 3. Verification
+To run the automated calibration and tokenization tests, use:
 ```bash
 cargo test -- --test-threads=1
-```
-
-To run the manual calibration tool that scans local Claude Code compaction logs and prints token count comparisons, run:
-```bash
-cargo run --bin calibrate
 ```
