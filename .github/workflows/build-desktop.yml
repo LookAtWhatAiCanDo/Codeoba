@@ -347,6 +347,29 @@ jobs:
           rm -f $RUNNER_TEMP/build_certificate.p12 || true
           rm -f $RUNNER_TEMP/installer_certificate.p12 || true
 
+      - name: Rename Artifacts to include Platform Name
+        run: |
+          PLATFORM_NAME="${{ matrix.platform }}"
+          PLATFORM_NAME="${PLATFORM_NAME%%-*}"
+          find src-tauri/target -type f \( -name "Codeoba*" \) | while read -r file; do
+            dir=$(dirname "$file")
+            base=$(basename "$file")
+            if [[ "$base" == Codeoba-"$PLATFORM_NAME"-* || "$base" == Codeoba-"$PLATFORM_NAME".* ]]; then
+              continue
+            fi
+            if [[ "$base" == Codeoba-* ]]; then
+              new_base="${base/Codeoba-/Codeoba-$PLATFORM_NAME-}"
+            elif [[ "$base" == Codeoba_* ]]; then
+              new_base="${base/Codeoba_/Codeoba-$PLATFORM_NAME-}"
+            elif [[ "$base" == Codeoba.* ]]; then
+              new_base="${base/Codeoba/Codeoba-$PLATFORM_NAME}"
+            else
+              continue
+            fi
+            mv "$file" "$dir/$new_base"
+            echo "Renamed $base to $new_base"
+          done
+
       - name: Upload Main Package Artifact
         uses: actions/upload-artifact@v7
         with:
