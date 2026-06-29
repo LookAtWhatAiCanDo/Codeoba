@@ -199,3 +199,8 @@ pre[class*="language-"] {
   text-shadow: none !important;
   background: transparent !important;
 }
+
+.update-notes-container .markdown-body {
+  font-size: 13px !important;
+}
+

@@ -10,6 +10,7 @@ import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { FileViewerDialog } from "./components/FileViewerDialog";
+import { MarkdownRenderer } from "./components/MarkdownRenderer";
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
 import { 
@@ -81,6 +82,11 @@ function App() {
   const [isUpdating, setIsUpdating] = createSignal(false);
   const [updateProgress, setUpdateProgress] = createSignal(0);
   const [updateError, setUpdateError] = createSignal<string | null>(null);
+  const releaseNotes = createMemo(() => {
+    const manifest = updateManifest();
+    if (!manifest) return "";
+    return manifest.body || manifest.notes || manifest.rawJson?.notes || manifest.rawJson?.body || "";
+  });
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
   const [historyIndex, setHistoryIndex] = createSignal<number>(0);
@@ -761,11 +767,11 @@ function App() {
                 </span>
               </div>
               
-              <Show when={updateManifest().body}>
-                <div class="border-t border-border/30 pt-2 space-y-1">
+              <Show when={releaseNotes()}>
+                <div class="border-t border-border/30 pt-3 space-y-2">
                   <span class="text-text-secondary font-semibold">Release Notes:</span>
-                  <div class="text-[10px] text-text-secondary/90 leading-relaxed max-h-32 overflow-y-auto font-mono whitespace-pre-line bg-background/30 p-2 rounded-lg border border-border/20">
-                    {updateManifest().body}
+                  <div class="max-h-48 overflow-y-auto bg-background/30 p-3 rounded-xl border border-border/20 text-left update-notes-container">
+                    <MarkdownRenderer content={releaseNotes()} />
                   </div>
                 </div>
               </Show>
