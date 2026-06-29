@@ -422,93 +422,16 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v6
         with:
           mode: 'HYBRID'
-          configurationJson: |
-            {
-              "categories": [
-                {
-                  "title": "## 🚀 Features",
-                  "labels": ["feature", "enhancement"],
-                  "rules": [
-                    {
-                      "pattern": "^feat(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## 🐛 Bug Fixes",
-                  "labels": ["fix", "bug"],
-                  "rules": [
-                    {
-                      "pattern": "^fix(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## ♻️ Refactoring",
-                  "labels": ["refactor", "refactoring"],
-                  "rules": [
-                    {
-                      "pattern": "^refactor(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## ⚡ Performance Improvements",
-                  "labels": ["perf", "performance"],
-                  "rules": [
-                    {
-                      "pattern": "^perf(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## 📝 Documentation",
-                  "labels": ["documentation", "doc", "docs"],
-                  "rules": [
-                    {
-                      "pattern": "^docs?(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## ⚙️ Build System & CI",
-                  "labels": ["ci", "build"],
-                  "rules": [
-                    {
-                      "pattern": "^(ci|build)(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## 🧪 Testing",
-                  "labels": ["test", "tests"],
-                  "rules": [
-                    {
-                      "pattern": "^test(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                },
-                {
-                  "title": "## 🧹 Chores",
-                  "labels": ["chore"],
-                  "rules": [
-                    {
-                      "pattern": "^chore(?:\\(.+\\))?:.+",
-                      "on_property": "title"
-                    }
-                  ]
-                }
-              ]
-            }
+          configuration: '.github/changelog-config.json'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Release Body
+        run: |
+          cat << 'EOF' > changelog.txt
+          ${{ steps.build_changelog.outputs.changelog }}
+          EOF
+          node scripts/generate-release-body.cjs artifacts changelog.txt release_body.md
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v3
@@ -516,14 +439,12 @@ jobs:
           tag_name: v${{ needs.build.outputs.version }}
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           generate_release_notes: false
-          body: ${{ steps.build_changelog.outputs.changelog }}
+          body_path: release_body.md
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.msi
-            artifacts/**/*.msi.sig
             artifacts/**/*.deb
             artifacts/**/*.rpm
             artifacts/**/*.app.tar.gz
-            artifacts/**/*.app.tar.gz.sig
             artifacts/latest.json
           draft: false

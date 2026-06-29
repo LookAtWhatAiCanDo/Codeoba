@@ -1,0 +1,84 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features",
+      "labels": ["feature", "enhancement"],
+      "rules": [
+        {
+          "pattern": "^feat(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": ["fix", "bug"],
+      "rules": [
+        {
+          "pattern": "^fix(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## ♻️ Refactoring",
+      "labels": ["refactor", "refactoring"],
+      "rules": [
+        {
+          "pattern": "^refactor(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## ⚡ Performance Improvements",
+      "labels": ["perf", "performance"],
+      "rules": [
+        {
+          "pattern": "^perf(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## 📝 Documentation",
+      "labels": ["documentation", "doc", "docs"],
+      "rules": [
+        {
+          "pattern": "^docs?(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## ⚙️ Build System & CI",
+      "labels": ["ci", "build"],
+      "rules": [
+        {
+          "pattern": "^(ci|build)(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## 🧪 Testing",
+      "labels": ["test", "tests"],
+      "rules": [
+        {
+          "pattern": "^test(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    },
+    {
+      "title": "## 🧹 Chores",
+      "labels": ["chore"],
+      "rules": [
+        {
+          "pattern": "^chore(?:\\(.+\\))?:.+",
+          "on_property": "title"
+        }
+      ]
+    }
+  ]
+}
