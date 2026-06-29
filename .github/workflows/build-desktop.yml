@@ -215,6 +215,8 @@ jobs:
 
       - name: Build Tauri Application
         env:
+          CI: true
+          TAURI_BUNDLER_DMG_IGNORE_CI: true
           APPLE_SIGNING_IDENTITY: ${{ env.MACOS_SIGNING_IDENTITY }}
           APPLE_ID: ${{ vars.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -233,6 +235,10 @@ jobs:
             else
               echo "WARNING: Could not locate libclang_rt.osx.a"
             fi
+
+            echo "Cleaning cached bundle directories and detaching stale mounts..."
+            rm -rf src-tauri/target/*/release/bundle
+            hdiutil detach /Volumes/Codeoba* -force || true
           fi
 
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
@@ -393,6 +399,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Prune old dev pre-releases
         if: github.ref == 'refs/heads/main'
