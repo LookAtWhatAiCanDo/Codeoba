@@ -6,8 +6,19 @@ const nsisDir = path.join(__dirname, '..', 'src-tauri', 'nsis');
 const nsisFile = path.join(nsisDir, 'installer.nsi');
 const wixFile = path.join(__dirname, '..', 'src-tauri', 'main.wxs');
 
-const nsisUrl = 'https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi';
-const wixUrl = 'https://raw.githubusercontent.com/tauri-apps/tauri/next/tooling/bundler/src/bundle/windows/templates/main.wxs';
+const cliPkgPath = path.join(__dirname, '..', 'node_modules', '@tauri-apps', 'cli', 'package.json');
+let cliVer = '2.11.3'; // Fallback
+try {
+  const cliPkg = require(cliPkgPath);
+  if (cliPkg && cliPkg.version) {
+    cliVer = cliPkg.version;
+  }
+} catch (e) {
+  console.warn('Could not read local @tauri-apps/cli package.json, falling back to version:', cliVer);
+}
+
+const nsisUrl = `https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v${cliVer}/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi`;
+const wixUrl = `https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v${cliVer}/crates/tauri-bundler/src/bundle/windows/msi/main.wxs`;
 
 function ensureDirectoryExistence(filePath) {
   const dirname = path.dirname(filePath);
