@@ -158,5 +158,14 @@
     "restart": "Nu opnieuw opstarten",
     "updateBtn": "Nu bijwerken",
     "later": "Later"
+  },
+  "disclaimer": {
+    "title": "Alfa-/bètakwaliteitsmededeling",
+    "message1": "Codeoba is momenteel ouder dan v1.0. Het is alfa/bèta-kwaliteitssoftware die actief wordt ontwikkeld.",
+    "message2": "U kunt bugs, prestatieproblemen of onvolledige functies tegenkomen.",
+    "feedbackPrompt": "Rapporteer bugs, stel functies voor of deel feedback op onze GitHub-problemenpagina:",
+    "button": "Erkennen en doorgaan",
+    "githubIssues": "GitHub-problemen",
+    "bugTracker": "Open Bug Tracker / Dien een probleem in"
   }
 }

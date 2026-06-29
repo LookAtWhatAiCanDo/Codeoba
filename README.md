@@ -4,6 +4,9 @@ Codeoba is a platform-agnostic, zero-dependency, 100% local search application t
 
 This is the Tauri-based port of the desktop application, combining a highly efficient Rust backend core with a modern SolidJS + TypeScript + Tailwind CSS frontend.
 
+> [!WARNING]
+> **Pre-release Software (Pre-v1.0)**: Codeoba is currently alpha/beta quality under active development. You may encounter bugs, performance issues, or incomplete features. Please report any issues or submit feedback to the [Codeoba Issue Tracker](https://github.com/LookAtWhatAiCanDo/Codeoba/issues).
+
 ---
 
 ## 🛠️ Prerequisites
@@ -243,4 +246,29 @@ To support compilation of native dependencies in Rust (such as `esaxx-rs` and `w
   The Rust cache step uses `prefix-key: ${{ hashFiles('.github/workflows/build-desktop.yml') }}`. This automatically invalidates the cache whenever the build configuration or environment variables are modified, preventing stale caching issues.
 * **Skip Notarization Polling (`SKIP_STAPLING: 'true'`):**  
   By default, macOS notarization wait times can be highly unpredictable, taking hours for complex binaries that contain JIT compilers or embedded runtimes (such as `wasmtime`). The workflow introduces a global `SKIP_STAPLING` environment variable (default: `'true'`). When enabled, the workflow runs `tauri build -- --skip-stapling`, which submits the bundle to Apple's notarization server but returns immediately. Gatekeeper will verify the notarization online when online macOS clients first run the app. Setting `SKIP_STAPLING` to `'false'` restores full polling and stapling.
+
+---
+
+## 🌐 Localization & Translation Helper
+
+Codeoba supports multiple interface display languages. To make it easy to synchronize and translate keys from the English source dictionary (`en.json`) to all other target locales, we provide a generic translation utility script:
+
+```bash
+node scripts/translate.cjs [options]
+```
+
+### Usage Modes
+
+* **Automatically translate all missing keys**: Scans for any key-value pairs present in `src/i18n/locales/en.json` but missing in other locales, and translates them automatically using the Google Translate free web API.
+  ```bash
+  node scripts/translate.cjs
+  ```
+* **Translate specific keys / namespaces**: Translates only the specified keys or nested object paths (e.g., namespace prefixes) across all other languages. This translates/re-translates the targets even if they already exist, making it perfect for updating existing strings.
+  ```bash
+  node scripts/translate.cjs --keys disclaimer
+  
+  # Or target multiple comma-separated keys/namespaces:
+  node scripts/translate.cjs --keys disclaimer.title,settings.general
+  ```
+
 

@@ -158,5 +158,14 @@
     "restart": "立即重啟",
     "updateBtn": "立即更新",
     "later": "以後再說"
+  },
+  "disclaimer": {
+    "title": "Alpha/Beta 品質通知",
+    "message1": "Codeoba 目前為 v1.0 之前版本。它是正在積極開發的 alpha/beta 品質軟體。",
+    "message2": "您可能會遇到錯誤、效能問題或不完整的功能。",
+    "feedbackPrompt": "請在我們的 GitHub 問題頁面上回報錯誤、建議功能或分享回饋：",
+    "button": "確認並繼續",
+    "githubIssues": "GitHub 問題",
+    "bugTracker": "開啟錯誤追蹤器/提出問題"
   }
 }

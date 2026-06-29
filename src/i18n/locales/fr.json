@@ -158,5 +158,14 @@
     "restart": "Redémarrer maintenant",
     "updateBtn": "Mettre à jour maintenant",
     "later": "Plus tard"
+  },
+  "disclaimer": {
+    "title": "Avis de qualité Alpha/Bêta",
+    "message1": "Codeoba est actuellement pré-v1.0. Il s'agit d'un logiciel de qualité alpha/bêta en développement actif.",
+    "message2": "Vous pouvez rencontrer des bugs, des problèmes de performances ou des fonctionnalités incomplètes.",
+    "feedbackPrompt": "Veuillez signaler des bugs, suggérer des fonctionnalités ou partager vos commentaires sur notre page de problèmes GitHub :",
+    "button": "Reconnaître et continuer",
+    "githubIssues": "Problèmes GitHub",
+    "bugTracker": "Ouvrir Bug Tracker / Signaler un problème"
   }
 }

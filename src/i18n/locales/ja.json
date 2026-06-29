@@ -158,5 +158,14 @@
     "restart": "今すぐ再起動",
     "updateBtn": "今すぐアップデート",
     "later": "後で"
+  },
+  "disclaimer": {
+    "title": "アルファ/ベータ品質に関する通知",
+    "message1": "Codeova は現在 v1.0 より前です。これは、積極的に開発中のアルファ/ベータ品質のソフトウェアです。",
+    "message2": "バグ、パフォーマンスの問題、または不完全な機能が発生する可能性があります。",
+    "feedbackPrompt": "バグを報告したり、機能を提案したり、GitHub の問題ページでフィードバックを共有したりしてください。",
+    "button": "了承して続行",
+    "githubIssues": "GitHubの問題",
+    "bugTracker": "Bug Tracker を開く / 問題を報告する"
   }
 }

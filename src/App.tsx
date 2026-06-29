@@ -25,8 +25,10 @@ import {
   RotateCw,
   Settings,
   X,
-  Download
+  Download,
+  Bug
 } from "lucide-solid";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import "./App.css";
 
 interface Turn {
@@ -72,6 +74,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
+  const [showDisclaimer, setShowDisclaimer] = createSignal(false);
   const [similarityThreshold, setSimilarityThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
@@ -143,6 +146,12 @@ function App() {
       document.title = `Codeoba v${version}`;
     } catch (err) {
       console.error("Failed to set window title:", err);
+    }
+
+    // Check disclaimer acknowledgement
+    const disclaimerAck = localStorage.getItem("codeoba-disclaimer-acknowledged");
+    if (!disclaimerAck) {
+      setShowDisclaimer(true);
     }
 
     // Hide startup skeleton once UI is mounted
@@ -532,6 +541,19 @@ function App() {
     navigator.clipboard.writeText(path);
   };
 
+  const handleOpenIssues = async () => {
+    try {
+      await openUrl("https://github.com/LookAtWhatAiCanDo/Codeoba/issues");
+    } catch (err) {
+      console.error("Failed to open issues URL:", err);
+    }
+  };
+
+  const handleAcknowledgeDisclaimer = () => {
+    localStorage.setItem("codeoba-disclaimer-acknowledged", "true");
+    setShowDisclaimer(false);
+  };
+
   const renderNavigationPill = () => (
     <div class="flex items-center gap-1 bg-surface/60 border border-border/55 rounded-xl p-1 pointer-events-auto flex-shrink-0">
       <button
@@ -621,23 +643,32 @@ function App() {
           {renderNavigationPill()}
         </div>
 
-        <div class="hidden md:flex items-center gap-2 pointer-events-auto text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40">
-          <Show 
-            when={selectedSession()} 
-            fallback={
-              <span class="text-accent font-semibold flex items-center gap-1">
-                <Layers class="w-3 h-3" /> {t("dashboard.globalStats")}
+        <div class="flex items-center gap-3 pointer-events-auto">
+          <div class="hidden md:flex items-center gap-2 text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40">
+            <Show 
+              when={selectedSession()} 
+              fallback={
+                <span class="text-accent font-semibold flex items-center gap-1">
+                  <Layers class="w-3 h-3" /> {t("dashboard.globalStats")}
+                </span>
+              }
+            >
+              <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""}>
+                {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
               </span>
-            }
+              <span class="text-border">/</span>
+              <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"}>
+                {selectedSession()?.threadName || "Untitled"}
+              </span>
+            </Show>
+          </div>
+          <button
+            onClick={handleOpenIssues}
+            title={t("disclaimer.bugTracker")}
+            class="p-1.5 bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center"
           >
-            <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""}>
-              {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
-            </span>
-            <span class="text-border">/</span>
-            <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"}>
-              {selectedSession()?.threadName || "Untitled"}
-            </span>
-          </Show>
+            <Bug class="w-4 h-4 text-accent" />
+          </button>
         </div>
       </div>
 
@@ -818,6 +849,60 @@ function App() {
                   <span>{t("updater.updateBtn")}</span>
                 </button>
               </Show>
+            </div>
+          </div>
+        </div>
+      </Show>
+      {/* Disclaimer Modal Overlay */}
+      <Show when={showDisclaimer()}>
+        <div class="fixed inset-0 bg-black/75 z-[70] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
+          <div class="w-[480px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            
+            {/* Header info */}
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 rounded-xl">
+                <AlertCircle class="w-5 h-5" />
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
+                  {t("disclaimer.title")}
+                </h3>
+                <span class="text-[9px] font-mono bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-500 px-1.5 py-0.5 font-semibold">
+                  ALPHA / BETA
+                </span>
+              </div>
+            </div>
+
+            {/* Description Details */}
+            <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-3 text-xs leading-relaxed text-text-secondary">
+              <p>
+                {t("disclaimer.message1")}
+              </p>
+              <p>
+                {t("disclaimer.message2")}
+              </p>
+              <div class="border-t border-border/30 pt-3 space-y-2">
+                <p class="text-text-primary/95 font-semibold font-medium">
+                  {t("disclaimer.feedbackPrompt")}
+                </p>
+                <button
+                  onClick={handleOpenIssues}
+                  class="flex items-center gap-2 px-3 py-2 bg-background hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-xs font-semibold text-text-secondary hover:text-accent transition-all cursor-pointer w-full justify-center"
+                >
+                  <Bug class="w-4 h-4 text-accent" />
+                  <span>{t("disclaimer.githubIssues")}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div class="flex gap-3 w-full pt-1">
+              <button
+                onClick={handleAcknowledgeDisclaimer}
+                class="flex-1 py-2.5 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              >
+                <span>{t("disclaimer.button")}</span>
+              </button>
             </div>
           </div>
         </div>

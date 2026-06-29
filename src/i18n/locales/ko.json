@@ -158,5 +158,14 @@
     "restart": "지금 재시작",
     "updateBtn": "지금 업데이트",
     "later": "나중에"
+  },
+  "disclaimer": {
+    "title": "알파/베타 품질 공지",
+    "message1": "Codeoba는 현재 v1.0 이전 버전입니다. 활발하게 개발 중인 알파/베타 품질 소프트웨어입니다.",
+    "message2": "버그, 성능 문제 또는 불완전한 기능이 발생할 수 있습니다.",
+    "feedbackPrompt": "GitHub 문제 페이지에서 버그를 보고하거나 기능을 제안하거나 피드백을 공유해 주세요.",
+    "button": "확인 및 계속",
+    "githubIssues": "GitHub 문제",
+    "bugTracker": "버그 추적기 열기 / 문제 신고"
   }
 }
