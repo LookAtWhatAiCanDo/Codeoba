@@ -268,14 +268,14 @@ jobs:
             unset APPLE_ID
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
-            npm run tauri build -- --target ${{ matrix.target }}
+            npm run tauri build -- --target ${{ matrix.target }} --verbose
           else
             echo "Standard commit. Building unsigned development package..."
             unset APPLE_SIGNING_IDENTITY
             unset APPLE_ID
             unset APPLE_PASSWORD
             unset APPLE_TEAM_ID
-            npm run tauri build -- --target ${{ matrix.target }} --config '{"bundle": {"createUpdaterArtifacts": false}}'
+            npm run tauri build -- --target ${{ matrix.target }} --config '{"bundle": {"createUpdaterArtifacts": false}}' --verbose
           fi
 
       - name: Azure Login

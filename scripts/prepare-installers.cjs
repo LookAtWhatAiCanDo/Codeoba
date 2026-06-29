@@ -91,7 +91,7 @@ const patchNsis = (data) => {
 const patchWix = (data) => {
   console.log('Applying WiX path overrides...');
   const oldFallback = '<Directory Id="INSTALLDIR" Name="{{product_name}}"/>';
-  const newFallback = '<Directory Id="INSTALLDIR" Name="{{manufacturer}}\\{{product_name}}"/>';
+  const newFallback = '<Directory Id="COMPANYDIR" Name="{{manufacturer}}">\r\n                    <Directory Id="INSTALLDIR" Name="{{product_name}}"/>\r\n                </Directory>';
   if (!data.includes(oldFallback)) {
     throw new Error('Could not find directory structure to patch in the WiX template.');
   }
