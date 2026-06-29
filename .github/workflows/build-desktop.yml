@@ -408,11 +408,107 @@ jobs:
       - name: Merge Platform Updater Manifests
         run: node scripts/merge-updater-manifests.cjs artifacts v${{ needs.build.outputs.version }}
 
+      - name: Build Changelog From Commits
+        id: build_changelog
+        # https://github.com/mikepenz/release-changelog-builder-action
+        uses: mikepenz/release-changelog-builder-action@v6
+        with:
+          mode: 'HYBRID'
+          configurationJson: |
+            {
+              "categories": [
+                {
+                  "title": "## 🚀 Features",
+                  "labels": ["feature", "enhancement"],
+                  "rules": [
+                    {
+                      "pattern": "^feat(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## 🐛 Bug Fixes",
+                  "labels": ["fix", "bug"],
+                  "rules": [
+                    {
+                      "pattern": "^fix(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## ♻️ Refactoring",
+                  "labels": ["refactor", "refactoring"],
+                  "rules": [
+                    {
+                      "pattern": "^refactor(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## ⚡ Performance Improvements",
+                  "labels": ["perf", "performance"],
+                  "rules": [
+                    {
+                      "pattern": "^perf(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## 📝 Documentation",
+                  "labels": ["documentation", "doc", "docs"],
+                  "rules": [
+                    {
+                      "pattern": "^docs?(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## ⚙️ Build System & CI",
+                  "labels": ["ci", "build"],
+                  "rules": [
+                    {
+                      "pattern": "^(ci|build)(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## 🧪 Testing",
+                  "labels": ["test", "tests"],
+                  "rules": [
+                    {
+                      "pattern": "^test(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                },
+                {
+                  "title": "## 🧹 Chores",
+                  "labels": ["chore"],
+                  "rules": [
+                    {
+                      "pattern": "^chore(?:\\(.+\\))?:.+",
+                      "on_property": "title"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.build.outputs.version }}
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          generate_release_notes: false
+          body: ${{ steps.build_changelog.outputs.changelog }}
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.msi
@@ -423,4 +519,3 @@ jobs:
             artifacts/**/*.app.tar.gz.sig
             artifacts/latest.json
           draft: false
-          generate_release_notes: true
