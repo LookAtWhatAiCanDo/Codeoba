@@ -77,6 +77,7 @@ interface SidebarProps {
   width: number;
   onWidthChange: (w: number) => void;
   collapsed?: boolean;
+  appVersion?: string;
 }
 
 export const getSessionComputeTimeMs = (session: Session): number => {
@@ -279,18 +280,23 @@ export const Sidebar = (props: SidebarProps) => {
 
   return (
     <aside 
-      class="border-r border-border h-full flex flex-col overflow-hidden bg-background select-none pt-[76px] relative"
+      class="border-r border-border h-full flex flex-col overflow-hidden bg-background select-none relative"
       style={{
         width: props.collapsed ? "0px" : `${props.width}px`,
         "min-width": props.collapsed ? "0px" : `${props.width}px`,
         "max-width": props.collapsed ? "0px" : `${props.width}px`,
-        display: props.collapsed ? "none" : "flex"
+        display: props.collapsed ? "none" : "flex",
+        "padding-top": "0px"
       }}
     >
       {/* Drag Handle */}
       <div 
         onMouseDown={handleMouseDown}
-        class="absolute top-[76px] right-0 w-1 h-[calc(100%-76px)] cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors z-50 select-none"
+        class="absolute right-0 w-1 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors z-50 select-none"
+        style={{
+          top: "0px",
+          height: "100%"
+        }}
       />
       {/* Sticky Header Section */}
       <div class="p-4 border-b border-border space-y-3 flex-shrink-0">

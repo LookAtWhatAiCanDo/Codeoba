@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
+import packageJson from "../package.json";
 import { Sidebar } from "./components/Sidebar";
 import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
@@ -104,6 +105,7 @@ function App() {
   } | null>(null);
   const [loadTime, setLoadTime] = createSignal<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
+  const [appVersion, setAppVersion] = createSignal(packageJson.version);
 
   // Sync theme selection to DOM
   createEffect(() => {
@@ -128,6 +130,15 @@ function App() {
 
   // Load backend metadata & sessions on startup, and register listeners
   onMount(async () => {
+    // Set window title with app version
+    try {
+      const version = await getVersion();
+      setAppVersion(version);
+      document.title = `Codeoba v${version}`;
+    } catch (err) {
+      console.error("Failed to set window title:", err);
+    }
+
     // Hide startup skeleton once UI is mounted
     const skeleton = document.getElementById("sk-container");
     if (skeleton) {
@@ -515,97 +526,109 @@ function App() {
     navigator.clipboard.writeText(path);
   };
 
+  const renderNavigationPill = () => (
+    <div class="flex items-center gap-1 bg-surface/60 border border-border/55 rounded-xl p-1 pointer-events-auto flex-shrink-0">
+      <button
+        onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
+        title={sidebarCollapsed() ? "Show Sidebar" : "Hide Sidebar"}
+        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+      >
+        <Show when={sidebarCollapsed()} fallback={<PanelLeftClose class="w-4 h-4" />}>
+          <PanelLeftOpen class="w-4 h-4" />
+        </Show>
+      </button>
+
+      <div class="w-[1px] h-4 bg-border/40 mx-1" />
+
+      <button
+        onClick={handleNavBack}
+        disabled={historyIndex() <= 0}
+        title="Go Back"
+        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+      >
+        <ArrowLeft class="w-4 h-4" />
+      </button>
+
+      <button
+        onClick={handleNavForward}
+        disabled={historyIndex() >= navHistory().length - 1}
+        title="Go Forward"
+        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+      >
+        <ArrowRight class="w-4 h-4" />
+      </button>
+
+      <button
+        onClick={() => handleGoHome()}
+        title={t("dashboard.globalStats")}
+        class={`p-1.5 hover:bg-surface border hover:border-border/60 rounded-lg transition-all cursor-pointer ${
+          selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "border-transparent text-text-secondary"
+        }`}
+      >
+        <Home class="w-4 h-4" />
+      </button>
+
+      <button
+        onClick={handleRebuildIndex}
+        disabled={isRebuilding()}
+        title={t("sidebar.forceRebuild")}
+        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
+      >
+        <RotateCw class={`w-4 h-4 ${isRebuilding() ? 'animate-spin text-accent' : ''}`} />
+      </button>
+
+      <div class="w-[1px] h-4 bg-border/40 mx-1" />
+
+      <button
+        onClick={() => setShowSettings(true)}
+        title={t("settings.title")}
+        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+      >
+        <Settings class="w-4 h-4" />
+      </button>
+    </div>
+  );
+
   return (
     <div class="flex h-screen w-screen overflow-hidden bg-background text-text-primary">
-      {/* Titlebar/Navigation bar */}
-      <div class="absolute top-0 left-0 right-0 h-[76px] pointer-events-none z-50 flex items-center justify-between px-6 select-none border-b border-border/10 glass">
-        {/* Left Side App Brand & Controls */}
+      {/* Dynamic Headers based on style selection */}
+      {/* Dynamic Headers based on style selection */}
+      {/* Modern Sidebar Header (Unified Layout) */}
+      <div 
+        class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-50 flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
+        style={{
+          "padding-left": "80px",
+          "padding-right": "24px"
+        }}
+        data-tauri-drag-region
+      >
         <div class="flex items-center gap-4 pointer-events-auto">
-          <div class="flex items-center gap-2">
-            <Terminal class="w-5 h-5 text-accent animate-pulse" />
-            <span class="font-bold tracking-widest text-[16px] text-text-primary">
+          <div class="flex items-center gap-2 w-[176px] flex-shrink-0">
+            <Terminal class="w-4.5 h-4.5 text-accent animate-pulse" />
+            <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none">
               CODEOBA
             </span>
+            <span class="text-[9px] font-mono bg-surface border border-white/10 rounded text-accent font-semibold leading-none w-[46px] h-[18px] inline-flex items-center justify-center">
+              v{appVersion()}
+            </span>
           </div>
-
-          {/* Navigation Pill Container */}
-          <div class="flex items-center gap-1 bg-surface/60 border border-border/55 rounded-xl p-1">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
-              title={sidebarCollapsed() ? "Show Sidebar" : "Hide Sidebar"}
-              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
-            >
-              <Show when={sidebarCollapsed()} fallback={<PanelLeftClose class="w-4 h-4" />}>
-                <PanelLeftOpen class="w-4 h-4" />
-              </Show>
-            </button>
-
-            <div class="w-[1px] h-4 bg-border/40 mx-1" />
-
-            <button
-              onClick={handleNavBack}
-              disabled={historyIndex() <= 0}
-              title="Go Back"
-              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <ArrowLeft class="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={handleNavForward}
-              disabled={historyIndex() >= navHistory().length - 1}
-              title="Go Forward"
-              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
-            >
-              <ArrowRight class="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => handleGoHome()}
-              title={t("dashboard.globalStats")}
-              class={`p-1.5 hover:bg-surface border border-transparent hover:border-border/60 rounded-lg transition-all cursor-pointer ${
-                selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "text-text-secondary"
-              }`}
-            >
-              <Home class="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={handleRebuildIndex}
-              disabled={isRebuilding()}
-              title={t("sidebar.forceRebuild")}
-              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RotateCw class={`w-4 h-4 ${isRebuilding() ? 'animate-spin text-accent' : ''}`} />
-            </button>
-
-            <div class="w-[1px] h-4 bg-border/40 mx-1" />
-
-            <button
-              onClick={() => setShowSettings(true)}
-              title={t("settings.title")}
-              class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
-            >
-              <Settings class="w-4 h-4" />
-            </button>
-          </div>
+          {renderNavigationPill()}
         </div>
 
-        {/* Right Side: Current View Title / Breadcrumbs */}
-        <div class="hidden md:flex items-center gap-2 pointer-events-auto text-xs font-medium text-text-secondary bg-surface/30 px-3 py-1.5 rounded-full border border-border/40">
+        <div class="hidden md:flex items-center gap-2 pointer-events-auto text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40">
           <Show 
             when={selectedSession()} 
             fallback={
-              <span class="text-accent font-semibold flex items-center gap-1.5">
-                <Layers class="w-3.5 h-3.5" /> {t("dashboard.globalStats")}
+              <span class="text-accent font-semibold flex items-center gap-1">
+                <Layers class="w-3 h-3" /> {t("dashboard.globalStats")}
               </span>
             }
           >
-            <span class="text-text-secondary/70 truncate max-w-[140px]" title={selectedSession()?.cwd || ""}>
+            <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""}>
               {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
             </span>
             <span class="text-border">/</span>
-            <span class="text-text-primary truncate max-w-[200px]" title={selectedSession()?.threadName || "Untitled"}>
+            <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"}>
               {selectedSession()?.threadName || "Untitled"}
             </span>
           </Show>
@@ -613,7 +636,12 @@ function App() {
       </div>
 
       {/* Main Grid: Sidebar + Detail Pane */}
-      <div class="flex w-full h-full min-h-0 min-w-0">
+      <div 
+        class="flex w-full h-full min-h-0 min-w-0"
+        style={{
+          "padding-top": "var(--sk-header-height, 48px)"
+        }}
+      >
         <Sidebar
           sessions={sessions()}
           searchResults={searchResults()}
@@ -635,6 +663,7 @@ function App() {
           width={sidebarWidth()}
           onWidthChange={setSidebarWidth}
           collapsed={sidebarCollapsed()}
+          appVersion={appVersion()}
         />
 
         <div class="flex-grow h-full flex flex-col min-w-0 overflow-hidden">

@@ -1,13 +1,29 @@
 import { defineConfig } from "vite";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pkg = JSON.parse(readFileSync(resolve(__dirname, "./package.json"), "utf-8"));
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [solidPlugin(), tailwindcss()],
+  plugins: [
+    solidPlugin(), 
+    tailwindcss(),
+    {
+      name: "html-version-injector",
+      transformIndexHtml(html) {
+        return html.replace(/__APP_VERSION__/g, pkg.version);
+      }
+    }
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

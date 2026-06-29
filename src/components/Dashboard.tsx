@@ -235,7 +235,7 @@ export const Dashboard = (props: DashboardProps) => {
   };
 
   return (
-    <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 overflow-y-auto px-8 pt-[96px] pb-6 space-y-6">
+    <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 overflow-y-auto px-8 pt-6 pb-6 space-y-6">
       {/* Overview Tabs Navigation */}
       <div class="flex bg-surface p-1 rounded-xl border border-border/60 max-w-sm flex-shrink-0">
         <button

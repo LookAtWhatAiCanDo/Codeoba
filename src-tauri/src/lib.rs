@@ -120,7 +120,7 @@ pub fn run() {
             
             let handle = app.handle().clone();
             let _ = watcher::start_watcher(handle.clone());
-            
+
             // Load cached sessions in background thread on startup
             let handle_clone = handle.clone();
             std::thread::spawn(move || {

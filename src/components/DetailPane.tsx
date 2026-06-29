@@ -169,7 +169,10 @@ export const DetailPane = (props: DetailPaneProps) => {
         fallback={
           <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 animate-pulse">
             {/* Header Skeleton */}
-            <div class="h-[76px] px-6 border-b border-border/60 flex items-center justify-between flex-shrink-0">
+            <div 
+              class="px-6 border-b border-border/60 flex items-center justify-between flex-shrink-0"
+              style={{ height: "var(--sk-header-height, 76px)" }}
+            >
               <div class="flex flex-col gap-2">
                 <div class="h-3.5 w-40 bg-surface rounded" />
                 <div class="h-2.5 w-60 bg-surface rounded" />
@@ -210,9 +213,12 @@ export const DetailPane = (props: DetailPaneProps) => {
           }
         >
           {/* Top Header / Action Bar */}
-          <div class={`h-[76px] border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 ${
-            props.sidebarCollapsed ? "pl-[340px] pr-6" : "px-6"
-          }`}>
+          <div 
+            class="border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 px-6"
+            style={{ 
+              height: "var(--sk-header-height, 76px)"
+            }}
+          >
             <div class="min-w-0 flex flex-col gap-0.5 pt-2">
               <div class="flex items-center gap-1.5 text-xs text-text-secondary/80">
                 <span class="hover:text-text-primary transition-colors cursor-default">

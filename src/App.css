@@ -26,6 +26,7 @@
   --accent: #6366f1;
   --accent-hover: #4f46e5;
   --accent-light: rgba(99, 102, 241, 0.1);
+  --sk-header-height: 48px;
 }
 
 [data-theme="nordic-frost"] {
