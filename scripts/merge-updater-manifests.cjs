@@ -72,7 +72,7 @@ if (macApp && macApp.sigFile) {
 }
 
 // 2. Find Windows x64 artifacts
-const winX64 = findFilePair('.msi', 'x64');
+const winX64 = findFilePair('.exe', 'x64');
 if (winX64 && winX64.sigFile) {
   const filename = path.basename(winX64.file);
   const signature = fs.readFileSync(winX64.sigFile, 'utf8').trim();
@@ -81,11 +81,11 @@ if (winX64 && winX64.sigFile) {
   mergedManifest.platforms['windows-x86_64'] = { signature, url };
   console.log(`✅ Added Windows x64 (windows-x86_64) update target: ${filename}`);
 } else {
-  console.log('⚠️ No Windows x64 (.msi) and signature (.msi.sig) pair found.');
+  console.log('⚠️ No Windows x64 (.exe) and signature (.exe.sig) pair found.');
 }
 
 // 3. Find Windows arm64 artifacts
-const winArm64 = findFilePair('.msi', 'arm64');
+const winArm64 = findFilePair('.exe', 'arm64');
 if (winArm64 && winArm64.sigFile) {
   const filename = path.basename(winArm64.file);
   const signature = fs.readFileSync(winArm64.sigFile, 'utf8').trim();
@@ -94,7 +94,7 @@ if (winArm64 && winArm64.sigFile) {
   mergedManifest.platforms['windows-aarch64'] = { signature, url };
   console.log(`✅ Added Windows arm64 (windows-aarch64) update target: ${filename}`);
 } else {
-  console.log('⚠️ No Windows arm64 (.msi) and signature (.msi.sig) pair found.');
+  console.log('⚠️ No Windows arm64 (.exe) and signature (.exe.sig) pair found.');
 }
 
 // 4. Find Linux AppImage artifacts (Future proofing)

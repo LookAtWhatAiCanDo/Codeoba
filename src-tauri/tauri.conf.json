@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "node scripts/prepare-nsis.cjs && npm run build",
+    "beforeBuildCommand": "node scripts/prepare-installers.cjs && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -43,6 +43,9 @@
     "windows": {
       "nsis": {
         "template": "nsis/installer.nsi"
+      },
+      "wix": {
+        "template": "main.wxs"
       }
     }
   },

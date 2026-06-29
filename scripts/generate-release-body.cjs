@@ -44,6 +44,9 @@ for (const file of files) {
   } else if (ext === '.msi') {
     const arch = base.includes('arm64') ? 'ARM64' : 'x64';
     downloads.windows.push({ name: `Windows MSI (${arch})`, file: base });
+  } else if (ext === '.exe') {
+    const arch = base.includes('arm64') ? 'ARM64' : 'x64';
+    downloads.windows.push({ name: `Windows EXE (${arch})`, file: base });
   } else if (ext === '.deb') {
     const arch = base.includes('arm64') ? 'ARM64' : 'x64';
     downloads.linux.push({ name: `Linux DEB (${arch})`, file: base });
