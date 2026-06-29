@@ -22,7 +22,7 @@
     "filterAll": "todos",
     "filterActive": "ativo",
     "filterArchived": "arquivado",
-    "noMessages": "Sem mensagens nesta sessão",
+    "noMessages": "Nenhuma mensagem nesta sessão",
     "justNow": "agora mesmo",
     "yesterday": "ontem",
     "minutesAgo": "há {count}m",
@@ -34,9 +34,9 @@
     "adapterGroups": "Grupos de adaptadores",
     "totalConversations": "Total de conversas",
     "totalTurns": "Total de interações",
-    "promptTokens": "Tokens de entrada",
+    "promptTokens": "Tokens de prompt",
     "responseTokens": "Tokens de resposta",
-    "totalEstTokens": "Total de tokens est.",
+    "totalEstTokens": "Total de tokens estimados",
     "avgTurns": "Média de interações / sessão",
     "avgSpeed": "Velocidade média",
     "totalCompactions": "Total de compactações",
@@ -47,9 +47,10 @@
     "tokens": "Tokens",
     "speed": "Velocidade",
     "duration": "Duração",
+    "name": "Nome",
     "sort": "Ordenar",
     "unknownModel": "Modelo desconhecido",
-    "scanning": "Escaneando adaptadores de sessão locais..."
+    "scanning": "Verificando adaptadores de sessão locais..."
   },
   "detailPane": {
     "noSelection": "Nenhuma conversa selecionada",
@@ -64,16 +65,18 @@
     "duration": "Duração",
     "adapter": "Adaptador",
     "deleteSession": "Excluir sessão",
-    "confirmDelete": "Tem certeza que deseja excluir esta sessão? Esta ação não pode ser desfeita.",
+    "confirmDelete": "Tem certeza de que deseja excluir esta sessão? Esta ação não pode ser desfeita.",
     "copyCwd": "Copiar Cwd",
+    "copyCwdLabel": "Cwd",
     "cwdCopied": "Cwd copiado",
     "copyPath": "Copiar caminho",
+    "copyPathLabel": "Caminho",
     "pathCopied": "Caminho copiado",
     "compactedContext": "Contexto compactado",
     "compactionTook": "A compactação levou",
     "tokenUsage": "Uso de tokens",
     "computeSpeed": "Velocidade de processamento",
-    "modelUsed": "Modelo utilizado",
+    "modelUsed": "Modelo usado",
     "filePermissions": "Permissões do arquivo",
     "revoke": "Revogar",
     "grantAccess": "Conceder acesso",
@@ -84,7 +87,7 @@
     "loading": "Carregando conteúdo do arquivo...",
     "size": "Tamanho",
     "line": "Linha",
-    "noPermissionTitle": "Sem permissão para ler o arquivo",
+    "noPermissionTitle": "Sem permissões para ler o arquivo",
     "noPermissionDesc": "Este arquivo está fora das áreas de trabalho padrão dos adaptadores. Conceda permissão de leitura para visualizá-lo.",
     "grantPermission": "Conceder permissão de leitura",
     "failedLoad": "Falha ao carregar o conteúdo do arquivo: {error}"
@@ -97,7 +100,7 @@
       "theme": "Tema do aplicativo",
       "themeDesc": "Selecione a aparência visual do espaço de trabalho.",
       "cache": "Cache de inicialização persistente",
-      "cacheDesc": "Acelere a inicialização armazenando as sessões analisadas no disco.",
+      "cacheDesc": "Acelere o tempo de inicialização armazenando em cache as sessões analisadas em disco.",
       "autoUpdate": "Atualizações automáticas",
       "autoUpdateDesc": "Verificar automaticamente se há novas versões ao iniciar.",
       "version": "Versão atual",
@@ -114,7 +117,7 @@
     },
     "sources": {
       "tab": "Fontes",
-      "title": "Fontes & Adaptadores",
+      "title": "Fontes e adaptadores",
       "desc": "Configure fontes de logs brutos e adaptadores de formatação.",
       "status": "Status",
       "available": "Disponível",
@@ -136,7 +139,7 @@
       "failedDownload": "Falha ao baixar o modelo: {error}",
       "downloadBtn": "Baixar modelo de embeddings",
       "threshold": "Limiar de similaridade",
-      "thresholdDesc": "Configure a tolerância de correspondência (valores mais altos são mais estritos)."
+      "thresholdDesc": "Configure a tolerância de correspondência (quanto maior, mais rigoroso)."
     },
     "permissions": {
       "tab": "Permissões",
@@ -161,11 +164,11 @@
   },
   "disclaimer": {
     "title": "Aviso de qualidade alfa/beta",
-    "message1": "Codeoba é atualmente pré-v1.0. É um software de qualidade alfa/beta em desenvolvimento ativo.",
+    "message1": "O Codeoba é atualmente pré-v1.0. É um software de qualidade alfa/beta em desenvolvimento ativo.",
     "message2": "Você pode encontrar bugs, problemas de desempenho ou recursos incompletos.",
-    "feedbackPrompt": "Relate bugs, sugira recursos ou compartilhe comentários em nossa página de problemas do GitHub:",
+    "feedbackPrompt": "Por favor, relate bugs, sugira recursos ou compartilhe feedback em nossa página de problemas do GitHub:",
     "button": "Reconhecer e continuar",
     "githubIssues": "Problemas do GitHub",
-    "bugTracker": "Abra o Bug Tracker/Registre um problema"
+    "bugTracker": "Abrir rastreador de bugs / Registrar um problema"
   }
 }

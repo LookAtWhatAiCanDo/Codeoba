@@ -47,13 +47,14 @@
     "tokens": "Tokens",
     "speed": "Geschwindigkeit",
     "duration": "Dauer",
+    "name": "Name",
     "sort": "Sortieren",
     "unknownModel": "Unbekanntes Modell",
-    "scanning": "Scanne lokale Sitzungsadapter..."
+    "scanning": "Lokale Sitzungsadapter werden gescannt..."
   },
   "detailPane": {
     "noSelection": "Keine Unterhaltung ausgewählt",
-    "selectSession": "Wählen Sie eine Sitzung aus der Seitenleiste aus, um Details anzuzeigen.",
+    "selectSession": "Wählen Sie eine Sitzung aus der Seitenleiste, um Details anzuzeigen.",
     "pin": "Anheften",
     "unpin": "Lösen",
     "archive": "Archivieren",
@@ -66,8 +67,10 @@
     "deleteSession": "Sitzung löschen",
     "confirmDelete": "Sind Sie sicher, dass Sie diese Sitzung löschen möchten? Dies kann nicht rückgängig gemacht werden.",
     "copyCwd": "Cwd kopieren",
+    "copyCwdLabel": "Cwd",
     "cwdCopied": "Cwd kopiert",
     "copyPath": "Pfad kopieren",
+    "copyPathLabel": "Pfad",
     "pathCopied": "Pfad kopiert",
     "compactedContext": "Komprimierter Kontext",
     "compactionTook": "Komprimierung dauerte",
@@ -84,10 +87,10 @@
     "loading": "Dateiinhalt wird geladen...",
     "size": "Größe",
     "line": "Zeile",
-    "noPermissionTitle": "Keine Berechtigung zum Lesen der Datei",
-    "noPermissionDesc": "Diese Datei befindet sich außerhalb der Standardarbeitsbereiche des Adapters. Gewähren Sie Leseberechtigung, um sie anzuzeigen.",
-    "grantPermission": "Leseberechtigung gewähren",
-    "failedLoad": "Dateiinhalt konnte nicht geladen werden: {error}"
+    "noPermissionTitle": "Keine Berechtigungen zum Lesen der Datei",
+    "noPermissionDesc": "Diese Datei befindet sich außerhalb der Standard-Adapter-Arbeitsbereiche. Erteilen Sie Leseberechtigungen, um sie anzuzeigen.",
+    "grantPermission": "Leseberechtigung erteilen",
+    "failedLoad": "Fehler beim Laden der Dateiinhalte: {error}"
   },
   "settings": {
     "title": "Einstellungen",
@@ -97,20 +100,20 @@
       "theme": "Anwendungs-Theme",
       "themeDesc": "Wählen Sie das visuelle Erscheinungsbild des Arbeitsbereichs.",
       "cache": "Persistenter Start-Cache",
-      "cacheDesc": "Beschleunigen Sie die Startzeit, indem Sie analysierte Sitzungen auf der Festplatte zwischenspeichern.",
+      "cacheDesc": "Beschleunigen Sie die Startzeit, indem Sie geparste Sitzungen auf der Festplatte zwischenspeichern.",
       "autoUpdate": "Automatische Updates",
       "autoUpdateDesc": "Beim Start automatisch nach neuen Versionen suchen.",
       "version": "Aktuelle Version",
-      "checkUpdate": "Nach Updates suchen",
-      "checking": "Suche...",
-      "logMode": "Protokoll-Analysemodus",
+      "checkUpdate": "Auf Updates prüfen",
+      "checking": "Wird geprüft...",
+      "logMode": "Protokoll-Parsing-Modus",
       "logModeDesc": "Konfigurieren Sie, wie Unterhaltungstranskripte verarbeitet und zusammengefasst werden.",
-      "modeStandard": "Standard-Analyse",
+      "modeStandard": "Standard-Parsing",
       "modeStandardDesc": "Schnelle Indizierung ohne Berechnung der vollständigen Interaktionsunterschiede.",
       "modeCompact": "Vollständige Komprimierung",
-      "modeCompactDesc": "Komprimierte Kontextblöcke analysieren und strukturieren.",
+      "modeCompactDesc": "Komprimierte Kontextblöcke parsen und strukturieren.",
       "language": "Anwendungssprache",
-      "languageDesc": "Wählen Sie die Anzeigesprache der Benutzeroberfläche aus."
+      "languageDesc": "Wählen Sie die Anzeigesprache der Benutzeroberfläche."
     },
     "sources": {
       "tab": "Quellen",
@@ -141,7 +144,7 @@
     "permissions": {
       "tab": "Berechtigungen",
       "title": "Pfadberechtigungen",
-      "desc": "Die folgenden Verzeichnisse sind zum Lesen/Schreiben von Kontextdateien berechtigt.",
+      "desc": "Die folgenden Verzeichnisse sind zum Lesen/Schreiben von Kontextdateien autorisiert.",
       "dirPath": "Verzeichnispfad",
       "authorizedOn": "Autorisiert am",
       "revoke": "Berechtigung widerrufen",
@@ -162,10 +165,10 @@
   "disclaimer": {
     "title": "Hinweis zur Alpha-/Beta-Qualität",
     "message1": "Codeoba ist derzeit vor Version 1.0. Es handelt sich um Software in Alpha-/Beta-Qualität, die sich in der aktiven Entwicklung befindet.",
-    "message2": "Möglicherweise stoßen Sie auf Fehler, Leistungsprobleme oder unvollständige Funktionen.",
+    "message2": "Es können Fehler, Leistungsprobleme oder unvollständige Funktionen auftreten.",
     "feedbackPrompt": "Bitte melden Sie Fehler, schlagen Sie Funktionen vor oder geben Sie Feedback auf unserer GitHub-Problemseite:",
     "button": "Bestätigen und fortfahren",
     "githubIssues": "GitHub-Probleme",
-    "bugTracker": "Öffnen Sie den Bug Tracker/reichen Sie ein Problem ein"
+    "bugTracker": "Bug-Tracker öffnen / Problem melden"
   }
 }

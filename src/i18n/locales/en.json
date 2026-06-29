@@ -47,6 +47,7 @@
     "tokens": "Tokens",
     "speed": "Speed",
     "duration": "Duration",
+    "name": "Name",
     "sort": "Sort",
     "unknownModel": "Unknown Model",
     "scanning": "Scanning local session adapters..."
@@ -66,8 +67,10 @@
     "deleteSession": "Delete Session",
     "confirmDelete": "Are you sure you want to delete this session? This action cannot be undone.",
     "copyCwd": "Copy Cwd",
+    "copyCwdLabel": "Cwd",
     "cwdCopied": "Cwd Copied",
     "copyPath": "Copy Path",
+    "copyPathLabel": "Path",
     "pathCopied": "Path Copied",
     "compactedContext": "Compacted context",
     "compactionTook": "Compaction took",

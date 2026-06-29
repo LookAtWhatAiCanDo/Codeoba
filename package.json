@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "build:local": "tauri build --config '{\"bundle\": {\"createUpdaterArtifacts\": false}}'",
     "bump": "node scripts/bump-version.cjs",
-    "generate-keys": "node scripts/generate-keys.cjs"
+    "generate-keys": "node scripts/generate-keys.cjs",
+    "translate": "node scripts/translate.cjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",

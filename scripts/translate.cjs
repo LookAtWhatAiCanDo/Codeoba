@@ -1,37 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { execSync } = require('child_process');
 
-// Helper to fetch Google Translate free API URL
-function translateText(text, targetLang) {
-  let googleLang = targetLang;
-  // Normalize language codes for Google Translate
-  if (targetLang === 'zh') googleLang = 'zh-CN';
-  if (targetLang === 'zh-TW') googleLang = 'zh-TW';
+const apiKey = process.env.GEMINI_API_KEY;
 
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${googleLang}&dt=t&q=${encodeURIComponent(text)}`;
-
-  return new Promise((resolve) => {
-    https.get(url, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed && parsed[0]) {
-            const translation = parsed[0].map(item => item[0]).join('');
-            resolve(translation);
-          } else {
-            resolve(text); // Fallback to English
-          }
-        } catch (e) {
-          resolve(text); // Fallback
-        }
-      });
-    }).on('error', () => {
-      resolve(text); // Fallback
-    });
-  });
+if (!apiKey) {
+  console.error("Error: GEMINI_API_KEY environment variable is not defined.");
+  process.exit(1);
 }
 
 // Flat map of a nested object into dot notation
@@ -62,12 +37,96 @@ function setNestedValue(obj, pathStr, value) {
   current[parts[parts.length - 1]] = value;
 }
 
-// Parse args
-const args = process.argv.slice(2);
-let limitKeys = null;
-const keysIdx = args.indexOf('--keys');
-if (keysIdx !== -1 && args[keysIdx + 1]) {
-  limitKeys = args[keysIdx + 1].split(',').map(k => k.trim());
+// Ask Gemini to reconcile a batch of differences
+async function reconcileBatch(batch, targetLang, attempt = 1) {
+  const langNames = {
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "ja": "Japanese",
+    "zh": "Simplified Chinese",
+    "zh-TW": "Traditional Chinese",
+    "pt": "Portuguese",
+    "it": "Italian",
+    "ko": "Korean",
+    "nl": "Dutch",
+    "ar": "Arabic",
+    "ru": "Russian"
+  };
+
+  const targetName = langNames[targetLang] || targetLang;
+
+  const prompt = `You are a professional software localizer. You are reconciling differences in translation keys for target language "${targetName}" (code: "${targetLang}").
+
+We have two versions of translations:
+1. Version A (HEAD / Previous Commit): Generally high-quality, has correct capitalization and polite verb tones.
+2. Version B (Working Copy / LLM Draft): Updated by a script, corrects typos (like changing "Codeova" to "Codeoba") and translates missing words, but sometimes introduces incorrect capitalization or informal verb tones.
+
+Reconciliation Guidelines:
+1. Capitalization: Prefer Version A's sentence case (only capitalize the first word and proper nouns) for buttons, titles, headers, and UI labels. Do not use Version B's English-style title-casing (e.g. do not capitalize every word).
+2. Formality: Prefer Version A's polite/formal address tones (e.g., formal 'usted' in Spanish, 'vous' in French, polite forms in Japanese/Korean/German) over Version B's informal tones.
+3. Brand & Typos: Keep Version B's spelling corrections and typo fixes (e.g., spelling the product name "Codeoba" instead of "Codeova", and resolving character typos).
+4. Variable Safety: Placeholder variables (like "{count}", "{version}", "{progress}", "{error}") must match the English source exactly and remain completely untranslated and unmodified.
+5. Choose the translation that is more natural, concise, and standard for modern software UI.
+6. If Version A and Version B are both empty (or missing), this is a brand new key. Translate the English original directly using the capitalization and formality guidelines above.
+
+Input JSON format:
+{
+  "key.path": {
+    "english": "English Original",
+    "versionA": "HEAD translation",
+    "versionB": "Working Copy translation"
+  }
+}
+
+Output JSON format (return a single JSON object mapping keys to your chosen reconciled translation):
+{
+  "key.path": "Final Reconciled Translation"
+}
+
+Output your response as a valid JSON object. Do not include markdown code block formatting (like \`\`\`json).
+
+Input JSON:
+${JSON.stringify(batch, null, 2)}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  if (!response.ok) {
+    if (response.status === 429 && attempt <= 3) {
+      console.warn(`  Rate limit hit (429). Waiting 30 seconds before retry attempt ${attempt}/3...`);
+      await new Promise(r => setTimeout(r, 30000));
+      return reconcileBatch(batch, targetLang, attempt + 1);
+    }
+    const errText = await response.text();
+    throw new Error(`Gemini API response error (${response.status}): ${errText}`);
+  }
+
+  const result = await response.json();
+  const text = result.candidates[0].content.parts[0].text;
+  
+  try {
+    return JSON.parse(text.trim());
+  } catch (err) {
+    console.error("Failed to parse LLM response as JSON. Raw response was:", text);
+    throw err;
+  }
 }
 
 const localesDir = path.join(__dirname, '../src/i18n/locales');
@@ -81,61 +140,120 @@ if (!fs.existsSync(enPath)) {
 const enJson = JSON.parse(fs.readFileSync(enPath, 'utf8'));
 const enFlat = getFlatKeys(enJson);
 
-// Get all translation target files (excluding en.json)
-const files = fs.readdirSync(localesDir)
-  .filter(f => f.endsWith('.json') && f !== 'en.json');
+const targetLanguages = ["es", "fr", "de", "ja", "zh", "zh-TW", "pt", "it", "ko", "nl", "ar", "ru"];
 
 async function run() {
-  console.log(`Starting translation process...`);
-  if (limitKeys) {
-    console.log(`Limit scope to keys: ${limitKeys.join(', ')}`);
+  const dryRun = process.argv.includes('--dry-run') || process.argv.includes('-d');
+  
+  let totalStrings = 0;
+  let totalApiCalls = 0;
+
+  if (dryRun) {
+    console.log("=== DRY RUN MODE: No API calls will be made, no files will be written ===\n");
   } else {
-    console.log(`Checking for missing keys across all locale files...`);
+    console.log("Starting translation reconciliation process...");
   }
 
-  for (const file of files) {
-    const lang = file.replace('.json', '');
+  for (const lang of targetLanguages) {
+    const file = `${lang}.json`;
     const filePath = path.join(localesDir, file);
-    const targetJson = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    const targetFlat = getFlatKeys(targetJson);
-
-    let keysToTranslate = [];
-
-    if (limitKeys) {
-      // Find all keys matching specified patterns
-      for (const flatKey of Object.keys(enFlat)) {
-        const matches = limitKeys.some(limitK => flatKey === limitK || flatKey.startsWith(limitK + '.'));
-        if (matches) {
-          keysToTranslate.push(flatKey);
-        }
-      }
-    } else {
-      // Find all keys missing in target locale file
-      for (const flatKey of Object.keys(enFlat)) {
-        if (!(flatKey in targetFlat)) {
-          keysToTranslate.push(flatKey);
-        }
-      }
-    }
-
-    if (keysToTranslate.length === 0) {
-      console.log(`- ${lang}: Up to date.`);
+    
+    if (!fs.existsSync(filePath)) {
+      console.log(`- ${lang}: File not found, skipping.`);
       continue;
     }
 
-    console.log(`- ${lang}: Translating ${keysToTranslate.length} keys...`);
-    for (const flatKey of keysToTranslate) {
-      const sourceText = enFlat[flatKey];
-      console.log(`  [${flatKey}] Translating: "${sourceText}"`);
-      const translated = await translateText(sourceText, lang);
-      setNestedValue(targetJson, flatKey, translated);
+    const workingJson = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const workingFlat = getFlatKeys(workingJson);
+
+    // Get HEAD version of the same file
+    let headJson = {};
+    try {
+      const headContent = execSync(`git show HEAD:src/i18n/locales/${file}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+      headJson = JSON.parse(headContent);
+    } catch (err) {
+      console.warn(`  Warning: Failed to fetch HEAD version of ${file}. Using working copy as base.`);
+      headJson = JSON.parse(JSON.stringify(workingJson));
+    }
+    const headFlat = getFlatKeys(headJson);
+
+    // Find difference between HEAD and working copy, or completely missing translations
+    const diffKeys = [];
+    const payload = {};
+
+    for (const key of Object.keys(enFlat)) {
+      const headVal = headFlat[key] || '';
+      const workVal = workingFlat[key] || '';
+
+      // If they differ, or if the working copy is missing/empty, we must process it
+      if (headVal !== workVal || !workVal) {
+        diffKeys.push(key);
+        payload[key] = {
+          english: enFlat[key],
+          versionA: headVal,
+          versionB: workVal
+        };
+      }
     }
 
-    // Write file
-    fs.writeFileSync(filePath, JSON.stringify(targetJson, null, 2) + '\n', 'utf8');
-    console.log(`  Updated ${file}`);
+    if (diffKeys.length === 0) {
+      console.log(`- ${lang}: Reconciled (No differences found).`);
+      continue;
+    }
+
+    // Increment trackers
+    totalStrings += diffKeys.length;
+    totalApiCalls += 1;
+
+    if (dryRun) {
+      console.log(`- ${lang}: Found ${diffKeys.length} differences to reconcile:`);
+      for (const key of diffKeys) {
+        console.log(`  [Key]  "${key}"`);
+        console.log(`    English:   "${payload[key].english}"`);
+        console.log(`    Version A: "${payload[key].versionA}"`);
+        console.log(`    Version B: "${payload[key].versionB}"`);
+      }
+      console.log("");
+      continue;
+    }
+
+    console.log(`- ${lang}: Found ${diffKeys.length} differences. Reconciling with Gemini...`);
+
+    try {
+      const reconciledValues = await reconcileBatch(payload, lang);
+      
+      // Update workingJson with reconciled values
+      for (const key of diffKeys) {
+        if (reconciledValues && reconciledValues[key] !== undefined) {
+          setNestedValue(workingJson, key, reconciledValues[key]);
+        } else {
+          console.warn(`    Warning: Key "${key}" was not returned in reconciled response, keeping Version B.`);
+        }
+      }
+
+      // Write reconciled file back to disk
+      fs.writeFileSync(filePath, JSON.stringify(workingJson, null, 2) + '\n', 'utf8');
+      console.log(`  Successfully reconciled and saved ${file}`);
+
+    } catch (err) {
+      console.error(`  Error reconciling ${lang}:`, err.message);
+      process.exit(1);
+    }
+
+    // Small rate limiting delay between languages
+    await new Promise(r => setTimeout(r, 2000));
   }
-  console.log('Translation process completed!');
+
+  if (dryRun) {
+    console.log("=======================================================================");
+    console.log(`Dry run completed.`);
+    console.log(`Metrics: Would have processed ${totalStrings} strings across ${totalApiCalls} API calls.`);
+    console.log("Run without --dry-run or -d to apply the reconciliation.");
+    console.log("=======================================================================");
+  } else {
+    console.log("\nReconciliation completed successfully!");
+    console.log(`Metrics: Processed ${totalStrings} strings across ${totalApiCalls} API calls.`);
+  }
 }
 
 run().catch(console.error);

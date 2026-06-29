@@ -249,26 +249,34 @@ To support compilation of native dependencies in Rust (such as `esaxx-rs` and `w
 
 ---
 
-## 🌐 Localization & Translation Helper
+## 🌐 Localization & Translation Workflow
 
-Codeoba supports multiple interface display languages. To make it easy to synchronize and translate keys from the English source dictionary (`en.json`) to all other target locales, we provide a generic translation utility script:
+Codeoba supports multiple interface display languages. To maintain high-quality, context-aware translations while protecting variable interpolations (like `{count}`), the project uses a single-pass delta translation and reconciliation workflow:
 
+### 1. Setup API Key
+Obtain a free Gemini API key from [Google AI Studio](https://aistudio.google.com/) and export it:
 ```bash
-node scripts/translate.cjs [options]
+export GEMINI_API_KEY="your_api_key_here"
 ```
 
-### Usage Modes
+### 2. Run the Script
+The translation script compares the current workspace translations with the last git commit (`HEAD`) and identifies:
+- Brand new keys that are missing or empty in your locale files.
+- Keys that have changed or been deleted.
 
-* **Automatically translate all missing keys**: Scans for any key-value pairs present in `src/i18n/locales/en.json` but missing in other locales, and translates them automatically using the Google Translate free web API.
+It only sends those specific differences to the Gemini API to reconcile or translate, preserving existing correct translations.
+
+* **Preview the changes (Dry Run)**:
+  Shows exactly which keys differ and what will be sent to Gemini without making API calls or modifying files:
   ```bash
-  node scripts/translate.cjs
+  GEMINI_API_KEY=xxx npm run translate -- --dry-run
   ```
-* **Translate specific keys / namespaces**: Translates only the specified keys or nested object paths (e.g., namespace prefixes) across all other languages. This translates/re-translates the targets even if they already exist, making it perfect for updating existing strings.
+
+* **Run the translation**:
+  Executes the script and updates the locale JSON files on disk:
   ```bash
-  node scripts/translate.cjs --keys disclaimer
-  
-  # Or target multiple comma-separated keys/namespaces:
-  node scripts/translate.cjs --keys disclaimer.title,settings.general
+  GEMINI_API_KEY=xxx npm run translate
   ```
+
 
 

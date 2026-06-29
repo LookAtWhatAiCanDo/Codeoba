@@ -254,7 +254,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <Show when={copiedPath()} fallback={<ExternalLink class="w-3.5 h-3.5" />}>
                   <Check class="w-3.5 h-3.5 text-emerald-400" />
                 </Show>
-                <span>{t("detailPane.copyPath").split(" ")[1] || "Path"}</span>
+                <span>{t("detailPane.copyPathLabel")}</span>
               </button>
 
               <button
@@ -265,7 +265,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <Show when={copiedSession()} fallback={<Copy class="w-3.5 h-3.5" />}>
                   <Check class="w-3.5 h-3.5 text-emerald-400" />
                 </Show>
-                <span>{t("detailPane.copyCwd").split(" ")[1] || "Transcript"}</span>
+                <span>{t("detailPane.copyCwdLabel")}</span>
               </button>
             </div>
           </div>
