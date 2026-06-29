@@ -134,6 +134,7 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
           prefix-key: ${{ hashFiles('.github/workflows/build-desktop.yml') }}
+          cache-workspace-crates: 'true'
 
       - name: Install Linux System Dependencies
         if: startsWith(matrix.platform, 'linux')
