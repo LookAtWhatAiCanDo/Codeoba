@@ -278,7 +278,7 @@ export const DetailPane = (props: DetailPaneProps) => {
               </div>
               <div class="flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">{t("permissions.authorizedOn")}:</span>
+                <span class="font-semibold text-text-primary">{t("settings.permissions.authorizedOn")}:</span>
                 <span>{formatFullDate(props.session!.timestamp)}</span>
               </div>
               <div class="flex items-center gap-1.5">

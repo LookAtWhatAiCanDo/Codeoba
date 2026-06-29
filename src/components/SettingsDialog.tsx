@@ -380,7 +380,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Shield class="w-3.5 h-3.5" />
-                <span>{t("permissions.title")}</span>
+                <span>{t("settings.permissions.tab")}</span>
               </button>
             </div>
 
@@ -451,7 +451,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.cache")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.clearCacheDesc")}</p>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.cacheDesc")}</p>
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -483,13 +483,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       </label>
                     </div>
                     <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
-                      <span class="text-text-secondary">{t("updater.current")}: v{appVersion()}</span>
+                      <span class="text-text-secondary">{t("settings.general.version")}: v{appVersion()}</span>
                       <button
                         onClick={handleCheckUpdates}
                         disabled={checkingUpdates()}
                         class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.update") || "Check for Updates"}</span>}>
+                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.checkUpdate") || "Check for Updates"}</span>}>
                           <RefreshCw class="w-3.5 h-3.5 animate-spin" />
                           <span>{t("settings.general.checking")}</span>
                         </Show>
@@ -702,7 +702,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-border/30 pb-2 mb-2 flex-shrink-0">
                   <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-                    {t("permissions.title")}
+                    {t("settings.permissions.title")}
                   </h3>
                   <Show when={permissions().length > 0}>
                     <button
