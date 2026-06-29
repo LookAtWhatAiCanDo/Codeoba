@@ -86,6 +86,26 @@ Because of how package managers (`npm`), the Tauri CLI, and the Rust compiler (`
 
 ---
 
+## 🔒 Single Instance Mode
+
+Codeoba is configured to run as a single-instance application to prevent duplicate directory watchers, file logging conflicts, and database write contentions.
+
+### How it Works
+The application uses the unique identifier `com.whataicando.codeoba` (defined in `tauri.conf.json`) to create a system-level lock (e.g., named pipe on Windows, Unix domain socket under `$TMPDIR` on macOS/Linux). 
+
+* **Second Instance Interception**: If another instance of Codeoba is launched while the app is already running, the new instance detects the lock, forwards its launch arguments to the active instance, and immediately exits.
+* **Focus Restoration**: The running instance intercepts the second instance request, logs the arguments, and brings the main window to the foreground.
+
+### Development Note
+Because the single-instance lock is keyed by the application identifier, running a locally compiled development build (e.g., via `npm run tauri dev`) while an installed production build is open will treat the dev build as a second instance (focusing the production app and terminating the dev build immediately).
+
+To run a development version concurrently with your production version for testing, you must pass a custom identifier to the dev command:
+```bash
+npm run tauri dev -- --config '{"identifier": "com.whataicando.codeoba.dev"}'
+```
+
+---
+
 ## 🧪 Testing
 
 To execute Rust backend tests (including log parsers, search algorithms, and signature checks):
