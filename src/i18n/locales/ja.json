@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "クリア",
     "cancel": "キャンセル",
     "delete": "削除",
     "save": "保存",
@@ -15,8 +16,9 @@
     "title": "セッション",
     "searchPlaceholder": "会話を検索...",
     "forceRebuild": "インデックスの強制再構築",
-    "semanticEnabled": "セマンティック検索が有効",
-    "lexicalEnabled": "レキシカル検索が有効",
+    "semanticEnabled": "セマンティック検索：有効",
+    "lexicalEnabled": "セマンティック検索：無効",
+    "filters": "検索フィルター",
     "sources": "ソース",
     "statusFilter": "ステータスフィルター",
     "filterAll": "すべて",
@@ -27,7 +29,11 @@
     "yesterday": "昨日",
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
-    "daysAgo": "{count}日前"
+    "daysAgo": "{count}日前",
+    "statusAwaitingReview": "レビュー待ち",
+    "statusExecuting": "実行中",
+    "statusCompleted": "完了",
+    "statusDiscussion": "ディスカッション"
   },
   "dashboard": {
     "globalStats": "グローバル統計",

@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "Очистить",
     "cancel": "Отмена",
     "delete": "Удалить",
     "save": "Сохранить",
@@ -15,8 +16,9 @@
     "title": "Сессии",
     "searchPlaceholder": "Поиск бесед...",
     "forceRebuild": "Принудительно перестроить индекс",
-    "semanticEnabled": "Семантический поиск включен",
-    "lexicalEnabled": "Лексический поиск включен",
+    "semanticEnabled": "Семантический поиск: включен",
+    "lexicalEnabled": "Семантический поиск: выключен",
+    "filters": "Фильтры поиска",
     "sources": "Источники",
     "statusFilter": "Фильтр статуса",
     "filterAll": "все",
@@ -27,7 +29,11 @@
     "yesterday": "вчера",
     "minutesAgo": "{count} мин назад",
     "hoursAgo": "{count} ч назад",
-    "daysAgo": "{count}дн. назад"
+    "daysAgo": "{count}дн. назад",
+    "statusAwaitingReview": "Ожидает проверки",
+    "statusExecuting": "Выполняется",
+    "statusCompleted": "Завершено",
+    "statusDiscussion": "Обсуждение"
   },
   "dashboard": {
     "globalStats": "Глобальная статистика",

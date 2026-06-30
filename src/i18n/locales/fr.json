@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "Effacer",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "save": "Enregistrer",
@@ -15,8 +16,9 @@
     "title": "Sessions",
     "searchPlaceholder": "Rechercher des conversations...",
     "forceRebuild": "Forcer la reconstruction de l'index",
-    "semanticEnabled": "Recherche sémantique activée",
-    "lexicalEnabled": "Recherche lexicale activée",
+    "semanticEnabled": "Recherche sémantique : activée",
+    "lexicalEnabled": "Recherche sémantique : désactivée",
+    "filters": "Filtres de recherche",
     "sources": "Sources",
     "statusFilter": "Filtre d'état",
     "filterAll": "tous",
@@ -27,7 +29,11 @@
     "yesterday": "hier",
     "minutesAgo": "il y a {count}min",
     "hoursAgo": "il y a {count}h",
-    "daysAgo": "il y a {count}j"
+    "daysAgo": "il y a {count}j",
+    "statusAwaitingReview": "En attente de revue",
+    "statusExecuting": "En Cours",
+    "statusCompleted": "Terminé",
+    "statusDiscussion": "Discussion"
   },
   "dashboard": {
     "globalStats": "Statistiques globales",

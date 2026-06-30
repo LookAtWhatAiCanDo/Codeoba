@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "مسح",
     "cancel": "إلغاء",
     "delete": "حذف",
     "save": "حفظ",
@@ -15,8 +16,9 @@
     "title": "الجلسات",
     "searchPlaceholder": "البحث في المحادثات...",
     "forceRebuild": "فرض إعادة بناء الفهرس",
-    "semanticEnabled": "تم تمكين البحث الدلالي",
-    "lexicalEnabled": "تم تمكين البحث اللفظي",
+    "semanticEnabled": "البحث الدلالي: مفعّل",
+    "lexicalEnabled": "البحث الدلالي: معطّل",
+    "filters": "مرشحات البحث",
     "sources": "المصادر",
     "statusFilter": "تصفية الحالة",
     "filterAll": "الكل",
@@ -27,7 +29,11 @@
     "yesterday": "أمس",
     "minutesAgo": "منذ {count} دقيقة",
     "hoursAgo": "منذ {count} ساعة",
-    "daysAgo": "منذ {count} يوم"
+    "daysAgo": "منذ {count} يوم",
+    "statusAwaitingReview": "في انتظار المراجعة",
+    "statusExecuting": "جاري التنفيذ",
+    "statusCompleted": "مكتمل",
+    "statusDiscussion": "مناقشة"
   },
   "dashboard": {
     "globalStats": "الإحصائيات العامة",

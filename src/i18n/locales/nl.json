@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "Wissen",
     "cancel": "Annuleren",
     "delete": "Verwijderen",
     "save": "Opslaan",
@@ -15,8 +16,9 @@
     "title": "Sessies",
     "searchPlaceholder": "Gesprekken zoeken...",
     "forceRebuild": "Index opnieuw opbouwen forceren",
-    "semanticEnabled": "Semantisch zoeken ingeschakeld",
-    "lexicalEnabled": "Lexicaal zoeken ingeschakeld",
+    "semanticEnabled": "Semantisch zoeken: ingeschakeld",
+    "lexicalEnabled": "Semantisch zoeken: uitgeschakeld",
+    "filters": "Zoekfilters",
     "sources": "Bronnen",
     "statusFilter": "Statusfilter",
     "filterAll": "alles",
@@ -27,7 +29,11 @@
     "yesterday": "gisteren",
     "minutesAgo": "{count}m geleden",
     "hoursAgo": "{count}u geleden",
-    "daysAgo": "{count}d geleden"
+    "daysAgo": "{count}d geleden",
+    "statusAwaitingReview": "Wacht op review",
+    "statusExecuting": "Uitvoeren",
+    "statusCompleted": "Voltooid",
+    "statusDiscussion": "Discussie"
   },
   "dashboard": {
     "globalStats": "Globale statistieken",

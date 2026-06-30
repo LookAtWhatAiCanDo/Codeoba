@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "Leeren",
     "cancel": "Abbrechen",
     "delete": "Löschen",
     "save": "Speichern",
@@ -15,8 +16,9 @@
     "title": "Sitzungen",
     "searchPlaceholder": "Unterhaltungen durchsuchen...",
     "forceRebuild": "Index neu erstellen erzwingen",
-    "semanticEnabled": "Semantische Suche aktiviert",
-    "lexicalEnabled": "Lexikalische Suche aktiviert",
+    "semanticEnabled": "Semantische Suche: Aktiviert",
+    "lexicalEnabled": "Semantische Suche: Deaktiviert",
+    "filters": "Suchfilter",
     "sources": "Quellen",
     "statusFilter": "Statusfilter",
     "filterAll": "alle",
@@ -27,7 +29,11 @@
     "yesterday": "gestern",
     "minutesAgo": "vor {count} Min.",
     "hoursAgo": "vor {count} Std.",
-    "daysAgo": "vor {count} Tagen"
+    "daysAgo": "vor {count} Tagen",
+    "statusAwaitingReview": "Überprüfung ausstehend",
+    "statusExecuting": "Ausführung",
+    "statusCompleted": "Abgeschlossen",
+    "statusDiscussion": "Diskussion"
   },
   "dashboard": {
     "globalStats": "Globale Statistiken",

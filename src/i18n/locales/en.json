@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "Clear",
     "cancel": "Cancel",
     "delete": "Delete",
     "save": "Save",
@@ -15,8 +16,9 @@
     "title": "Sessions",
     "searchPlaceholder": "Search conversations...",
     "forceRebuild": "Force Rebuild Index",
-    "semanticEnabled": "Semantic Search Enabled",
-    "lexicalEnabled": "Lexical Search Enabled",
+    "semanticEnabled": "Semantic Search: Enabled",
+    "lexicalEnabled": "Semantic Search: Disabled",
+    "filters": "Search Filters",
     "sources": "Sources",
     "statusFilter": "Status Filter",
     "filterAll": "all",
@@ -27,7 +29,11 @@
     "yesterday": "yesterday",
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "daysAgo": "{count}d ago",
+    "statusAwaitingReview": "Awaiting Review",
+    "statusExecuting": "Executing",
+    "statusCompleted": "Completed",
+    "statusDiscussion": "Discussion"
   },
   "dashboard": {
     "globalStats": "Global Stats",

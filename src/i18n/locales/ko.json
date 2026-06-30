@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "지우기",
     "cancel": "취소",
     "delete": "삭제",
     "save": "저장",
@@ -15,8 +16,9 @@
     "title": "세션",
     "searchPlaceholder": "대화 검색...",
     "forceRebuild": "인덱스 강제 재구축",
-    "semanticEnabled": "의미 검색 활성화됨",
-    "lexicalEnabled": "어휘 검색 활성화됨",
+    "semanticEnabled": "의미 검색: 활성화됨",
+    "lexicalEnabled": "의미 검색: 비활성화됨",
+    "filters": "검색 필터",
     "sources": "소스",
     "statusFilter": "상태 필터",
     "filterAll": "전체",
@@ -27,7 +29,11 @@
     "yesterday": "어제",
     "minutesAgo": "{count}분 전",
     "hoursAgo": "{count}시간 전",
-    "daysAgo": "{count}일 전"
+    "daysAgo": "{count}일 전",
+    "statusAwaitingReview": "검토 대기 중",
+    "statusExecuting": "실행 중",
+    "statusCompleted": "완료됨",
+    "statusDiscussion": "토론"
   },
   "dashboard": {
     "globalStats": "전체 통계",

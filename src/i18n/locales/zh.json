@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "清除",
     "cancel": "取消",
     "delete": "删除",
     "save": "保存",
@@ -15,8 +16,9 @@
     "title": "会话",
     "searchPlaceholder": "搜索对话...",
     "forceRebuild": "强制重建索引",
-    "semanticEnabled": "已启用语义搜索",
-    "lexicalEnabled": "已启用词法搜索",
+    "semanticEnabled": "语义搜索：已启用",
+    "lexicalEnabled": "语义搜索：已禁用",
+    "filters": "搜索过滤器",
     "sources": "数据源",
     "statusFilter": "状态筛选",
     "filterAll": "全部",
@@ -27,7 +29,11 @@
     "yesterday": "昨天",
     "minutesAgo": "{count}分钟前",
     "hoursAgo": "{count}小时前",
-    "daysAgo": "{count}天前"
+    "daysAgo": "{count}天前",
+    "statusAwaitingReview": "待评审",
+    "statusExecuting": "执行中",
+    "statusCompleted": "已完成",
+    "statusDiscussion": "讨论"
   },
   "dashboard": {
     "globalStats": "全局统计",

@@ -1,5 +1,6 @@
 {
   "common": {
+    "clear": "清除",
     "cancel": "取消",
     "delete": "刪除",
     "save": "儲存",
@@ -15,8 +16,9 @@
     "title": "工作階段",
     "searchPlaceholder": "搜尋對話...",
     "forceRebuild": "強制重建索引",
-    "semanticEnabled": "已啟用語意搜尋",
-    "lexicalEnabled": "已啟用詞法搜尋",
+    "semanticEnabled": "語意搜尋：已啟用",
+    "lexicalEnabled": "語意搜尋：已停用",
+    "filters": "搜尋篩選器",
     "sources": "來源",
     "statusFilter": "狀態篩選器",
     "filterAll": "全部",
@@ -27,7 +29,11 @@
     "yesterday": "昨天",
     "minutesAgo": "{count}分鐘前",
     "hoursAgo": "{count}小時前",
-    "daysAgo": "{count}天前"
+    "daysAgo": "{count}天前",
+    "statusAwaitingReview": "待評審",
+    "statusExecuting": "執行中",
+    "statusCompleted": "已完成",
+    "statusDiscussion": "討論"
   },
   "dashboard": {
     "globalStats": "全域統計",
