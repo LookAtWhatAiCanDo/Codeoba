@@ -15,6 +15,8 @@ import "prismjs/components/prism-bash";
 import "prismjs/components/prism-json";
 import "prismjs/components/prism-markdown";
 
+import { openUrl } from "@tauri-apps/plugin-opener";
+
 interface MarkdownRendererProps {
   content: string;
 }
@@ -130,6 +132,12 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
             detail: { href }
           });
           window.dispatchEvent(event);
+        } else if (href.startsWith("http:") || href.startsWith("https:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+          e.preventDefault();
+          logFE("info", `MarkdownRenderer: Intercepted external link click: ${href}`);
+          openUrl(href).catch((err) => {
+            logFE("error", `Failed to open external link: ${err}`);
+          });
         }
       }
     }

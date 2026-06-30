@@ -107,4 +107,27 @@ import { logFE } from "./utils/logger";
   } catch (err) {
     console.error("Failed to setup window geometry listeners:", err);
   }
+
+  // Global event listener to intercept any external link clicks (a tag hrefs starting with http/https/mailto/tel)
+  // and open them in the default external system browser, preventing webview navigation.
+  document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest("a");
+    if (anchor) {
+      const href = anchor.getAttribute("href");
+      if (href) {
+        if (href.startsWith("http:") || href.startsWith("https:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+          e.preventDefault();
+          logFE("info", `Global Link Interceptor: Intercepted click to external URL: ${href}`);
+          import("@tauri-apps/plugin-opener").then(({ openUrl }) => {
+            openUrl(href).catch((err) => {
+              logFE("error", `Global Link Interceptor: Failed to open external link: ${err}`);
+            });
+          }).catch((err) => {
+            logFE("error", `Global Link Interceptor: Failed to load @tauri-apps/plugin-opener: ${err}`);
+          });
+        }
+      }
+    }
+  });
 })();
