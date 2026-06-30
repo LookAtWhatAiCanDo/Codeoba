@@ -80,7 +80,8 @@
     "filePermissions": "Bestandsrechten",
     "revoke": "Intrekken",
     "grantAccess": "Toegang verlenen",
-    "noPermissions": "Nog geen machtigingen verleend."
+    "noPermissions": "Nog geen machtigingen verleend.",
+    "startedOn": "Gestart op"
   },
   "fileViewer": {
     "title": "Bestandsviewer",

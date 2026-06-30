@@ -80,7 +80,8 @@
     "filePermissions": "أذونات الملفات",
     "revoke": "إلغاء",
     "grantAccess": "منح صلاحية الوصول",
-    "noPermissions": "لم يتم منح أي أذونات بعد."
+    "noPermissions": "لم يتم منح أي أذونات بعد.",
+    "startedOn": "بدأ في"
   },
   "fileViewer": {
     "title": "عارض الملفات",

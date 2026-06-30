@@ -80,7 +80,8 @@
     "filePermissions": "文件权限",
     "revoke": "撤销权限",
     "grantAccess": "授予访问权限",
-    "noPermissions": "暂无已授权权限。"
+    "noPermissions": "暂无已授权权限。",
+    "startedOn": "开始时间"
   },
   "fileViewer": {
     "title": "文件查看器",

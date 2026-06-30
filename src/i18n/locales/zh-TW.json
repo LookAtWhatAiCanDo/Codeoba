@@ -80,7 +80,8 @@
     "filePermissions": "檔案權限",
     "revoke": "撤銷權限",
     "grantAccess": "授予存取權限",
-    "noPermissions": "尚未授予任何權限。"
+    "noPermissions": "尚未授予任何權限。",
+    "startedOn": "開始於"
   },
   "fileViewer": {
     "title": "檔案檢視器",

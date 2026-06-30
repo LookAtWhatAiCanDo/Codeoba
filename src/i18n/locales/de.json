@@ -80,7 +80,8 @@
     "filePermissions": "Dateiberechtigungen",
     "revoke": "Widerrufen",
     "grantAccess": "Zugriff gewähren",
-    "noPermissions": "Noch keine Berechtigungen erteilt."
+    "noPermissions": "Noch keine Berechtigungen erteilt.",
+    "startedOn": "Gestartet am"
   },
   "fileViewer": {
     "title": "Dateibetrachter",

@@ -80,7 +80,8 @@
     "filePermissions": "ファイル権限",
     "revoke": "取り消し",
     "grantAccess": "アクセス許可",
-    "noPermissions": "権限はまだ付与されていません。"
+    "noPermissions": "権限はまだ付与されていません。",
+    "startedOn": "開始日時"
   },
   "fileViewer": {
     "title": "ファイルビューア",

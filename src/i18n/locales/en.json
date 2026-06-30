@@ -80,7 +80,8 @@
     "filePermissions": "File Permissions",
     "revoke": "Revoke",
     "grantAccess": "Grant access",
-    "noPermissions": "No permissions granted yet."
+    "noPermissions": "No permissions granted yet.",
+    "startedOn": "Started On"
   },
   "fileViewer": {
     "title": "File Viewer",

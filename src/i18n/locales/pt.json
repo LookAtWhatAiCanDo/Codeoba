@@ -80,7 +80,8 @@
     "filePermissions": "Permissões do arquivo",
     "revoke": "Revogar",
     "grantAccess": "Conceder acesso",
-    "noPermissions": "Nenhuma permissão concedida ainda."
+    "noPermissions": "Nenhuma permissão concedida ainda.",
+    "startedOn": "Iniciado em"
   },
   "fileViewer": {
     "title": "Visualizador de arquivos",
