@@ -38,6 +38,8 @@ interface Session {
   turns: Turn[];
   isArchived: boolean;
   isPinned: boolean;
+  workspaceName?: string | null;
+  status?: string | null;
 }
 
 interface DashboardProps {

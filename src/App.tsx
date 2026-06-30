@@ -51,6 +51,8 @@ interface Session {
   turns: Turn[];
   isArchived: boolean;
   isPinned: boolean;
+  workspaceName?: string | null;
+  status?: string | null;
 }
 
 interface SearchResult {
@@ -189,6 +191,7 @@ function App() {
 
     let unlistenSession: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
+    let unlistenDeleted: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -216,6 +219,20 @@ function App() {
         }
       });
 
+      unlistenDeleted = await listen<string>("session-deleted", (event) => {
+        const deletedId = event.payload;
+        logFE("info", `Live event deletion: ${deletedId}`);
+
+        // Filter out deleted session from state list
+        setSessions(prev => prev.filter(s => s.id !== deletedId));
+
+        // Deselect if active view
+        const current = selectedSession();
+        if (current && current.id === deletedId) {
+          setSelectedSession(null);
+        }
+      });
+
       unlistenProgress = await listen<{
         step: string;
         progress: number;
@@ -239,9 +256,22 @@ function App() {
       console.error("Failed to register listeners:", err);
     }
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (isCmdOrCtrl && e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        const bypassCache = e.shiftKey;
+        logFE("info", `Shortcut triggered refresh: bypassCache=${bypassCache}`);
+        handleRebuildIndex(bypassCache);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
     onCleanup(() => {
       if (unlistenSession) unlistenSession();
+      if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
+      window.removeEventListener("keydown", handleKeyDown);
     });
 
     try {
@@ -425,11 +455,11 @@ function App() {
     setSelectedSources(next);
   };
 
-  const handleRebuildIndex = async () => {
+  const handleRebuildIndex = async (bypassCache: boolean = false) => {
     try {
       setIsRebuilding(true);
       setErrorMsg(null);
-      await invoke("rebuild_index");
+      await invoke("rebuild_index", { bypassCache });
       
       // Refresh session list
       const list = await invoke<Session[]>("get_all_sessions");
@@ -621,7 +651,7 @@ function App() {
       </button>
 
       <button
-        onClick={handleRebuildIndex}
+        onClick={() => handleRebuildIndex()}
         disabled={isRebuilding()}
         title={t("sidebar.forceRebuild")}
         class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
@@ -718,8 +748,6 @@ function App() {
           archivalFilter={archivalFilter()}
           onArchivalFilterChange={setArchivalFilter}
           sources={sources()}
-          isRebuilding={isRebuilding()}
-          onRebuildIndex={handleRebuildIndex}
           indexingProgress={indexingProgress()}
           width={sidebarWidth()}
           onWidthChange={setSidebarWidth}

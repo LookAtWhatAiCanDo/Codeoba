@@ -12,7 +12,10 @@ import {
   ChevronRight,
   Terminal,
   Search,
-  FileText
+  FileText,
+  HelpCircle,
+  CheckCircle2,
+  Loader2
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
@@ -41,6 +44,8 @@ interface Session {
   turns: Turn[];
   isArchived: boolean;
   isPinned: boolean;
+  workspaceName?: string | null;
+  status?: string | null;
 }
 
 interface DetailPaneProps {
@@ -126,9 +131,49 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   // Extract folder name from CWD as "Workspace"
   const getWorkspaceName = () => {
-    if (!props.session?.cwd) return "Local Workspace";
-    const parts = props.session.cwd.split(/[/\\]/);
-    return parts.filter(Boolean).pop() || "Workspace";
+    return props.session?.workspaceName || "Local Workspace";
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "awaiting_review":
+        return t("sidebar.statusAwaitingReview");
+      case "executing":
+        return t("sidebar.statusExecuting");
+      case "completed":
+        return t("sidebar.statusCompleted");
+      case "discussion":
+      default:
+        return t("sidebar.statusDiscussion");
+    }
+  };
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "awaiting_review":
+        return "bg-amber-500/10 border-amber-500/30 text-amber-500";
+      case "executing":
+        return "bg-purple-500/10 border-purple-500/30 text-purple-500";
+      case "completed":
+        return "bg-emerald-500/10 border-emerald-500/30 text-emerald-500";
+      case "discussion":
+      default:
+        return "bg-blue-500/10 border-blue-500/20 text-blue-500";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "awaiting_review":
+        return <HelpCircle class="w-3 h-3 flex-shrink-0" />;
+      case "executing":
+        return <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />;
+      case "completed":
+        return <CheckCircle2 class="w-3 h-3 flex-shrink-0" />;
+      case "discussion":
+      default:
+        return <MessageSquare class="w-3 h-3 flex-shrink-0" />;
+    }
   };
 
   const handleCopyPath = () => {
@@ -233,6 +278,12 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <span class="truncate font-medium text-text-primary max-w-[240px] cursor-default">
                   {props.session!.threadName || t("detailPane.noSelection")}
                 </span>
+                <Show when={props.session!.status}>
+                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[9px] font-bold select-none leading-none ${getStatusStyle(props.session!.status!)}`}>
+                    {getStatusIcon(props.session!.status!)}
+                    <span>{getStatusLabel(props.session!.status!)}</span>
+                  </div>
+                </Show>
                 <Show when={compactionCount() > 0}>
                   <span class="px-2 py-0.5 bg-accent/15 border border-accent/30 text-accent rounded-full text-[9px] font-bold select-none leading-none pt-[3px] pb-[3px]">
                     {t("dashboard.totalCompactions")}: {compactionCount()}

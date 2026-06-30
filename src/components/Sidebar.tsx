@@ -7,13 +7,14 @@ import {
   SlidersHorizontal, 
   Pin, 
   Archive, 
-  RefreshCw,
   Loader2,
-  Folder,
   Clock,
   MessageSquare,
   Cpu,
-  Bolt
+  Bolt,
+  X,
+  HelpCircle,
+  CheckCircle2
 } from "lucide-solid";
 
 interface Turn {
@@ -35,9 +36,11 @@ interface Session {
   cwd?: string | null;
   threadName?: string | null;
   turns: Turn[];
+  workspaceName?: string | null;
   isArchived: boolean;
   isPinned: boolean;
   snippet?: string | null;
+  status?: string | null;
 }
 
 interface SearchResult {
@@ -68,8 +71,6 @@ interface SidebarProps {
   archivalFilter: "all" | "active" | "archived";
   onArchivalFilterChange: (filter: "all" | "active" | "archived") => void;
   sources: SourceMetadata[];
-  isRebuilding: boolean;
-  onRebuildIndex: () => void;
   indexingProgress: {
     step: string;
     progress: number;
@@ -373,27 +374,32 @@ export const Sidebar = (props: SidebarProps) => {
           <span class="text-[18px] font-semibold text-text-primary tracking-wide">
             {t("sidebar.title")}
           </span>
-          <button 
-            onClick={() => props.onRebuildIndex()}
-            disabled={props.isRebuilding}
-            title={t("sidebar.forceRebuild")}
-            class="p-1.5 hover:bg-surface border border-border/40 rounded-lg text-text-secondary hover:text-accent transition-all disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw class={`w-4 h-4 ${props.isRebuilding ? 'animate-spin text-accent' : ''}`} />
-          </button>
         </div>
 
         {/* Search Bar Group */}
         <div class="flex gap-2">
           <div class="relative flex-grow">
-            <Search class="absolute left-3 top-2.5 w-4 h-4 text-text-secondary" />
+            <Search class="absolute left-3 top-2.5 w-4 h-4 text-text-secondary rtl:left-auto rtl:right-3" />
             <input
               type="text"
               value={props.searchQuery}
               onInput={(e) => props.onSearchChange(e.currentTarget.value)}
               placeholder={t("sidebar.searchPlaceholder")}
-              class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-4 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
+              class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-9 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck={false}
             />
+            <Show when={props.searchQuery.length > 0}>
+              <button
+                onClick={() => props.onSearchChange("")}
+                title={t("common.clear")}
+                class="absolute right-3 top-2.5 text-text-secondary hover:text-text-primary transition-colors cursor-pointer rtl:right-auto rtl:left-3"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </Show>
           </div>
           <button
             onClick={() => props.onSemanticToggle()}
@@ -408,6 +414,7 @@ export const Sidebar = (props: SidebarProps) => {
           </button>
           <button
             onClick={() => setShowFilters(!showFilters())}
+            title={t("sidebar.filters")}
             class={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
               showFilters() 
                 ? "bg-surface border-accent text-accent" 
@@ -502,7 +509,7 @@ export const Sidebar = (props: SidebarProps) => {
       </Show>
 
       {/* Sessions List Area */}
-      <div class="flex-grow overflow-y-auto min-h-0 divide-y divide-border/30">
+      <div class="flex-grow overflow-y-auto min-h-0 p-3 flex flex-col gap-2.5">
         <Show 
           when={listItems().length > 0} 
           fallback={
@@ -551,6 +558,7 @@ interface SessionCardProps {
 }
 
 const SessionCard = (props: SessionCardProps) => {
+  const { t } = useI18n();
   const title = createMemo(() => props.session.threadName || "Untitled Session");
   const models = createMemo(() => getSessionModels(props.session));
   const durationMs = createMemo(() => getSessionComputeTimeMs(props.session));
@@ -569,19 +577,46 @@ const SessionCard = (props: SessionCardProps) => {
     return String(t);
   });
   
-  const getWorkspaceFolder = () => {
-    if (!props.session.cwd) return "";
-    const parts = props.session.cwd.split(/[/\\]/);
-    return parts.filter(Boolean).pop() || "";
+  const getStatusBadge = () => {
+    const status = props.session.status;
+    if (!status) return null;
+    
+    switch (status) {
+      case "awaiting_review":
+        return {
+          label: t("sidebar.statusAwaitingReview"),
+          class: "bg-amber-500/10 border-amber-500/30 text-amber-500",
+          icon: () => <HelpCircle class="w-3 h-3 flex-shrink-0" />
+        };
+      case "executing":
+        return {
+          label: t("sidebar.statusExecuting"),
+          class: "bg-purple-500/10 border-purple-500/30 text-purple-500",
+          icon: () => <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />
+        };
+      case "completed":
+        return {
+          label: t("sidebar.statusCompleted"),
+          class: "bg-emerald-500/10 border-emerald-500/30 text-emerald-500",
+          icon: () => <CheckCircle2 class="w-3 h-3 flex-shrink-0" />
+        };
+      case "discussion":
+      default:
+        return {
+          label: t("sidebar.statusDiscussion"),
+          class: "bg-blue-500/10 border-blue-500/20 text-blue-500",
+          icon: () => <MessageSquare class="w-3 h-3 flex-shrink-0" />
+        };
+    }
   };
 
   return (
     <div
       onClick={() => props.onSelect(props.session)}
-      class={`p-4 flex flex-col gap-2.5 cursor-pointer transition-all border-b border-border/20 ${
+      class={`p-4 flex flex-col gap-2.5 cursor-pointer transition-all border rounded-xl ${
         props.isSelected 
-          ? "bg-accent-light/35 border-l-2 border-accent" 
-          : "hover:bg-surface/20 border-l-2 border-transparent"
+          ? "bg-accent-light/15 border-accent shadow-sm shadow-accent/15" 
+          : "bg-surface/50 border-border hover:bg-surface/80 hover:border-border/80"
       }`}
     >
       {/* Title & Badge */}
@@ -632,10 +667,10 @@ const SessionCard = (props: SessionCardProps) => {
           <span class={`px-1.5 py-0.5 border rounded text-[9.5px] uppercase font-bold flex-shrink-0 ${props.getSourceStyle(props.session.sourceId)}`}>
             {props.getSourceLabel(props.session.sourceId)}
           </span>
-          <Show when={getWorkspaceFolder()}>
-            <div class="flex items-center gap-0.5 min-w-0 text-text-secondary/50">
-              <Folder class="w-3 h-3 flex-shrink-0" />
-              <span class="truncate" title={props.session.cwd || ""}>{getWorkspaceFolder()}</span>
+          <Show when={getStatusBadge()}>
+            <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[9px] font-bold ${getStatusBadge()?.class}`}>
+              {getStatusBadge()?.icon()}
+              <span>{getStatusBadge()?.label}</span>
             </div>
           </Show>
         </div>
