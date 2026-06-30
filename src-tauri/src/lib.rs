@@ -24,13 +24,13 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     
     // Official Dev/Staging Keys (add rotated keys here)
     let dev_pubkeys = [
-        // Active dev key used for local development & main branch CI builds (Added June 2026)
-        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK",
+        // Active dev key in raw format
+        "untrusted comment: minisign public key: E8FCCABD8E08C868\nRWRoyAiOvcr86C22tEkQRZA8Avj81V1/088HlN5gE5MdA/ZIqdryYTFp",
     ];
     // Official Prod Keys (add rotated keys here)
     let prod_pubkeys = [
-        // Active production key (Added June 28, 2026 for release v0.1.6)
-        "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNDQwODNBQ0MzQTQ0OEUKUldTT1JEck1PZ2hFZit2RU8xVkE0ei93Q3pzT1JhYjMwR0JFMzZOajJGcThDY21kdm0yTVdlaVAK",
+        // Active production key in raw format
+        "untrusted comment: minisign public key: 7F44083ACC3A448E\nRWSORDrMOghEf+vEO1VA4z/wCzsORab30GBE36Nj2Fq8Ccmdvm2MWeiP",
     ];
 
     let is_dev_pubkey = dev_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
