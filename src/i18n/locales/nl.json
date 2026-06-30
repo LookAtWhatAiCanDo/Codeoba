@@ -33,7 +33,14 @@
     "statusAwaitingReview": "Wacht op review",
     "statusExecuting": "Uitvoeren",
     "statusCompleted": "Voltooid",
-    "statusDiscussion": "Discussie"
+    "statusDiscussion": "Discussie",
+    "sortBy": "Sorteren op",
+    "sortRelevance": "Relevantie",
+    "sortUpdated": "Bijgewerkt",
+    "sortTokens": "Tokens",
+    "sortSpeed": "Snelheid",
+    "sortTurns": "Beurten",
+    "sortDuration": "Duur"
   },
   "dashboard": {
     "globalStats": "Globale statistieken",

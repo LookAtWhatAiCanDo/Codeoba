@@ -33,7 +33,14 @@
     "statusAwaitingReview": "Awaiting Review",
     "statusExecuting": "Executing",
     "statusCompleted": "Completed",
-    "statusDiscussion": "Discussion"
+    "statusDiscussion": "Discussion",
+    "sortBy": "Sort by",
+    "sortRelevance": "Relevance",
+    "sortUpdated": "Updated",
+    "sortTokens": "Tokens",
+    "sortSpeed": "Speed",
+    "sortTurns": "Turns",
+    "sortDuration": "Duration"
   },
   "dashboard": {
     "globalStats": "Global Stats",

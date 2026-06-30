@@ -33,7 +33,14 @@
     "statusAwaitingReview": "待評審",
     "statusExecuting": "執行中",
     "statusCompleted": "已完成",
-    "statusDiscussion": "討論"
+    "statusDiscussion": "討論",
+    "sortBy": "排序方式",
+    "sortRelevance": "相關性",
+    "sortUpdated": "更新時間",
+    "sortTokens": "Token數",
+    "sortSpeed": "速度",
+    "sortTurns": "輪數",
+    "sortDuration": "時長"
   },
   "dashboard": {
     "globalStats": "全域統計",

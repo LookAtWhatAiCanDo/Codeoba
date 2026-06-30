@@ -1,4 +1,4 @@
-import { createSignal, createMemo, For, Show } from "solid-js";
+import { createSignal, createMemo, createEffect, For, Show } from "solid-js";
 import { useI18n } from "../i18n/i18n";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import { 
@@ -14,7 +14,9 @@ import {
   Bolt,
   X,
   HelpCircle,
-  CheckCircle2
+  CheckCircle2,
+  ArrowUp,
+  ArrowDown
 } from "lucide-solid";
 
 interface Turn {
@@ -160,6 +162,37 @@ export const getSessionModels = (session: Session): string[] => {
 export const Sidebar = (props: SidebarProps) => {
   const { t, locale } = useI18n();
   const [showFilters, setShowFilters] = createSignal(false);
+
+  const [sortBy, setSortBy] = createSignal<"relevance" | "updated" | "tokens" | "speed" | "turns" | "duration">(
+    (localStorage.getItem("codeoba-sidebar-sort-by") as any) || "updated"
+  );
+  const [sortAscending, setSortAscending] = createSignal<boolean>(
+    localStorage.getItem("codeoba-sidebar-sort-ascending") === "true"
+  );
+
+  // Sync to localStorage
+  createEffect(() => {
+    localStorage.setItem("codeoba-sidebar-sort-by", sortBy());
+  });
+  createEffect(() => {
+    localStorage.setItem("codeoba-sidebar-sort-ascending", sortAscending() ? "true" : "false");
+  });
+
+  const availableDimensions = createMemo(() => {
+    if (props.searchQuery.trim().length > 0) {
+      return ["relevance", "updated", "tokens", "speed", "turns", "duration"] as const;
+    } else {
+      return ["updated", "tokens", "speed", "turns", "duration"] as const;
+    }
+  });
+
+  const effectiveSortBy = createMemo(() => {
+    const activeSort = sortBy();
+    if (activeSort === "relevance" && props.searchQuery.trim().length === 0) {
+      return "updated";
+    }
+    return activeSort;
+  });
 
   const handleMouseDown = (e: MouseEvent) => {
     e.preventDefault();
@@ -322,30 +355,82 @@ export const Sidebar = (props: SidebarProps) => {
 
   // Determine what to display based on search results and filters
   const listItems = createMemo(() => {
+    let items: { session: Session; matchedTurns?: number[]; score?: number }[] = [];
+
     if (props.searchResults !== null) {
-      return props.searchResults.map(r => ({
+      items = props.searchResults.map(r => ({
         session: r.session,
         matchedTurns: r.matchedTurnIndexes,
         score: r.score
       }));
+    } else {
+      items = props.sessions
+        .filter(s => {
+          // Source filter
+          if (props.selectedSources.size > 0 && !props.selectedSources.has(s.sourceId)) {
+            return false;
+          }
+          // Archival filter
+          if (props.archivalFilter === "active" && s.isArchived) return false;
+          if (props.archivalFilter === "archived" && !s.isArchived) return false;
+          return true;
+        })
+        .map(s => ({
+          session: s,
+          matchedTurns: undefined,
+          score: undefined
+        }));
     }
 
-    return props.sessions
-      .filter(s => {
-        // Source filter
-        if (props.selectedSources.size > 0 && !props.selectedSources.has(s.sourceId)) {
-          return false;
+    // Now sort the items
+    const currentEffectiveSort = effectiveSortBy();
+    const isAscending = sortAscending();
+
+    items.sort((a, b) => {
+      // Pinned items always go to the top
+      if (a.session.isPinned && !b.session.isPinned) return -1;
+      if (!a.session.isPinned && b.session.isPinned) return 1;
+
+      // Within pinned / non-pinned items, sort by the chosen dimension
+      let comparison = 0;
+
+      if (currentEffectiveSort === "relevance") {
+        const scoreA = a.score || 0;
+        const scoreB = b.score || 0;
+        if (scoreA !== scoreB) {
+          comparison = scoreA - scoreB;
+        } else {
+          // tie breaker
+          comparison = a.session.updatedAt - b.session.updatedAt;
         }
-        // Archival filter
-        if (props.archivalFilter === "active" && s.isArchived) return false;
-        if (props.archivalFilter === "archived" && !s.isArchived) return false;
-        return true;
-      })
-      .map(s => ({
-        session: s,
-        matchedTurns: undefined,
-        score: undefined
-      }));
+      } else if (currentEffectiveSort === "updated") {
+        comparison = a.session.updatedAt - b.session.updatedAt;
+      } else if (currentEffectiveSort === "tokens") {
+        const tokensA = getSessionTokensCount(a.session);
+        const tokensB = getSessionTokensCount(b.session);
+        comparison = tokensA - tokensB;
+      } else if (currentEffectiveSort === "speed") {
+        const speedA = (() => {
+          const t = getSessionTokensCount(a.session);
+          const ms = getSessionComputeTimeMs(a.session);
+          return ms > 0 ? (t * 1000.0) / ms : 0.0;
+        })();
+        const speedB = (() => {
+          const t = getSessionTokensCount(b.session);
+          const ms = getSessionComputeTimeMs(b.session);
+          return ms > 0 ? (t * 1000.0) / ms : 0.0;
+        })();
+        comparison = speedA - speedB;
+      } else if (currentEffectiveSort === "turns") {
+        comparison = a.session.turns.length - b.session.turns.length;
+      } else if (currentEffectiveSort === "duration") {
+        comparison = getSessionComputeTimeMs(a.session) - getSessionComputeTimeMs(b.session);
+      }
+
+      return isAscending ? comparison : -comparison;
+    });
+
+    return items;
   });
 
   return (
@@ -478,6 +563,44 @@ export const Sidebar = (props: SidebarProps) => {
                       {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
                     </button>
                   )}
+                </For>
+              </div>
+            </div>
+
+            {/* Sort by controls */}
+            <div class="space-y-1.5 pt-1.5 border-t border-border/40">
+              <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                {t("sidebar.sortBy")}
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <For each={availableDimensions()}>
+                  {(dimension) => {
+                    const isSelected = createMemo(() => effectiveSortBy() === dimension);
+                    return (
+                      <button
+                        onClick={() => {
+                          if (sortBy() === dimension) {
+                            setSortAscending(!sortAscending());
+                          } else {
+                            setSortBy(dimension);
+                            setSortAscending(false);
+                          }
+                        }}
+                        class={`px-2.5 py-1.5 border rounded-lg text-xs cursor-pointer transition-all flex items-center gap-1 ${
+                          isSelected() 
+                            ? "bg-accent/10 border-accent/40 text-accent font-medium" 
+                            : "border-border/40 hover:bg-surface text-text-secondary"
+                        }`}
+                      >
+                        <span>{t(`sidebar.sort${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`)}</span>
+                        <Show when={isSelected()}>
+                          <Show when={sortAscending()} fallback={<ArrowDown class="w-3 h-3 flex-shrink-0" />}>
+                            <ArrowUp class="w-3 h-3 flex-shrink-0" />
+                          </Show>
+                        </Show>
+                      </button>
+                    );
+                  }}
                 </For>
               </div>
             </div>

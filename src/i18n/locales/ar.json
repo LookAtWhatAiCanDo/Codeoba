@@ -33,7 +33,14 @@
     "statusAwaitingReview": "في انتظار المراجعة",
     "statusExecuting": "جاري التنفيذ",
     "statusCompleted": "مكتمل",
-    "statusDiscussion": "مناقشة"
+    "statusDiscussion": "مناقشة",
+    "sortBy": "ترتيب حسب",
+    "sortRelevance": "الملاءمة",
+    "sortUpdated": "تم التحديث",
+    "sortTokens": "الرموز",
+    "sortSpeed": "السرعة",
+    "sortTurns": "الأدوار",
+    "sortDuration": "المدة"
   },
   "dashboard": {
     "globalStats": "الإحصائيات العامة",

@@ -33,7 +33,14 @@
     "statusAwaitingReview": "レビュー待ち",
     "statusExecuting": "実行中",
     "statusCompleted": "完了",
-    "statusDiscussion": "ディスカッション"
+    "statusDiscussion": "ディスカッション",
+    "sortBy": "並べ替え",
+    "sortRelevance": "関連性",
+    "sortUpdated": "更新日時",
+    "sortTokens": "トークン数",
+    "sortSpeed": "速度",
+    "sortTurns": "ターン数",
+    "sortDuration": "所要時間"
   },
   "dashboard": {
     "globalStats": "グローバル統計",

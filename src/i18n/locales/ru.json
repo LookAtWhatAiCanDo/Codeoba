@@ -33,7 +33,14 @@
     "statusAwaitingReview": "Ожидает проверки",
     "statusExecuting": "Выполняется",
     "statusCompleted": "Завершено",
-    "statusDiscussion": "Обсуждение"
+    "statusDiscussion": "Обсуждение",
+    "sortBy": "Сортировать по",
+    "sortRelevance": "Релевантность",
+    "sortUpdated": "Обновлено",
+    "sortTokens": "Токены",
+    "sortSpeed": "Скорость",
+    "sortTurns": "Ходы",
+    "sortDuration": "Длительность"
   },
   "dashboard": {
     "globalStats": "Глобальная статистика",

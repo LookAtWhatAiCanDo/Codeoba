@@ -33,7 +33,14 @@
     "statusAwaitingReview": "검토 대기 중",
     "statusExecuting": "실행 중",
     "statusCompleted": "완료됨",
-    "statusDiscussion": "토론"
+    "statusDiscussion": "토론",
+    "sortBy": "정렬 기준",
+    "sortRelevance": "관련성",
+    "sortUpdated": "업데이트됨",
+    "sortTokens": "토큰",
+    "sortSpeed": "속도",
+    "sortTurns": "턴",
+    "sortDuration": "기간"
   },
   "dashboard": {
     "globalStats": "전체 통계",
