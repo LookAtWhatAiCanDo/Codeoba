@@ -39,15 +39,73 @@ fn save_fallback_config(config: &HashMap<String, String>) {
     }
 }
 
-fn is_keyring_disabled() -> bool {
-    let env_val = std::env::var("CODEOBA_NO_KEYRING").ok();
+pub fn is_keyring_disabled() -> bool {
+    // 1. Check if premium is active. If not, keyring is disabled unconditionally for the free version.
+    if !crate::premium::is_premium_active() {
+        return true;
+    }
+
+    // 2. Check environment variable first
+    if let Ok(val) = std::env::var("CODEOBA_NO_KEYRING") {
+        if val == "true" {
+            return true;
+        }
+    }
+    
+    // 3. Check local fallback config (always plaintext, never keyring)
+    let path = get_fallback_file_path();
+    if path.exists() {
+        if let Ok(mut file) = File::open(&path) {
+            let mut content = String::new();
+            if file.read_to_string(&mut content).is_ok() {
+                if let Ok(map) = serde_json::from_str::<HashMap<String, String>>(&content) {
+                    if map.get("disable_keyring").map(|v| v == "true").unwrap_or(false) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
     if cfg!(debug_assertions) {
         // In debug mode, keyring is disabled by default to prevent repeated keyring prompts on unsigned builds
-        env_val.as_deref() != Some("false")
+        std::env::var("CODEOBA_NO_KEYRING").as_deref() != Ok("false")
     } else {
         // In release builds, keyring is enabled by default unless explicitly disabled
-        env_val.as_deref() == Some("true")
+        false
     }
+}
+
+pub fn set_keyring_disabled(disabled: bool) {
+    // If premium is inactive, do not allow toggling keyring
+    if !crate::premium::is_premium_active() {
+        return;
+    }
+
+    let key_name = "cache_encryption_key";
+    let mut config = load_fallback_config();
+
+    if disabled {
+        // Migrating FROM Keyring TO Fallback plaintext file
+        // Read key from keyring while it's still enabled
+        if let Ok(entry) = Entry::new(SERVICE_NAME, key_name) {
+            if let Ok(secret) = entry.get_password() {
+                config.insert(key_name.to_string(), secret);
+                let _ = entry.delete_password();
+            }
+        }
+        config.insert("disable_keyring".to_string(), "true".to_string());
+    } else {
+        // Migrating FROM Fallback plaintext file TO Keyring
+        if let Some(secret) = config.remove(key_name) {
+            if let Ok(entry) = Entry::new(SERVICE_NAME, key_name) {
+                let _ = entry.set_password(&secret);
+            }
+        }
+        config.remove("disable_keyring");
+    }
+
+    save_fallback_config(&config);
 }
 
 /// Retrieves a secret value associated with the specified key.

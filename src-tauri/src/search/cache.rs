@@ -59,6 +59,17 @@ impl EmbeddingCacheManager {
             return;
         }
 
+        // 1. Try parsing directly as unencrypted JSON
+        if let Ok(cache) = serde_json::from_slice::<SerializedEmbeddingCache>(&encrypted_data) {
+            if cache.model_id == self.model_id {
+                if let Ok(mut guard) = self.cache_map.lock() {
+                    guard.clear();
+                    guard.extend(cache.embeddings);
+                }
+                return;
+            }
+        }
+
         if encrypted_data.len() < 12 {
             return; // Invalid format
         }
@@ -125,23 +136,32 @@ impl EmbeddingCacheManager {
             Err(_) => return,
         };
 
-        let key_bytes = get_or_create_cache_key();
-        let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
+        if crate::keyring::is_keyring_disabled() {
+            if let Ok(mut file) = File::create(file_path) {
+                let _ = file.write_all(&plaintext_json);
+                if let Ok(mut guard) = self.is_modified.lock() {
+                    *guard = false;
+                }
+            }
+        } else {
+            let key_bytes = get_or_create_cache_key();
+            let cipher = Aes256Gcm::new(&key_bytes.into());
+            let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
 
-        let ciphertext = match cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
-            Ok(c) => c,
-            Err(_) => return,
-        };
+            let ciphertext = match cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
+                Ok(c) => c,
+                Err(_) => return,
+            };
 
-        let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
-        combined.extend_from_slice(&nonce_bytes);
-        combined.extend_from_slice(&ciphertext);
+            let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
+            combined.extend_from_slice(&nonce_bytes);
+            combined.extend_from_slice(&ciphertext);
 
-        if let Ok(mut file) = File::create(file_path) {
-            let _ = file.write_all(&combined);
-            if let Ok(mut guard) = self.is_modified.lock() {
-                *guard = false;
+            if let Ok(mut file) = File::create(file_path) {
+                let _ = file.write_all(&combined);
+                if let Ok(mut guard) = self.is_modified.lock() {
+                    *guard = false;
+                }
             }
         }
     }

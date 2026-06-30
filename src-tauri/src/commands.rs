@@ -1,6 +1,6 @@
+use crate::keyring;
 use crate::models::Session;
 use crate::parsers::get_sources_list;
-use crate::keyring;
 use crate::search::{SearchFilter, SearchResult, SearchIndexState};
 use serde::Serialize;
 use tauri::Manager;
@@ -113,6 +113,21 @@ pub fn get_credential(key: String) -> Option<String> {
 #[tauri::command]
 pub fn save_credential(key: String, value: Option<String>) {
     keyring::put_secret(&key, value.as_deref());
+}
+
+#[tauri::command]
+pub fn is_keyring_disabled() -> bool {
+    keyring::is_keyring_disabled()
+}
+
+#[tauri::command]
+pub fn set_keyring_disabled(disabled: bool) {
+    keyring::set_keyring_disabled(disabled);
+}
+
+#[tauri::command]
+pub fn is_premium_active() -> bool {
+    crate::premium::is_premium_active()
 }
 
 #[tauri::command]

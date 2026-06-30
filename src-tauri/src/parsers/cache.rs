@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::OnceLock;
 use aes_gcm::{
-    aead::{Aead, KeyInit},
+    aead::{Aead, KeyInit, AeadCore},
     Aes256Gcm, Nonce,
 };
 
@@ -159,7 +159,21 @@ impl SessionCacheManager {
             Err(_) => return,
         };
 
-        let _ = fs::write(path, plaintext_json);
+        if crate::keyring::is_keyring_disabled() {
+            let _ = fs::write(path, plaintext_json);
+        } else {
+            let key_bytes = get_or_create_cache_key();
+            let cipher = Aes256Gcm::new(&key_bytes.into());
+            use aes_gcm::aead::OsRng;
+            let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
+
+            if let Ok(ciphertext) = cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
+                let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
+                combined.extend_from_slice(&nonce_bytes);
+                combined.extend_from_slice(&ciphertext);
+                let _ = fs::write(path, combined);
+            }
+        }
     }
 
     pub fn start_scan(&self, source_id: &str) {

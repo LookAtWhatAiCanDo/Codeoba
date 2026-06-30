@@ -119,6 +119,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
       // Load path permissions
       await refreshPermissions();
+
+      // Load keyring and premium status
+      const disabled = await invoke<boolean>("is_keyring_disabled");
+      setKeyringDisabled(disabled);
+      const premium = await invoke<boolean>("is_premium_active");
+      setPremiumActive(premium);
     } catch (err) {
       logFE("error", `Failed to query startup settings state: ${err}`);
     }
@@ -149,6 +155,20 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [parserMode, setParserMode] = createSignal(
     localStorage.getItem("codeoba-parser-mode") || "standard"
   );
+  const [keyringDisabled, setKeyringDisabled] = createSignal(false);
+  const [premiumActive, setPremiumActive] = createSignal(false);
+
+  const handleToggleKeyring = async (checked: boolean) => {
+    // Prevent toggling if premium is inactive
+    if (!premiumActive()) return;
+    try {
+      await invoke("set_keyring_disabled", { disabled: !checked });
+      setKeyringDisabled(!checked);
+      logFE("info", `Keyring usage set to: ${checked}`);
+    } catch (err) {
+      logFE("error", `Failed to set keyring disabled state: ${err}`);
+    }
+  };
 
   // Path Permissions
   const [permissions, setPermissions] = createSignal<Array<{ path: string; preview: string; external: string }>>([]);
@@ -503,6 +523,29 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
                   </label>
                 </div>
+
+                {/* Secure storage switch */}
+                <Show when={premiumActive()}>
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
+                    <div class="flex-1 pr-4">
+                      <div class="flex items-center gap-2">
+                        <h4 class="text-xs font-bold text-text-primary">{t("settings.general.secureStorage")}</h4>
+                      </div>
+                      <p class="text-[10px] text-text-secondary/70 mt-1">
+                        {t("settings.general.secureStorageDesc")}
+                      </p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={!keyringDisabled()} 
+                        onChange={(e) => handleToggleKeyring(e.currentTarget.checked)}
+                        class="sr-only peer"
+                      />
+                      <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                    </label>
+                  </div>
+                </Show>
 
                 {/* Auto Update Check */}
                 <Show when={updaterActive()}>
