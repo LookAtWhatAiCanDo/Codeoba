@@ -105,6 +105,15 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
 }
 
 #[cfg(test)]
+pub fn clear_custom_tokenizers_cache() {
+    if let Some(lock) = CUSTOM_TOKENIZERS.get() {
+        if let Ok(mut guard) = lock.write() {
+            guard.clear();
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
@@ -130,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_load_custom_tokenizer() {
-        let _lock = crate::HOME_MUTEX.lock().unwrap();
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         // Create a temporary mock home directory
         let temp_dir = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");

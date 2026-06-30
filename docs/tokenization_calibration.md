@@ -48,8 +48,29 @@ To ensure our offline estimations are accurate and to verify our log parsers wor
 
 ---
 
-## 3. Verification
-To run the automated calibration and tokenization tests, use:
+---
+
+## 4. End-to-End Telemetry & Statistics Validation Harness
+
+To verify that the dashboard metrics shown in the UI are mathematically correct and that all parsers ingest logs accurately, we implement a validation harness in the test suite.
+
+### Mock Ground-Truth Profiles
+We programmatically construct mock environments mimicking a user's machine for **all 6 supported agent providers**:
+- **Cursor (SQLite)**: Writes `globalStorage/state.vscdb` and `workspaceStorage/state.vscdb` containing thread metadata, composer JSON structures, and multiple query turns.
+- **Claude Code (JSONL)**: Writes nested project logs with compact boundary markers, compaction metrics (trigger type, pre/post tokens, duration), and links to plan files.
+- **Aider (Markdown)**: Writes `.aider.chat.history.md` files with user prompts and assistant diff logs.
+- **GitHub Copilot (YAML/JSONL)**: Writes `workspace.yaml` metadata files and `events.jsonl` containing user messages and tool runs.
+- **OpenAI Codex (JSONL)**: Writes rollout log files and `session_index.jsonl` files for session mapping.
+- **Antigravity (Protobuf/JSONL)**: Serializes binary protocol buffers (`agyhub_summaries_proto.pb`) and writes transcript JSONL logs.
+
+### Metrics Verification
+The harness calculates combined session statistics and matches them against expected ground truths:
+- **Session & Turn Counts**: Asserts total conversations and turns match the logs.
+- **Estimated vs Precise Tokens**: Validates the linear fallbacks against precise HF tokenizer configurations.
+- **Compaction Metrics**: Verifies the sum of compaction savings in milliseconds and trigger events.
+
+### Running the Harness Tests
+To execute this specific calibration and telemetry verification suite:
 ```bash
-cargo test -- --test-threads=1
+cargo test --package codeoba --lib -- parsers::tests::test_hybrid_
 ```

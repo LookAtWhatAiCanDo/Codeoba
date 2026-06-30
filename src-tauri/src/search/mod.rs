@@ -439,6 +439,31 @@ impl SearchIndexState {
 
 
     pub async fn update_session(&self, session: crate::models::Session) -> Result<(), String> {
+        // Check if we already have this exact session cached with embeddings
+        let needs_update = {
+            if let Ok(sessions_guard) = self.sessions.read() {
+                if let Some(existing) = sessions_guard.get(&session.id) {
+                    if existing == &session {
+                        if let Ok(embs_guard) = self.embeddings.read() {
+                            !embs_guard.contains_key(&session.id)
+                        } else {
+                            true
+                        }
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        };
+
+        if !needs_update {
+            return Ok(());
+        }
+
         let model_path = downloader::get_model_file();
         let vocab_path = downloader::get_vocab_file();
 
