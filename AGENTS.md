@@ -69,8 +69,9 @@ When modifying the frontend web components, adhere to these styling guidelines:
 2. **Casing & Naming**:
    - Never display uppercase-only labels like "USER" or "ASSISTANT" in the transcripts. Use capitalized words (e.g. "User", "Assistant").
 
-3. **macOS Window Layout & Spacing**:
-   - Clear a `76px` top-left padding/margin area (`pt-[76px]` or `mt-[76px]`) on macOS to avoid overlapping the macOS transparent titlebar window controls.
+3. **Window Layout & Spacing (macOS vs Windows/Linux)**:
+   - Clear a top-left padding/margin area (e.g., `80px` left padding) on macOS to avoid overlapping the macOS transparent titlebar window controls.
+   - On Windows and Linux, clear a top-right padding/margin area (e.g., `140px` right padding) to avoid overlapping the overlay native window control buttons (minimize/maximize/close).
    - Maintain breadcrumb navigation: `Workspace Name / Active Session Title`.
 
 4. **Markdown Rendering & Code Highlighting**:

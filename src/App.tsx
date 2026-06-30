@@ -31,6 +31,9 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import "./App.css";
 
+// Detect if running on macOS
+const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
+
 interface Turn {
   turnId: string;
   userMessage: string;
@@ -688,8 +691,8 @@ function App() {
       <div 
         class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-50 flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
         style={{
-          "padding-left": "80px",
-          "padding-right": "24px"
+          "padding-left": isMac ? "80px" : "24px",
+          "padding-right": isMac ? "24px" : "140px"
         }}
         data-tauri-drag-region
       >
