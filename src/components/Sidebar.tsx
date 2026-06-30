@@ -1,6 +1,6 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
 import { useI18n } from "../i18n/i18n";
-import { formatDateWithSetting } from "../utils/format";
+import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import { 
   Search, 
   Sparkles, 
@@ -80,6 +80,8 @@ interface SidebarProps {
   collapsed?: boolean;
   appVersion?: string;
   dateFormat: string;
+  timeFormat: string;
+  showSeconds: boolean;
   numberFormat: string;
 }
 
@@ -155,7 +157,7 @@ export const getSessionModels = (session: Session): string[] => {
 };
 
 export const Sidebar = (props: SidebarProps) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [showFilters, setShowFilters] = createSignal(false);
 
   const handleMouseDown = (e: MouseEvent) => {
@@ -212,7 +214,7 @@ export const Sidebar = (props: SidebarProps) => {
     }
 
     const dateObj = new Date(time);
-    const timeStr = dateObj.toLocaleTimeString(undefined, { timeStyle: "short" });
+    const timeStr = formatTimeWithSetting(dateObj, props.timeFormat, props.showSeconds, locale());
 
     // Check if it's today
     const nowObj = new Date(now);
@@ -235,9 +237,63 @@ export const Sidebar = (props: SidebarProps) => {
     }
 
     // Otherwise, show full date and time according to settings
-    const dateStr = formatDateWithSetting(dateObj, props.dateFormat || "system");
+    const dateStr = formatDateWithSetting(dateObj, props.dateFormat || "system", locale());
 
     return `${dateStr}, ${timeStr}`;
+  };
+
+  const formatSessionTimes = (startTimestamp: number, updatedTimestamp: number) => {
+    let tStart = startTimestamp;
+    let tEnd = updatedTimestamp;
+    
+    if (tStart < 20000000000) tStart *= 1000;
+    if (tEnd < 20000000000) tEnd *= 1000;
+
+    // If they are virtually the same (within 5 seconds), just show the end time
+    if (Math.abs(tEnd - tStart) < 5000) {
+      return formatRelativeTime(updatedTimestamp);
+    }
+
+    const startObj = new Date(tStart);
+    const endObj = new Date(tEnd);
+    
+    const startTimeStr = formatTimeWithSetting(startObj, props.timeFormat, props.showSeconds, locale());
+    const endTimeStr = formatTimeWithSetting(endObj, props.timeFormat, props.showSeconds, locale());
+
+    const now = Date.now();
+    const nowObj = new Date(now);
+
+    const isSameDay = startObj.getDate() === endObj.getDate() &&
+                      startObj.getMonth() === endObj.getMonth() &&
+                      startObj.getFullYear() === endObj.getFullYear();
+
+    if (isSameDay) {
+      // Check if it's today
+      const isToday = startObj.getDate() === nowObj.getDate() &&
+                      startObj.getMonth() === nowObj.getMonth() &&
+                      startObj.getFullYear() === nowObj.getFullYear();
+
+      if (isToday) {
+        return `${startTimeStr} ➜ ${endTimeStr}`;
+      }
+
+      // Check if it's yesterday
+      const yesterday = new Date(now - 86400000);
+      const isYesterday = startObj.getDate() === yesterday.getDate() &&
+                          startObj.getMonth() === yesterday.getMonth() &&
+                          startObj.getFullYear() === yesterday.getFullYear();
+
+      if (isYesterday) {
+        return `${t("sidebar.yesterday") || "Yesterday"}, ${startTimeStr} ➜ ${endTimeStr}`;
+      }
+
+      // Older date
+      const dateStr = formatDateWithSetting(startObj, props.dateFormat || "system", locale());
+      return `${dateStr}, ${startTimeStr} ➜ ${endTimeStr}`;
+    } else {
+      // Different days
+      return `${formatRelativeTime(startTimestamp)} ➜ ${formatRelativeTime(updatedTimestamp)}`;
+    }
   };
 
   // Extract a text snippet from a session's turns
@@ -459,7 +515,7 @@ export const Sidebar = (props: SidebarProps) => {
             {({ session, matchedTurns, score }) => {
               const isSelected = createMemo(() => props.selectedSessionId === session.id);
               const snippet = createMemo(() => getSessionSnippet(session, matchedTurns));
-              const relativeTime = createMemo(() => formatRelativeTime(session.updatedAt));
+              const sessionTimesText = createMemo(() => formatSessionTimes(session.timestamp, session.updatedAt));
               
               return (
                 <SessionCard
@@ -468,7 +524,7 @@ export const Sidebar = (props: SidebarProps) => {
                   isLoading={props.loadingSessionId === session.id}
                   onSelect={props.onSelectSession}
                   snippet={snippet()}
-                  relativeTime={relativeTime()}
+                  sessionTimesText={sessionTimesText()}
                   score={score}
                   getSourceStyle={getSourceStyle}
                   getSourceLabel={getSourceLabel}
@@ -488,7 +544,7 @@ interface SessionCardProps {
   isLoading: boolean;
   onSelect: (session: Session) => void;
   snippet: string;
-  relativeTime: string;
+  sessionTimesText: string;
   score?: number;
   getSourceStyle: (sourceId: string) => string;
   getSourceLabel: (sourceId: string) => string;
@@ -536,7 +592,7 @@ const SessionCard = (props: SessionCardProps) => {
           {title()}
         </span>
         <div class="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-          <span class="text-[10px] text-text-secondary/50 font-normal mr-1">{props.relativeTime}</span>
+          <span class="text-[10px] text-text-secondary/50 font-normal mr-1">{props.sessionTimesText}</span>
           <Show when={props.isLoading}>
             <Loader2 class="w-3.5 h-3.5 text-accent animate-spin" />
           </Show>

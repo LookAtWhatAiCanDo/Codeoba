@@ -56,7 +56,7 @@ interface ModelItemStats {
 type SortDimension = "turns" | "tokens" | "speed" | "duration" | "name";
 
 export const Dashboard = (props: DashboardProps) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [activeTab, setActiveTab] = createSignal<"global" | "groups">("global");
   const [sortBy, setSortBy] = createSignal<SortDimension>("turns");
   const [sortAscending, setSortAscending] = createSignal(false);
@@ -233,7 +233,7 @@ export const Dashboard = (props: DashboardProps) => {
   };
 
   const formatNumber = (num: number) => {
-    return formatNumberWithSetting(num, props.numberFormat || "system");
+    return formatNumberWithSetting(num, props.numberFormat || "system", locale());
   };
 
   return (

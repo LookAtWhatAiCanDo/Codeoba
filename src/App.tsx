@@ -79,11 +79,23 @@ function App() {
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
   const [dateFormat, setDateFormat] = createSignal(localStorage.getItem("codeoba-date-format") || "system");
+  const [timeFormat, setTimeFormat] = createSignal(localStorage.getItem("codeoba-time-format") || "system");
+  const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
   const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
 
   const handleDateFormatChange = (val: string) => {
     setDateFormat(val);
     localStorage.setItem("codeoba-date-format", val);
+  };
+
+  const handleTimeFormatChange = (val: string) => {
+    setTimeFormat(val);
+    localStorage.setItem("codeoba-time-format", val);
+  };
+
+  const handleShowSecondsChange = (val: boolean) => {
+    setShowSeconds(val);
+    localStorage.setItem("codeoba-show-seconds", val ? "true" : "false");
   };
 
   const handleNumberFormatChange = (val: string) => {
@@ -714,6 +726,8 @@ function App() {
           collapsed={sidebarCollapsed()}
           appVersion={appVersion()}
           dateFormat={dateFormat()}
+          timeFormat={timeFormat()}
+          showSeconds={showSeconds()}
           numberFormat={numberFormat()}
         />
 
@@ -750,6 +764,8 @@ function App() {
                 sidebarCollapsed={sidebarCollapsed()}
                 searchQuery={searchQuery()}
                 dateFormat={dateFormat()}
+                timeFormat={timeFormat()}
+                showSeconds={showSeconds()}
                 numberFormat={numberFormat()}
               />
             </Show>
@@ -771,6 +787,10 @@ function App() {
         onSimilarityThresholdChange={setSimilarityThreshold}
         dateFormat={dateFormat()}
         onDateFormatChange={handleDateFormatChange}
+        timeFormat={timeFormat()}
+        onTimeFormatChange={handleTimeFormatChange}
+        showSeconds={showSeconds()}
+        onShowSecondsChange={handleShowSecondsChange}
         numberFormat={numberFormat()}
         onNumberFormatChange={handleNumberFormatChange}
         onUpdateAvailable={(update) => {

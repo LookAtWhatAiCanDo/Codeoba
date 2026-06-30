@@ -18,7 +18,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
-import { formatDateWithSetting, formatNumberWithSetting } from "../utils/format";
+import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
 
 interface Turn {
   turnId: string;
@@ -51,11 +51,13 @@ interface DetailPaneProps {
   sidebarCollapsed?: boolean;
   searchQuery?: string;
   dateFormat?: string;
+  timeFormat?: string;
+  showSeconds?: boolean;
   numberFormat?: string;
 }
 
 export const DetailPane = (props: DetailPaneProps) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedSession, setCopiedSession] = createSignal(false);
   const [visibleTurns, setVisibleTurns] = createSignal(10);
@@ -155,8 +157,8 @@ export const DetailPane = (props: DetailPaneProps) => {
       time *= 1000;
     }
     const dateObj = new Date(time);
-    const dateStr = formatDateWithSetting(dateObj, props.dateFormat || "system");
-    const timeStr = dateObj.toLocaleTimeString(undefined, { timeStyle: "short" });
+    const dateStr = formatDateWithSetting(dateObj, props.dateFormat || "system", locale());
+    const timeStr = formatTimeWithSetting(dateObj, props.timeFormat || "system", props.showSeconds || false, locale());
     return `${dateStr}, ${timeStr}`;
   };
 
@@ -449,6 +451,9 @@ const VirtualTurn = (props: VirtualTurnProps) => {
               <div class="w-2 h-2 rounded-full bg-emerald-400" />
               <span class="text-[12px] font-semibold text-text-primary tracking-wide">
                 {t("common.assistant")}
+              </span>
+              <span class="text-[10px] text-text-secondary/50">
+                {props.formatFullDate(props.turn.timestamp)}
               </span>
             </div>
             <Show when={props.turn.inputTokens || props.turn.outputTokens}>

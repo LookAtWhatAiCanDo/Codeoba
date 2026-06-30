@@ -1,4 +1,4 @@
-export const formatNumberWithSetting = (num: number, setting: string): string => {
+export const formatNumberWithSetting = (num: number, setting: string, appLocale?: string): string => {
   if (setting === "us") {
     return num.toLocaleString("en-US");
   }
@@ -8,11 +8,10 @@ export const formatNumberWithSetting = (num: number, setting: string): string =>
   if (setting === "fr") {
     return num.toLocaleString("fr-FR").replace(/\u202f/g, " ");
   }
-  // "system" fallback
-  return num.toLocaleString(undefined);
+  return num.toLocaleString(appLocale);
 };
 
-export const formatDateWithSetting = (dateObj: Date, setting: string): string => {
+export const formatDateWithSetting = (dateObj: Date, setting: string, appLocale?: string): string => {
   if (setting === "iso") {
     const yyyy = dateObj.getFullYear();
     const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -31,6 +30,22 @@ export const formatDateWithSetting = (dateObj: Date, setting: string): string =>
     const dd = String(dateObj.getDate()).padStart(2, "0");
     return `${dd}/${mm}/${yyyy}`;
   }
-  // "system" fallback
-  return dateObj.toLocaleDateString(undefined);
+  return dateObj.toLocaleDateString(appLocale);
+};
+
+export const formatTimeWithSetting = (
+  dateObj: Date,
+  timeFormat: string,
+  showSeconds: boolean,
+  appLocale?: string
+): string => {
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    timeStyle: showSeconds ? "medium" : "short"
+  };
+  if (timeFormat === "12") {
+    timeOptions.hour12 = true;
+  } else if (timeFormat === "24") {
+    timeOptions.hour12 = false;
+  }
+  return dateObj.toLocaleTimeString(appLocale, timeOptions);
 };

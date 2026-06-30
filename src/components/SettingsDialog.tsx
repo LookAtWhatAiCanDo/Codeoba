@@ -36,6 +36,10 @@ interface SettingsDialogProps {
   onUpdateAvailable?: (update: any) => void;
   dateFormat: string;
   onDateFormatChange: (val: string) => void;
+  timeFormat: string;
+  onTimeFormatChange: (val: string) => void;
+  showSeconds: boolean;
+  onShowSecondsChange: (val: boolean) => void;
   numberFormat?: string;
   onNumberFormatChange: (val: string) => void;
 }
@@ -456,11 +460,45 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     onChange={(e) => props.onDateFormatChange(e.currentTarget.value)}
                     class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
                   >
-                    <option value="system">System Default</option>
+                    <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
                     <option value="iso">ISO Format (YYYY-MM-DD)</option>
                     <option value="us">US Format (MM/DD/YYYY)</option>
                     <option value="eu">EU Format (DD/MM/YYYY)</option>
                   </select>
+                </div>
+
+                {/* Time Format Selector */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.timeFormat")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.timeFormatDesc")}</p>
+                  </div>
+                  <select
+                    value={props.timeFormat}
+                    onChange={(e) => props.onTimeFormatChange(e.currentTarget.value)}
+                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
+                  >
+                    <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
+                    <option value="12">12-Hour (AM/PM)</option>
+                    <option value="24">24-Hour</option>
+                  </select>
+                </div>
+
+                {/* Show Seconds Switch */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.showSeconds")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.showSecondsDesc")}</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={props.showSeconds} 
+                      onChange={(e) => props.onShowSecondsChange(e.currentTarget.checked)}
+                      class="sr-only peer"
+                    />
+                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                  </label>
                 </div>
 
                 {/* Number Format Selector */}
@@ -474,7 +512,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     onChange={(e) => props.onNumberFormatChange(e.currentTarget.value)}
                     class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
                   >
-                    <option value="system">System Default</option>
+                    <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
                     <option value="us">US Format (1,234,567.89)</option>
                     <option value="eu">EU Format (1.234.567,89)</option>
                     <option value="fr">Space Separated (1 234 567,89)</option>
