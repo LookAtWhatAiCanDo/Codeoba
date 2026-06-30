@@ -407,8 +407,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 {/* Language Selector */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
-                    <h4 class="text-xs font-bold text-text-primary">Language / Idioma</h4>
-                    <p class="text-[10px] text-text-secondary/70">Select the display language.</p>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.language")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.languageDesc")}</p>
                   </div>
                   <select
                     value={locale()}
@@ -529,7 +529,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         disabled={checkingUpdates()}
                         class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.checkUpdate") || "Check for Updates"}</span>}>
+                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.checkUpdate")}</span>}>
                           <RefreshCw class="w-3.5 h-3.5 animate-spin" />
                           <span>{t("settings.general.checking")}</span>
                         </Show>
