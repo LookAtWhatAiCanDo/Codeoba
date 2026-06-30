@@ -654,9 +654,18 @@ function App() {
         onClick={() => handleRebuildIndex()}
         disabled={isRebuilding()}
         title={t("sidebar.forceRebuild")}
-        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-50"
+        class={`p-1.5 border border-transparent rounded-lg transition-all ${
+          isRebuilding() 
+            ? "cursor-not-allowed text-accent bg-accent/5 border-accent/15" 
+            : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
+        }`}
       >
-        <RotateCw class={`w-4 h-4 ${isRebuilding() ? 'animate-spin text-accent' : ''}`} />
+        <Show 
+          when={isRebuilding()} 
+          fallback={<RotateCw class="w-4 h-4" />}
+        >
+          <RotateCw class="w-4 h-4 animate-spin origin-center" />
+        </Show>
       </button>
 
       <div class="w-[1px] h-4 bg-border/40 mx-1" />
@@ -847,7 +856,12 @@ function App() {
             {/* Header info */}
             <div class="flex items-center gap-3">
               <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
-                <RotateCw class={`w-5 h-5 ${isUpdating() ? 'animate-spin' : ''}`} />
+                <Show
+                  when={isUpdating()}
+                  fallback={<RotateCw class="w-5 h-5" />}
+                >
+                  <RotateCw class="w-5 h-5 animate-spin origin-center" />
+                </Show>
               </div>
               <div>
                 <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
