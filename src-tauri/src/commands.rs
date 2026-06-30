@@ -385,8 +385,10 @@ pub fn open_file_externally(raw_path: String, session_cwd: Option<String>) -> Re
     
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
         std::process::Command::new("cmd")
             .args(&["/c", "start", "", &path_str])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .spawn()
             .map_err(|e| e.to_string())?;
     }

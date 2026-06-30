@@ -80,11 +80,18 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
     
     // Fallback search using system tools
     let finder = if cfg!(windows) { "where" } else { "which" };
-    if let Ok(status) = Command::new(finder)
-        .arg(binary_name)
+    let mut cmd = Command::new(finder);
+    cmd.arg(binary_name)
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status() {
+        .stderr(std::process::Stdio::null());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    if let Ok(status) = cmd.status() {
         if status.success() {
             return true;
         }

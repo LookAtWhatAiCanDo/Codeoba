@@ -36,3 +36,5 @@ src-tauri/nsis/installer.nsi
 src-tauri/main.wxs
 
 src/i18n/locales.bak/
+
+*.code-workspace

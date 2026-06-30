@@ -13,10 +13,50 @@ This is the Tauri-based port of the desktop application, combining a highly effi
 
 Before you run or compile the application, ensure you have the following installed on your machine:
 
+### 🍎 macOS & 🐧 Linux
 1. **Node.js** (v18.0.0 or newer)
 2. **Rust & Cargo** (v1.75.0 or newer)
-   * On macOS/Linux, install via: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-   * On Windows, install using the official [Rustup installer](https://rustup.rs/)
+   * Install via: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+3. **System Dependencies (Linux Only)**:
+   * GTK 3, WebKit2GTK, libappindicator, etc. (See CI workflow or Tauri docs).
+
+### 🪟 Windows Setup (Fresh Machine)
+Tauri on Windows compiles native binaries using the Microsoft C++ compiler (MSVC) and renders views using WebView2.
+
+Open **PowerShell** as an **Administrator** and run the following commands:
+
+1. **Install C++ Build Tools** (Selects MSVC v143, C++ CMake tools, and the Windows SDK):
+   ```powershell
+   winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --passive --norestart" --source winget
+   ```
+   > [!WARNING]
+   > **Existing VS Build Tools Gotcha**: If Visual Studio Build Tools is already installed on your system, `winget` will say *"already installed"* and skip it without adding workloads. If you get `linker link.exe not found` during build, you must manually select the workload by launching the installer modification GUI:
+   > ```powershell
+   > Start-Process -FilePath "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" -ArgumentList "modify --installPath `"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools`"" -Verb RunAs
+   > ```
+   > Once the GUI opens, check **Desktop development with C++**, make sure **Windows 10/11 SDK** is checked on the right-hand panel, and click **Modify**.
+2. **Install Node.js & Rustup**:
+   ```powershell
+   winget install --id OpenJS.NodeJS.LTS -e --source winget
+   winget install --id Rustlang.Rustup -e --source winget
+   ```
+3. **Set Up MSVC Toolchain & WebView2**:
+   * Restart PowerShell to refresh your `PATH` environment variable.
+   * Ensure the MSVC toolchain is default: `rustup default stable-x86_64-pc-windows-msvc`
+   * Modern Windows 10/11 already have WebView2 pre-installed. If missing, run: `winget install --id Microsoft.EdgeWebView2Runtime -e --source winget`
+
+> [!IMPORTANT]
+> **Windows Linker Environment Variable**:
+> Codeoba compiles `esaxx-rs` (configured for dynamic linking). To prevent `LNK2038` compiler errors, you must set the `ESAXX_DYNAMIC_LINK` environment variable to `1`.
+> * Set permanently in PowerShell: `[Environment]::SetEnvironmentVariable("ESAXX_DYNAMIC_LINK", "1", "User")` (requires shell restart to take effect).
+> * Or temporarily in your current session: `$env:ESAXX_DYNAMIC_LINK="1"`
+
+> [!TIP]
+> **PowerShell Execution Policy Error (`npm.ps1 cannot be loaded...`)**:
+> If running `npm` or `npx` in PowerShell throws a security error stating `File C:\Program Files\nodejs\npm.ps1 cannot be loaded because running scripts is disabled on this system`, run this command to enable script execution for the current user:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
 
 ---
 
