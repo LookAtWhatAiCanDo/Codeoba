@@ -81,17 +81,8 @@ if (fs.existsSync(confPath)) {
     if (isDev) {
       conf.plugins.updater.endpoints = ["https://dev.codeoba.com/api/update?version={{current_version}}&target={{target}}&arch={{arch}}"];
       // Override public key for dev if provided in environment
-      let devPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV;
+      const devPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV;
       if (devPubKey) {
-        // If the key is base64-encoded (doesn't contain 'untrusted comment' but matches base64 chars), decode it to raw text.
-        if (!devPubKey.includes('untrusted comment:') && /^[a-zA-Z0-9+/=\s\r\n]+$/.test(devPubKey)) {
-          try {
-            devPubKey = Buffer.from(devPubKey.trim(), 'base64').toString('utf8').trim();
-            console.log('Successfully decoded dev public key from base64 to raw format');
-          } catch (e) {
-            console.warn('Failed to decode dev public key from base64, using raw value:', e.message);
-          }
-        }
         conf.plugins.updater.pubkey = devPubKey;
         console.log('Overrode updater public key to dev key');
       } else if (process.env.CI === 'true') {
@@ -103,17 +94,8 @@ if (fs.existsSync(confPath)) {
     } else {
       conf.plugins.updater.endpoints = ["https://codeoba.com/api/update?version={{current_version}}&target={{target}}&arch={{arch}}"];
       // Override public key for production if provided in environment
-      let prodPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD;
+      const prodPubKey = process.env.CODEOBA_TAURI_UPDATE_PUBLIC_KEY_PROD;
       if (prodPubKey) {
-        // If the key is base64-encoded (doesn't contain 'untrusted comment' but matches base64 chars), decode it to raw text.
-        if (!prodPubKey.includes('untrusted comment:') && /^[a-zA-Z0-9+/=\s\r\n]+$/.test(prodPubKey)) {
-          try {
-            prodPubKey = Buffer.from(prodPubKey.trim(), 'base64').toString('utf8').trim();
-            console.log('Successfully decoded production public key from base64 to raw format');
-          } catch (e) {
-            console.warn('Failed to decode production public key from base64, using raw value:', e.message);
-          }
-        }
         conf.plugins.updater.pubkey = prodPubKey;
         console.log('Overrode updater public key to production key');
       } else if (process.env.CI === 'true') {
