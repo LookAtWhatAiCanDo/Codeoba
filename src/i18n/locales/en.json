@@ -149,7 +149,9 @@
       "notInstalled": "Not Installed",
       "appInstalled": "App Installed",
       "refresh": "Refresh Sources",
-      "deleteData": "Delete Source Data"
+      "deleteData": "Delete Source Data",
+      "deleteDataTooltip": "Clear Codeoba's local search index and cached sessions for this source (does not affect your actual agent logs)",
+      "confirmDeleteSource": "Are you sure you want to clear Codeoba's local search index and cached sessions for {source}? This will remove it from search results, but will NOT delete or affect your actual agent application, conversations, or log files."
     },
     "semantic": {
       "tab": "Semantic",

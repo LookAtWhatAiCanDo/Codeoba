@@ -144,7 +144,9 @@
       "notInstalled": "未安装",
       "appInstalled": "应用已安装",
       "refresh": "刷新数据源",
-      "deleteData": "删除来源数据"
+      "deleteData": "删除来源数据",
+      "deleteDataTooltip": "清除 Codeoba 中此数据源的本地搜索索引和缓存会话（不影响您实际的智能体日志）",
+      "confirmDeleteSource": "您确定要清除 {source} 的 Codeoba 本地搜索索引和缓存会话吗？这会将其从搜索结果中移除，但绝不会删除或影响您实际的智能体应用程序、对话或日志文件。"
     },
     "semantic": {
       "tab": "语义",

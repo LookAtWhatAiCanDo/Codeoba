@@ -144,7 +144,9 @@
       "notInstalled": "未安裝",
       "appInstalled": "應用程式已安裝",
       "refresh": "重新整理來源",
-      "deleteData": "刪除來源資料"
+      "deleteData": "刪除來源資料",
+      "deleteDataTooltip": "清除 Codeoba 中此資料來源的本地搜尋索引和快取工作階段（不影響您實際的代理程式記錄）",
+      "confirmDeleteSource": "您確定要清除 {source} 的 Codeoba 本地搜尋索引和快取工作階段嗎？這會將其從搜尋結果中移除，但絕不會刪除或影響您實際的代理程式應用程式、對話或記錄檔案。"
     },
     "semantic": {
       "tab": "語意",

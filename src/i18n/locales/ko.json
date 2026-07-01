@@ -144,7 +144,9 @@
       "notInstalled": "설치되지 않음",
       "appInstalled": "앱 설치됨",
       "refresh": "소스 새로고침",
-      "deleteData": "소스 데이터 삭제"
+      "deleteData": "소스 데이터 삭제",
+      "deleteDataTooltip": "이 소스에 대한 Codeoba의 로컬 검색 인덱스 및 캐시된 세션 지우기 (실제 에이전트 로그에는 영향을 미치지 않음)",
+      "confirmDeleteSource": "정말로 {source}에 대한 Codeoba의 로컬 검색 인덱스 및 캐시된 세션을 지우시겠습니까? 이 작업은 검색 결과에서 소스를 제거하지만, 실제 에이전트 애플리케이션, 대화 또는 로그 파일을 삭제하거나 영향을 미치지 않습니다."
     },
     "semantic": {
       "tab": "의미",

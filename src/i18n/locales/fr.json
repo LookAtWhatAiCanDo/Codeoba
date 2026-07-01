@@ -144,7 +144,9 @@
       "notInstalled": "Non installé",
       "appInstalled": "Application installée",
       "refresh": "Actualiser les sources",
-      "deleteData": "Supprimer les données sources"
+      "deleteData": "Supprimer les données sources",
+      "deleteDataTooltip": "Effacer l'index de recherche local et les sessions en cache de Codeoba pour cette source (n'affecte pas les journaux réels de votre agent)",
+      "confirmDeleteSource": "Êtes-vous sûr de vouloir effacer l'index de recherche local et les sessions en cache de Codeoba pour {source} ? Cela le supprimera des résultats de recherche, mais ne supprimera pas et n'affectera pas l'application de votre agent réel, vos conversations ou vos fichiers journaux."
     },
     "semantic": {
       "tab": "Sémantique",

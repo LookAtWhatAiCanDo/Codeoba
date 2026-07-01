@@ -144,7 +144,9 @@
       "notInstalled": "Nicht installiert",
       "appInstalled": "App installiert",
       "refresh": "Quellen aktualisieren",
-      "deleteData": "Quelldaten löschen"
+      "deleteData": "Quelldaten löschen",
+      "deleteDataTooltip": "Lokalen Suchindex und zwischengespeicherte Sitzungen von Codeoba für diese Quelle löschen (wirkt sich nicht auf Ihre tatsächlichen Agenten-Protokolle aus)",
+      "confirmDeleteSource": "Sind Sie sicher, dass Sie den lokalen Suchindex und die zwischengespeicherten Sitzungen von Codeoba für {source} löschen möchten? Dies entfernt es aus den Suchergebnissen, löscht aber NICHT Ihre tatsächliche Agenten-Anwendung, Ihre Konversationen oder Ihre Protokolldateien und wirkt sich nicht darauf aus."
     },
     "semantic": {
       "tab": "Semantik",

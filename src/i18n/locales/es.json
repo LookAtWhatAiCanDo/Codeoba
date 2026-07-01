@@ -144,7 +144,9 @@
       "notInstalled": "No instalado",
       "appInstalled": "App instalada",
       "refresh": "Actualizar fuentes",
-      "deleteData": "Eliminar datos de origen"
+      "deleteData": "Eliminar datos de origen",
+      "deleteDataTooltip": "Borrar el índice de búsqueda local y las sesiones guardadas de Codeoba para esta fuente (no afecta a los registros reales de tu agente)",
+      "confirmDeleteSource": "¿Estás seguro de que deseas borrar el índice de búsqueda local y las sesiones guardadas de Codeoba para {source}? Esto lo eliminará de los resultados de búsqueda, pero NO eliminará ni afectará a la aplicación del agente real, tus conversaciones o archivos de registro."
     },
     "semantic": {
       "tab": "Semántica",

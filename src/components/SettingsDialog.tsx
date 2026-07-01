@@ -61,6 +61,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const { locale, setLocale, t } = useI18n();
   const [activeCategory, setActiveCategory] = createSignal<Category>("general");
   const [deletingSourceId, setDeletingSourceId] = createSignal<string | null>(null);
+  const getDeletingSourceDisplayName = () => {
+    const id = deletingSourceId();
+    if (!id) return "";
+    const found = props.sources?.find(s => s.id === id);
+    return found ? found.displayName : id;
+  };
   const [checkingUpdates, setCheckingUpdates] = createSignal(false);
   const [updateCheckResult, setUpdateCheckResult] = createSignal<string | null>(null);
   const [updaterActive, setUpdaterActive] = createSignal(false);
@@ -704,7 +710,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             {/* Trash button to delete source cache */}
                             <button
                               onClick={() => setDeletingSourceId(src.id)}
-                              title={t("settings.sources.deleteData")}
+                              title={t("settings.sources.deleteDataTooltip")}
                               class="p-2 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-text-secondary hover:text-red-400 transition-all cursor-pointer"
                             >
                               <Trash2 class="w-3.5 h-3.5" />
@@ -899,9 +905,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   {t("settings.sources.deleteData")}?
                 </h3>
                 <p class="text-xs text-text-secondary/80 leading-relaxed">
-                  {t("detailPane.confirmDelete")}
-                  <br /><br />
-                  <span class="font-bold text-text-primary capitalize">{deletingSourceId()}</span>
+                  {t("settings.sources.confirmDeleteSource", { source: getDeletingSourceDisplayName() })}
                 </p>
                 <div class="flex gap-3 w-full pt-2">
                   <button
