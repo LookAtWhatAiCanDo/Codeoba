@@ -135,17 +135,19 @@ where
     F: FnOnce(PathBuf) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
-    let _lock = crate::HOME_MUTEX.lock().unwrap();
+    let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
     let temp_dir = tempfile::tempdir().unwrap();
     let original_home = std::env::var_os("HOME");
     let original_userprofile = std::env::var_os("USERPROFILE");
     let original_appdata = std::env::var_os("APPDATA");
     let original_localappdata = std::env::var_os("LOCALAPPDATA");
+    let original_mock_home = std::env::var_os("CODEOBA_MOCK_HOME");
 
     std::env::set_var("HOME", temp_dir.path());
     std::env::set_var("USERPROFILE", temp_dir.path());
     std::env::set_var("APPDATA", temp_dir.path().join("AppData/Roaming"));
     std::env::set_var("LOCALAPPDATA", temp_dir.path().join("AppData/Local"));
+    std::env::remove_var("CODEOBA_MOCK_HOME");
 
     f(temp_dir.path().to_path_buf()).await;
 
@@ -168,6 +170,11 @@ where
         std::env::set_var("LOCALAPPDATA", la);
     } else {
         std::env::remove_var("LOCALAPPDATA");
+    }
+    if let Some(mh) = original_mock_home {
+        std::env::set_var("CODEOBA_MOCK_HOME", mh);
+    } else {
+        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
@@ -760,7 +767,7 @@ fn test_cmd_get_sources() {
 
 #[test]
 fn test_cmd_credentials() {
-    let _lock = crate::HOME_MUTEX.lock().unwrap();
+    let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
     let temp_dir = tempfile::tempdir().unwrap();
     let original_home = std::env::var_os("HOME");
     std::env::set_var("HOME", temp_dir.path());
@@ -798,6 +805,7 @@ fn test_cmd_get_all_sessions() {
             use tauri::Manager;
             let app = tauri::test::mock_builder().build(tauri::test::mock_context(tauri::test::noop_assets())).unwrap();
             app.manage(crate::search::SearchIndexState::new());
+            app.manage(crate::groups::GroupState::new());
             let handle = app.handle().clone();
 
             let state = handle.state::<crate::search::SearchIndexState>();
@@ -1125,6 +1133,327 @@ fn test_print_actual_cache_loads() {
     }
     for (source, count) in by_source {
         println!("  Source: {}, Count: {}", source, count);
+    }
+}
+
+fn create_mock_cursor_logs(mock_home: &std::path::Path) {
+    let cursor_dir = if cfg!(target_os = "windows") {
+        mock_home.join("AppData/Roaming/Cursor/User")
+    } else if cfg!(target_os = "macos") {
+        mock_home.join("Library/Application Support/Cursor/User")
+    } else {
+        mock_home.join(".config/Cursor/User")
+    };
+    let global_dir = cursor_dir.join("globalStorage");
+    let ws_dir = cursor_dir.join("workspaceStorage/workspace-demo");
+    std::fs::create_dir_all(&global_dir).unwrap();
+    std::fs::create_dir_all(&ws_dir).unwrap();
+
+    let db_path = global_dir.join("state.vscdb");
+    let conn = Connection::open(&db_path).unwrap();
+    conn.execute(
+        "CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
+        [],
+    ).unwrap();
+
+    let session_val_1 = r#"{
+        "name": "Cursor Demo Session 1",
+        "createdAt": 1779242400000,
+        "lastUpdatedAt": 1779242460000,
+        "conversation": [
+            {"type": 1, "text": "Hey Cursor, this text is exactly twenty characters.", "model": "gpt-4o"},
+            {"type": 2, "text": "Understood. The response contains exactly thirty-three characters."}
+        ]
+    }"#;
+    conn.execute(
+        "INSERT INTO cursorDiskKV (key, value) VALUES ('composerData:session-cursor-demo-1', ?1);",
+        [session_val_1],
+    ).unwrap();
+
+    let session_val_2 = r#"{
+        "name": "Cursor Demo Session 2",
+        "createdAt": 1779242500000,
+        "lastUpdatedAt": 1779242560000,
+        "conversation": [
+            {"type": 1, "text": "Hey Cursor, session two.", "model": "claude-3-5-sonnet"},
+            {"type": 2, "text": "Sure."}
+        ]
+    }"#;
+    conn.execute(
+        "INSERT INTO cursorDiskKV (key, value) VALUES ('composerData:session-cursor-demo-2', ?1);",
+        [session_val_2],
+    ).unwrap();
+
+    let ws_json = ws_dir.join("workspace.json");
+    std::fs::write(&ws_json, r#"{"folder":"file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba"}"#).unwrap();
+
+    let ws_db = ws_dir.join("state.vscdb");
+    let conn_ws = Connection::open(&ws_db).unwrap();
+    conn_ws.execute(
+        "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
+        [],
+    ).unwrap();
+    conn_ws.execute(
+        "INSERT INTO ItemTable (key, value) VALUES ('composer.composerData', '{\"allComposers\": [{\"composerId\": \"session-cursor-demo-1\"}, {\"composerId\": \"session-cursor-demo-2\"}]}');",
+        [],
+    ).unwrap();
+}
+
+fn create_mock_claude_logs(mock_home: &std::path::Path) {
+    let claude_projects_dir = mock_home.join(".claude/projects/project-demo");
+    let claude_plans_dir = mock_home.join(".claude/plans");
+    std::fs::create_dir_all(&claude_projects_dir).unwrap();
+    std::fs::create_dir_all(&claude_plans_dir).unwrap();
+
+    let log_file = claude_projects_dir.join("session-claude-demo.jsonl");
+    let log_content_clean = r#"{"type":"user","timestamp":"2026-05-20T02:00:00Z","message":{"role":"user","content":"Verify Claude fallback formula."},"sessionId":"session-claude-demo","cwd":"/Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba","slug":"claude-plan-slug"}
+{"type":"system","subtype":"compact_boundary","timestamp":"2026-05-20T02:00:05Z","compactMetadata":{"durationMs":8000},"sessionId":"session-claude-demo"}
+{"type":"assistant","timestamp":"2026-05-20T02:00:10Z","message":{"role":"assistant","model":"claude-3-5-sonnet","content":[{"type":"text","text":"Claude reply verified."}]}}
+"#;
+    std::fs::write(&log_file, log_content_clean).unwrap();
+
+    let plan_file = claude_plans_dir.join("claude-plan-slug.md");
+    std::fs::write(&plan_file, "# Goal: Claude Demo Session\nVerification plan.").unwrap();
+}
+
+fn create_mock_aider_logs(mock_home: &std::path::Path) {
+    let aider_dir = mock_home.join("Dev/aider-demo");
+    std::fs::create_dir_all(&aider_dir).unwrap();
+
+    let log_file = aider_dir.join(".aider.chat.history.md");
+    let log_content = r#"# Aider chat started at 2026-06-29 10:00:00
+
+#### User:
+Aider user query prompt.
+
+#### Assistant:
+Aider assistant reply text here.
+"#;
+    std::fs::write(&log_file, log_content).unwrap();
+}
+
+struct TelemetryStats {
+    total_conversations: usize,
+    total_turns: usize,
+    total_prompt_tokens: i64,
+    total_response_tokens: i64,
+    total_estimated_tokens: i64,
+    avg_turns_per_session: f64,
+    avg_session_duration_ms: f64,
+    avg_turn_duration_ms: f64,
+    avg_speed_tps: f64,
+    total_compactions: usize,
+    total_compaction_time_ms: i64,
+}
+
+fn calculate_telemetry_stats(sessions: &[crate::models::Session]) -> TelemetryStats {
+    let total_conversations = sessions.len();
+    let mut total_turns = 0;
+    let mut total_prompt_tokens = 0;
+    let mut total_response_tokens = 0;
+    let mut total_elapsed_ms = 0;
+    let mut total_compute_time_ms = 0;
+    let mut total_compactions = 0;
+    let mut total_compaction_time_ms = 0;
+
+    for s in sessions {
+        total_turns += s.turns.len();
+        let elapsed = (s.updated_at - s.timestamp).max(0);
+        total_elapsed_ms += elapsed;
+
+        for t in &s.turns {
+            total_prompt_tokens += t.input_tokens.unwrap_or(0);
+            total_response_tokens += t.output_tokens.unwrap_or(0);
+
+            let ms = t.extra_data.get("computeTimeMs")
+                .and_then(|val| val.parse::<i64>().ok());
+            if let Some(compute_ms) = ms {
+                if compute_ms > 0 {
+                    total_compute_time_ms += compute_ms.min(900_000);
+                } else if !t.assistant_message.is_empty() {
+                    let est_ms = (t.assistant_message.len() as f64 / 120.0 * 1000.0) as i64;
+                    total_compute_time_ms += est_ms.clamp(2000, 60000);
+                }
+            } else if !t.assistant_message.is_empty() {
+                let est_ms = (t.assistant_message.len() as f64 / 120.0 * 1000.0) as i64;
+                total_compute_time_ms += est_ms.clamp(2000, 60000);
+            }
+
+            if t.extra_data.get("isCompaction").map(|v| v.as_str()) == Some("true") {
+                total_compactions += 1;
+                if let Some(comp_ms) = t.extra_data.get("compactionTimeMs").and_then(|v| v.parse::<i64>().ok()) {
+                    total_compaction_time_ms += comp_ms;
+                }
+            }
+        }
+    }
+
+    let total_estimated_tokens = total_prompt_tokens + total_response_tokens;
+    let avg_turns_per_session = if total_conversations > 0 {
+        total_turns as f64 / total_conversations as f64
+    } else {
+        0.0
+    };
+    let avg_session_duration_ms = if total_conversations > 0 {
+        total_elapsed_ms as f64 / total_conversations as f64
+    } else {
+        0.0
+    };
+    let avg_turn_duration_ms = if total_turns > 0 {
+        total_compute_time_ms as f64 / total_turns as f64
+    } else {
+        0.0
+    };
+    let avg_speed_tps = if total_compute_time_ms > 0 {
+        (total_estimated_tokens as f64 * 1000.0) / total_compute_time_ms as f64
+    } else {
+        0.0
+    };
+
+    TelemetryStats {
+        total_conversations,
+        total_turns,
+        total_prompt_tokens,
+        total_response_tokens,
+        total_estimated_tokens,
+        avg_turns_per_session,
+        avg_session_duration_ms,
+        avg_turn_duration_ms,
+        avg_speed_tps,
+        total_compactions,
+        total_compaction_time_ms,
+    }
+}
+
+#[test]
+fn test_hybrid_telemetry_validation_harness() {
+    tauri::async_runtime::block_on(async {
+        with_mock_home(|mock_home| async move {
+            crate::tokenizer::clear_custom_tokenizers_cache();
+            create_mock_cursor_logs(&mock_home);
+            create_mock_claude_logs(&mock_home);
+            create_mock_aider_logs(&mock_home);
+
+            let cursor_source = CursorSource::new();
+            let claude_source = ClaudeSource;
+            let aider_source = AiderSource::new();
+
+            let cursor_sessions = cursor_source.parse_all_sessions().await;
+            let claude_sessions = claude_source.parse_all_sessions().await;
+            let aider_sessions = aider_source.parse_all_sessions().await;
+
+            assert_eq!(cursor_sessions.len(), 2);
+            let c1 = cursor_sessions.iter().find(|s| s.id == "session-cursor-demo-1").unwrap();
+            assert_eq!(c1.turns.len(), 1);
+            assert_eq!(c1.turns[0].input_tokens, Some(15));
+            assert_eq!(c1.turns[0].output_tokens, Some(19));
+            assert_eq!(c1.turns[0].extra_data.get("model").map(|s| s.as_str()), Some("gpt-4o"));
+            assert_eq!(c1.turns[0].extra_data.get("computeTimeMs").map(|s| s.as_str()), Some("0"));
+
+            let c2 = cursor_sessions.iter().find(|s| s.id == "session-cursor-demo-2").unwrap();
+            assert_eq!(c2.turns.len(), 1);
+            assert_eq!(c2.turns[0].input_tokens, Some(9));
+            assert_eq!(c2.turns[0].output_tokens, Some(4));
+
+            assert_eq!(claude_sessions.len(), 1);
+            let cl = &claude_sessions[0];
+            assert_eq!(cl.id, "session-claude-demo");
+            assert_eq!(cl.turns.len(), 1);
+            assert_eq!(cl.turns[0].input_tokens, Some(10));
+            assert_eq!(cl.turns[0].output_tokens, Some(8));
+            assert_eq!(cl.turns[0].extra_data.get("isCompaction").map(|s| s.as_str()), Some("true"));
+            assert_eq!(cl.turns[0].extra_data.get("compactionTimeMs").map(|s| s.as_str()), Some("8000"));
+            assert_eq!(cl.thread_name.as_deref(), Some("Claude Demo Session"));
+
+            assert_eq!(aider_sessions.len(), 1);
+            let ai = &aider_sessions[0];
+            assert_eq!(ai.turns.len(), 1);
+            assert_eq!(ai.turns[0].input_tokens, Some(8));
+            assert_eq!(ai.turns[0].output_tokens, Some(10));
+
+            let aider_duration = (aider_sessions[0].updated_at - aider_sessions[0].timestamp).max(0);
+
+            let mut all_sessions = Vec::new();
+            all_sessions.extend(cursor_sessions);
+            all_sessions.extend(claude_sessions);
+            all_sessions.extend(aider_sessions);
+
+            let stats = calculate_telemetry_stats(&all_sessions);
+
+            assert_eq!(stats.total_conversations, 4);
+            assert_eq!(stats.total_turns, 4);
+            assert_eq!(stats.total_prompt_tokens, 42);
+            assert_eq!(stats.total_response_tokens, 41);
+            assert_eq!(stats.total_estimated_tokens, 83);
+            assert_eq!(stats.avg_turns_per_session, 1.0);
+
+            let expected_elapsed = 60000 + 60000 + 10000 + aider_duration;
+            let expected_avg_session_duration = expected_elapsed as f64 / 4.0;
+            assert_eq!(stats.avg_session_duration_ms, expected_avg_session_duration);
+
+            assert_eq!(stats.avg_turn_duration_ms, 4000.0);
+            assert_eq!(stats.avg_speed_tps, 5.1875);
+            assert_eq!(stats.total_compactions, 1);
+            assert_eq!(stats.total_compaction_time_ms, 8000);
+        }).await;
+    });
+}
+
+#[test]
+fn test_hybrid_tokenizer_calibration() {
+    let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let temp_dir = tempfile::tempdir().unwrap();
+    let original_home = std::env::var_os("HOME");
+    let original_mock_home = std::env::var_os("CODEOBA_MOCK_HOME");
+
+    std::env::set_var("HOME", temp_dir.path());
+    std::env::remove_var("CODEOBA_MOCK_HOME");
+
+    let text_claude = "Verify Claude fallback formula."; // 31 bytes
+    let count_claude = crate::tokenizer::estimate_tokens(text_claude, "claude-3-5-sonnet");
+    assert_eq!(count_claude, 10); // 31 * 0.256 + 3 = 10.936 -> 10
+
+    let text_gpt = "Hey Cursor, this text is exactly twenty characters."; // 52 bytes
+    let count_gpt = crate::tokenizer::estimate_tokens(text_gpt, "gpt-4o");
+    assert_eq!(count_gpt, 15); // 52 * 0.263 + 2 = 15.676 -> 15
+
+    let config_dir = temp_dir.path().join(".codeoba/tokenizers");
+    std::fs::create_dir_all(&config_dir).unwrap();
+
+    let simple_config = r#"{
+        "version": "1.0",
+        "normalizer": null,
+        "pre_tokenizer": {
+            "type": "Whitespace"
+        },
+        "post_processor": null,
+        "decoder": null,
+        "model": {
+            "type": "WordLevel",
+            "vocab": {
+                "[UNK]": 0,
+                "Hey": 1,
+                "Cursor": 2
+            },
+            "unk_token": "[UNK]"
+        }
+    }"#;
+    std::fs::write(config_dir.join("cl100k_base.json"), simple_config).unwrap();
+
+    crate::tokenizer::clear_custom_tokenizers_cache();
+
+    let count_custom = crate::tokenizer::estimate_tokens("Hey Cursor", "gpt-4o");
+    assert_eq!(count_custom, 2);
+
+    if let Some(h) = original_home {
+        std::env::set_var("HOME", h);
+    } else {
+        std::env::remove_var("HOME");
+    }
+    if let Some(mh) = original_mock_home {
+        std::env::set_var("CODEOBA_MOCK_HOME", mh);
+    } else {
+        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
