@@ -2,17 +2,29 @@ use crate::parsers::get_sources_list;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::collections::{HashMap, HashSet};
 use tauri::{Emitter, Manager};
 
 pub struct WatcherState {
     pub watcher: Mutex<Option<RecommendedWatcher>>,
-    pub last_generations: Mutex<std::collections::HashMap<String, u64>>,
-    pub watched_inodes: Mutex<std::collections::HashMap<PathBuf, u64>>,
+    pub last_generations: Mutex<HashMap<String, u64>>,
+    pub watched_inodes: Mutex<HashMap<PathBuf, u64>>,
+    pub detected_sources: Mutex<HashSet<String>>,
 }
 
-fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
+fn is_directory_not_empty(path: &Path) -> bool {
+    if let Ok(mut entries) = std::fs::read_dir(path) {
+        entries.next().is_some()
+    } else {
+        false
+    }
+}
+
+pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
     let sources = get_sources_list();
     let state = app_handle.state::<WatcherState>();
+    let decisions = crate::parsers::source_decisions::load_source_decisions();
+    
     let mut guard = match state.watcher.lock() {
         Ok(g) => g,
         Err(_) => return,
@@ -25,9 +37,47 @@ fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHan
 
     let idx_state = app_handle.state::<crate::search::SearchIndexState>();
 
-    // Collect all expected watch targets
+    // 1. Passive addition detection for "ask" sources
+    for source in &sources {
+        let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
+        if decision == "ask" {
+            let mut detected = false;
+            for path in source.get_watch_paths() {
+                let p = Path::new(&path);
+                let watch_target = if p.extension().is_some() {
+                    p.parent().map(|parent| parent.to_path_buf())
+                } else {
+                    Some(p.to_path_buf())
+                };
+                if let Some(target) = watch_target {
+                    if target.exists() && is_directory_not_empty(&target) {
+                        detected = true;
+                        break;
+                    }
+                }
+            }
+
+            if detected {
+                let mut detected_guard = match state.detected_sources.lock() {
+                    Ok(g) => g,
+                    Err(_) => continue,
+                };
+                if !detected_guard.contains(source.id()) {
+                    crate::log_info!("Passively detected installation of source: {}", source.id());
+                    detected_guard.insert(source.id().to_string());
+                    let _ = app_handle.emit("source-detected", source.id());
+                }
+            }
+        }
+    }
+
+    // 2. Collect all expected watch targets for allowed sources
     let mut targets = Vec::new();
     for source in &sources {
+        let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
+        if decision != "allow" {
+            continue;
+        }
         for path in source.get_watch_paths() {
             let p = Path::new(&path);
             let watch_target = if p.extension().is_some() {
@@ -41,7 +91,7 @@ fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHan
         }
     }
 
-    // Deduplicate watch targets (shortest path wins, subdirectories are ignored to prevent overlapping FSEvents conflicts)
+    // Deduplicate watch targets (shortest path wins)
     targets.sort_by_key(|(_, p)| p.as_os_str().len());
     let mut unique_targets = Vec::new();
     for (src_id, p) in targets {
@@ -50,6 +100,7 @@ fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHan
         }
     }
 
+    // Check existing watches and rebind or unwatch if deleted
     for (source_id, target) in unique_targets {
         let exists = target.exists();
         let mut current_ino = 0;
@@ -79,82 +130,91 @@ fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHan
             None
         };
 
-        let needs_rebind = !exists || stored_ino != Some(current_ino);
+        if !exists {
+            // Target was deleted. Clean index, remove watch, but DO NOT CREATE IT!
+            let has_sessions = if let Ok(s_guard) = idx_state.sessions.read() {
+                s_guard.values().any(|sess| sess.source_id == source_id)
+            } else {
+                false
+            };
 
-        if needs_rebind {
-            crate::log_info!(
-                "Monitored directory state changed (exists={}, stored_inode={:?}, current_inode={:?}) for target: {:?}. Restoring and clearing index...",
-                exists,
-                stored_ino,
-                current_ino,
-                target
-            );
-
-            // 1. Re-create the directory if it doesn't exist
-            if !exists {
-                let _ = std::fs::create_dir_all(&target);
-            }
-
-            // 2. Remove all sessions in index for this source
-            let mut removed_session_ids = Vec::new();
-            if let Ok(s_guard) = idx_state.sessions.read() {
-                for (id, sess) in s_guard.iter() {
-                    if sess.source_id == source_id {
-                        removed_session_ids.push(id.clone());
-                    }
+            if stored_ino.is_some() || has_sessions {
+                crate::log_info!("Monitored directory was deleted: {:?}. Cleaning index for source: {}", target, source_id);
+                let _ = watcher.unwatch(&target);
+                if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
+                    inodes_guard.remove(&target);
                 }
-            }
 
-            if !removed_session_ids.is_empty() {
-                crate::log_info!("Removing {} sessions from index due to deleted directory for source: {}", removed_session_ids.len(), source_id);
-                if let Ok(mut s_guard) = idx_state.sessions.write() {
-                    for id in &removed_session_ids {
-                        s_guard.remove(id);
-                    }
-                }
-                if let Ok(mut e_guard) = idx_state.embeddings.write() {
-                    for id in &removed_session_ids {
-                        e_guard.remove(id);
-                    }
-                }
-                for id in &removed_session_ids {
-                    let _ = app_handle.emit("session-deleted", id);
-                }
-            }
-
-            // 3. Re-watch the directory
-            let _ = watcher.unwatch(&target);
-            let _ = watcher.watch(&target, RecursiveMode::Recursive);
-
-            // Get new inode and store it
-            let mut new_ino = 0;
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::MetadataExt;
-                if let Ok(meta) = target.metadata() {
-                    new_ino = meta.ino();
-                }
-            }
-            #[cfg(not(unix))]
-            {
-                if let Ok(meta) = target.metadata() {
-                    if let Ok(modified) = meta.modified() {
-                        if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
-                            new_ino = duration.as_nanos() as u64;
+                // Remove sessions from index
+                let mut removed_session_ids = Vec::new();
+                if let Ok(s_guard) = idx_state.sessions.read() {
+                    for (id, sess) in s_guard.iter() {
+                        if sess.source_id == source_id {
+                            removed_session_ids.push(id.clone());
                         }
                     }
                 }
+                if !removed_session_ids.is_empty() {
+                    crate::log_info!("Removing {} sessions from index due to deleted directory for source: {}", removed_session_ids.len(), source_id);
+                    if let Ok(mut s_guard) = idx_state.sessions.write() {
+                        for id in &removed_session_ids {
+                            s_guard.remove(id);
+                        }
+                    }
+                    if let Ok(mut e_guard) = idx_state.embeddings.write() {
+                        for id in &removed_session_ids {
+                            e_guard.remove(id);
+                        }
+                    }
+                    for id in &removed_session_ids {
+                        let _ = app_handle.emit("session-deleted", id);
+                    }
+                }
             }
-
+        } else if stored_ino != Some(current_ino) {
+            // Inode mismatch or not registered yet, start/restore watch
+            crate::log_info!("Monitored directory state changed (stored={:?}, current={:?}) for target: {:?}. Watching directory...", stored_ino, current_ino, target);
+            let _ = watcher.unwatch(&target);
+            let _ = watcher.watch(&target, RecursiveMode::Recursive);
             if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
-                inodes_guard.insert(target.clone(), new_ino);
+                inodes_guard.insert(target.clone(), current_ino);
             }
 
-            // 4. Trigger async reload of all sessions for this source since the folder contents might already be populated
+            // If it was already watched (stored_ino.is_some()) but the inode changed,
+            // we must clear the old sessions for this source from the index before reloading.
+            if stored_ino.is_some() {
+                let mut removed_session_ids = Vec::new();
+                if let Ok(s_guard) = idx_state.sessions.read() {
+                    for (id, sess) in s_guard.iter() {
+                        if sess.source_id == source_id {
+                            removed_session_ids.push(id.clone());
+                        }
+                    }
+                }
+                if !removed_session_ids.is_empty() {
+                    crate::log_info!("Removing {} sessions from index due to inode change for source: {}", removed_session_ids.len(), source_id);
+                    if let Ok(mut s_guard) = idx_state.sessions.write() {
+                        for id in &removed_session_ids {
+                            s_guard.remove(id);
+                        }
+                    }
+                    if let Ok(mut e_guard) = idx_state.embeddings.write() {
+                        for id in &removed_session_ids {
+                            e_guard.remove(id);
+                        }
+                    }
+                    for id in &removed_session_ids {
+                        let _ = app_handle.emit("session-deleted", id);
+                    }
+                }
+            }
+
+            // Trigger async reload
             let app_handle_clone = app_handle.clone();
+            let source_id_clone = source_id.clone();
             tauri::async_runtime::spawn(async move {
                 let sources = get_sources_list();
-                if let Some(src) = sources.iter().find(|s| s.id() == source_id) {
+                if let Some(src) = sources.iter().find(|s| s.id() == source_id_clone) {
                     let sessions = src.parse_all_sessions().await;
                     let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
                     for sess in sessions {
@@ -169,9 +229,15 @@ fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHan
 
 pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
     let sources = get_sources_list();
+    let decisions = crate::parsers::source_decisions::load_source_decisions();
     let mut targets = Vec::new();
 
     for source in &sources {
+        let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
+        if decision != "allow" {
+            continue;
+        }
+
         for path in source.get_watch_paths() {
             let p = Path::new(&path);
             let watch_target = if p.extension().is_some() {
@@ -180,7 +246,9 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
                 Some(p.to_path_buf())
             };
             if let Some(target) = watch_target {
-                targets.push(target);
+                if target.exists() {
+                    targets.push(target);
+                }
             }
         }
     }
@@ -192,10 +260,6 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
         if !unique_targets.iter().any(|u| p.starts_with(u)) {
             unique_targets.push(p);
         }
-    }
-
-    if unique_targets.is_empty() {
-        return Ok(());
     }
 
     let handle_clone = app_handle.clone();
@@ -220,25 +284,24 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
     })
     .map_err(|e| e.to_string())?;
 
-    for path in &unique_targets {
-        let _ = std::fs::create_dir_all(path);
-        let _ = watcher.watch(path, RecursiveMode::Recursive);
-    }
-
-    // Save the watcher in Tauri state so it doesn't get dropped
     let state = app_handle.state::<WatcherState>();
-    if let Ok(mut guard) = state.watcher.lock() {
-        *guard = Some(watcher);
+    
+    // Clear watched inodes and start new watches
+    if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
+        inodes_guard.clear();
     }
 
-    // Initialize watched inodes map
-    if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
-        for path in &unique_targets {
+    for path in &unique_targets {
+        if path.exists() {
+            let _ = watcher.watch(path, RecursiveMode::Recursive);
+            
+            // Get new inode and store it
+            let mut new_ino = 0;
             #[cfg(unix)]
             {
                 use std::os::unix::fs::MetadataExt;
                 if let Ok(meta) = path.metadata() {
-                    inodes_guard.insert(path.clone(), meta.ino());
+                    new_ino = meta.ino();
                 }
             }
             #[cfg(not(unix))]
@@ -246,19 +309,27 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
                 if let Ok(meta) = path.metadata() {
                     if let Ok(modified) = meta.modified() {
                         if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
-                            inodes_guard.insert(path.clone(), duration.as_nanos() as u64);
+                            new_ino = duration.as_nanos() as u64;
                         }
                     }
                 }
             }
+            if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
+                inodes_guard.insert(path.clone(), new_ino);
+            }
         }
     }
 
-    // Spawn a background loop to verify monitored paths exist and restore them if deleted
+    // Save the watcher in Tauri state so it doesn't get dropped
+    if let Ok(mut guard) = state.watcher.lock() {
+        *guard = Some(watcher);
+    }
+
+    // Spawn a background loop to verify monitored paths exist and to passively detect new folders
     let handle_periodic = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         loop {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             check_and_restore_watched_paths(&handle_periodic);
         }
     });
@@ -474,6 +545,14 @@ mod watcher_tests {
         std::env::set_var("HOME", temp_home.path());
         std::env::set_var("CODEOBA_MOCK_HOME", temp_home.path().to_string_lossy().to_string());
 
+        // Write mock source decisions so codex/antigravity are allowed in the test
+        let codeoba_dir = temp_home.path().join(".codeoba");
+        std::fs::create_dir_all(&codeoba_dir).unwrap();
+        std::fs::write(
+            codeoba_dir.join("source_decisions.json"),
+            r#"{"codex": "allow", "antigravity": "allow"}"#
+        ).unwrap();
+
         // Initialize state
         let app_handle = tauri::test::mock_app().handle().clone();
         
@@ -484,6 +563,7 @@ mod watcher_tests {
             watcher: Mutex::new(Some(watcher)),
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(std::collections::HashMap::new()),
+            detected_sources: Mutex::new(std::collections::HashSet::new()),
         });
 
         let idx_state = SearchIndexState::new();
@@ -540,8 +620,8 @@ mod watcher_tests {
         // Run check_and_restore_watched_paths
         check_and_restore_watched_paths(&app_handle);
 
-        // Check if directory was recreated
-        assert!(codex_dir.exists());
+        // Check if directory was recreated (should NOT be recreated anymore)
+        assert!(!codex_dir.exists());
 
         // Check if Codex session was removed from search index!
         let idx = app_handle.state::<SearchIndexState>();
@@ -564,6 +644,14 @@ mod watcher_tests {
         std::env::set_var("HOME", temp_home.path());
         std::env::set_var("CODEOBA_MOCK_HOME", temp_home.path().to_string_lossy().to_string());
 
+        // Write mock source decisions so codex/antigravity are allowed in the test
+        let codeoba_dir = temp_home.path().join(".codeoba");
+        std::fs::create_dir_all(&codeoba_dir).unwrap();
+        std::fs::write(
+            codeoba_dir.join("source_decisions.json"),
+            r#"{"codex": "allow", "antigravity": "allow"}"#
+        ).unwrap();
+
         // Initialize state
         let app_handle = tauri::test::mock_app().handle().clone();
         
@@ -583,6 +671,7 @@ mod watcher_tests {
             watcher: Mutex::new(Some(watcher)),
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(watched_inodes),
+            detected_sources: Mutex::new(std::collections::HashSet::new()),
         });
 
         let idx_state = SearchIndexState::new();
@@ -674,6 +763,14 @@ mod watcher_tests {
         std::env::set_var("HOME", temp_home.path());
         std::env::set_var("CODEOBA_MOCK_HOME", temp_home.path().to_string_lossy().to_string());
 
+        // Write mock source decisions so codex/antigravity are allowed in the test
+        let codeoba_dir = temp_home.path().join(".codeoba");
+        std::fs::create_dir_all(&codeoba_dir).unwrap();
+        std::fs::write(
+            codeoba_dir.join("source_decisions.json"),
+            r#"{"codex": "allow", "antigravity": "allow"}"#
+        ).unwrap();
+
         // Initialize state
         let app_handle = tauri::test::mock_app().handle().clone();
 
@@ -684,6 +781,7 @@ mod watcher_tests {
             watcher: Mutex::new(Some(watcher)),
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(std::collections::HashMap::new()),
+            detected_sources: Mutex::new(std::collections::HashSet::new()),
         });
 
         let idx_state = SearchIndexState::new();

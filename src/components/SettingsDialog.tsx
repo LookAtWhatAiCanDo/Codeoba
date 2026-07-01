@@ -130,6 +130,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       // Load path permissions
       await refreshPermissions();
 
+      // Load source decisions
+      try {
+        const backendDecisions = await invoke<Record<string, "allow" | "deny" | "ask">>("get_source_decisions");
+        if (backendDecisions) {
+          setSourceDecisions(backendDecisions);
+          localStorage.setItem("codeoba-source-decisions", JSON.stringify(backendDecisions));
+        }
+      } catch (errDec) {
+        logFE("error", `Failed to load source decisions from backend: ${errDec}`);
+      }
+
       // Load keyring and premium status
       const disabled = await invoke<boolean>("is_keyring_disabled");
       setKeyringDisabled(disabled);
@@ -294,11 +305,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
-  const handleToggleSourceDecision = (sourceId: string, decision: "allow" | "deny" | "ask") => {
+  const handleToggleSourceDecision = async (sourceId: string, decision: "allow" | "deny" | "ask") => {
     const next = { ...sourceDecisions(), [sourceId]: decision };
     setSourceDecisions(next);
     localStorage.setItem("codeoba-source-decisions", JSON.stringify(next));
-    logFE("info", `Source decision for ${sourceId} set to: ${decision}`);
+    try {
+      await invoke("save_source_decision", { sourceId, decision });
+      logFE("info", `Source decision for ${sourceId} set to: ${decision}`);
+      props.onRefreshSources();
+    } catch (err: any) {
+      logFE("error", `Failed to save source decision to backend: ${err.message || err}`);
+    }
   };
 
   const handleDeleteSourceData = async (sourceId: string) => {

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::keyring;
 use crate::models::Session;
 use crate::parsers::get_sources_list;
@@ -463,5 +464,45 @@ pub fn start_local_auth_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R
 #[tauri::command]
 pub fn stop_local_auth_server() {
     crate::premium::loopback::stop_server();
+}
+
+#[tauri::command]
+pub fn get_source_decisions() -> HashMap<String, String> {
+    crate::parsers::source_decisions::load_source_decisions()
+}
+
+#[tauri::command]
+pub fn save_source_decision<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    source_id: String,
+    decision: String,
+) -> Result<(), String> {
+    crate::parsers::source_decisions::save_source_decision(&source_id, &decision);
+    
+    let state = app_handle.state::<crate::watcher::WatcherState>();
+    if let Ok(mut detected) = state.detected_sources.lock() {
+        detected.remove(&source_id);
+    }
+    
+    // Restart/reconfigure the watcher based on the new decision
+    if let Err(e) = crate::watcher::start_watcher(app_handle) {
+        crate::log_error!("Failed to restart watcher after source decision change: {}", e);
+    }
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reset_detected_sources<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<(), String> {
+    let state = app_handle.state::<crate::watcher::WatcherState>();
+    if let Ok(mut detected) = state.detected_sources.lock() {
+        detected.clear();
+    }
+    
+    crate::watcher::check_and_restore_watched_paths(&app_handle);
+    
+    Ok(())
 }
 

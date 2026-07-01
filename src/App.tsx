@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, createMemo } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, For } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
@@ -80,6 +80,8 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
   const [showDisclaimer, setShowDisclaimer] = createSignal(false);
+  const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
+  const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
   const [similarityThreshold, setSimilarityThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
@@ -166,7 +168,12 @@ function App() {
     localStorage.setItem("codeoba-similarity-threshold", String(similarityThreshold()));
   });
 
-  // Load backend metadata & sessions on startup, and register listeners
+  // Clear any pending source prompts if settings dialog is opened
+  createEffect(() => {
+    if (showSettings()) {
+      setDetectedSources({});
+    }
+  });
   onMount(async () => {
     // Set window title with app version
     try {
@@ -195,6 +202,7 @@ function App() {
     let unlistenSession: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
+    let unlistenDetectedSource: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -255,6 +263,18 @@ function App() {
           }, 1500);
         }
       });
+
+      unlistenDetectedSource = await listen<string>("source-detected", (event) => {
+        const sourceId = event.payload;
+        if (showSettings()) {
+          return;
+        }
+        logFE("info", `Detected new source installation: ${sourceId}`);
+        setDetectedSources(prev => {
+          if (sourceId in prev) return prev;
+          return { ...prev, [sourceId]: true };
+        });
+      });
     } catch (err) {
       console.error("Failed to register listeners:", err);
     }
@@ -274,6 +294,7 @@ function App() {
       if (unlistenSession) unlistenSession();
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
+      if (unlistenDetectedSource) unlistenDetectedSource();
       window.removeEventListener("keydown", handleKeyDown);
     });
 
@@ -606,9 +627,63 @@ function App() {
     }
   };
 
+  const handleCloseSettings = () => {
+    setShowSettings(false);
+    invoke("reset_detected_sources").catch((err: any) => {
+      logFE("error", `Failed to reset detected sources: ${err.message || err}`);
+    });
+  };
+
   const handleAcknowledgeDisclaimer = () => {
     localStorage.setItem("codeoba-disclaimer-acknowledged", "true");
     setShowDisclaimer(false);
+  };
+
+  const getSourceDisplayNameById = (id: string) => {
+    const found = sources().find(s => s.id === id);
+    return found ? found.displayName : id;
+  };
+
+  const handleToggleDetectedSource = (sourceId: string) => {
+    setDetectedSources(prev => ({
+      ...prev,
+      [sourceId]: !prev[sourceId]
+    }));
+  };
+
+  const handleSaveDetectedSources = async () => {
+    const list = Object.entries(detectedSources());
+    setDetectedSources({});
+    
+    let hasAnyAllowed = false;
+    for (const [sourceId, allowed] of list) {
+      const decision = allowed ? "allow" : "deny";
+      if (allowed) {
+        hasAnyAllowed = true;
+      }
+      try {
+        await invoke("save_source_decision", { sourceId, decision });
+        logFE("info", `User prompt response: ${sourceId} set to ${decision}`);
+
+        const currentDecisions = JSON.parse(localStorage.getItem("codeoba-source-decisions") || "{}");
+        currentDecisions[sourceId] = decision;
+        localStorage.setItem("codeoba-source-decisions", JSON.stringify(currentDecisions));
+      } catch (err: any) {
+        logFE("error", `Failed to save source decision for ${sourceId}: ${err.message || err}`);
+      }
+    }
+
+    const metadata = await invoke<SourceMetadata[]>("get_sources");
+    setSources(metadata);
+
+    if (hasAnyAllowed) {
+      handleRebuildIndex(false);
+    }
+  };
+
+  const handleIgnoreAllDetectedSources = () => {
+    setDetectedSources({});
+    logFE("info", "User postponed setup (Configure Later chosen). Prompts dismissed for this session.");
   };
 
   const renderNavigationPill = () => (
@@ -815,7 +890,7 @@ function App() {
 
       <SettingsDialog
         isOpen={showSettings()}
-        onClose={() => setShowSettings(false)}
+        onClose={handleCloseSettings}
         theme={theme()}
         onThemeChange={setTheme}
         sources={sources()}
@@ -938,6 +1013,80 @@ function App() {
           </div>
         </div>
       </Show>
+      {/* Source Detected Prompt Modal */}
+      <Show when={hasDetectedSources()}>
+        <div class="fixed inset-0 bg-black/75 z-[69] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
+          <div class="w-[520px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            
+            {/* Header info */}
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
+                <Layers class="w-5 h-5" />
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
+                  {t("settings.sources.detectedMultiPromptTitle")}
+                </h3>
+                <span class="text-[9px] font-mono bg-accent/15 border border-accent/20 rounded text-accent px-1.5 py-0.5 font-semibold">
+                  {t("settings.sources.detectedMultiPromptBadge")}
+                </span>
+              </div>
+            </div>
+
+            {/* Description Details */}
+            <div class="text-xs leading-relaxed text-text-secondary">
+              {t("settings.sources.detectedMultiPromptMessage")}
+            </div>
+
+            {/* Detected sources checkboxes list */}
+            <div class="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
+              <For each={Object.entries(detectedSources())}>
+                {([sourceId, allowed]) => (
+                  <label class="relative flex items-center justify-between p-3 rounded-xl bg-background/30 hover:bg-background/60 border border-border/40 hover:border-accent/30 transition-all cursor-pointer select-none">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                        <Layers class="w-4 h-4" />
+                      </div>
+                      <span class="text-xs font-semibold text-text-primary">
+                        {getSourceDisplayNameById(sourceId)}
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={allowed}
+                      onChange={() => handleToggleDetectedSource(sourceId)}
+                      class="w-4.5 h-4.5 rounded border-border/80 text-accent focus:ring-accent accent-accent transition-all cursor-pointer"
+                    />
+                  </label>
+                )}
+              </For>
+            </div>
+
+            {/* Reassurance Callouts */}
+            <div class="flex flex-col gap-1.5 p-3 rounded-xl bg-background/50 border border-border/40 text-[10px] text-text-secondary leading-relaxed">
+              <div>{t("settings.sources.detectedMultiPromptFootnotePrivate")}</div>
+              <div>{t("settings.sources.detectedMultiPromptFootnoteEmpty")}</div>
+            </div>
+
+            {/* Actions */}
+            <div class="flex gap-3 w-full pt-1">
+              <button
+                onClick={handleIgnoreAllDetectedSources}
+                class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+              >
+                {t("settings.sources.detectedMultiPromptDenyAll")}
+              </button>
+              <button
+                onClick={handleSaveDetectedSources}
+                class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              >
+                <span>{t("settings.sources.detectedMultiPromptAllowSelected")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Show>
+
       {/* Disclaimer Modal Overlay */}
       <Show when={showDisclaimer()}>
         <div class="fixed inset-0 bg-black/75 z-[70] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">

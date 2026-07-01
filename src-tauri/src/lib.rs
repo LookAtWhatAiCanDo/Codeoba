@@ -119,6 +119,7 @@ pub fn run() {
             watcher: std::sync::Mutex::new(None),
             last_generations: std::sync::Mutex::new(std::collections::HashMap::new()),
             watched_inodes: std::sync::Mutex::new(std::collections::HashMap::new()),
+            detected_sources: std::sync::Mutex::new(std::collections::HashSet::new()),
         })
         .manage(search::SearchIndexState::new())
         .setup(|app| {
@@ -180,7 +181,10 @@ pub fn run() {
             commands::clear_all_permissions,
             commands::open_file_externally,
             commands::start_local_auth_server,
-            commands::stop_local_auth_server
+            commands::stop_local_auth_server,
+            commands::get_source_decisions,
+            commands::save_source_decision,
+            commands::reset_detected_sources
         ])
         .run(context)
         .expect("error while running tauri application");

@@ -146,7 +146,14 @@
       "refresh": "ソースを更新",
       "deleteData": "ソースデータを削除",
       "deleteDataTooltip": "このソースのCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアします（実際のエージェントのログには影響しません）",
-      "confirmDeleteSource": "{source}のCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアしてもよろしいですか？これにより検索結果からは削除されますが、実際のエージェントアプリケーション、会話、またはログファイルが削除されたり影響を受けたりすることはありません。"
+      "confirmDeleteSource": "{source}のCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアしてもよろしいですか？これにより検索結果からは削除されますが、実際のエージェントアプリケーション、会話、またはログファイルが削除されたり影響を受けたりすることはありません。",
+      "detectedMultiPromptTitle": "ローカル検索の有効化",
+      "detectedMultiPromptBadge": "100% ローカル＆プライベート",
+      "detectedMultiPromptMessage": "システム上で次のエージェントの会話履歴が見つかりました。インデックス登録するアプリを選択してください（データが外部に送信されることはありません）：",
+      "detectedMultiPromptDenyAll": "後で設定する",
+      "detectedMultiPromptAllowSelected": "選択したアプリを有効にする",
+      "detectedMultiPromptFootnotePrivate": "🔒 100% プライベート: すべての検索解析とインデックス構築はデバイス上で完全にオフラインで実行されます。",
+      "detectedMultiPromptFootnoteEmpty": "🔍 必須: どのソースも許可しない場合、検索結果は空のままになります。"
     },
     "semantic": {
       "tab": "セマンティック",

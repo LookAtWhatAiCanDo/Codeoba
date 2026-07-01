@@ -14,6 +14,7 @@ pub mod codex;
 pub mod cache;
 pub mod resolver;
 pub mod permissions;
+pub mod source_decisions;
 
 #[cfg(test)]
 mod tests;
