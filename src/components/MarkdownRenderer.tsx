@@ -16,6 +16,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-markdown";
 
 import { openUrl } from "@tauri-apps/plugin-opener";
+import DOMPurify from "dompurify";
 
 interface MarkdownRendererProps {
   content: string;
@@ -57,10 +58,14 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       if (parseElapsed > 5) {
         logFE("info", `Heavy Markdown parsed in ${parseElapsed.toFixed(1)}ms (content length: ${displayContent().length})`);
       }
-      return html;
+      return DOMPurify.sanitize(html, {
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+      });
     } catch (e) {
       logFE("error", `Markdown parse error: ${e}`);
-      return displayContent();
+      return DOMPurify.sanitize(displayContent(), {
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+      });
     }
   });
 
