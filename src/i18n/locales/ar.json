@@ -104,7 +104,9 @@
     "noPermissionTitle": "لا توجد أذونات لقراءة الملف",
     "noPermissionDesc": "هذا الملف خارج مساحات العمل القياسية للمحولات. يرجى منح صلاحية القراءة لعرضه.",
     "grantPermission": "منح صلاحية القراءة",
-    "failedLoad": "فشل تحميل محتويات الملف: {error}"
+    "failedLoad": "فشل تحميل محتويات الملف: {error}",
+    "confirmExternalOpen": "هذا الملف خارج مساحة العمل. هل تسمح بفتحه خارجيًا؟",
+    "errorOpeningFile": "خطأ أثناء فتح الملف: {error}"
   },
   "settings": {
     "title": "الإعدادات",
@@ -199,5 +201,23 @@
     "button": "الإقرار والمتابعة",
     "githubIssues": "مشكلات GitHub",
     "bugTracker": "فتح متتبع الأخطاء / الإبلاغ عن مشكلة"
+  },
+  "groups": {
+    "filterByGroup": "تصفية حسب المجموعة",
+    "addGroup": "إضافة مجموعة",
+    "noGroup": "[بلا مجموعة]",
+    "noGroupsDefined": "لا توجد مجموعات معرفة. انقر على أيقونة المجلد للإضافة.",
+    "noMatchingSessions": "لم يتم العثور على جلسات مطابقة.",
+    "tagInputPlaceholder": "اسم وسم جديد (استخدم '/' أو '\\' للتداخل)...",
+    "deleteGroupConfirm": "هل أنت متأكد أنك تريد حذف المجموعة \"{name}\" وجميع مجموعاتها الفرعية؟",
+    "pinConversation": "تثبيت المحادثة",
+    "unpinConversation": "إلغاء تثبيت المحادثة",
+    "openSessionFile": "فتح ملف الجلسة",
+    "copySessionId": "نسخ معرف الجلسة",
+    "groupsTagsHeader": "المجموعات / الوسوم",
+    "pinGroup": "تثبيت المجموعة",
+    "unpinGroup": "إلغاء تثبيت المجموعة",
+    "renameGroup": "إعادة تسمية المجموعة",
+    "deleteGroup": "حذف المجموعة"
   }
 }

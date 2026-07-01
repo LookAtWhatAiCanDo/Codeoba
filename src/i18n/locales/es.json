@@ -104,7 +104,9 @@
     "noPermissionTitle": "Sin permisos para leer el archivo",
     "noPermissionDesc": "Este archivo está fuera de los espacios de trabajo estándar de los adaptadores. Conceda permiso de lectura para verlo.",
     "grantPermission": "Conceder permiso de lectura",
-    "failedLoad": "Error al cargar el contenido del archivo: {error}"
+    "failedLoad": "Error al cargar el contenido del archivo: {error}",
+    "confirmExternalOpen": "Este archivo está fuera del espacio de trabajo. ¿Permitir abrir externamente?",
+    "errorOpeningFile": "Error al abrir el archivo: {error}"
   },
   "settings": {
     "title": "Configuración",
@@ -199,5 +201,23 @@
     "button": "Reconocer y continuar",
     "githubIssues": "Problemas de GitHub",
     "bugTracker": "Abrir Bug Tracker / Presentar un problema"
+  },
+  "groups": {
+    "filterByGroup": "Filtrar por grupo",
+    "addGroup": "Agregar grupo",
+    "noGroup": "[Sin grupo]",
+    "noGroupsDefined": "No hay grupos definidos. Haga clic en el icono de carpeta para agregar.",
+    "noMatchingSessions": "No se encontraron sesiones coincidentes.",
+    "tagInputPlaceholder": "Nuevo nombre de etiqueta (use '/' o '\\' para anidar)...",
+    "deleteGroupConfirm": "¿Está seguro de que desea eliminar el grupo \"{name}\" y todos sus subgrupos?",
+    "pinConversation": "Fijar conversación",
+    "unpinConversation": "Desfijar conversación",
+    "openSessionFile": "Abrir archivo de sesión",
+    "copySessionId": "Copiar ID de sesión",
+    "groupsTagsHeader": "Grupos / Etiquetas",
+    "pinGroup": "Fijar grupo",
+    "unpinGroup": "Desfijar grupo",
+    "renameGroup": "Renombrar grupo",
+    "deleteGroup": "Eliminar grupo"
   }
 }

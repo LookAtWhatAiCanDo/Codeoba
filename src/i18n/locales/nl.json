@@ -104,7 +104,9 @@
     "noPermissionTitle": "Geen rechten om bestand te lezen",
     "noPermissionDesc": "Dit bestand bevindt zich buiten de standaard adapterwerkruimten. Verleen leesrechten om het te bekijken.",
     "grantPermission": "Leesrechten verlenen",
-    "failedLoad": "Laden van bestandsinhoud mislukt: {error}"
+    "failedLoad": "Laden van bestandsinhoud mislukt: {error}",
+    "confirmExternalOpen": "Dit bestand bevindt zich buiten de werkruimte. Extern openen toestaan?",
+    "errorOpeningFile": "Fout bij het openen van bestand: {error}"
   },
   "settings": {
     "title": "Instellingen",
@@ -199,5 +201,23 @@
     "button": "Erkennen en doorgaan",
     "githubIssues": "GitHub-problemen",
     "bugTracker": "Open Bug Tracker / Dien een probleem in"
+  },
+  "groups": {
+    "filterByGroup": "Filteren op groep",
+    "addGroup": "Groep toevoegen",
+    "noGroup": "[Geen groep]",
+    "noGroupsDefined": "Geen groepen gedefinieerd. Klik op het mappictogram om toe te voegen.",
+    "noMatchingSessions": "Geen overeenkomende sessies gevonden.",
+    "tagInputPlaceholder": "Nieuwe tagnaam (gebruik '/' of '\\' om te nesten)...",
+    "deleteGroupConfirm": "Weet u zeker dat u de groep \"{name}\" en alle bijbehorende subgroepen wilt verwijderen?",
+    "pinConversation": "Gesprek vastpinnen",
+    "unpinConversation": "Gesprek losmaken",
+    "openSessionFile": "Sessiebestand openen",
+    "copySessionId": "Sessie-ID kopiëren",
+    "groupsTagsHeader": "Groepen / Tags",
+    "pinGroup": "Groep vastpinnen",
+    "unpinGroup": "Groep losmaken",
+    "renameGroup": "Groep hernoemen",
+    "deleteGroup": "Groep verwijderen"
   }
 }

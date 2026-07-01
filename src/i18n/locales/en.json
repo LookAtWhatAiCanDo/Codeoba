@@ -104,7 +104,9 @@
     "noPermissionTitle": "No permissions to read file",
     "noPermissionDesc": "This file is outside standard adapter workspaces. Grant read permission to view it.",
     "grantPermission": "Grant Read Permission",
-    "failedLoad": "Failed to load file contents: {error}"
+    "failedLoad": "Failed to load file contents: {error}",
+    "confirmExternalOpen": "This file is outside the workspace. Allow opening externally?",
+    "errorOpeningFile": "Error opening file: {error}"
   },
   "settings": {
     "title": "Settings",
@@ -204,5 +206,23 @@
     "button": "Acknowledge & Continue",
     "githubIssues": "GitHub Issues",
     "bugTracker": "Open Bug Tracker / File an Issue"
+  },
+  "groups": {
+    "filterByGroup": "Filter by Group",
+    "addGroup": "Add Group",
+    "noGroup": "[No Group]",
+    "noGroupsDefined": "No groups defined. Click folder icon to add.",
+    "noMatchingSessions": "No matching sessions found.",
+    "tagInputPlaceholder": "New tag name (use '/' or '\\' to nest)...",
+    "deleteGroupConfirm": "Are you sure you want to delete the group \"{name}\" and all its subgroups?",
+    "pinConversation": "Pin Conversation",
+    "unpinConversation": "Unpin Conversation",
+    "openSessionFile": "Open Session File",
+    "copySessionId": "Copy Session ID",
+    "groupsTagsHeader": "Groups / Tags",
+    "pinGroup": "Pin Group",
+    "unpinGroup": "Unpin Group",
+    "renameGroup": "Rename Group",
+    "deleteGroup": "Delete Group"
   }
 }

@@ -147,6 +147,152 @@ function App() {
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
 
+  const [groups, setGroups] = createSignal<any[]>([]);
+  const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
+    localStorage.getItem("codeoba-active-group-filter") || null
+  );
+  const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(new Set(
+    JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]")
+  ));
+
+  createEffect(() => {
+    const filter = activeGroupFilter();
+    if (filter) {
+      localStorage.setItem("codeoba-active-group-filter", filter);
+    } else {
+      localStorage.removeItem("codeoba-active-group-filter");
+    }
+  });
+
+  const togglePinSession = (sessionId: string) => {
+    const next = new Set(pinnedSessionIds());
+    if (next.has(sessionId)) {
+      next.delete(sessionId);
+    } else {
+      next.add(sessionId);
+    }
+    setPinnedSessionIds(next);
+    localStorage.setItem("codeoba-pinned-sessions", JSON.stringify(Array.from(next)));
+    
+    // Refresh sessions to apply sorting/enriching
+    setSessions(enrichedSessions(sessions()));
+  };
+
+  const enrichedSessions = (list: Session[]) => {
+    const pinned = pinnedSessionIds();
+    return list.map(s => ({
+      ...s,
+      isPinned: pinned.has(s.id)
+    }));
+  };
+
+  const loadGroups = async () => {
+    try {
+      const gList = await invoke<any[]>("get_groups");
+      setGroups(gList || []);
+    } catch (err) {
+      console.error("Failed to load groups:", err);
+    }
+  };
+
+  const handleAddGroup = async (name: string): Promise<boolean> => {
+    try {
+      const added = await invoke<boolean>("add_group", { name });
+      if (added) {
+        await loadGroups();
+      }
+      return added;
+    } catch (err) {
+      console.error("Failed to add group:", err);
+      return false;
+    }
+  };
+
+  const handleRenameGroup = async (oldName: string, newName: string): Promise<boolean> => {
+    try {
+      const renamed = await invoke<boolean>("rename_group", { oldName, newName });
+      if (renamed) {
+        if (activeGroupFilter() === oldName) {
+          setActiveGroupFilter(newName);
+        }
+        await loadGroups();
+      }
+      return renamed;
+    } catch (err) {
+      console.error("Failed to rename group:", err);
+      return false;
+    }
+  };
+
+  const handleDeleteGroup = async (name: string): Promise<void> => {
+    try {
+      await invoke("delete_group", { name });
+      if (activeGroupFilter() === name) {
+        setActiveGroupFilter(null);
+      }
+      await loadGroups();
+    } catch (err) {
+      console.error("Failed to delete group:", err);
+    }
+  };
+
+  const handleToggleGroupPin = async (name: string, pinned: boolean): Promise<void> => {
+    try {
+      await invoke("set_group_pinned", { name, pinned });
+      await loadGroups();
+    } catch (err) {
+      console.error("Failed to toggle group pin:", err);
+    }
+  };
+
+  const handleAssignSessionToGroup = async (sessionId: string, groupName: string): Promise<void> => {
+    try {
+      await invoke("assign_session_to_group", { sessionId, groupName });
+      await loadGroups();
+    } catch (err) {
+      console.error("Failed to assign session to group:", err);
+    }
+  };
+
+  const handleRemoveSessionFromGroup = async (sessionId: string, groupName: string): Promise<void> => {
+    try {
+      await invoke("remove_session_from_group", { sessionId, groupName });
+      await loadGroups();
+    } catch (err) {
+      console.error("Failed to remove session from group:", err);
+    }
+  };
+
+  const getSessionIdsForGroupAndDescendants = (groupName: string | null, groupsList: any[]): string[] | null => {
+    if (!groupName) return null;
+    if (groupName === "_none_") {
+      const assigned = new Set<string>();
+      for (const g of groupsList) {
+        if (g.sessionIds) {
+          for (const id of g.sessionIds) {
+            assigned.add(id);
+          }
+        }
+      }
+      const allSessionIds = sessions().map(s => s.id);
+      return allSessionIds.filter(id => !assigned.has(id));
+    }
+    const ids = new Set<string>();
+    const target = groupName.toLowerCase();
+    const prefix = `${target}/`;
+    for (const g of groupsList) {
+      const gName = g.name.toLowerCase();
+      if (gName === target || gName.startsWith(prefix)) {
+        if (g.sessionIds) {
+          for (const id of g.sessionIds) {
+            ids.add(id);
+          }
+        }
+      }
+    }
+    return Array.from(ids);
+  };
+
   // Sync theme selection to DOM
   createEffect(() => {
     document.documentElement.setAttribute("data-theme", theme());
@@ -220,7 +366,7 @@ function App() {
             list.unshift(updated);
           }
           list.sort((a, b) => b.updatedAt - a.updatedAt);
-          return list;
+          return enrichedSessions(list);
         });
 
         // Update selected view if open
@@ -255,7 +401,7 @@ function App() {
         if (payload.step === "complete") {
           // Re-fetch sessions from backend once rebuild is complete
           invoke<Session[]>("get_all_sessions").then((list) => {
-            setSessions(list);
+            setSessions(enrichedSessions(list));
           });
           // Hide progress indicator after a short delay
           setTimeout(() => {
@@ -300,11 +446,12 @@ function App() {
 
     try {
       setIsLoading(true);
+      await loadGroups();
       const metadata = await invoke<SourceMetadata[]>("get_sources");
       setSources(metadata);
 
       const list = await invoke<Session[]>("get_all_sessions");
-      setSessions(list);
+      setSessions(enrichedSessions(list));
       
       setErrorMsg(null);
 
@@ -422,6 +569,7 @@ function App() {
     const sources = selectedSources();
     const filter = archivalFilter();
     const thresh = similarityThreshold();
+    activeGroupFilter();
 
     if (query.trim() === "") {
       setSearchResults(null);
@@ -453,7 +601,7 @@ function App() {
         wholeWord: false,
         useRegex: false,
         archivalFilter: filterType,
-        sessionIds: null
+        sessionIds: getSessionIdsForGroupAndDescendants(activeGroupFilter(), groups())
       };
 
       const results = await invoke<SearchResult[]>("search_sessions", {
@@ -487,7 +635,7 @@ function App() {
       
       // Refresh session list
       const list = await invoke<Session[]>("get_all_sessions");
-      setSessions(list);
+      setSessions(enrichedSessions(list));
       
       // Re-trigger search if query exists
       const query = searchQuery();
@@ -844,6 +992,17 @@ function App() {
           timeFormat={timeFormat()}
           showSeconds={showSeconds()}
           numberFormat={numberFormat()}
+          groups={groups()}
+          activeGroupFilter={activeGroupFilter()}
+          onActiveGroupFilterChange={setActiveGroupFilter}
+          onAddGroup={handleAddGroup}
+          onRenameGroup={handleRenameGroup}
+          onDeleteGroup={handleDeleteGroup}
+          onToggleGroupPin={handleToggleGroupPin}
+          onAssignSessionToGroup={handleAssignSessionToGroup}
+          onRemoveSessionFromGroup={handleRemoveSessionFromGroup}
+          pinnedSessionIds={pinnedSessionIds()}
+          onTogglePinSession={togglePinSession}
         />
 
         <div class="flex-grow h-full flex flex-col min-w-0 overflow-hidden">

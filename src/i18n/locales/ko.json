@@ -104,7 +104,9 @@
     "noPermissionTitle": "파일을 읽을 권한이 없습니다",
     "noPermissionDesc": "이 파일은 표준 어댑터 작업 공간 외부의 파일입니다. 보려면 읽기 권한을 부여하세요.",
     "grantPermission": "읽기 권한 부여",
-    "failedLoad": "파일 내용을 불러오지 못했습니다: {error}"
+    "failedLoad": "파일 내용을 불러오지 못했습니다: {error}",
+    "confirmExternalOpen": "이 파일은 작업 공간 외부에 있습니다. 외부에서 열도록 허용하시겠습니까?",
+    "errorOpeningFile": "파일을 여는 중 오류 발생: {error}"
   },
   "settings": {
     "title": "설정",
@@ -199,5 +201,23 @@
     "button": "확인 및 계속",
     "githubIssues": "GitHub 이슈",
     "bugTracker": "버그 추적기 열기 / 이슈 등록"
+  },
+  "groups": {
+    "filterByGroup": "그룹별 필터",
+    "addGroup": "그룹 추가",
+    "noGroup": "[그룹 없음]",
+    "noGroupsDefined": "정의된 그룹이 없습니다. 폴더 아이콘을 클릭하여 추가하세요.",
+    "noMatchingSessions": "일치하는 세션을 찾을 수 없습니다.",
+    "tagInputPlaceholder": "새 태그 이름 (중첩하려면 '/' 또는 '\\' 사용)...",
+    "deleteGroupConfirm": "정말로 \"{name}\" 그룹과 모든 하위 그룹을 삭제하시겠습니까?",
+    "pinConversation": "대화 고정",
+    "unpinConversation": "대화 고정 해제",
+    "openSessionFile": "세션 파일 열기",
+    "copySessionId": "세션 ID 복사",
+    "groupsTagsHeader": "그룹 / 태그",
+    "pinGroup": "그룹 고정",
+    "unpinGroup": "그룹 고정 해제",
+    "renameGroup": "그룹 이름 바꾸기",
+    "deleteGroup": "그룹 삭제"
   }
 }

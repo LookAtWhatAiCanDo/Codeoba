@@ -21,7 +21,8 @@
         "height": 600,
         "center": true,
         "devtools": true,
-        "visible": false
+        "visible": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

@@ -104,7 +104,9 @@
     "noPermissionTitle": "無檔案讀取權限",
     "noPermissionDesc": "此檔案位於標準配接器工作區之外。請授予讀取權限以檢視檔案。",
     "grantPermission": "授予讀取權限",
-    "failedLoad": "載入檔案內容失敗：{error}"
+    "failedLoad": "載入檔案內容失敗：{error}",
+    "confirmExternalOpen": "此檔案位於工作區外部。允許使用外部程式開啟嗎？",
+    "errorOpeningFile": "開啟檔案時出錯：{error}"
   },
   "settings": {
     "title": "設定",
@@ -199,5 +201,23 @@
     "button": "確認並繼續",
     "githubIssues": "GitHub 問題",
     "bugTracker": "開啟錯誤追蹤器 / 提交問題"
+  },
+  "groups": {
+    "filterByGroup": "按分組篩選",
+    "addGroup": "新增分組",
+    "noGroup": "[無分組]",
+    "noGroupsDefined": "未定義分組。點擊資料夾圖示以新增。",
+    "noMatchingSessions": "未找到匹配的會話。",
+    "tagInputPlaceholder": "新標籤名稱（使用 '/' 或 '\\' 進行嵌套）...",
+    "deleteGroupConfirm": "確定要刪除分組 \"{name}\" 及其所有子分組嗎？",
+    "pinConversation": "置頂會話",
+    "unpinConversation": "取消置頂會話",
+    "openSessionFile": "開啟會話檔案",
+    "copySessionId": "複製會話 ID",
+    "groupsTagsHeader": "分組 / 標籤",
+    "pinGroup": "置頂分組",
+    "unpinGroup": "取消置頂分組",
+    "renameGroup": "重新命名分組",
+    "deleteGroup": "刪除分組"
   }
 }

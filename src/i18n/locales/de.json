@@ -104,7 +104,9 @@
     "noPermissionTitle": "Keine Berechtigungen zum Lesen der Datei",
     "noPermissionDesc": "Diese Datei befindet sich außerhalb der Standard-Adapter-Arbeitsbereiche. Erteilen Sie Leseberechtigungen, um sie anzuzeigen.",
     "grantPermission": "Leseberechtigung erteilen",
-    "failedLoad": "Fehler beim Laden der Dateiinhalte: {error}"
+    "failedLoad": "Fehler beim Laden der Dateiinhalte: {error}",
+    "confirmExternalOpen": "Diese Datei befindet sich außerhalb des Arbeitsbereichs. Externes Öffnen erlauben?",
+    "errorOpeningFile": "Fehler beim Öffnen der Datei: {error}"
   },
   "settings": {
     "title": "Einstellungen",
@@ -199,5 +201,23 @@
     "button": "Bestätigen und fortfahren",
     "githubIssues": "GitHub-Probleme",
     "bugTracker": "Bug-Tracker öffnen / Problem melden"
+  },
+  "groups": {
+    "filterByGroup": "Nach Gruppe filtern",
+    "addGroup": "Gruppe hinzufügen",
+    "noGroup": "[Keine Gruppe]",
+    "noGroupsDefined": "Keine Gruppen definiert. Klicken Sie auf das Ordnersymbol, um eine hinzuzufügen.",
+    "noMatchingSessions": "Keine übereinstimmenden Sitzungen gefunden.",
+    "tagInputPlaceholder": "Neuer Tag-Name (verwenden Sie '/' oder '\\' zum Verschachteln)...",
+    "deleteGroupConfirm": "Sind Sie sicher, dass Sie die Gruppe \"{name}\" und alle ihre Untergruppen löschen möchten?",
+    "pinConversation": "Unterhaltung anheften",
+    "unpinConversation": "Unterhaltung loslösen",
+    "openSessionFile": "Sitzungsdatei öffnen",
+    "copySessionId": "Sitzungs-ID kopieren",
+    "groupsTagsHeader": "Gruppen / Tags",
+    "pinGroup": "Gruppe anheften",
+    "unpinGroup": "Gruppe loslösen",
+    "renameGroup": "Gruppe umbenennen",
+    "deleteGroup": "Gruppe löschen"
   }
 }

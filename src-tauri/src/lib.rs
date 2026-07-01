@@ -7,6 +7,7 @@ pub mod commands;
 pub mod watcher;
 pub mod search;
 pub mod premium;
+pub mod groups;
 
 #[cfg(test)]
 pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -122,12 +123,20 @@ pub fn run() {
             detected_sources: std::sync::Mutex::new(std::collections::HashSet::new()),
         })
         .manage(search::SearchIndexState::new())
+        .manage(groups::GroupState::new())
         .setup(|app| {
             // Ensure encryption key is created synchronously on startup to prevent background collisions
             let _ = crate::keyring::get_or_create_cache_key();
             
             let handle = app.handle().clone();
             let _ = watcher::start_watcher(handle.clone());
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(false);
+                }
+            }
 
             // Load cached sessions in background thread on startup
             let handle_clone = handle.clone();
@@ -182,6 +191,13 @@ pub fn run() {
             commands::open_file_externally,
             commands::start_local_auth_server,
             commands::stop_local_auth_server,
+            commands::get_groups,
+            commands::add_group,
+            commands::delete_group,
+            commands::rename_group,
+            commands::assign_session_to_group,
+            commands::remove_session_from_group,
+            commands::set_group_pinned,
             commands::get_source_decisions,
             commands::save_source_decision,
             commands::reset_detected_sources

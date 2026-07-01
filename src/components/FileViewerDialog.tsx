@@ -104,7 +104,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
       logFE("error", `FileViewerDialog: Failed to open externally: ${err}`);
       // If confirmation is required, ask user
       if (err.toString().includes("Confirmation required")) {
-        const confirmOpen = confirm("This file is outside the workspace. Allow opening externally?");
+        const confirmOpen = confirm(t("fileViewer.confirmExternalOpen"));
         if (confirmOpen && canonicalPath()) {
           await invoke("save_file_permission", {
             canonicalPath: canonicalPath()!,
@@ -117,7 +117,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
           });
         }
       } else {
-        alert(`Error opening file: ${err}`);
+        alert(t("fileViewer.errorOpeningFile", { error: err.toString() }));
       }
     }
   };

@@ -104,7 +104,9 @@
     "noPermissionTitle": "ファイル読み込み権限がありません",
     "noPermissionDesc": "このファイルは標準のアダプターワークスペース外にあります。表示するには読み取り権限を付与してください。",
     "grantPermission": "読み取り権限を付与",
-    "failedLoad": "ファイルコンテンツの読み込みに失敗しました: {error}"
+    "failedLoad": "ファイルコンテンツの読み込みに失敗しました: {error}",
+    "confirmExternalOpen": "このファイルはワークスペースの外にあります。外部での開封を許可しますか？",
+    "errorOpeningFile": "ファイルのオープン中にエラーが発生しました: {error}"
   },
   "settings": {
     "title": "設定",
@@ -199,5 +201,23 @@
     "button": "確認して続行",
     "githubIssues": "GitHub Issues",
     "bugTracker": "バグトラッカーを開く / 問題を報告"
+  },
+  "groups": {
+    "filterByGroup": "グループでフィルター",
+    "addGroup": "グループを追加",
+    "noGroup": "[グループなし]",
+    "noGroupsDefined": "グループが定義されていません。フォルダアイコンをクリックして追加してください。",
+    "noMatchingSessions": "一致するセッションが見つかりませんでした。",
+    "tagInputPlaceholder": "新しいタグ名（ネストするには '/' または '\\' を使用）...",
+    "deleteGroupConfirm": "本当にグループ \"{name}\" とそのすべてのサブグループを削除しますか？",
+    "pinConversation": "会話をピン留め",
+    "unpinConversation": "会話のピン留めを解除",
+    "openSessionFile": "セッションファイルを開く",
+    "copySessionId": "セッションIDをコピー",
+    "groupsTagsHeader": "グループ / タグ",
+    "pinGroup": "グループをピン留め",
+    "unpinGroup": "グループのピン留めを解除",
+    "renameGroup": "グループ名を変更",
+    "deleteGroup": "グループを削除"
   }
 }

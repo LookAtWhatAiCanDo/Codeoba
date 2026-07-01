@@ -104,7 +104,9 @@
     "noPermissionTitle": "无文件读取权限",
     "noPermissionDesc": "此文件位于标准适配器工作区之外。请授予读取权限以查看文件。",
     "grantPermission": "授予读取权限",
-    "failedLoad": "加载文件内容失败：{error}"
+    "failedLoad": "加载文件内容失败：{error}",
+    "confirmExternalOpen": "此文件位于工作区外部。允许使用外部程序打开吗？",
+    "errorOpeningFile": "打开文件时出错：{error}"
   },
   "settings": {
     "title": "设置",
@@ -199,5 +201,23 @@
     "button": "确认并继续",
     "githubIssues": "GitHub 问题",
     "bugTracker": "打开问题追踪器 / 提交问题"
+  },
+  "groups": {
+    "filterByGroup": "按分组筛选",
+    "addGroup": "添加分组",
+    "noGroup": "[无分组]",
+    "noGroupsDefined": "未定义分组。点击文件夹图标以添加。",
+    "noMatchingSessions": "未找到匹配的会话。",
+    "tagInputPlaceholder": "新标签名称（使用 '/' 或 '\\' 进行嵌套）...",
+    "deleteGroupConfirm": "确定要删除分组 \"{name}\" 及其所有子分组吗？",
+    "pinConversation": "置顶会话",
+    "unpinConversation": "取消置顶会话",
+    "openSessionFile": "打开会话文件",
+    "copySessionId": "复制会话 ID",
+    "groupsTagsHeader": "分组 / 标签",
+    "pinGroup": "置顶分组",
+    "unpinGroup": "取消置顶分组",
+    "renameGroup": "重命名分组",
+    "deleteGroup": "删除分组"
   }
 }

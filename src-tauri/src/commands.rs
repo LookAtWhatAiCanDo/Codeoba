@@ -45,6 +45,13 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
         lightweight
     }).collect();
     
+    // Clean orphaned sessions from groups
+    let all_valid_ids: std::collections::HashSet<String> = all_sessions.iter().map(|s| s.id.clone()).collect();
+    let state_groups = app_handle.state::<crate::groups::GroupState>();
+    if let Ok(_lock) = state_groups.lock.lock() {
+        let _ = crate::groups::clean_orphaned_sessions(&all_valid_ids);
+    }
+
     // Sort sessions by updated_at descending
     all_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(all_sessions)
@@ -505,4 +512,47 @@ pub fn reset_detected_sources<R: tauri::Runtime>(
     
     Ok(())
 }
+
+#[tauri::command]
+pub fn get_groups(state: tauri::State<'_, crate::groups::GroupState>) -> Result<Vec<crate::groups::ConversationGroup>, String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    Ok(crate::groups::get_groups())
+}
+
+#[tauri::command]
+pub fn add_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<bool, String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::add_group(&name)
+}
+
+#[tauri::command]
+pub fn delete_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<(), String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::delete_group(&name)
+}
+
+#[tauri::command]
+pub fn rename_group(state: tauri::State<'_, crate::groups::GroupState>, old_name: String, new_name: String) -> Result<bool, String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::rename_group(&old_name, &new_name)
+}
+
+#[tauri::command]
+pub fn assign_session_to_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::assign_session_to_group(&session_id, &group_name)
+}
+
+#[tauri::command]
+pub fn remove_session_from_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::remove_session_from_group(&session_id, &group_name)
+}
+
+#[tauri::command]
+pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name: String, pinned: bool) -> Result<(), String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::set_group_pinned(&name, pinned)
+}
+
 

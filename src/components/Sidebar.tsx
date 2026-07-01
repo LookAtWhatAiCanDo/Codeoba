@@ -1,4 +1,4 @@
-import { createSignal, createMemo, createEffect, For, Show } from "solid-js";
+import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup } from "solid-js";
 import { useI18n } from "../i18n/i18n";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import { 
@@ -16,8 +16,116 @@ import {
   HelpCircle,
   CheckCircle2,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ChevronRight,
+  ChevronDown,
+  Folder
 } from "lucide-solid";
+import { invoke } from "@tauri-apps/api/core";
+
+export interface GroupTask {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  associatedSessionId: string | null;
+}
+
+export interface ConversationGroup {
+  name: string;
+  description: string;
+  status: string;
+  sessionIds: string[];
+  tasks: GroupTask[];
+  pastWorkSummary: string;
+  isPinned: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GroupTreeNode {
+  segment: string;
+  fullName: string;
+  children: GroupTreeNode[];
+  isPinned: boolean;
+  directSessionCount: number;
+  recursiveSessionCount: number;
+  containsPinnedSessions: boolean;
+}
+
+export function buildGroupTree(
+  groups: ConversationGroup[],
+  pinnedSessionIds: Set<string>
+): GroupTreeNode[] {
+  const rootNodes: GroupTreeNode[] = [];
+
+  for (const group of groups) {
+    const parts = group.name.split("/");
+    let currentLevel = rootNodes;
+    let currentFullName = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      currentFullName = currentFullName === "" ? part : `${currentFullName}/${part}`;
+
+      let node = currentLevel.find(n => n.segment.toLowerCase() === part.toLowerCase());
+      if (!node) {
+        node = {
+          segment: part,
+          fullName: currentFullName,
+          children: [],
+          isPinned: false,
+          directSessionCount: 0,
+          recursiveSessionCount: 0,
+          containsPinnedSessions: false
+        };
+        currentLevel.push(node);
+      }
+
+      if (i === parts.length - 1) {
+        node.isPinned = group.isPinned;
+        node.directSessionCount = group.sessionIds?.length || 0;
+        node.containsPinnedSessions = (group.sessionIds || []).some(id => pinnedSessionIds.has(id));
+      }
+      currentLevel = node.children;
+    }
+  }
+
+  function finalizeNode(node: GroupTreeNode): [number, boolean] {
+    let childSessionsCount = 0;
+    let childHasPinnedSessions = false;
+
+    for (const child of node.children) {
+      const [cCount, cPinned] = finalizeNode(child);
+      childSessionsCount += cCount;
+      if (cPinned) {
+        childHasPinnedSessions = true;
+      }
+    }
+
+    node.recursiveSessionCount = node.directSessionCount + childSessionsCount;
+    node.containsPinnedSessions = node.containsPinnedSessions || childHasPinnedSessions;
+
+    node.children.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return a.segment.toLowerCase().localeCompare(b.segment.toLowerCase());
+    });
+
+    return [node.recursiveSessionCount, node.containsPinnedSessions];
+  }
+
+  for (const root of rootNodes) {
+    finalizeNode(root);
+  }
+
+  rootNodes.sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return a.segment.toLowerCase().localeCompare(b.segment.toLowerCase());
+  });
+
+  return rootNodes;
+}
 
 interface Turn {
   turnId: string;
@@ -86,6 +194,17 @@ interface SidebarProps {
   timeFormat: string;
   showSeconds: boolean;
   numberFormat: string;
+  groups: ConversationGroup[];
+  activeGroupFilter: string | null;
+  onActiveGroupFilterChange: (filter: string | null) => void;
+  onAddGroup: (name: string) => Promise<boolean>;
+  onRenameGroup: (oldName: string, newName: string) => Promise<boolean>;
+  onDeleteGroup: (name: string) => Promise<void>;
+  onToggleGroupPin: (name: string, pinned: boolean) => Promise<void>;
+  onAssignSessionToGroup: (sessionId: string, groupName: string) => Promise<void>;
+  onRemoveSessionFromGroup: (sessionId: string, groupName: string) => Promise<void>;
+  pinnedSessionIds: Set<string>;
+  onTogglePinSession: (sessionId: string) => void;
 }
 
 export const getSessionComputeTimeMs = (session: Session): number => {
@@ -353,6 +472,69 @@ export const Sidebar = (props: SidebarProps) => {
     return t("sidebar.noMessages");
   };
 
+  const [showGroups, setShowGroups] = createSignal(true);
+  const [isAddingGroup, setIsAddingGroup] = createSignal(false);
+  const [newGroupName, setNewGroupName] = createSignal("");
+  const [renamingGroupPath, setRenamingGroupPath] = createSignal<string | null>(null);
+  const [deletingGroupName, setDeletingGroupName] = createSignal<string | null>(null);
+  const [contextMenu, setContextMenu] = createSignal<{
+    x: number;
+    y: number;
+    type: "session" | "group";
+    targetSession?: Session;
+    targetGroupNode?: GroupTreeNode;
+  } | null>(null);
+
+  const handleContextMenu = (e: MouseEvent, type: "session" | "group", targetSession?: Session, targetGroupNode?: GroupTreeNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      type,
+      targetSession,
+      targetGroupNode
+    });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  onMount(() => {
+    window.addEventListener("click", closeContextMenu);
+  });
+  onCleanup(() => {
+    window.removeEventListener("click", closeContextMenu);
+  });
+
+  const activeGroupSessionIds = createMemo(() => {
+    if (!props.activeGroupFilter) return null;
+    if (props.activeGroupFilter === "_none_") {
+      const assigned = new Set<string>();
+      for (const g of props.groups) {
+        if (g.sessionIds) {
+          for (const id of g.sessionIds) {
+            assigned.add(id);
+          }
+        }
+      }
+      return assigned;
+    }
+    const ids = new Set<string>();
+    const target = props.activeGroupFilter.toLowerCase();
+    const prefix = `${target}/`;
+    for (const g of props.groups) {
+      const gName = g.name.toLowerCase();
+      if (gName === target || gName.startsWith(prefix)) {
+        if (g.sessionIds) {
+          for (const id of g.sessionIds) {
+            ids.add(id);
+          }
+        }
+      }
+    }
+    return ids;
+  });
+
   // Determine what to display based on search results and filters
   const listItems = createMemo(() => {
     let items: { session: Session; matchedTurns?: number[]; score?: number }[] = [];
@@ -380,6 +562,21 @@ export const Sidebar = (props: SidebarProps) => {
           matchedTurns: undefined,
           score: undefined
         }));
+    }
+
+    // Filter by group on the frontend
+    const ids = activeGroupSessionIds();
+    if (ids) {
+      if (props.activeGroupFilter === "_none_") {
+        items = items.filter(item => !ids.has(item.session.id));
+      } else {
+        items = items.filter(item => ids.has(item.session.id));
+      }
+    }
+
+    // Ensure all items reflect the correct pin state from props.pinnedSessionIds
+    for (const item of items) {
+      item.session.isPinned = props.pinnedSessionIds.has(item.session.id);
     }
 
     // Now sort the items
@@ -470,11 +667,7 @@ export const Sidebar = (props: SidebarProps) => {
               value={props.searchQuery}
               onInput={(e) => props.onSearchChange(e.currentTarget.value)}
               placeholder={t("sidebar.searchPlaceholder")}
-              class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-9 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck={false}
+               class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-9 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
             />
             <Show when={props.searchQuery.length > 0}>
               <button
@@ -606,6 +799,148 @@ export const Sidebar = (props: SidebarProps) => {
             </div>
           </div>
         </Show>
+
+        {/* Group Filters section */}
+        <div class="flex flex-col border border-border/80 rounded-xl bg-surface/30 p-2.5 gap-2 flex-shrink-0">
+          <div class="flex items-center justify-between">
+            <button
+              onClick={() => setShowGroups(!showGroups())}
+              class="flex items-center gap-1.5 text-xs font-semibold text-text-secondary hover:text-text-primary uppercase tracking-wider cursor-pointer"
+            >
+              <Show when={showGroups()} fallback={<ChevronRight class="w-3.5 h-3.5" />}>
+                <ChevronDown class="w-3.5 h-3.5" />
+              </Show>
+              <span>{t("groups.filterByGroup")}</span>
+            </button>
+            <button
+              onClick={() => {
+                const nextAdding = !isAddingGroup();
+                setIsAddingGroup(nextAdding);
+                if (nextAdding) {
+                  setNewGroupName("");
+                  setShowGroups(true);
+                }
+              }}
+              title={t("groups.addGroup")}
+              class={`p-1 rounded transition-all cursor-pointer ${
+                isAddingGroup() 
+                  ? "bg-accent/20 text-accent font-semibold" 
+                  : "hover:bg-accent/15 text-accent"
+              }`}
+            >
+              <Folder class="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Inline Add Group box */}
+          <Show when={isAddingGroup()}>
+            <div class="flex items-center gap-1.5 p-1.5 bg-surface border border-border/80 rounded-lg animate-in fade-in duration-150 w-full">
+              <div class="relative flex items-center flex-grow bg-background rounded-md border border-border/60 px-2 py-1 min-w-0">
+                <input
+                  type="text"
+                  placeholder={t("groups.tagInputPlaceholder")}
+                  value={newGroupName()}
+                  onInput={(e) => setNewGroupName(e.currentTarget.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter") {
+                      const trimmed = newGroupName().trim().replace(/\\/g, "/");
+                      if (trimmed) {
+                        await props.onAddGroup(trimmed);
+                        setNewGroupName("");
+                        setIsAddingGroup(false);
+                        setShowGroups(true);
+                      }
+                    } else if (e.key === "Escape") {
+                      setIsAddingGroup(false);
+                      setNewGroupName("");
+                    }
+                  }}
+                  class="w-full bg-transparent border-none text-xs text-text-primary outline-none pr-5"
+                  autofocus
+                />
+                <Show when={newGroupName().length > 0}>
+                  <button
+                    onClick={() => setNewGroupName("")}
+                    class="absolute right-1.5 text-text-secondary hover:text-text-primary cursor-pointer p-0.5"
+                  >
+                    <X class="w-3.5 h-3.5" />
+                  </button>
+                </Show>
+              </div>
+              <button
+                disabled={!newGroupName().trim()}
+                onClick={async () => {
+                  const trimmed = newGroupName().trim().replace(/\\/g, "/");
+                  if (trimmed) {
+                    await props.onAddGroup(trimmed);
+                    setNewGroupName("");
+                    setIsAddingGroup(false);
+                    setShowGroups(true);
+                  }
+                }}
+                class={`p-1.5 rounded-md transition-all border flex-shrink-0 ${
+                  newGroupName().trim()
+                    ? "bg-accent hover:bg-accent-light text-white border-accent cursor-pointer shadow-sm"
+                    : "bg-surface-light text-text-secondary/30 border-border/40 cursor-not-allowed opacity-50"
+                }`}
+              >
+                <CheckCircle2 class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </Show>
+          
+          <Show when={showGroups()}>
+            <div class="flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto">
+              {/* Unassigned / [No Group] Filter */}
+              <div
+                class={`w-full flex items-center justify-between px-2 py-1 rounded-lg cursor-pointer transition-all border ${
+                  props.activeGroupFilter === "_none_"
+                    ? "bg-accent/15 border-accent/30 text-accent font-semibold shadow-sm"
+                    : "border-transparent text-text-secondary hover:bg-surface/60 hover:text-text-primary"
+                }`}
+                onClick={() => {
+                  if (props.activeGroupFilter === "_none_") {
+                    props.onActiveGroupFilterChange(null);
+                  } else {
+                    props.onActiveGroupFilterChange("_none_");
+                  }
+                }}
+              >
+                <div class="flex items-center gap-1.5">
+                  <div class="w-4 h-4" />
+                  <Folder class={`w-4 h-4 flex-shrink-0 ${props.activeGroupFilter === "_none_" ? "text-accent" : "text-text-secondary/70"}`} />
+                  <span class="text-xs">{t("groups.noGroup")}</span>
+                </div>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-surface-light border border-border/40 text-accent">
+                  {props.sessions.filter(s => !props.groups.some(g => g.sessionIds?.includes(s.id))).length}
+                </span>
+              </div>
+              
+              {/* Recursive Group Tree Nodes */}
+              <For each={buildGroupTree(props.groups, props.pinnedSessionIds)}>
+                {rootNode => (
+                  <GroupTreeItem
+                    node={rootNode}
+                    depth={0}
+                    activeGroupFilter={props.activeGroupFilter}
+                    onSelect={props.onActiveGroupFilterChange}
+                    onContextMenu={(e, node) => handleContextMenu(e, "group", undefined, node)}
+                    renamingGroupPath={renamingGroupPath()}
+                    setRenamingGroupPath={setRenamingGroupPath}
+                    onRenameGroup={props.onRenameGroup}
+                    onAssignSessionToGroup={props.onAssignSessionToGroup}
+                  />
+                )}
+              </For>
+              
+              <Show when={props.groups.length === 0}>
+                <div class="text-center text-text-secondary/60 text-xs py-2">
+                  {t("groups.noGroupsDefined")}
+                </div>
+              </Show>
+            </div>
+          </Show>
+        </div>
       </div>
 
       {/* Indexing Progress Indicator */}
@@ -637,7 +972,7 @@ export const Sidebar = (props: SidebarProps) => {
           when={listItems().length > 0} 
           fallback={
             <div class="p-8 text-center text-text-secondary text-sm">
-              No matching sessions found.
+              {t("groups.noMatchingSessions")}
             </div>
           }
         >
@@ -658,12 +993,213 @@ export const Sidebar = (props: SidebarProps) => {
                   score={score}
                   getSourceStyle={getSourceStyle}
                   getSourceLabel={getSourceLabel}
+                  groups={props.groups}
+                  onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
                 />
               );
             }}
           </For>
         </Show>
       </div>
+
+      {/* Context Menu Overlay */}
+      <Show when={contextMenu()}>
+        {(context) => {
+          const handleOverlayClick = (e: MouseEvent) => {
+            // Keep menu open if clicking inside the input search container
+            e.stopPropagation();
+          };
+
+          return (
+            <div
+              class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
+              style={{
+                top: `${Math.min(window.innerHeight - 300, context().y)}px`,
+                left: `${Math.min(window.innerWidth - 240, context().x)}px`
+              }}
+              onClick={handleOverlayClick}
+            >
+              <Show when={context().type === "session" && context().targetSession}>
+                {(session) => {
+                  const [tagInput, setTagInput] = createSignal("");
+                  
+                  return (
+                    <>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          props.onTogglePinSession(session().id);
+                          setContextMenu(null);
+                        }}
+                      >
+                        <Pin class="w-3.5 h-3.5" />
+                        <span>{session().isPinned ? t("groups.unpinConversation") : t("groups.pinConversation")}</span>
+                      </button>
+                      
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={async () => {
+                          setContextMenu(null);
+                          try {
+                            await invoke("open_file_externally", {
+                              rawPath: session().filePath,
+                              sessionCwd: session().cwd || null
+                            });
+                          } catch (e) {
+                            console.error("Failed to open file externally", e);
+                          }
+                        }}
+                      >
+                        <HelpCircle class="w-3.5 h-3.5" />
+                        <span>{t("groups.openSessionFile")}</span>
+                      </button>
+                      
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(session().id);
+                          setContextMenu(null);
+                        }}
+                      >
+                        <Clock class="w-3.5 h-3.5" />
+                        <span>{t("groups.copySessionId")}</span>
+                      </button>
+                      
+                      <div class="border-t border-border my-1" />
+                      <div class="px-3 py-1 text-[10px] font-semibold text-text-secondary uppercase tracking-wider">
+                        {t("groups.groupsTagsHeader")}
+                      </div>
+                      
+                      {/* Tag input */}
+                      <div class="px-2 py-1">
+                        <input
+                          type="text"
+                          placeholder={t("groups.tagInputPlaceholder")}
+                          value={tagInput()}
+                          onInput={(e) => setTagInput(e.currentTarget.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === "Enter") {
+                              const trimmed = tagInput().trim().replace(/\\/g, "/");
+                              if (trimmed) {
+                                const exists = props.groups.some(g => g.name.toLowerCase() === trimmed.toLowerCase());
+                                if (!exists) {
+                                  await props.onAddGroup(trimmed);
+                                }
+                                await props.onAssignSessionToGroup(session().id, trimmed);
+                                setTagInput("");
+                              }
+                            }
+                          }}
+                          class="w-full bg-background border border-border hover:border-border/80 focus:border-accent text-text-primary text-[11px] px-2 py-1 rounded outline-none"
+                        />
+                      </div>
+                      
+                      {/* Tags list */}
+                      <div class="max-h-36 overflow-y-auto px-1 py-0.5">
+                        <For each={[...props.groups].filter(g => g.name.toLowerCase().includes(tagInput().toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))}>
+                          {(group) => {
+                            const inGroup = () => group.sessionIds?.includes(session().id);
+                            return (
+                              <button
+                                class="w-full text-left px-2 py-1 text-xs hover:bg-accent/10 hover:text-accent text-text-primary rounded transition-all flex items-center justify-between cursor-pointer"
+                                onClick={async () => {
+                                  if (inGroup()) {
+                                    await props.onRemoveSessionFromGroup(session().id, group.name);
+                                  } else {
+                                    await props.onAssignSessionToGroup(session().id, group.name);
+                                  }
+                                }}
+                              >
+                                <span class="truncate max-w-[150px]">{group.name}</span>
+                                <Show when={inGroup()}>
+                                  <X class="w-3.5 h-3.5 text-accent hover:text-red-400 transition-colors" />
+                                </Show>
+                              </button>
+                            );
+                          }}
+                        </For>
+                        <Show when={props.groups.length === 0 && !tagInput()}>
+                          <div class="text-[10px] text-text-secondary/70 text-center py-1">{t("groups.noTagsAvailable")}</div>
+                        </Show>
+                      </div>
+                    </>
+                  );
+                }}
+              </Show>
+              
+              <Show when={context().type === "group" && context().targetGroupNode}>
+                {(node) => (
+                  <>
+                    <button
+                      class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        props.onToggleGroupPin(node().fullName, !node().isPinned);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Pin class="w-3.5 h-3.5" />
+                      <span>{node().isPinned ? t("groups.unpinGroup") : t("groups.pinGroup")}</span>
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        setRenamingGroupPath(node().fullName);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <HelpCircle class="w-3.5 h-3.5" />
+                      <span>{t("groups.renameGroup")}</span>
+                    </button>
+                    <button
+                      class="w-full text-left px-3 py-1.5 text-xs hover:bg-red-500/15 hover:text-red-400 text-red-500 transition-all flex items-center gap-2 cursor-pointer"
+                      onClick={() => {
+                        setDeletingGroupName(node().fullName);
+                        setContextMenu(null);
+                      }}
+                    >
+                      <X class="w-3.5 h-3.5" />
+                      <span>{t("groups.deleteGroup")}</span>
+                    </button>
+                  </>
+                )}
+              </Show>
+            </div>
+          );
+        }}
+      </Show>
+
+      {/* Delete Group Modal Overlay */}
+      <Show when={deletingGroupName()}>
+        {(groupName) => (
+          <div class="absolute inset-0 bg-background/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-surface border border-border rounded-xl p-4 shadow-2xl space-y-4 max-w-xs text-center animate-in fade-in zoom-in-95 duration-150">
+              <div class="text-sm font-semibold text-text-primary">
+                {t("groups.deleteGroup")}
+              </div>
+              <p class="text-xs text-text-secondary leading-normal">
+                {t("groups.deleteGroupConfirm", { name: groupName() })}
+              </p>
+              <div class="flex gap-2 justify-center">
+                <button
+                  onClick={() => setDeletingGroupName(null)}
+                  class="px-4 py-1.5 border border-border hover:bg-surface-light text-text-secondary text-xs rounded-lg cursor-pointer transition-all"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={async () => {
+                    await props.onDeleteGroup(groupName());
+                    setDeletingGroupName(null);
+                  }}
+                  class="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-lg font-semibold cursor-pointer transition-all"
+                >
+                  {t("common.delete")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Show>
     </aside>
   );
 };
@@ -678,6 +1214,8 @@ interface SessionCardProps {
   score?: number;
   getSourceStyle: (sourceId: string) => string;
   getSourceLabel: (sourceId: string) => string;
+  groups: ConversationGroup[];
+  onContextMenu: (e: MouseEvent, session: Session) => void;
 }
 
 const SessionCard = (props: SessionCardProps) => {
@@ -700,6 +1238,8 @@ const SessionCard = (props: SessionCardProps) => {
     return String(t);
   });
   
+  const sessionGroups = () => props.groups.filter(g => g.sessionIds?.includes(props.session.id));
+
   const getStatusBadge = () => {
     const status = props.session.status;
     if (!status) return null;
@@ -736,7 +1276,21 @@ const SessionCard = (props: SessionCardProps) => {
   return (
     <div
       onClick={() => props.onSelect(props.session)}
-      class={`p-4 flex flex-col gap-2.5 cursor-pointer transition-all border rounded-xl ${
+      onContextMenu={(e) => props.onContextMenu(e, props.session)}
+      draggable={true}
+      on:dragstart={(e) => {
+        (window as any).activeDraggedSessionId = props.session.id;
+        console.log("[DND] JSX dragstart on session:", props.session.id);
+        if (e.dataTransfer) {
+          e.dataTransfer.setData("text/plain", props.session.id);
+          e.dataTransfer.effectAllowed = "move";
+        }
+      }}
+      style={{
+        "-webkit-user-drag": "element",
+        "user-drag": "element"
+      } as any}
+      class={`p-4 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none transition-all border rounded-xl ${
         props.isSelected 
           ? "bg-accent-light/15 border-accent shadow-sm shadow-accent/15" 
           : "bg-surface/50 border-border hover:bg-surface/80 hover:border-border/80"
@@ -783,6 +1337,19 @@ const SessionCard = (props: SessionCardProps) => {
         {props.snippet}
       </p>
 
+      {/* Group Tag Badges */}
+      <Show when={sessionGroups().length > 0}>
+        <div class="flex flex-wrap gap-1 mt-1">
+          <For each={sessionGroups()}>
+            {group => (
+              <span class="px-1.5 py-0.5 bg-accent-light/10 border border-accent/20 text-accent rounded text-[9px] uppercase font-bold">
+                {group.name}
+              </span>
+            )}
+          </For>
+        </div>
+      </Show>
+
       {/* Footer Metadata */}
       <div class="flex items-center justify-between text-[10.5px] mt-0.5 text-text-secondary/60 gap-2">
         {/* Left Side: Source & CWD */}
@@ -817,3 +1384,205 @@ const SessionCard = (props: SessionCardProps) => {
     </div>
   );
 };
+
+interface GroupTreeItemProps {
+  node: GroupTreeNode;
+  depth: number;
+  activeGroupFilter: string | null;
+  onSelect: (filter: string | null) => void;
+  onContextMenu: (e: MouseEvent, node: GroupTreeNode) => void;
+  renamingGroupPath: string | null;
+  setRenamingGroupPath: (path: string | null) => void;
+  onRenameGroup: (oldName: string, newName: string) => Promise<boolean>;
+  onAssignSessionToGroup: (sessionId: string, groupName: string) => Promise<void>;
+}
+
+export const GroupTreeItem = (props: GroupTreeItemProps) => {
+  const [isExpanded, setIsExpanded] = createSignal(true);
+  const [tempName, setTempName] = createSignal(props.node.segment);
+  const [isDragOver, setIsDragOver] = createSignal(false);
+  const isSelected = () => props.activeGroupFilter !== null && props.activeGroupFilter.toLowerCase() === props.node.fullName.toLowerCase();
+  
+  return (
+    <div class="w-full flex flex-col">
+      <Show
+        when={props.renamingGroupPath === props.node.fullName}
+        fallback={
+          <div
+            class={`w-full flex items-center justify-between px-2 py-1 rounded-lg cursor-pointer transition-all border ${
+              isDragOver()
+                ? "bg-accent border-accent text-white font-bold shadow-md scale-[1.02]"
+                : isSelected()
+                ? "bg-accent/15 border-accent/30 text-accent font-semibold shadow-sm"
+                : "border-transparent text-text-secondary hover:bg-surface/60 hover:text-text-primary"
+            }`}
+            data-group-name={props.node.fullName}
+            style={{
+              "padding-left": `${props.depth * 12 + 8}px`
+            }}
+            onClick={() => {
+              if (isSelected()) {
+                props.onSelect(null);
+              } else {
+                props.onSelect(props.node.fullName);
+              }
+            }}
+            onContextMenu={(e) => props.onContextMenu(e, props.node)}
+            on:dragover={(e) => {
+              e.preventDefault();
+              if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "move";
+              }
+            }}
+            on:dragenter={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            on:dragleave={() => {
+              setIsDragOver(false);
+            }}
+            on:drop={async (e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const sessionId = (window as any).activeDraggedSessionId || (e.dataTransfer ? e.dataTransfer.getData("text/plain") : null);
+              console.log("[DND JSX] drop event triggered. Session ID:", sessionId, "Target Group:", props.node.fullName);
+              if (sessionId) {
+                try {
+                  await props.onAssignSessionToGroup(sessionId, props.node.fullName);
+                  console.log("[DND JSX] onAssignSessionToGroup completed successfully!");
+                } catch (err) {
+                  console.error("[DND JSX] Failed to assign session:", err);
+                }
+              }
+              (window as any).activeDraggedSessionId = null;
+            }}
+          >
+            <div class="flex items-center gap-1.5 min-w-0 pointer-events-none">
+              <Show
+                when={props.node.children.length > 0}
+                fallback={<div class="w-4 h-4" />}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded());
+                  }}
+                  class={`p-0.5 rounded cursor-pointer transition-colors pointer-events-auto ${
+                    isDragOver() ? "text-white/80 hover:text-white" : "hover:text-text-primary text-text-secondary/60"
+                  }`}
+                >
+                  <Show when={isExpanded()} fallback={<ChevronRight class="w-3.5 h-3.5" />}>
+                    <ChevronDown class="w-3.5 h-3.5" />
+                  </Show>
+                </button>
+              </Show>
+              <Folder class={`w-4 h-4 flex-shrink-0 transition-colors ${
+                isDragOver() ? "text-white" : isSelected() ? "text-accent" : "text-text-secondary/70"
+              }`} />
+              <span class={`text-xs truncate ${isDragOver() ? "text-white" : ""}`}>{props.node.segment}</span>
+            </div>
+            
+            <div class="flex items-center gap-1.5 flex-shrink-0 pointer-events-none">
+              <Show when={props.node.isPinned}>
+                <Pin class={`w-3 h-3 animate-pulse ${isDragOver() ? "text-white" : "text-accent"}`} />
+              </Show>
+              <Show when={!props.node.isPinned && props.node.containsPinnedSessions}>
+                <div class={`w-1.5 h-1.5 rounded-full ${isDragOver() ? "bg-white" : "bg-accent"}`} />
+              </Show>
+              <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border transition-all ${
+                isDragOver()
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "bg-surface-light border-border/40 text-accent"
+              }`}>
+                {props.node.recursiveSessionCount}
+              </span>
+            </div>
+          </div>
+        }
+      >
+        <div 
+          class="flex items-center gap-1.5 w-full px-2 py-1 bg-surface border border-border rounded-lg"
+          style={{
+            "margin-left": `${props.depth * 12 + 8}px`,
+            "width": `calc(100% - ${props.depth * 12 + 8}px)`
+          }}
+        >
+          <Folder class="w-4 h-4 text-accent flex-shrink-0" />
+          <input
+            type="text"
+            value={tempName()}
+            onInput={(e) => setTempName(e.currentTarget.value)}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter") {
+                const trimmed = tempName().trim().replace(/\\/g, "/");
+                if (trimmed && trimmed !== props.node.segment) {
+                  const parts = props.node.fullName.split("/");
+                  parts[parts.length - 1] = trimmed;
+                  const newFullName = parts.join("/");
+                  await props.onRenameGroup(props.node.fullName, newFullName);
+                }
+                props.setRenamingGroupPath(null);
+              } else if (e.key === "Escape") {
+                props.setRenamingGroupPath(null);
+                setTempName(props.node.segment);
+              }
+            }}
+            class="flex-grow bg-transparent border-none text-xs text-text-primary outline-none"
+            autofocus
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <button
+            disabled={!tempName().trim() || tempName().trim() === props.node.segment}
+            onClick={async () => {
+              const trimmed = tempName().trim().replace(/\\/g, "/");
+              if (trimmed && trimmed !== props.node.segment) {
+                const parts = props.node.fullName.split("/");
+                parts[parts.length - 1] = trimmed;
+                const newFullName = parts.join("/");
+                await props.onRenameGroup(props.node.fullName, newFullName);
+              }
+              props.setRenamingGroupPath(null);
+            }}
+            class={`p-0.5 flex-shrink-0 transition-all ${
+              tempName().trim() && tempName().trim() !== props.node.segment
+                ? "text-accent hover:text-accent-light cursor-pointer"
+                : "text-text-secondary/30 cursor-not-allowed opacity-50"
+            }`}
+          >
+            <CheckCircle2 class="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              props.setRenamingGroupPath(null);
+              setTempName(props.node.segment);
+            }}
+            class="text-text-secondary hover:text-text-primary p-0.5 cursor-pointer flex-shrink-0"
+          >
+            <X class="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </Show>
+      
+      <Show when={props.node.children.length > 0 && isExpanded()}>
+        <div class="flex flex-col">
+          <For each={props.node.children}>
+            {child => (
+              <GroupTreeItem
+                node={child}
+                depth={props.depth + 1}
+                activeGroupFilter={props.activeGroupFilter}
+                onSelect={props.onSelect}
+                onContextMenu={props.onContextMenu}
+                renamingGroupPath={props.renamingGroupPath}
+                setRenamingGroupPath={props.setRenamingGroupPath}
+                onRenameGroup={props.onRenameGroup}
+                onAssignSessionToGroup={props.onAssignSessionToGroup}
+              />
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
+  );
+};
+
