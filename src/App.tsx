@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, For } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
@@ -146,6 +147,25 @@ function App() {
   const [loadTime, setLoadTime] = createSignal<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
+
+  const [isMaximized, setIsMaximized] = createSignal(false);
+
+  const handleMinimize = () => {
+    getCurrentWindow().minimize();
+  };
+
+  const handleMaximize = async () => {
+    const win = getCurrentWindow();
+    if (await win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  };
+
+  const handleClose = () => {
+    getCurrentWindow().close();
+  };
 
   const [groups, setGroups] = createSignal<any[]>([]);
   const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
@@ -349,6 +369,7 @@ function App() {
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
+    let unlistenResize: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -421,6 +442,14 @@ function App() {
           return { ...prev, [sourceId]: true };
         });
       });
+
+      if (!isMac) {
+        const win = getCurrentWindow();
+        setIsMaximized(await win.isMaximized());
+        unlistenResize = await win.onResized(async () => {
+          setIsMaximized(await win.isMaximized());
+        });
+      }
     } catch (err) {
       console.error("Failed to register listeners:", err);
     }
@@ -441,6 +470,7 @@ function App() {
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
+      if (unlistenResize) unlistenResize();
       window.removeEventListener("keydown", handleKeyDown);
     });
 
@@ -959,6 +989,51 @@ function App() {
             <Bug class="w-4 h-4 text-accent" />
           </button>
         </div>
+
+        {/* Custom Window Controls for Windows/Linux */}
+        <Show when={!isMac}>
+          <div class="absolute top-0 right-0 h-full flex items-center z-50 pointer-events-auto select-none">
+            {/* Minimize */}
+            <button 
+              onClick={handleMinimize}
+              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="0" y1="0.5" x2="10" y2="0.5" />
+              </svg>
+            </button>
+            
+            {/* Maximize / Restore */}
+            <button 
+              onClick={handleMaximize}
+              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <Show 
+                when={isMaximized()} 
+                fallback={
+                  <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="0.5" y="0.5" width="9" height="9" />
+                  </svg>
+                }
+              >
+                <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="0.5" y="2.5" width="7" height="7" />
+                  <path d="M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
+                </svg>
+              </Show>
+            </button>
+            
+            {/* Close */}
+            <button 
+              onClick={handleClose}
+              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
+            >
+              <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
+              </svg>
+            </button>
+          </div>
+        </Show>
       </div>
 
       {/* Main Grid: Sidebar + Detail Pane */}
