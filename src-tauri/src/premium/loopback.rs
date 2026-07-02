@@ -132,7 +132,7 @@ fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &taur
     ];
 
     let origin_str = origin.as_deref().unwrap_or("");
-    let is_origin_allowed = origin_str.is_empty() || allowed_origins.iter().any(|&o| origin_str.starts_with(o));
+    let is_origin_allowed = origin_str.is_empty() || allowed_origins.iter().any(|&o| origin_str == o);
 
     if !is_origin_allowed {
         send_response(&mut stream, 403, "Unauthorized origin", "text/plain", None);

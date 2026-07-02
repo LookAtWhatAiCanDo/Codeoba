@@ -43,6 +43,7 @@ md5 = "0.7"
 ndarray = "0.17"
 aes-gcm = "0.10"
 hex = "0.4"
+sha2 = "0.10"
 tokio = { version = "1", features = ["time", "sync", "rt"] }
 futures-util = "0.3"
 reqwest = { version = "0.12", features = ["json", "stream"] }

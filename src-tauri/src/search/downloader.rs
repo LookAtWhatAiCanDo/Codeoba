@@ -3,9 +3,29 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use futures_util::StreamExt;
+use sha2::{Digest, Sha256};
+
+fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
+    let mut file = File::open(path).map_err(|e| format!("Failed to open file for hash check: {}", e))?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file for hash check: {}", e))?;
+    let hash = format!("{:x}", hasher.finalize());
+    if hash == expected_hash {
+        Ok(())
+    } else {
+        Err(format!(
+            "Integrity check failed: expected {}, got {}",
+            expected_hash, hash
+        ))
+    }
+}
+
 
 pub const MODEL_FILENAME: &str = "model.onnx";
 pub const VOCAB_FILENAME: &str = "vocab.txt";
+pub const EXPECTED_MODEL_HASH: &str = "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e";
+pub const EXPECTED_VOCAB_HASH: &str = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3";
+pub const MODEL_BASE_URL: &str = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/";
 
 pub fn get_model_dir() -> PathBuf {
     let home = crate::parsers::get_home_dir();
@@ -68,8 +88,8 @@ pub async fn download_model<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) 
         let _ = handle_clone.emit("semantic-model-download-progress", progress);
     };
 
-    let vocab_url = format!("https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/{}", VOCAB_FILENAME);
-    let model_url = format!("https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/onnx/{}", MODEL_FILENAME);
+    let vocab_url = format!("{}{}", MODEL_BASE_URL, VOCAB_FILENAME);
+    let model_url = format!("{}onnx/{}", MODEL_BASE_URL, MODEL_FILENAME);
 
     // 1. Download vocab.txt (~232 KB, mapped to 0% - 2% of overall progress)
     crate::log_info!("Starting vocab download from {}", vocab_url);
@@ -84,6 +104,12 @@ pub async fn download_model<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) 
     let vocab_dest = get_vocab_file();
 
     if temp_vocab.exists() && temp_model.exists() {
+        // Verify integrity of downloaded files before final rename
+        verify_file_hash(&temp_vocab, EXPECTED_VOCAB_HASH)
+            .map_err(|e| format!("Vocab integrity check failed: {}", e))?;
+        verify_file_hash(&temp_model, EXPECTED_MODEL_HASH)
+            .map_err(|e| format!("Model integrity check failed: {}", e))?;
+
         fs::rename(&temp_vocab, &vocab_dest).map_err(|e| format!("Failed to rename {}: {}", VOCAB_FILENAME, e))?;
         fs::rename(&temp_model, &model_dest).map_err(|e| format!("Failed to rename {}: {}", MODEL_FILENAME, e))?;
         crate::log_info!("Semantic search model downloaded successfully to {:?}", model_dir);
