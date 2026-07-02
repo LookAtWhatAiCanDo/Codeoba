@@ -10,7 +10,8 @@
     "user": "Usuário",
     "assistant": "Assistente",
     "loading": "Carregando...",
-    "showFullContent": "Mostrar conteúdo completo"
+    "showFullContent": "Mostrar conteúdo completo",
+    "bugTracker": "Abrir rastreador de bugs / Registrar um problema"
   },
   "sidebar": {
     "title": "Sessões",
@@ -196,16 +197,18 @@
     "installing": "Instalando atualização...",
     "restart": "Reiniciar agora",
     "updateBtn": "Atualizar agora",
-    "later": "Mais tarde"
-  },
-  "disclaimer": {
-    "title": "Aviso de qualidade alfa/beta",
-    "message1": "O Codeoba é atualmente pré-v1.0. É um software de qualidade alfa/beta em desenvolvimento ativo.",
-    "message2": "Você pode encontrar bugs, problemas de desempenho ou recursos incompletos.",
-    "feedbackPrompt": "Por favor, relate bugs, sugira recursos ou compartilhe feedback em nossa página de problemas do GitHub:",
-    "button": "Reconhecer e continuar",
-    "githubIssues": "Problemas do GitHub",
-    "bugTracker": "Abrir rastreador de bugs / Registrar um problema"
+    "later": "Mais tarde",
+    "consent": {
+      "title": "Configurações de Privacidade e Atualização",
+      "subtitle": "Consentimento para Entrega Automática de Atualizações",
+      "descQualityTitle": "Aviso Provisório de Qualidade da Versão de Pré-lançamento",
+      "descQualityReport": "Sinta-se à vontade para relatar quaisquer problemas ou sugerir melhorias usando o ícone do bug {bugIcon} no canto superior direito da aplicação.",
+      "question": "Gostaria de ativar as verificações automáticas de atualização para garantir que está a executar a versão mais recente?",
+      "desc1": "As verificações de atualização requerem a transmissão da versão atual da aplicação e do sistema operativo apenas para {domain}. Nenhum outro dado é transmitido.",
+      "complianceSubtext": "Este pedido é apresentado em conformidade com os regulamentos globais de privacidade para garantir que o seu consentimento explícito é obtido antes de efetuar quaisquer ligações ao servidor.",
+      "noThanks": "Não, obrigado",
+      "enable": "Ativar Atualizações Automáticas"
+    }
   },
   "groups": {
     "filterByGroup": "Filtrar por grupo",

@@ -10,7 +10,8 @@
     "user": "Usuario",
     "assistant": "Asistente",
     "loading": "Cargando...",
-    "showFullContent": "Mostrar contenido completo"
+    "showFullContent": "Mostrar contenido completo",
+    "bugTracker": "Abrir Bug Tracker / Presentar un problema"
   },
   "sidebar": {
     "title": "Sesiones",
@@ -196,16 +197,18 @@
     "installing": "Instalando actualización...",
     "restart": "Reiniciar ahora",
     "updateBtn": "Actualizar ahora",
-    "later": "Más tarde"
-  },
-  "disclaimer": {
-    "title": "Aviso de calidad Alfa/Beta",
-    "message1": "Codeoba es actualmente anterior a la versión 1.0. Es un software de calidad alfa/beta en desarrollo activo.",
-    "message2": "Es posible que encuentre errores, problemas de rendimiento o funciones incompletas.",
-    "feedbackPrompt": "Informe errores, sugiera funciones o comparta comentarios en nuestra página de problemas de GitHub:",
-    "button": "Reconocer y continuar",
-    "githubIssues": "Problemas de GitHub",
-    "bugTracker": "Abrir Bug Tracker / Presentar un problema"
+    "later": "Más tarde",
+    "consent": {
+      "title": "Configuración de Privacidad y Actualizaciones",
+      "subtitle": "Consentimiento para la Entrega de Actualizaciones Automáticas",
+      "descQualityTitle": "Aviso Temporal de Calidad de Versión Preliminar",
+      "descQualityReport": "No dude en informar cualquier problema o sugerir mejoras utilizando el icono del escarabajo {bugIcon} en la esquina superior derecha de la aplicación.",
+      "question": "¿Le gustaría activar las comprobaciones de actualizaciones automáticas para asegurarse de que se está ejecutando la última versión?",
+      "desc1": "Las comprobaciones de actualización requieren transmitir la versión actual de la aplicación y el sistema operativo únicamente a {domain}. No se transmiten otros datos.",
+      "complianceSubtext": "Esta solicitud se presenta de conformidad con las normativas globales de privacidad para garantizar que se obtenga su consentimiento explícito antes de realizar cualquier conexión con el servidor.",
+      "noThanks": "No, gracias",
+      "enable": "Activar Actualizaciones Automáticas"
+    }
   },
   "groups": {
     "filterByGroup": "Filtrar por grupo",

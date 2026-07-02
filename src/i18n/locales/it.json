@@ -10,7 +10,8 @@
     "user": "Utente",
     "assistant": "Assistente",
     "loading": "Caricamento...",
-    "showFullContent": "Mostra contenuto completo"
+    "showFullContent": "Mostra contenuto completo",
+    "bugTracker": "Apri Bug Tracker/Invia un problema"
   },
   "sidebar": {
     "title": "Sessioni",
@@ -196,16 +197,18 @@
     "installing": "Installazione aggiornamento in corso...",
     "restart": "Riavvia ora",
     "updateBtn": "Aggiorna ora",
-    "later": "Più tardi"
-  },
-  "disclaimer": {
-    "title": "Avviso sulla qualità Alpha/Beta",
-    "message1": "Codeoba è attualmente pre-v1.0. È un software di qualità alpha/beta in fase di sviluppo attivo.",
-    "message2": "Potresti riscontrare bug, problemi di prestazioni o funzionalità incomplete.",
-    "feedbackPrompt": "Si prega di segnalare bug, suggerire funzionalità o condividere feedback sulla nostra pagina GitHub Issues:",
-    "button": "Riconosci e continua",
-    "githubIssues": "GitHub Issues",
-    "bugTracker": "Apri Bug Tracker/Invia un problema"
+    "later": "Più tardi",
+    "consent": {
+      "title": "Impostazioni di Privacy e Aggiornamento",
+      "subtitle": "Consenso alla Consegna degli Aggiornamenti Automatici",
+      "descQualityTitle": "Avviso Temporaneo sulla Qualità della Versione Preliminare",
+      "descQualityReport": "Non esitare a segnalare eventuali problemi o suggerire miglioramenti utilizzando l'icona del bug {bugIcon} nell'angolo in alto a destra dell'applicazione.",
+      "question": "Desideri abilitare i controlli automatici degli aggiornamenti per assicurarti che sia in esecuzione l'ultima versione?",
+      "desc1": "I controlli degli aggiornamenti richiedono la trasmissione della versione corrente dell'app e del sistema operativo solo a {domain}. Non vengono trasmessi altri dati.",
+      "complianceSubtext": "Questa richiesta viene presentata in conformità con le normative globali sulla privacy per garantire il tuo consenso esplicito prima di effettuare qualsiasi connessione al server.",
+      "noThanks": "No grazie",
+      "enable": "Abilita Aggiornamenti Automatici"
+    }
   },
   "groups": {
     "filterByGroup": "Filtra per gruppo",

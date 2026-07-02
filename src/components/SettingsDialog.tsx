@@ -241,6 +241,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const handleToggleAutoUpdate = (val: boolean) => {
     setAutoUpdateEnabled(val);
     localStorage.setItem("codeoba-auto-update", String(val));
+    localStorage.setItem("codeoba-auto-update-consent", val ? "given" : "declined");
     logFE("info", `Auto-updates set to: ${val}`);
   };
 

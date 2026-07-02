@@ -10,7 +10,8 @@
     "user": "使用者",
     "assistant": "助理",
     "loading": "載入中...",
-    "showFullContent": "顯示完整內容"
+    "showFullContent": "顯示完整內容",
+    "bugTracker": "開啟錯誤追蹤器 / 提交問題"
   },
   "sidebar": {
     "title": "工作階段",
@@ -196,16 +197,18 @@
     "installing": "正在安裝更新...",
     "restart": "立即重新啟動",
     "updateBtn": "立即更新",
-    "later": "稍後"
-  },
-  "disclaimer": {
-    "title": "Alpha / Beta 品質聲明",
-    "message1": "Codeoba 目前處於 v1.0 之前。它是活躍開發中的 Alpha/Beta 品質軟體。",
-    "message2": "您可能會遇到錯誤、效能問題或不完整的功能。",
-    "feedbackPrompt": "請在我們的 GitHub 問題頁面報告錯誤、建議功能或分享回饋：",
-    "button": "確認並繼續",
-    "githubIssues": "GitHub 問題",
-    "bugTracker": "開啟錯誤追蹤器 / 提交問題"
+    "later": "稍後",
+    "consent": {
+      "title": "隱私與更新設定",
+      "subtitle": "自動更新交付同意",
+      "descQualityTitle": "預發佈版本臨時品質聲明",
+      "descQualityReport": "請隨時使用應用程式右上角的 {bugIcon} 昆蟲圖示回報任何問題或提出改進建議。",
+      "question": "您是否希望啟用自動更新檢查以確保執行的是最新版本？",
+      "desc1": "更新檢查僅需要將目前的應用程式版本和作業系統傳送至 {domain}。不會傳輸其他資料。",
+      "complianceSubtext": "本請求是根據全球隱私法規提出的，以確保在建立任何伺服器連線之前獲得您的明確同意。",
+      "noThanks": "不用了，謝謝",
+      "enable": "啟用自動更新"
+    }
   },
   "groups": {
     "filterByGroup": "按分組篩選",

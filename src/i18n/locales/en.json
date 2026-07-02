@@ -10,7 +10,8 @@
     "user": "User",
     "assistant": "Assistant",
     "loading": "Loading...",
-    "showFullContent": "Show full content"
+    "showFullContent": "Show full content",
+    "bugTracker": "Open Bug Tracker / File an Issue"
   },
   "sidebar": {
     "title": "Sessions",
@@ -196,16 +197,18 @@
     "installing": "Installing update...",
     "restart": "Restart Now",
     "updateBtn": "Update Now",
-    "later": "Later"
-  },
-  "disclaimer": {
-    "title": "Alpha / Beta Quality Notice",
-    "message1": "Codeoba is currently pre-v1.0. It is alpha/beta quality software under active development.",
-    "message2": "You may encounter bugs, performance issues, or incomplete features.",
-    "feedbackPrompt": "Please report bugs, suggest features, or share feedback on our GitHub issues page:",
-    "button": "Acknowledge & Continue",
-    "githubIssues": "GitHub Issues",
-    "bugTracker": "Open Bug Tracker / File an Issue"
+    "later": "Later",
+    "consent": {
+      "title": "Privacy & Update Settings",
+      "subtitle": "Automatic Update Delivery Consent",
+      "descQualityTitle": "Temporary Pre-Release Quality Notice",
+      "descQualityReport": "Please report any issues or suggest improvements using the {bugIcon} bug icon in the upper-right corner of the application.",
+      "question": "Would you like to enable automatic update checks to ensure that Codeoba is running the latest version?",
+      "desc1": "Update checks transmit only the current app and operating system versions to {domain}.",
+      "complianceSubtext": "This request is presented in compliance with global privacy regulations to ensure your explicit consent is obtained before making any server connections.",
+      "noThanks": "No Thanks",
+      "enable": "Enable Auto-Updates"
+    }
   },
   "groups": {
     "filterByGroup": "Filter by Group",

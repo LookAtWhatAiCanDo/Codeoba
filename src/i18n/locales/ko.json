@@ -10,7 +10,8 @@
     "user": "사용자",
     "assistant": "어시스턴트",
     "loading": "로딩 중...",
-    "showFullContent": "전체 내용 표시"
+    "showFullContent": "전체 내용 표시",
+    "bugTracker": "버그 추적기 열기 / 이슈 등록"
   },
   "sidebar": {
     "title": "세션",
@@ -196,16 +197,18 @@
     "installing": "업데이트 설치 중...",
     "restart": "지금 재시작",
     "updateBtn": "지금 업데이트",
-    "later": "나중에"
-  },
-  "disclaimer": {
-    "title": "알파/베타 품질 공지",
-    "message1": "Codeoba는 현재 v1.0 이전 버전입니다. 활발히 개발 중인 알파/베타 품질 소프트웨어입니다.",
-    "message2": "버그, 성능 문제 또는 불완전한 기능이 발생할 수 있습니다.",
-    "feedbackPrompt": "버그를 보고하거나, 기능을 제안하거나, GitHub 이슈 페이지에서 피드백을 공유해 주세요:",
-    "button": "확인 및 계속",
-    "githubIssues": "GitHub 이슈",
-    "bugTracker": "버그 추적기 열기 / 이슈 등록"
+    "later": "나중에",
+    "consent": {
+      "title": "개인정보 보호 및 업데이트 설정",
+      "subtitle": "자동 업데이트 제공 동의",
+      "descQualityTitle": "정식 출시 전 임시 품질 안내",
+      "descQualityReport": "애플리케이션 우측 상단의 {bugIcon} 버그 아이콘을 사용하여 문제를 보고하거나 개선 사항을 제안해 주세요.",
+      "question": "최신 버전이 실행 중인지 확인하기 위해 자동 업데이트 확인을 활성화하시겠습니까?",
+      "desc1": "업데이트 확인 시 현재 앱 버전 및 운영체제 정보만 {domain}(으)로 전송됩니다. 다른 데이터는 전송되지 않습니다.",
+      "complianceSubtext": "본 요청은 글로벌 개인정보 보호 규정을 준수하여 서버 연결 전에 사용자의 명시적인 동의를 얻기 위해 제시되었습니다.",
+      "noThanks": "거절",
+      "enable": "자동 업데이트 활성화"
+    }
   },
   "groups": {
     "filterByGroup": "그룹별 필터",

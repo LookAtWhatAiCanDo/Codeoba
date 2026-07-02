@@ -10,7 +10,8 @@
     "user": "Utilisateur",
     "assistant": "Assistant",
     "loading": "Chargement...",
-    "showFullContent": "Afficher le contenu complet"
+    "showFullContent": "Afficher le contenu complet",
+    "bugTracker": "Ouvrir le suivi des bugs / Signaler un problème"
   },
   "sidebar": {
     "title": "Sessions",
@@ -196,16 +197,18 @@
     "installing": "Installation de la mise à jour...",
     "restart": "Redémarrer maintenant",
     "updateBtn": "Mettre à jour maintenant",
-    "later": "Plus tard"
-  },
-  "disclaimer": {
-    "title": "Avis de qualité Alpha/Bêta",
-    "message1": "Codeoba est actuellement en pré-v1.0. C'est un logiciel de qualité alpha/bêta en cours de développement actif.",
-    "message2": "Vous pouvez rencontrer des bugs, des problèmes de performances ou des fonctionnalités incomplètes.",
-    "feedbackPrompt": "Veuillez signaler des bugs, suggérer des fonctionnalités ou partager vos commentaires sur notre page de problèmes GitHub :",
-    "button": "Reconnaître et continuer",
-    "githubIssues": "Problèmes GitHub",
-    "bugTracker": "Ouvrir le suivi des bugs / Signaler un problème"
+    "later": "Plus tard",
+    "consent": {
+      "title": "Paramètres de Confidentialité et de Mise à Jour",
+      "subtitle": "Consentement à la Réception des Mises à Jour Automatiques",
+      "descQualityTitle": "Avis Temporaire de Qualité pour Version Préliminaire",
+      "descQualityReport": "N'hésitez pas à signaler tout problème ou à suggérer des améliorations en utilisant l'icône de bogue {bugIcon} dans le coin supérieur droit de l'application.",
+      "question": "Souhaitez-vous activer les vérifications automatiques des mises à jour pour vous assurer que la dernière version est installée ?",
+      "desc1": "Les vérifications de mise à jour nécessitent la transmission de la version actuelle de l'application et du système opérationnel uniquement à {domain}. Aucune autre donnée n'est transmise.",
+      "complianceSubtext": "Cette demande est présentée conformément aux réglementations mondiales sur la protection de la vie privée afin de garantir votre consentement explécit avant toute connexion au serveur.",
+      "noThanks": "Non merci",
+      "enable": "Activer les Mises à Jour Automatiques"
+    }
   },
   "groups": {
     "filterByGroup": "Filtrer par groupe",

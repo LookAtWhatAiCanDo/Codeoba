@@ -10,7 +10,8 @@
     "user": "Benutzer",
     "assistant": "Assistent",
     "loading": "Wird geladen...",
-    "showFullContent": "Vollständigen Inhalt anzeigen"
+    "showFullContent": "Vollständigen Inhalt anzeigen",
+    "bugTracker": "Bug-Tracker öffnen / Problem melden"
   },
   "sidebar": {
     "title": "Sitzungen",
@@ -196,16 +197,18 @@
     "installing": "Update wird installiert...",
     "restart": "Jetzt neu starten",
     "updateBtn": "Jetzt aktualisieren",
-    "later": "Später"
-  },
-  "disclaimer": {
-    "title": "Hinweis zur Alpha-/Beta-Qualität",
-    "message1": "Codeoba ist derzeit vor Version 1.0. Es handelt sich um Software in Alpha-/Beta-Qualität, die sich in der aktiven Entwicklung befindet.",
-    "message2": "Es können Fehler, Leistungsprobleme oder unvollständige Funktionen auftreten.",
-    "feedbackPrompt": "Bitte melden Sie Fehler, schlagen Sie Funktionen vor oder geben Sie Feedback auf unserer GitHub-Problemseite:",
-    "button": "Bestätigen und fortfahren",
-    "githubIssues": "GitHub-Probleme",
-    "bugTracker": "Bug-Tracker öffnen / Problem melden"
+    "later": "Später",
+    "consent": {
+      "title": "Datenschutz- & Update-Einstellungen",
+      "subtitle": "Einwilligung zur automatischen Update-Bereitstellung",
+      "descQualityTitle": "Vorübergehender Vorabversions-Qualitätshinweis",
+      "descQualityReport": "Bitte zögern Sie nicht, Probleme zu melden oder Verbesserungen über das {bugIcon} Käfer-Symbol in der oberen rechten Ecke der Anwendung vorzuschlagen.",
+      "question": "Möchten Sie automatische Update-Überprüfungen aktivieren, um sicherzustellen, dass die neueste Version ausgeführt wird?",
+      "desc1": "Update-Überprüfungen erfordern die Übertragung der aktuellen App-Version und des Betriebssystems nur an {domain}. Es werden keine anderen Daten übertragen.",
+      "complianceSubtext": "Diese Anfrage erfolgt in Übereinstimmung mit globalen Datenschutzbestimmungen, um Ihre ausdrückliche Zustimmung einzuholen, bevor eine Verbindung zum Server hergestellt wird.",
+      "noThanks": "Nein danke",
+      "enable": "Automatische Updates aktivieren"
+    }
   },
   "groups": {
     "filterByGroup": "Nach Gruppe filtern",
