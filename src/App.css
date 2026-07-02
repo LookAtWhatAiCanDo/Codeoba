@@ -204,3 +204,43 @@ pre[class*="language-"] {
   font-size: 13px !important;
 }
 
+/* App-region rules for custom title bars (Windows touch/mouse drag support) */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] .no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Custom titlebar window control buttons (Windows/Linux) */
+.win-control-btn {
+  color: var(--text-secondary);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+@media (hover: hover) {
+  .win-control-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+  }
+}
+
+.win-close-btn {
+  color: var(--text-secondary);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+@media (hover: hover) {
+  .win-close-btn:hover {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+  }
+}
+
+

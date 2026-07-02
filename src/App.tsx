@@ -23,7 +23,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Home,
-  RotateCw,
   Settings,
   X,
   Download,
@@ -31,6 +30,22 @@ import {
 } from "lucide-solid";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import "./App.css";
+
+const RotateCwClean = (props: { class?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    class={props.class} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    stroke-width="2" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  >
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
+    <path d="M21 3v5h-5" />
+  </svg>
+);
 
 // Detect if running on macOS
 const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
@@ -865,24 +880,27 @@ function App() {
   };
 
   const renderNavigationPill = () => (
-    <div class="flex items-center gap-1 bg-surface/60 border border-border/55 rounded-xl p-1 pointer-events-auto flex-shrink-0">
+    <div 
+      class="flex items-center bg-surface/60 border border-border/55 rounded-xl pointer-events-auto flex-shrink-0 no-drag"
+      style={{ padding: "4px", gap: "4px" }}
+    >
       <button
         onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
         title={sidebarCollapsed() ? "Show Sidebar" : "Hide Sidebar"}
-        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
       >
         <Show when={sidebarCollapsed()} fallback={<PanelLeftClose class="w-4 h-4" />}>
           <PanelLeftOpen class="w-4 h-4" />
         </Show>
       </button>
 
-      <div class="w-[1px] h-4 bg-border/40 mx-1" />
+      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
 
       <button
         onClick={handleNavBack}
         disabled={historyIndex() <= 0}
         title="Go Back"
-        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
         <ArrowLeft class="w-4 h-4" />
       </button>
@@ -891,7 +909,7 @@ function App() {
         onClick={handleNavForward}
         disabled={historyIndex() >= navHistory().length - 1}
         title="Go Forward"
-        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
+        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
         <ArrowRight class="w-4 h-4" />
       </button>
@@ -899,7 +917,7 @@ function App() {
       <button
         onClick={() => handleGoHome()}
         title={t("dashboard.globalStats")}
-        class={`p-1.5 hover:bg-surface border hover:border-border/60 rounded-lg transition-all cursor-pointer ${
+        class={`w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border hover:border-border/60 rounded-lg transition-all cursor-pointer ${
           selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "border-transparent text-text-secondary"
         }`}
       >
@@ -908,28 +926,28 @@ function App() {
 
       <button
         onClick={() => handleRebuildIndex()}
-        disabled={isRebuilding()}
+        disabled={isRebuilding() || isLoading()}
         title={t("sidebar.forceRebuild")}
-        class={`p-1.5 border border-transparent rounded-lg transition-all ${
-          isRebuilding() 
+        class={`w-[30px] h-[30px] inline-flex items-center justify-center border border-transparent rounded-lg transition-all ${
+          (isRebuilding() || isLoading()) 
             ? "cursor-not-allowed text-accent bg-accent/5 border-accent/15" 
             : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
         }`}
       >
         <Show 
-          when={isRebuilding()} 
-          fallback={<RotateCw class="w-4 h-4" />}
+          when={isRebuilding() || isLoading()} 
+          fallback={<RotateCwClean class="w-4 h-4" />}
         >
-          <RotateCw class="w-4 h-4 animate-spin origin-center" />
+          <RotateCwClean class="w-4 h-4 animate-spin origin-center" />
         </Show>
       </button>
 
-      <div class="w-[1px] h-4 bg-border/40 mx-1" />
+      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
 
       <button
         onClick={() => setShowSettings(true)}
         title={t("settings.title")}
-        class="p-1.5 hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
       >
         <Settings class="w-4 h-4" />
       </button>
@@ -949,34 +967,37 @@ function App() {
         }}
         data-tauri-drag-region
       >
-        <div class="flex items-center gap-4 pointer-events-auto">
-          <div class="flex items-center gap-2 w-[176px] flex-shrink-0">
-            <Terminal class="w-4.5 h-4.5 text-accent animate-pulse" />
-            <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none">
+        <div class="flex items-center pointer-events-none" style={{ gap: "16px" }}>
+          <div class="flex items-center pointer-events-auto" style={{ gap: "8px", width: "176px", "flex-shrink": 0 }} data-tauri-drag-region>
+            <Terminal class="w-[18px] h-[18px] text-accent animate-pulse" data-tauri-drag-region />
+            <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none" data-tauri-drag-region>
               CODEOBA
             </span>
-            <span class="text-[9px] font-mono bg-surface border border-white/10 rounded text-accent font-semibold leading-none w-[46px] h-[18px] inline-flex items-center justify-center">
+            <span class="text-[9px] font-mono bg-surface border border-white/10 rounded text-accent font-semibold leading-none w-[46px] h-[18px] inline-flex items-center justify-center" data-tauri-drag-region>
               v{appVersion()}
             </span>
           </div>
           {renderNavigationPill()}
         </div>
 
-        <div class="flex items-center gap-3 pointer-events-auto">
-          <div class="hidden md:flex items-center gap-2 text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40">
+        <div class="flex items-center gap-3 pointer-events-none">
+          <div 
+            class="hidden md:flex items-center gap-2 text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40 pointer-events-auto"
+            data-tauri-drag-region
+          >
             <Show 
               when={selectedSession()} 
               fallback={
-                <span class="text-accent font-semibold flex items-center gap-1">
-                  <Layers class="w-3 h-3" /> {t("dashboard.globalStats")}
+                <span class="text-accent font-semibold flex items-center gap-1" data-tauri-drag-region>
+                  <Layers class="w-3 h-3" data-tauri-drag-region /> {t("dashboard.globalStats")}
                 </span>
               }
             >
-              <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""}>
+              <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""} data-tauri-drag-region>
                 {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
               </span>
-              <span class="text-border">/</span>
-              <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"}>
+              <span class="text-border" data-tauri-drag-region>/</span>
+              <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"} data-tauri-drag-region>
                 {selectedSession()?.threadName || "Untitled"}
               </span>
             </Show>
@@ -984,7 +1005,7 @@ function App() {
           <button
             onClick={handleOpenIssues}
             title={t("disclaimer.bugTracker")}
-            class="p-1.5 bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center"
+            class="p-1.5 bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center pointer-events-auto"
           >
             <Bug class="w-4 h-4 text-accent" />
           </button>
@@ -992,11 +1013,11 @@ function App() {
 
         {/* Custom Window Controls for Windows/Linux */}
         <Show when={!isMac}>
-          <div class="absolute top-0 right-0 h-full flex items-center z-50 pointer-events-auto select-none">
+          <div class="absolute top-0 right-0 h-full flex items-center z-50 pointer-events-auto select-none no-drag">
             {/* Minimize */}
             <button 
               onClick={handleMinimize}
-              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+              class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
             >
               <svg class="w-3.5 h-3.5" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5">
                 <line x1="0" y1="0.5" x2="10" y2="0.5" />
@@ -1006,7 +1027,7 @@ function App() {
             {/* Maximize / Restore */}
             <button 
               onClick={handleMaximize}
-              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+              class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
             >
               <Show 
                 when={isMaximized()} 
@@ -1026,7 +1047,7 @@ function App() {
             {/* Close */}
             <button 
               onClick={handleClose}
-              class="h-full w-11 flex items-center justify-center text-text-secondary hover:text-white hover:bg-red-600 transition-colors cursor-pointer"
+              class="h-full w-11 flex items-center justify-center win-close-btn transition-colors cursor-pointer"
             >
               <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
@@ -1170,9 +1191,9 @@ function App() {
               <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
                 <Show
                   when={isUpdating()}
-                  fallback={<RotateCw class="w-5 h-5" />}
+                  fallback={<RotateCwClean class="w-5 h-5" />}
                 >
-                  <RotateCw class="w-5 h-5 animate-spin origin-center" />
+                  <RotateCwClean class="w-5 h-5 animate-spin origin-center" />
                 </Show>
               </div>
               <div>

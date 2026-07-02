@@ -160,9 +160,26 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 📦 Building for Production
 
-To compile and package the application locally (without requiring updater signing keys):
+To compile and package the application locally (generates both executable and installers, no signing required):
 ```bash
 npm run build:local
+```
+
+To compile **only** the standalone release executable (skips wix/nsis installer packaging steps for faster builds):
+```bash
+npm run build:exe
+```
+Once the build completes, the compiled standalone release executable is located at:
+*   **Windows**: `.\src-tauri\target\release\codeoba.exe`
+*   **macOS / Linux**: `./src-tauri/target/release/codeoba`
+
+You can run the executable directly in your terminal to test the production startup and client rendering:
+```bash
+# Windows
+.\src-tauri\target\release\codeoba.exe
+
+# macOS / Linux
+./src-tauri/target/release/codeoba
 ```
 
 For production builds (where updates are signed and verified using Minisign):
@@ -172,7 +189,7 @@ export TAURI_SIGNING_PRIVATE_KEY="your_private_key_content"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="your_key_password"
 npm run tauri build
 ```
-*Tauri compiles the Rust source code in `--release` mode, minifies frontend SolidJS assets, bundles them into the binary, and packages the installer (`.dmg` on macOS, `.msi` on Windows, `.deb` on Linux).*
+*Tauri compiles the Rust source code in `--release` mode, minifies frontend SolidJS assets, bundles them into the binary, and packages the installer (`.dmg` on macOS, `.msi` / `.exe` setup on Windows, `.deb` on Linux). The generated installers are saved to `src-tauri/target/release/bundle/`.*
 
 ---
 

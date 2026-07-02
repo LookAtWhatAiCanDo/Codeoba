@@ -135,4 +135,50 @@ import { logFE } from "./utils/logger";
   document.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   });
+
+  // Hook up skeleton window controls for Windows/Linux during startup
+  try {
+    const bindControls = () => {
+      const minBtn = document.querySelector(".sk-win-min");
+      const maxBtn = document.querySelector(".sk-win-max");
+      const closeBtn = document.querySelector(".sk-win-close");
+
+      if (minBtn && !minBtn.hasAttribute("data-bound")) {
+        minBtn.setAttribute("data-bound", "true");
+        minBtn.addEventListener("click", () => {
+          appWindow.minimize().catch((err: any) => console.error("Skeleton minimize failed:", err));
+        });
+      }
+
+      if (maxBtn && !maxBtn.hasAttribute("data-bound")) {
+        maxBtn.setAttribute("data-bound", "true");
+        maxBtn.addEventListener("click", async () => {
+          try {
+            if (await appWindow.isMaximized()) {
+              await appWindow.unmaximize();
+            } else {
+              await appWindow.maximize();
+            }
+          } catch (err: any) {
+            console.error("Skeleton maximize toggle failed:", err);
+          }
+        });
+      }
+
+      if (closeBtn && !closeBtn.hasAttribute("data-bound")) {
+        closeBtn.setAttribute("data-bound", "true");
+        closeBtn.addEventListener("click", () => {
+          appWindow.close().catch((err: any) => console.error("Skeleton close failed:", err));
+        });
+      }
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bindControls);
+    } else {
+      bindControls();
+    }
+  } catch (err: any) {
+    logFE("error", `Failed to bind skeleton window controls: ${err.message || err}`);
+  }
 })();

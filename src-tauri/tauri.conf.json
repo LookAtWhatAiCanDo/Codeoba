@@ -16,6 +16,8 @@
         "title": "Codeoba",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "theme": "Dark",
+        "backgroundColor": "#0f1015",
         "acceptFirstMouse": true,
         "width": 800,
         "height": 600,
