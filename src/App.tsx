@@ -175,9 +175,7 @@ function App() {
     const manifest = updateManifest();
     if (!manifest) return "";
     const rawNotes = manifest.body || manifest.notes || manifest.rawJson?.notes || manifest.rawJson?.body || "";
-    // Strip out the downloads section (e.g. ## 📥 Downloads) up to the next heading or end of string
-    const cleanNotes = rawNotes.replace(/(?:^|\n)#{1,6}\s*(?:[^\n]*?Downloads)[\s\S]*?(?=(?:\n#{1,6}\s|$))/i, "");
-    return cleanNotes.trim();
+    return rawNotes.trim();
   });
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
