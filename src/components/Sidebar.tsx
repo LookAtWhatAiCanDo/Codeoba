@@ -164,6 +164,7 @@ interface SourceMetadata {
   displayName: string;
   isAvailable: boolean;
   isAppInstalled: boolean;
+  productUrl?: string;
 }
 
 interface SidebarProps {

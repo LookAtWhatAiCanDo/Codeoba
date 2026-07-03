@@ -97,6 +97,10 @@ impl SourceAdapter for CodexSource {
         "OpenAI Codex"
     }
 
+    fn product_url(&self) -> Option<String> {
+        Some("https://openai.com/codex/".to_string())
+    }
+
     fn is_available(&self) -> bool {
         self.get_base_dir().exists()
     }

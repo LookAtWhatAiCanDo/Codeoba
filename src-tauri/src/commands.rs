@@ -13,6 +13,7 @@ pub struct SourceMetadata {
     pub display_name: String,
     pub is_available: bool,
     pub is_app_installed: bool,
+    pub product_url: Option<String>,
 }
 
 #[tauri::command]
@@ -25,6 +26,7 @@ pub fn get_sources() -> Vec<SourceMetadata> {
             display_name: s.display_name().to_string(),
             is_available: s.is_available(),
             is_app_installed: s.is_app_installed(),
+            product_url: s.product_url(),
         })
         .collect()
 }

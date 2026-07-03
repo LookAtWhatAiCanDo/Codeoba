@@ -295,6 +295,10 @@ impl SourceAdapter for CursorSource {
         "Cursor"
     }
 
+    fn product_url(&self) -> Option<String> {
+        Some("https://cursor.com".to_string())
+    }
+
     fn is_available(&self) -> bool {
         self.get_global_db_file().exists()
     }

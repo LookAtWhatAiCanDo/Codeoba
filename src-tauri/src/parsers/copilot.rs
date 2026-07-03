@@ -55,6 +55,10 @@ impl SourceAdapter for CopilotSource {
         "GitHub Copilot"
     }
 
+    fn product_url(&self) -> Option<String> {
+        Some("https://github.com/features/ai/github-app".to_string())
+    }
+
     fn is_available(&self) -> bool {
         self.get_base_dir().exists()
     }

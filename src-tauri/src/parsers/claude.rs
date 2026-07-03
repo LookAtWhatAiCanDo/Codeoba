@@ -26,6 +26,10 @@ impl SourceAdapter for ClaudeSource {
         "Claude Code"
     }
 
+    fn product_url(&self) -> Option<String> {
+        Some("https://claude.com/product/claude-code".to_string())
+    }
+
     fn is_available(&self) -> bool {
         let base_dir = self.get_base_dir();
         if base_dir.exists() && base_dir.is_dir() {

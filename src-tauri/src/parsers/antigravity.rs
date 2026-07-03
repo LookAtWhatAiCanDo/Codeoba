@@ -331,6 +331,10 @@ impl SourceAdapter for AntigravitySource {
         "Google Antigravity"
     }
 
+    fn product_url(&self) -> Option<String> {
+        Some("https://antigravity.google".to_string())
+    }
+
     fn is_available(&self) -> bool {
         self.get_base_dir().exists()
     }

@@ -38,6 +38,9 @@ pub trait SourceAdapter: Send + Sync {
     fn get_data_paths_to_delete(&self) -> Vec<String> {
         Vec::new()
     }
+    fn product_url(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Helper function to check if a binary command executable is installed on the host machine.
@@ -211,6 +214,16 @@ impl Source {
             Source::Antigravity(s) => s.delete_data_paths(),
             Source::Copilot(s) => s.delete_data_paths(),
             Source::Codex(s) => s.delete_data_paths(),
+        }
+    }
+
+    pub fn product_url(&self) -> Option<String> {
+        match self {
+            Source::Claude(s) => s.product_url(),
+            Source::Cursor(s) => s.product_url(),
+            Source::Antigravity(s) => s.product_url(),
+            Source::Copilot(s) => s.product_url(),
+            Source::Codex(s) => s.product_url(),
         }
     }
 }

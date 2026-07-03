@@ -16,12 +16,14 @@ import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
 import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 interface SourceMetadata {
   id: string;
   displayName: string;
   isAvailable: boolean;
   isAppInstalled: boolean;
+  productUrl?: string;
 }
 
 interface SettingsDialogProps {
@@ -699,8 +701,19 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       const dec = getSourceDecision(src.id);
                       return (
                         <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between gap-4">
-                          <div class="min-w-0">
-                            <h4 class="text-xs font-bold text-text-primary capitalize">{src.displayName}</h4>
+                          <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <h4 class="text-xs font-bold text-text-primary capitalize">{src.displayName}</h4>
+                              <Show when={src.productUrl}>
+                                <button
+                                  onClick={() => openUrl(src.productUrl!)}
+                                  class="text-[10px] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
+                                  title={t("settings.sources.getInstaller")}
+                                >
+                                  {t("settings.sources.getInstaller")}
+                                </button>
+                              </Show>
+                            </div>
                             <p class="text-[10px] text-text-secondary/70 truncate">
                               {t("settings.sources.status")}: {src.isAvailable ? t("settings.sources.available") : t("settings.sources.notInstalled")}
                             </p>

@@ -151,6 +151,7 @@
       "available": "Available",
       "notInstalled": "Not Installed",
       "appInstalled": "App Installed",
+      "getInstaller": "Get Installer",
       "refresh": "Refresh Sources",
       "deleteData": "Delete Source Data",
       "deleteDataTooltip": "Clear Codeoba's local search index and cached sessions for this source (does not affect your actual agent logs)",
