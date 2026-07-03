@@ -573,14 +573,23 @@ function App() {
     }
 
     // Background update check / explicit consent prompt
-    const consent = localStorage.getItem("codeoba-auto-update-consent");
-    if (!consent) {
-      setTimeout(() => {
-        setShowConsentModal(true);
-      }, 1500); // prompt user shortly after startup
-    } else if (consent === "given") {
-      runUpdateCheck();
-    }
+    setTimeout(async () => {
+      try {
+        const updaterActive = await invoke<boolean>("is_updater_active");
+        if (!updaterActive) {
+          return;
+        }
+
+        const consent = localStorage.getItem("codeoba-auto-update-consent");
+        if (!consent) {
+          setShowConsentModal(true);
+        } else if (consent === "given") {
+          runUpdateCheck();
+        }
+      } catch (err) {
+        console.error("Failed to check if updater is active:", err);
+      }
+    }, 1500); // check shortly after startup
   });
 
   const handleStartUpdate = async () => {
