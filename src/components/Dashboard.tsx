@@ -16,31 +16,9 @@ import {
   formatSpeed, 
   formatDuration 
 } from "./Sidebar";
+import { Session } from "../types";
 
-interface Turn {
-  turnId: string;
-  userMessage: string;
-  assistantMessage: string;
-  timestamp: number;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  extraData?: Record<string, string> | null;
-}
 
-interface Session {
-  id: string;
-  sourceId: string;
-  filePath: string;
-  timestamp: number;
-  updatedAt: number;
-  cwd?: string | null;
-  threadName?: string | null;
-  turns: Turn[];
-  isArchived: boolean;
-  isPinned: boolean;
-  workspaceName?: string | null;
-  status?: string | null;
-}
 
 interface DashboardProps {
   sessions: Session[];

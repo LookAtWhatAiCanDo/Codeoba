@@ -22,31 +22,8 @@ import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
+import { Turn, Session } from "../types";
 
-interface Turn {
-  turnId: string;
-  userMessage: string;
-  assistantMessage: string;
-  timestamp: number;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  extraData?: Record<string, string>;
-}
-
-interface Session {
-  id: string;
-  sourceId: string;
-  filePath: string;
-  timestamp: number;
-  updatedAt: number;
-  cwd?: string | null;
-  threadName?: string | null;
-  turns: Turn[];
-  isArchived: boolean;
-  isPinned: boolean;
-  workspaceName?: string | null;
-  status?: string | null;
-}
 
 interface DetailPaneProps {
   session: Session | null;

@@ -24,8 +24,9 @@ To ensure the project context remains accurate:
 - **`src/` (Frontend React UI)**
   - `main.tsx`: App rendering and React root element bootstrap.
   - `App.tsx`: App layout coordinator (managing navigation and pane displays).
+  - `types.ts`: Central declaration of common type interfaces (Turn, Session, SearchResult, SourceMetadata).
   - `index.css`: Tailwind CSS entry stylesheet introducing variables.
-  - `components/`: Reusable UI elements (dialog box widgets, buttons, status indicators).
+  - `components/`: Reusable UI elements (dialog box widgets, buttons, status indicators, and modal popups).
   - `panels/`: Complex panels:
     * `Sidebar.tsx`: Search inputs, source selectors, sorting dropdowns, and index thread lists.
     * `DetailPane.tsx`: Conversation dialogue display, Markdown parsing, metadata tags, and copy buttons.

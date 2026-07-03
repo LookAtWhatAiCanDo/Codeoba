@@ -1,0 +1,39 @@
+export interface Turn {
+  turnId: string;
+  userMessage: string;
+  assistantMessage: string;
+  timestamp: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  extraData?: Record<string, string> | null;
+}
+
+export interface Session {
+  id: string;
+  sourceId: string;
+  filePath: string;
+  timestamp: number;
+  updatedAt: number;
+  cwd?: string | null;
+  threadName?: string | null;
+  turns: Turn[];
+  isArchived: boolean;
+  isPinned: boolean;
+  workspaceName?: string | null;
+  status?: string | null;
+  snippet?: string | null;
+}
+
+export interface SearchResult {
+  session: Session;
+  matchedTurnIndexes: number[];
+  score: number;
+}
+
+export interface SourceMetadata {
+  id: string;
+  displayName: string;
+  isAvailable: boolean;
+  isAppInstalled: boolean;
+  productUrl?: string;
+}

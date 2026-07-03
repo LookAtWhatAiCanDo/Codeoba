@@ -1,7 +1,6 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, For } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, Show, createMemo } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
@@ -11,88 +10,15 @@ import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { FileViewerDialog } from "./components/FileViewerDialog";
-import { MarkdownRenderer } from "./components/MarkdownRenderer";
+import { TitleBar } from "./components/TitleBar";
+import { ConsentModal } from "./components/ConsentModal";
+import { UpdateModal } from "./components/UpdateModal";
+import { SourceDetectedModal } from "./components/SourceDetectedModal";
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
-import { 
-  Layers, 
-  Terminal, 
-  AlertCircle,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ArrowLeft,
-  ArrowRight,
-  Home,
-  Settings,
-  X,
-  Download,
-  Bug,
-  Shield
-} from "lucide-solid";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { Layers, AlertCircle } from "lucide-solid";
+import { Session, SearchResult, SourceMetadata } from "./types";
 import "./App.css";
-
-const RotateCwClean = (props: { class?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    class={props.class} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"
-  >
-    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
-    <path d="M21 3v5h-5" />
-  </svg>
-);
-
-// Detect if running on macOS
-const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
-
-// Feature Flags
-const SHOW_PRE_RELEASE_NOTICE = true;
-
-interface Turn {
-  turnId: string;
-  userMessage: string;
-  assistantMessage: string;
-  timestamp: number;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-}
-
-interface Session {
-  id: string;
-  sourceId: string;
-  filePath: string;
-  timestamp: number;
-  updatedAt: number;
-  cwd?: string | null;
-  threadName?: string | null;
-  turns: Turn[];
-  isArchived: boolean;
-  isPinned: boolean;
-  workspaceName?: string | null;
-  status?: string | null;
-}
-
-interface SearchResult {
-  session: Session;
-  matchedTurnIndexes: number[];
-  score: number;
-}
-
-interface SourceMetadata {
-  id: string;
-  displayName: string;
-  isAvailable: boolean;
-  isAppInstalled: boolean;
-  productUrl?: string;
-}
-
-
 
 function App() {
   const { t } = useI18n();
@@ -172,12 +98,6 @@ function App() {
       }
     }, 2000);
   };
-  const releaseNotes = createMemo(() => {
-    const manifest = updateManifest();
-    if (!manifest) return "";
-    const rawNotes = manifest.body || manifest.notes || manifest.rawJson?.notes || manifest.rawJson?.body || "";
-    return rawNotes.trim();
-  });
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
   const [historyIndex, setHistoryIndex] = createSignal<number>(0);
@@ -203,25 +123,6 @@ function App() {
   const [loadTime, setLoadTime] = createSignal<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
-
-  const [isMaximized, setIsMaximized] = createSignal(false);
-
-  const handleMinimize = () => {
-    getCurrentWindow().minimize();
-  };
-
-  const handleMaximize = async () => {
-    const win = getCurrentWindow();
-    if (await win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
-  };
-
-  const handleClose = () => {
-    getCurrentWindow().close();
-  };
 
   const [groups, setGroups] = createSignal<any[]>([]);
   const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
@@ -396,6 +297,7 @@ function App() {
       setDetectedSources({});
     }
   });
+
   onMount(async () => {
     // Set window title with app version
     try {
@@ -405,7 +307,6 @@ function App() {
     } catch (err) {
       console.error("Failed to set window title:", err);
     }
-
 
     // Hide startup skeleton once UI is mounted
     const skeleton = document.getElementById("sk-container");
@@ -420,7 +321,6 @@ function App() {
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
-    let unlistenResize: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -493,14 +393,6 @@ function App() {
           return { ...prev, [sourceId]: true };
         });
       });
-
-      if (!isMac) {
-        const win = getCurrentWindow();
-        setIsMaximized(await win.isMaximized());
-        unlistenResize = await win.onResized(async () => {
-          setIsMaximized(await win.isMaximized());
-        });
-      }
     } catch (err) {
       console.error("Failed to register listeners:", err);
     }
@@ -521,7 +413,6 @@ function App() {
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
-      if (unlistenResize) unlistenResize();
       window.removeEventListener("keydown", handleKeyDown);
     });
 
@@ -840,14 +731,6 @@ function App() {
     navigator.clipboard.writeText(path);
   };
 
-  const handleOpenIssues = async () => {
-    try {
-      await openUrl("https://github.com/LookAtWhatAiCanDo/Codeoba/issues");
-    } catch (err) {
-      console.error("Failed to open issues URL:", err);
-    }
-  };
-
   const handleCloseSettings = () => {
     setShowSettings(false);
     invoke("reset_detected_sources").catch((err: any) => {
@@ -902,183 +785,24 @@ function App() {
     logFE("info", "User postponed setup (Configure Later chosen). Prompts dismissed for this session.");
   };
 
-  const renderNavigationPill = () => (
-    <div 
-      class="flex items-center bg-surface/60 border border-border/55 rounded-xl pointer-events-auto flex-shrink-0 no-drag"
-      style={{ padding: "4px", gap: "4px" }}
-    >
-      <button
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed())}
-        title={sidebarCollapsed() ? "Show Sidebar" : "Hide Sidebar"}
-        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
-      >
-        <Show when={sidebarCollapsed()} fallback={<PanelLeftClose class="w-4 h-4" />}>
-          <PanelLeftOpen class="w-4 h-4" />
-        </Show>
-      </button>
-
-      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
-
-      <button
-        onClick={handleNavBack}
-        disabled={historyIndex() <= 0}
-        title="Go Back"
-        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
-      >
-        <ArrowLeft class="w-4 h-4" />
-      </button>
-
-      <button
-        onClick={handleNavForward}
-        disabled={historyIndex() >= navHistory().length - 1}
-        title="Go Forward"
-        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
-      >
-        <ArrowRight class="w-4 h-4" />
-      </button>
-
-      <button
-        onClick={() => handleGoHome()}
-        title={t("dashboard.globalStats")}
-        class={`w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border hover:border-border/60 rounded-lg transition-all cursor-pointer ${
-          selectedSession() === null ? "text-accent bg-accent/10 border-accent/20" : "border-transparent text-text-secondary"
-        }`}
-      >
-        <Home class="w-4 h-4" />
-      </button>
-
-      <button
-        onClick={() => handleRebuildIndex()}
-        disabled={isRebuilding() || isLoading()}
-        title={t("sidebar.forceRebuild")}
-        class={`w-[30px] h-[30px] inline-flex items-center justify-center border border-transparent rounded-lg transition-all ${
-          (isRebuilding() || isLoading()) 
-            ? "cursor-not-allowed text-accent bg-accent/5 border-accent/15" 
-            : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
-        }`}
-      >
-        <Show 
-          when={isRebuilding() || isLoading()} 
-          fallback={<RotateCwClean class="w-4 h-4" />}
-        >
-          <RotateCwClean class="w-4 h-4 animate-spin origin-center" />
-        </Show>
-      </button>
-
-      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
-
-      <button
-        onClick={() => setShowSettings(true)}
-        title={t("settings.title")}
-        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
-      >
-        <Settings class="w-4 h-4" />
-      </button>
-    </div>
-  );
-
   return (
     <div class="flex h-screen w-screen overflow-hidden bg-background text-text-primary">
-      {/* Dynamic Headers based on style selection */}
-      {/* Dynamic Headers based on style selection */}
-      {/* Modern Sidebar Header (Unified Layout) */}
-      <div 
-        class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-50 flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
-        style={{
-          "padding-left": isMac ? "80px" : "24px",
-          "padding-right": isMac ? "24px" : "140px"
-        }}
-        data-tauri-drag-region
-      >
-        <div class="flex items-center pointer-events-none" style={{ gap: "16px" }}>
-          <div class="flex items-center pointer-events-auto" style={{ gap: "8px", width: "176px", "flex-shrink": 0 }} data-tauri-drag-region>
-            <Terminal class="w-[18px] h-[18px] text-accent animate-pulse" data-tauri-drag-region />
-            <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none" data-tauri-drag-region>
-              CODEOBA
-            </span>
-            <span class="text-[9px] font-mono bg-surface border border-white/10 rounded text-accent font-semibold leading-none w-[46px] h-[18px] inline-flex items-center justify-center" data-tauri-drag-region>
-              v{appVersion()}
-            </span>
-          </div>
-          {renderNavigationPill()}
-        </div>
-
-        <div class="flex items-center gap-3 pointer-events-none">
-          <div 
-            class="hidden md:flex items-center gap-2 text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40 pointer-events-auto"
-            data-tauri-drag-region
-          >
-            <Show 
-              when={selectedSession()} 
-              fallback={
-                <span class="text-accent font-semibold flex items-center gap-1" data-tauri-drag-region>
-                  <Layers class="w-3 h-3" data-tauri-drag-region /> {t("dashboard.globalStats")}
-                </span>
-              }
-            >
-              <span class="text-text-secondary/70 truncate max-w-[120px]" title={selectedSession()?.cwd || ""} data-tauri-drag-region>
-                {selectedSession()?.cwd?.split(/[/\\]/).pop() || "Root"}
-              </span>
-              <span class="text-border" data-tauri-drag-region>/</span>
-              <span class="text-text-primary truncate max-w-[160px]" title={selectedSession()?.threadName || "Untitled"} data-tauri-drag-region>
-                {selectedSession()?.threadName || "Untitled"}
-              </span>
-            </Show>
-          </div>
-          <button
-            onClick={handleOpenIssues}
-            title={t("common.bugTracker")}
-            class="p-1.5 bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center pointer-events-auto"
-          >
-            <Bug class="w-4 h-4 text-accent" />
-          </button>
-        </div>
-
-        {/* Custom Window Controls for Windows/Linux */}
-        <Show when={!isMac}>
-          <div class="absolute top-0 right-0 h-full flex items-center z-50 pointer-events-auto select-none no-drag">
-            {/* Minimize */}
-            <button 
-              onClick={handleMinimize}
-              class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
-            >
-              <svg class="w-3.5 h-3.5" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5">
-                <line x1="0" y1="0.5" x2="10" y2="0.5" />
-              </svg>
-            </button>
-            
-            {/* Maximize / Restore */}
-            <button 
-              onClick={handleMaximize}
-              class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
-            >
-              <Show 
-                when={isMaximized()} 
-                fallback={
-                  <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="0.5" y="0.5" width="9" height="9" />
-                  </svg>
-                }
-              >
-                <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <rect x="0.5" y="2.5" width="7" height="7" />
-                  <path d="M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
-                </svg>
-              </Show>
-            </button>
-            
-            {/* Close */}
-            <button 
-              onClick={handleClose}
-              class="h-full w-11 flex items-center justify-center win-close-btn transition-colors cursor-pointer"
-            >
-              <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
-              </svg>
-            </button>
-          </div>
-        </Show>
-      </div>
+      {/* OS Specific Titlebar / Header Component */}
+      <TitleBar
+        selectedSession={selectedSession()}
+        sidebarCollapsed={sidebarCollapsed()}
+        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed())}
+        historyIndex={historyIndex()}
+        navHistoryLength={navHistory().length}
+        onNavBack={handleNavBack}
+        onNavForward={handleNavForward}
+        onGoHome={handleGoHome}
+        onRebuildIndex={handleRebuildIndex}
+        isRebuilding={isRebuilding()}
+        isLoading={isLoading()}
+        onShowSettings={() => setShowSettings(true)}
+        appVersion={appVersion()}
+      />
 
       {/* Main Grid: Sidebar + Detail Pane */}
       <div 
@@ -1195,264 +919,31 @@ function App() {
       <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
 
       {/* GDPR/CCPA Consent Modal */}
-      <Show when={showConsentModal()}>
-        <div class="fixed inset-0 bg-black/85 z-[70] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
-          <div class="w-[520px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            
-            {/* Header info */}
-            <div class="flex items-center gap-3.5">
-              <div class="p-3 bg-accent/10 border border-accent/20 text-accent rounded-xl">
-                <Shield class="w-6 h-6" />
-              </div>
-              <div>
-                <h3 class="text-base font-bold text-text-primary uppercase tracking-wider">
-                  {t("updater.consent.title")}
-                </h3>
-                <p class="text-xs text-text-secondary/70">{t("updater.consent.subtitle")}</p>
-              </div>
-            </div>
-
-            {/* Quality Disclaimer Callout */}
-            <Show when={SHOW_PRE_RELEASE_NOTICE}>
-              <div class="bg-yellow-500/5 border border-yellow-500/20 text-yellow-500/90 rounded-xl p-3.5 text-xs leading-relaxed flex items-start gap-3">
-                <AlertCircle class="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p class="font-semibold text-text-primary text-xs mb-1">
-                    {t("updater.consent.descQualityTitle")}
-                  </p>
-                  <p class="mt-1.5">
-                    {(() => {
-                      const parts = t("updater.consent.descQualityReport").split("{bugIcon}");
-                      return (
-                        <>
-                          {parts[0]}
-                          <span class="inline-flex items-center justify-center w-4 h-4 bg-surface/50 border border-border/60 rounded text-accent align-middle mx-1 -translate-y-[1px]">
-                            <Bug class="w-3 h-3" />
-                          </span>
-                          {parts[1]}
-                        </>
-                      );
-                    })()}
-                  </p>
-                </div>
-              </div>
-            </Show>
-
-            {/* Description */}
-            <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-3 text-sm leading-relaxed text-text-secondary">
-              <p class="font-semibold pt-2.5 border-t border-border/20 text-text-primary">
-                {t("updater.consent.question")}
-              </p>
-              <p>
-                {(() => {
-                  const parts = t("updater.consent.desc1").split("{domain}");
-                  return (
-                    <>
-                      {parts[0]}
-                      <span class="font-semibold text-accent">codeoba.com</span>
-                      {parts[1]}
-                    </>
-                  );
-                })()}
-              </p>
-            </div>
-
-            {/* Legal Compliance Subtext */}
-            <p class="text-xs text-text-secondary/60 text-center leading-relaxed px-4">
-              {t("updater.consent.complianceSubtext")}
-            </p>
-
-            {/* Actions */}
-            <div class="flex gap-3 pt-2">
-              <button
-                onClick={() => handleConsentDecision(false)}
-                class="flex-1 py-2.5 border border-border bg-background hover:bg-surface rounded-xl text-sm font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-              >
-                {t("updater.consent.noThanks")}
-              </button>
-              <button
-                onClick={() => handleConsentDecision(true)}
-                class="flex-1 py-2.5 bg-accent hover:bg-accent-hover text-background rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-lg shadow-accent/10"
-              >
-                {t("updater.consent.enable")}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      </Show>
+      <ConsentModal
+        isOpen={showConsentModal()}
+        onDecision={handleConsentDecision}
+      />
 
       {/* Update Modal Overlay */}
-      <Show when={showUpdateModal() && updateManifest()}>
-        <div class="fixed inset-0 bg-black/75 z-[60] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
-          <div class="w-[460px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            
-            {/* Close button - only show if NOT currently installing an update */}
-            <Show when={!isUpdating()}>
-              <button 
-                onClick={() => setShowUpdateModal(false)}
-                class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-              >
-                <X class="w-4 h-4" />
-              </button>
-            </Show>
+      <UpdateModal
+        isOpen={showUpdateModal()}
+        updateManifest={updateManifest()}
+        isUpdating={isUpdating()}
+        updateProgress={updateProgress()}
+        updateError={updateError()}
+        onClose={() => setShowUpdateModal(false)}
+        onStartUpdate={handleStartUpdate}
+      />
 
-            {/* Header info */}
-            <div class="flex items-center gap-3">
-              <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
-                <Show
-                  when={isUpdating()}
-                  fallback={<RotateCwClean class="w-5 h-5" />}
-                >
-                  <RotateCwClean class="w-5 h-5 animate-spin origin-center" />
-                </Show>
-              </div>
-              <div>
-                <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
-                  {t("updater.title")}
-                </h3>
-                <p class="text-[10px] text-text-secondary/70">{t("updater.description", { version: updateManifest().version })}</p>
-              </div>
-            </div>
-
-            {/* Version Details */}
-            <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-2 text-xs">
-              <div class="flex items-center justify-between font-semibold">
-                <span class="text-text-secondary">Version:</span>
-                <span class="text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full text-[10px]">
-                  v{updateManifest().version}
-                </span>
-              </div>
-              
-              <Show when={releaseNotes()}>
-                <div class="border-t border-border/30 pt-3 space-y-2">
-                  <span class="text-text-secondary font-semibold">Release Notes:</span>
-                  <div class="max-h-48 overflow-y-auto bg-background/30 p-3 rounded-xl border border-border/20 text-left update-notes-container">
-                    <MarkdownRenderer content={releaseNotes()} />
-                  </div>
-                </div>
-              </Show>
-            </div>
-
-            {/* Status & Progress Bar */}
-            <Show when={isUpdating()}>
-              <div class="space-y-2">
-                <div class="flex justify-between text-[10px] font-semibold text-text-secondary">
-                  <span>{t("updater.downloading", { progress: updateProgress() })}</span>
-                  <span class="text-accent">{updateProgress()}%</span>
-                </div>
-                <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/40">
-                  <div 
-                    class="h-full bg-accent transition-all duration-300 rounded-full"
-                    style={{ width: `${updateProgress()}%` }}
-                  />
-                </div>
-              </div>
-            </Show>
-
-            {/* Error Message */}
-            <Show when={updateError()}>
-              <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[10px] text-red-400">
-                <AlertCircle class="w-4 h-4 flex-shrink-0" />
-                <span class="truncate flex-1">{t("updater.failed", { error: updateError() || "" })}</span>
-              </div>
-            </Show>
-
-            {/* Actions */}
-            <div class="flex gap-3 w-full pt-1">
-              <Show when={!isUpdating()}>
-                <button
-                  onClick={() => setShowUpdateModal(false)}
-                  class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-                >
-                  {t("updater.later")}
-                </button>
-                <button
-                  onClick={handleStartUpdate}
-                  class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
-                >
-                  <Download class="w-3.5 h-3.5" />
-                  <span>{t("updater.updateBtn")}</span>
-                </button>
-              </Show>
-            </div>
-          </div>
-        </div>
-      </Show>
       {/* Source Detected Prompt Modal */}
-      <Show when={hasDetectedSources()}>
-        <div class="fixed inset-0 bg-black/75 z-[69] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
-          <div class="w-[520px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
-            
-            {/* Header info */}
-            <div class="flex items-center gap-3">
-              <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
-                <Layers class="w-5 h-5" />
-              </div>
-              <div>
-                <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
-                  {t("settings.sources.detectedMultiPromptTitle")}
-                </h3>
-                <span class="text-[9px] font-mono bg-accent/15 border border-accent/20 rounded text-accent px-1.5 py-0.5 font-semibold">
-                  {t("settings.sources.detectedMultiPromptBadge")}
-                </span>
-              </div>
-            </div>
-
-            {/* Description Details */}
-            <div class="text-xs leading-relaxed text-text-secondary">
-              {t("settings.sources.detectedMultiPromptMessage")}
-            </div>
-
-            {/* Detected sources checkboxes list */}
-            <div class="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
-              <For each={Object.entries(detectedSources())}>
-                {([sourceId, allowed]) => (
-                  <label class="relative flex items-center justify-between p-3 rounded-xl bg-background/30 hover:bg-background/60 border border-border/40 hover:border-accent/30 transition-all cursor-pointer select-none">
-                    <div class="flex items-center gap-3">
-                      <div class="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                        <Layers class="w-4 h-4" />
-                      </div>
-                      <span class="text-xs font-semibold text-text-primary">
-                        {getSourceDisplayNameById(sourceId)}
-                      </span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={allowed}
-                      onChange={() => handleToggleDetectedSource(sourceId)}
-                      class="w-4.5 h-4.5 rounded border-border/80 text-accent focus:ring-accent accent-accent transition-all cursor-pointer"
-                    />
-                  </label>
-                )}
-              </For>
-            </div>
-
-            {/* Reassurance Callouts */}
-            <div class="flex flex-col gap-1.5 p-3 rounded-xl bg-background/50 border border-border/40 text-[10px] text-text-secondary leading-relaxed">
-              <div>{t("settings.sources.detectedMultiPromptFootnotePrivate")}</div>
-              <div>{t("settings.sources.detectedMultiPromptFootnoteEmpty")}</div>
-            </div>
-
-            {/* Actions */}
-            <div class="flex gap-3 w-full pt-1">
-              <button
-                onClick={handleIgnoreAllDetectedSources}
-                class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-              >
-                {t("settings.sources.detectedMultiPromptDenyAll")}
-              </button>
-              <button
-                onClick={handleSaveDetectedSources}
-                class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
-              >
-                <span>{t("settings.sources.detectedMultiPromptAllowSelected")}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </Show>
-
+      <SourceDetectedModal
+        isOpen={hasDetectedSources()}
+        detectedSources={detectedSources()}
+        onToggleSource={handleToggleDetectedSource}
+        onIgnoreAll={handleIgnoreAllDetectedSources}
+        onSave={handleSaveDetectedSources}
+        getSourceDisplayNameById={getSourceDisplayNameById}
+      />
     </div>
   );
 }

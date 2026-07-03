@@ -17,14 +17,9 @@ import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
 import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { SourceMetadata } from "../types";
 
-interface SourceMetadata {
-  id: string;
-  displayName: string;
-  isAvailable: boolean;
-  isAppInstalled: boolean;
-  productUrl?: string;
-}
+
 
 interface SettingsDialogProps {
   isOpen: boolean;
