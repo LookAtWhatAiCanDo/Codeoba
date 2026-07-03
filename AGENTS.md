@@ -1,6 +1,6 @@
 # Codeoba Agent Instructions
 
-Welcome! You are an AI coding assistant working on the Tauri migration of **Codeoba**—a platform-agnostic, zero-external-dependency, 100% local search application that indexes, monitors, and searches conversation transcripts across Claude Code, Google Antigravity, Cursor, OpenAI Codex, Aider, and GitHub Copilot.
+Welcome! You are an AI coding assistant working on the Tauri migration of **Codeoba**—a platform-agnostic, zero-external-dependency, 100% local search application that indexes, monitors, and searches conversation transcripts across Claude Code, Google Antigravity, Cursor, OpenAI Codex, and GitHub Copilot.
 
 This file acts as the primary repository context and instruction guide for Tauri development. Read this first to align with the codebase.
 
@@ -43,7 +43,6 @@ To ensure the project context remains accurate:
     * `claude.rs`: JSONL stream parser.
     * `cursor.rs`: SQLite workspace parser.
     * `antigravity.rs`: Antigravity JSONL parser.
-    * `aider.rs`: Aider Markdown history parser.
     * `copilot.rs` & `codex.rs`: Stream log event deserializers.
   - `src/search/`: Vector ONNX and lexical search logic.
   - `src/tokenizer.rs`: Offline BPE-based token count estimator (family scales, Hugging Face config loader).

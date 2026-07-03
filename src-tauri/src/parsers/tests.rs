@@ -1,7 +1,6 @@
 use crate::parsers::claude::ClaudeSource;
 use crate::parsers::cursor::CursorSource;
 use crate::parsers::antigravity::AntigravitySource;
-use crate::parsers::aider::AiderSource;
 use crate::parsers::copilot::CopilotSource;
 use crate::parsers::codex::CodexSource;
 use crate::parsers::SourceAdapter;
@@ -340,33 +339,6 @@ fn test_codex_source_parsing() {
 }
 
 #[test]
-fn test_aider_source_parsing() {
-    tauri::async_runtime::block_on(async {
-        let temp_file = tempfile::Builder::new().suffix(".md").tempfile().unwrap();
-        let temp_path = temp_file.path().to_string_lossy().to_string();
-
-        fs::write(
-            &temp_path,
-            r#"# Aider chat started at 2026-05-20 12:00:00
-
-#### User:
-Explain recursion.
-
-#### Assistant:
-Recursion is when a function calls itself.
-"#,
-        ).unwrap();
-
-        let source = AiderSource::new();
-        let session = source.parse_session(&temp_path).await.unwrap();
-
-        assert_eq!(session.turns.len(), 1);
-        assert_eq!(session.turns[0].user_message, "Explain recursion.");
-        assert_eq!(session.turns[0].assistant_message, "Recursion is when a function calls itself.");
-    });
-}
-
-#[test]
 fn test_copilot_source_parsing() {
     tauri::async_runtime::block_on(async {
         let temp_dir = tempfile::tempdir().unwrap();
@@ -543,43 +515,6 @@ fn test_antigravity_tool_tags_edge_cases() {
     });
 }
 
-#[test]
-fn test_aider_generic_level_4_headings() {
-    tauri::async_runtime::block_on(async {
-        let temp_file = tempfile::Builder::new().suffix(".md").tempfile().unwrap();
-        let temp_path = temp_file.path().to_string_lossy().to_string();
-
-        fs::write(
-            &temp_path,
-            r#"# Aider chat started at 2026-05-20 12:00:00
-
-#### User:
-Please fix the bug.
-#### Steps to reproduce:
-1. Open the file.
-2. Run the code.
-
-#### Assistant:
-I will fix it.
-#### Summary:
-Done.
-"#,
-        ).unwrap();
-
-        let source = AiderSource::new();
-        let session = source.parse_session(&temp_path).await.unwrap();
-
-        assert_eq!(session.turns.len(), 1);
-        assert_eq!(
-            session.turns[0].user_message,
-            "Please fix the bug.\n#### Steps to reproduce:\n1. Open the file.\n2. Run the code."
-        );
-        assert_eq!(
-            session.turns[0].assistant_message,
-            "I will fix it.\n#### Summary:\nDone."
-        );
-    });
-}
 
 #[test]
 fn test_cursor_windows_path_stripping() {
@@ -1216,21 +1151,6 @@ fn create_mock_claude_logs(mock_home: &std::path::Path) {
     std::fs::write(&plan_file, "# Goal: Claude Demo Session\nVerification plan.").unwrap();
 }
 
-fn create_mock_aider_logs(mock_home: &std::path::Path) {
-    let aider_dir = mock_home.join("Dev/aider-demo");
-    std::fs::create_dir_all(&aider_dir).unwrap();
-
-    let log_file = aider_dir.join(".aider.chat.history.md");
-    let log_content = r#"# Aider chat started at 2026-06-29 10:00:00
-
-#### User:
-Aider user query prompt.
-
-#### Assistant:
-Aider assistant reply text here.
-"#;
-    std::fs::write(&log_file, log_content).unwrap();
-}
 
 struct TelemetryStats {
     total_conversations: usize,
@@ -1332,15 +1252,12 @@ fn test_hybrid_telemetry_validation_harness() {
             crate::tokenizer::clear_custom_tokenizers_cache();
             create_mock_cursor_logs(&mock_home);
             create_mock_claude_logs(&mock_home);
-            create_mock_aider_logs(&mock_home);
 
             let cursor_source = CursorSource::new();
             let claude_source = ClaudeSource;
-            let aider_source = AiderSource::new();
 
             let cursor_sessions = cursor_source.parse_all_sessions().await;
             let claude_sessions = claude_source.parse_all_sessions().await;
-            let aider_sessions = aider_source.parse_all_sessions().await;
 
             assert_eq!(cursor_sessions.len(), 2);
             let c1 = cursor_sessions.iter().find(|s| s.id == "session-cursor-demo-1").unwrap();
@@ -1365,34 +1282,25 @@ fn test_hybrid_telemetry_validation_harness() {
             assert_eq!(cl.turns[0].extra_data.get("compactionTimeMs").map(|s| s.as_str()), Some("8000"));
             assert_eq!(cl.thread_name.as_deref(), Some("Claude Demo Session"));
 
-            assert_eq!(aider_sessions.len(), 1);
-            let ai = &aider_sessions[0];
-            assert_eq!(ai.turns.len(), 1);
-            assert_eq!(ai.turns[0].input_tokens, Some(8));
-            assert_eq!(ai.turns[0].output_tokens, Some(10));
-
-            let aider_duration = (aider_sessions[0].updated_at - aider_sessions[0].timestamp).max(0);
-
             let mut all_sessions = Vec::new();
             all_sessions.extend(cursor_sessions);
             all_sessions.extend(claude_sessions);
-            all_sessions.extend(aider_sessions);
 
             let stats = calculate_telemetry_stats(&all_sessions);
 
-            assert_eq!(stats.total_conversations, 4);
-            assert_eq!(stats.total_turns, 4);
-            assert_eq!(stats.total_prompt_tokens, 42);
-            assert_eq!(stats.total_response_tokens, 41);
-            assert_eq!(stats.total_estimated_tokens, 83);
+            assert_eq!(stats.total_conversations, 3);
+            assert_eq!(stats.total_turns, 3);
+            assert_eq!(stats.total_prompt_tokens, 34);
+            assert_eq!(stats.total_response_tokens, 31);
+            assert_eq!(stats.total_estimated_tokens, 65);
             assert_eq!(stats.avg_turns_per_session, 1.0);
 
-            let expected_elapsed = 60000 + 60000 + 10000 + aider_duration;
-            let expected_avg_session_duration = expected_elapsed as f64 / 4.0;
+            let expected_elapsed = 60000 + 60000 + 10000;
+            let expected_avg_session_duration = expected_elapsed as f64 / 3.0;
             assert_eq!(stats.avg_session_duration_ms, expected_avg_session_duration);
 
-            assert_eq!(stats.avg_turn_duration_ms, 4000.0);
-            assert_eq!(stats.avg_speed_tps, 5.1875);
+            assert_eq!(stats.avg_turn_duration_ms, 14000.0 / 3.0);
+            assert_eq!(stats.avg_speed_tps, 65000.0 / 14000.0);
             assert_eq!(stats.total_compactions, 1);
             assert_eq!(stats.total_compaction_time_ms, 8000);
         }).await;

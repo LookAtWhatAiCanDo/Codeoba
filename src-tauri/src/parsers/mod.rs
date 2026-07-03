@@ -8,7 +8,6 @@ use std::process::Command;
 pub mod claude;
 pub mod cursor;
 pub mod antigravity;
-pub mod aider;
 pub mod copilot;
 pub mod codex;
 pub mod cache;
@@ -120,7 +119,6 @@ pub enum Source {
     Claude(claude::ClaudeSource),
     Cursor(cursor::CursorSource),
     Antigravity(antigravity::AntigravitySource),
-    Aider(aider::AiderSource),
     Copilot(copilot::CopilotSource),
     Codex(codex::CodexSource),
 }
@@ -131,7 +129,6 @@ impl Source {
             Source::Claude(s) => s.id(),
             Source::Cursor(s) => s.id(),
             Source::Antigravity(s) => s.id(),
-            Source::Aider(s) => s.id(),
             Source::Copilot(s) => s.id(),
             Source::Codex(s) => s.id(),
         }
@@ -142,7 +139,6 @@ impl Source {
             Source::Claude(s) => s.display_name(),
             Source::Cursor(s) => s.display_name(),
             Source::Antigravity(s) => s.display_name(),
-            Source::Aider(s) => s.display_name(),
             Source::Copilot(s) => s.display_name(),
             Source::Codex(s) => s.display_name(),
         }
@@ -153,7 +149,6 @@ impl Source {
             Source::Claude(s) => s.is_available(),
             Source::Cursor(s) => s.is_available(),
             Source::Antigravity(s) => s.is_available(),
-            Source::Aider(s) => s.is_available(),
             Source::Copilot(s) => s.is_available(),
             Source::Codex(s) => s.is_available(),
         }
@@ -164,7 +159,6 @@ impl Source {
             Source::Claude(s) => s.get_watch_paths(),
             Source::Cursor(s) => s.get_watch_paths(),
             Source::Antigravity(s) => s.get_watch_paths(),
-            Source::Aider(s) => s.get_watch_paths(),
             Source::Copilot(s) => s.get_watch_paths(),
             Source::Codex(s) => s.get_watch_paths(),
         }
@@ -175,7 +169,6 @@ impl Source {
             Source::Claude(s) => s.get_watch_file_filter(),
             Source::Cursor(s) => s.get_watch_file_filter(),
             Source::Antigravity(s) => s.get_watch_file_filter(),
-            Source::Aider(s) => s.get_watch_file_filter(),
             Source::Copilot(s) => s.get_watch_file_filter(),
             Source::Codex(s) => s.get_watch_file_filter(),
         }
@@ -186,7 +179,6 @@ impl Source {
             Source::Claude(s) => s.parse_session(file_path).await,
             Source::Cursor(s) => s.parse_session(file_path).await,
             Source::Antigravity(s) => s.parse_session(file_path).await,
-            Source::Aider(s) => s.parse_session(file_path).await,
             Source::Copilot(s) => s.parse_session(file_path).await,
             Source::Codex(s) => s.parse_session(file_path).await,
         }
@@ -197,7 +189,6 @@ impl Source {
             Source::Claude(s) => s.parse_all_sessions().await,
             Source::Cursor(s) => s.parse_all_sessions().await,
             Source::Antigravity(s) => s.parse_all_sessions().await,
-            Source::Aider(s) => s.parse_all_sessions().await,
             Source::Copilot(s) => s.parse_all_sessions().await,
             Source::Codex(s) => s.parse_all_sessions().await,
         }
@@ -208,7 +199,6 @@ impl Source {
             Source::Claude(s) => s.is_app_installed(),
             Source::Cursor(s) => s.is_app_installed(),
             Source::Antigravity(s) => s.is_app_installed(),
-            Source::Aider(s) => s.is_app_installed(),
             Source::Copilot(s) => s.is_app_installed(),
             Source::Codex(s) => s.is_app_installed(),
         }
@@ -219,7 +209,6 @@ impl Source {
             Source::Claude(s) => s.delete_data_paths(),
             Source::Cursor(s) => s.delete_data_paths(),
             Source::Antigravity(s) => s.delete_data_paths(),
-            Source::Aider(s) => s.delete_data_paths(),
             Source::Copilot(s) => s.delete_data_paths(),
             Source::Codex(s) => s.delete_data_paths(),
         }
@@ -231,7 +220,6 @@ pub fn get_sources_list() -> Vec<Source> {
         Source::Claude(claude::ClaudeSource),
         Source::Cursor(cursor::CursorSource::new()),
         Source::Antigravity(antigravity::AntigravitySource::new()),
-        Source::Aider(aider::AiderSource::new()),
         Source::Copilot(copilot::CopilotSource::new()),
         Source::Codex(codex::CodexSource::new()),
     ]

@@ -7,7 +7,7 @@ This document explains the design, motivation, and mechanics of the Hybrid Token
 ## 1. The Core Problem
 To display accurate metrics, Codeoba needs to track the number of **input (prompt) tokens** and **output (completion) tokens** consumed during developer sessions. 
 
-However, local logs recorded by coding agents (like Cursor, Aider, and Claude Code) often do not contain the precise token counts for every individual message turn. We only get the raw text. Furthermore, LLMs are non-deterministic, and different model providers (OpenAI, Anthropic, Google, Meta) use completely different tokenization schemas (e.g., Tiktoken/cl100k_base, SentencePiece, Hugging Face BPE).
+However, local logs recorded by coding agents (like Cursor and Claude Code) often do not contain the precise token counts for every individual message turn. We only get the raw text. Furthermore, LLMs are non-deterministic, and different model providers (OpenAI, Anthropic, Google, Meta) use completely different tokenization schemas (e.g., Tiktoken/cl100k_base, SentencePiece, Hugging Face BPE).
 
 To display precise counts without sending every single text block back to a remote API just to count tokens (which would be slow, expensive, and require internet access), we need a way to count and verify tokens offline.
 
@@ -58,7 +58,6 @@ To verify that the dashboard metrics shown in the UI are mathematically correct 
 We programmatically construct mock environments mimicking a user's machine for **all 6 supported agent providers**:
 - **Cursor (SQLite)**: Writes `globalStorage/state.vscdb` and `workspaceStorage/state.vscdb` containing thread metadata, composer JSON structures, and multiple query turns.
 - **Claude Code (JSONL)**: Writes nested project logs with compact boundary markers, compaction metrics (trigger type, pre/post tokens, duration), and links to plan files.
-- **Aider (Markdown)**: Writes `.aider.chat.history.md` files with user prompts and assistant diff logs.
 - **GitHub Copilot (YAML/JSONL)**: Writes `workspace.yaml` metadata files and `events.jsonl` containing user messages and tool runs.
 - **OpenAI Codex (JSONL)**: Writes rollout log files and `session_index.jsonl` files for session mapping.
 - **Antigravity (Protobuf/JSONL)**: Serializes binary protocol buffers (`agyhub_summaries_proto.pb`) and writes transcript JSONL logs.

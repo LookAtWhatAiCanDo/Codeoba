@@ -355,9 +355,7 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
             Some(filter_fn) => filter_fn(&path_str),
             None => {
                 let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                if source.id() == "aider" && ext == "md" {
-                    true
-                } else if source.id() == "cursor" && (ext == "vscdb" || path_str.contains("state.vscdb")) {
+                if source.id() == "cursor" && (ext == "vscdb" || path_str.contains("state.vscdb")) {
                     true
                 } else if ext == "jsonl" {
                     true

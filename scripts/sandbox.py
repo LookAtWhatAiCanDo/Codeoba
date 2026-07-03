@@ -56,14 +56,12 @@ def get_session_times(file_path, extra_turn=False):
     now_iso, now_ms = format_time(now)
     
     local_init = datetime.datetime.fromtimestamp(original_time.timestamp())
-    aider_init = local_init.strftime("%Y-%m-%d %H:%M:%S")
     
     return {
         "init_iso": init_iso,
         "init_ms": init_ms,
         "now_iso": now_iso,
         "now_ms": now_ms,
-        "aider_init": aider_init,
     }
 
 def write_cursor(base_dir, extra_turn=False):
@@ -133,26 +131,6 @@ def write_claude(base_dir, extra_turn=False):
     with open(claude_plan, "w") as f:
         f.write("# Goal: Claude Demo Session\nVerification plan.")
     print("Generated Claude Code JSONL mock.")
-
-def write_aider(base_dir, extra_turn=False):
-    aider_dir = os.path.join(base_dir, "Dev/aider-demo")
-    os.makedirs(aider_dir, exist_ok=True)
-
-    aider_log = os.path.join(aider_dir, ".aider.chat.history.md")
-    times = get_session_times(aider_log, extra_turn)
-
-    with open(aider_log, "w") as f:
-        f.write(f'# Aider chat started at {times["aider_init"]}\n\n')
-        f.write('#### User:\n')
-        f.write('Aider user query prompt.\n\n')
-        f.write('#### Assistant:\n')
-        f.write('Aider assistant reply text here.\n')
-        if extra_turn:
-            f.write('\n#### User:\n')
-            f.write('Aider extra turn prompt.\n\n')
-            f.write('#### Assistant:\n')
-            f.write('Aider extra reply.\n')
-    print("Generated Aider Markdown mock.")
 
 def write_copilot(base_dir, extra_turn=False):
     copilot_dir = os.path.join(base_dir, ".copilot/session-state/session-copilot-demo")
@@ -231,8 +209,6 @@ def delete_source(base_dir, source):
         shutil.rmtree(get_cursor_dir(base_dir), ignore_errors=True)
     elif source == "claude":
         shutil.rmtree(os.path.join(base_dir, ".claude"), ignore_errors=True)
-    elif source == "aider":
-        shutil.rmtree(os.path.join(base_dir, "Dev/aider-demo"), ignore_errors=True)
     elif source == "copilot":
         shutil.rmtree(os.path.join(base_dir, ".copilot"), ignore_errors=True)
     elif source == "codex":
@@ -247,13 +223,12 @@ def main():
     parser.add_argument("--all", action="store_true", help="Generate all mock log profiles at once.")
     parser.add_argument("--cursor", action="store_true", help="Generate Cursor mock SQLite DB.")
     parser.add_argument("--claude", action="store_true", help="Generate Claude Code mock project JSONL.")
-    parser.add_argument("--aider", action="store_true", help="Generate Aider mock chat history Markdown.")
     parser.add_argument("--copilot", action="store_true", help="Generate Copilot mock events logs.")
     parser.add_argument("--codex", action="store_true", help="Generate Codex mock rollout logs.")
     parser.add_argument("--antigravity", action="store_true", help="Generate Antigravity mock transcripts.")
     
-    parser.add_argument("--add-turn", choices=["cursor", "claude", "aider", "copilot", "codex", "antigravity"], help="Append an extra Turn to a specific mock session to trigger a Modify update event.")
-    parser.add_argument("--delete", choices=["cursor", "claude", "aider", "copilot", "codex", "antigravity"], help="Delete a specific mock session file to trigger a Deletion update event.")
+    parser.add_argument("--add-turn", choices=["cursor", "claude", "copilot", "codex", "antigravity"], help="Append an extra Turn to a specific mock session to trigger a Modify update event.")
+    parser.add_argument("--delete", choices=["cursor", "claude", "copilot", "codex", "antigravity"], help="Delete a specific mock session file to trigger a Deletion update event.")
 
     args = parser.parse_args()
     base_dir = os.path.abspath("demo_mock")
@@ -280,7 +255,6 @@ def main():
     if args.all:
         write_cursor(base_dir)
         write_claude(base_dir)
-        write_aider(base_dir)
         write_copilot(base_dir)
         write_codex(base_dir)
         write_antigravity(base_dir)
@@ -289,8 +263,6 @@ def main():
             write_cursor(base_dir)
         if args.claude:
             write_claude(base_dir)
-        if args.aider:
-            write_aider(base_dir)
         if args.copilot:
             write_copilot(base_dir)
         if args.codex:
@@ -303,8 +275,6 @@ def main():
             write_cursor(base_dir, extra_turn=True)
         elif args.add_turn == "claude":
             write_claude(base_dir, extra_turn=True)
-        elif args.add_turn == "aider":
-            write_aider(base_dir, extra_turn=True)
         elif args.add_turn == "copilot":
             write_copilot(base_dir, extra_turn=True)
         elif args.add_turn == "codex":

@@ -27,8 +27,7 @@ While the app is running in the background, open a separate terminal window and 
 
 ### Session Injection
 Generate mock log profiles individually or all at once:
-* **All 6 Providers:** `python3 scripts/sandbox.py --all`
-* **Aider (Markdown):** `python3 scripts/sandbox.py --aider`
+* **All 5 Providers (Simple Mock):** `python3 scripts/sandbox.py --all`
 * **Antigravity (Protobuf):** `python3 scripts/sandbox.py --antigravity`
 * **Claude Code (JSONL):** `python3 scripts/sandbox.py --claude`
 * **Cursor (SQLite):** `python3 scripts/sandbox.py --cursor`
@@ -40,14 +39,14 @@ Generate mock log profiles individually or all at once:
 ### Modify Events (Appending Turns)
 Append extra turns to an active mock session log to test the modify watcher and reactive UI updates:
 ```bash
-python3 scripts/sandbox.py --add-turn [cursor|claude|aider|copilot|codex|antigravity]
+python3 scripts/sandbox.py --add-turn [cursor|claude|copilot|codex|antigravity]
 ```
 *Watch the app: The session card's timestamp updates, and clicking on it reveals the newly appended turns instantly.*
 
 ### Deletion Events
 Delete the mock logs for a specific source to test the deletion watcher and UI cleanup:
 ```bash
-python3 scripts/sandbox.py --delete [cursor|claude|aider|copilot|codex|antigravity]
+python3 scripts/sandbox.py --delete [cursor|claude|copilot|codex|antigravity]
 ```
 *Watch the app: The session is immediately removed from the search index, the card slides out of the sidebar, and the active view resets if that session was open.*
 
@@ -58,7 +57,6 @@ python3 scripts/sandbox.py --delete [cursor|claude|aider|copilot|codex|antigravi
 When a session is injected, the script writes files to paths matching the standard directory layout for the target OS:
 * **Cursor:** `Library/Application Support/Cursor/User/` (or `AppData/Roaming` on Windows) containing global and workspace `state.vscdb` databases.
 * **Claude Code:** `.claude/projects/` containing nested project log `.jsonl` files and `.claude/plans/` markdown files.
-* **Aider:** `Dev/` containing `.aider.chat.history.md` markdown files.
 * **GitHub Copilot:** `.copilot/session-state/` containing `workspace.yaml` and `events.jsonl` files.
 * **OpenAI Codex:** `.codex/` containing `session_index.jsonl` and rollout JSONL logs.
 * **Antigravity:** `.gemini/antigravity/` containing summaries protocol buffers and transcript JSONL logs.

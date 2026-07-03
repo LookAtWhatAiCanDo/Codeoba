@@ -341,8 +341,6 @@ export const Sidebar = (props: SidebarProps) => {
         return "bg-violet-500/10 text-violet-400 border-violet-500/20";
       case "cursor":
         return "bg-sky-500/10 text-sky-400 border-sky-500/20";
-      case "aider":
-        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
       case "copilot":
         return "bg-pink-500/10 text-pink-400 border-pink-500/20";
       case "codex":
