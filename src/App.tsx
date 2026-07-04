@@ -109,8 +109,21 @@ function App() {
   
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isSemantic, setIsSemantic] = createSignal(false);
-  const [selectedSources, setSelectedSources] = createSignal<Set<string>>(new Set());
-  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived">("active");
+  const [selectedSources, setSelectedSources] = createSignal<Set<string>>((() => {
+    try {
+      const stored = localStorage.getItem("codeoba-selected-sources");
+      return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  })());
+  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived">((() => {
+    const stored = localStorage.getItem("codeoba-archival-filter");
+    if (stored === "all" || stored === "active" || stored === "archived") {
+      return stored;
+    }
+    return "active";
+  })());
   
   const [isLoading, setIsLoading] = createSignal(true);
   const [isRebuilding, setIsRebuilding] = createSignal(false);
@@ -139,6 +152,14 @@ function App() {
     } else {
       localStorage.removeItem("codeoba-active-group-filter");
     }
+  });
+
+  createEffect(() => {
+    localStorage.setItem("codeoba-selected-sources", JSON.stringify(Array.from(selectedSources())));
+  });
+
+  createEffect(() => {
+    localStorage.setItem("codeoba-archival-filter", archivalFilter());
   });
 
   const togglePinSession = (sessionId: string) => {
