@@ -384,9 +384,25 @@ pub fn resolve_and_read_file(
 fn read_resolved_file(path: std::path::PathBuf) -> Result<FileReadResponse, String> {
     let metadata = std::fs::metadata(&path).map_err(|e| format!("Failed to read metadata: {}", e))?;
     if metadata.len() > 5_242_881 {
-        return Err("File exceeds maximum preview limit of 5MB".to_string());
+        return Ok(FileReadResponse {
+            status: "rejected".to_string(),
+            content: None,
+            canonical_path: Some(path.to_string_lossy().to_string()),
+            reason: Some("File exceeds maximum preview limit of 5MB. Please open in an external editor.".to_string()),
+        });
     }
     let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    
+    // Check if the file contains null bytes (binary indicator)
+    if bytes.contains(&0) {
+        return Ok(FileReadResponse {
+            status: "rejected".to_string(),
+            content: None,
+            canonical_path: Some(path.to_string_lossy().to_string()),
+            reason: Some("Binary files are not supported for preview. Please open in an external editor.".to_string()),
+        });
+    }
+
     let content = String::from_utf8_lossy(&bytes).into_owned();
     Ok(FileReadResponse {
         status: "allowed".to_string(),
