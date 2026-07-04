@@ -6,6 +6,19 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+/// The maximum depth to traverse when searching for Claude Code transcripts.
+/// Capping traversal depth is a critical performance, safety, and correctness guard:
+/// 1. Performance/Safety: Prevents the walker from descending into massive project folders
+///    (e.g., node_modules, build directories) or traversing cyclic symlinks inside user projects.
+/// 2. Correctness: Prevents scanning subagent transcripts located at depth 4
+///    (e.g., ~/.claude/projects/<proj>/<session>/subagents/<agent-id>.jsonl). Since subagents
+///    share the parent session ID, parsing them would result in duplicate session IDs,
+///    causing the search index to overwrite the parent session with incomplete subagent turn data.
+const CLAUDE_LOGS_MAX_DEPTH: usize = 3;
+
+/// The starting depth for the recursive directory walker (1-indexed).
+const RECURSION_START_DEPTH: usize = 1;
+
 pub struct ClaudeSource;
 
 struct RawTurn {
@@ -34,7 +47,7 @@ impl SourceAdapter for ClaudeSource {
         let base_dir = self.get_base_dir();
         if base_dir.exists() && base_dir.is_dir() {
             let mut paths = Vec::new();
-            self.find_jsonl_files(&base_dir, 1, 3, &mut paths);
+            self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
             if !paths.is_empty() {
                 return true;
             }
@@ -58,7 +71,7 @@ impl SourceAdapter for ClaudeSource {
         let base_dir = self.get_base_dir();
         if base_dir.exists() && base_dir.is_dir() {
             let mut paths = Vec::new();
-            self.find_jsonl_files(&base_dir, 1, 3, &mut paths);
+            self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
             if !paths.is_empty() {
                 return true;
             }
@@ -79,7 +92,7 @@ impl SourceAdapter for ClaudeSource {
         crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut paths = Vec::new();
-        self.find_jsonl_files(&base_dir, 1, 3, &mut paths);
+        self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
 
         let mut sessions = Vec::new();
         for path in paths {
@@ -95,6 +108,7 @@ impl SourceAdapter for ClaudeSource {
 }
 
 impl ClaudeSource {
+    // Helper function to recursively collect JSONL files down to the specified max depth.
     fn find_jsonl_files(&self, dir: &Path, depth: usize, max_depth: usize, paths: &mut Vec<PathBuf>) {
         if depth > max_depth {
             return;

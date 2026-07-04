@@ -124,6 +124,11 @@ When modifying the frontend web components, adhere to these styling guidelines:
 8. **Store Screenshot Generator & Mock Mode**:
    - Intercept log folders parsing and load canned mock datasets (`canned_apple.json` or `canned_microsoft.json`) if `--store microsoft` or `--store apple` flags are passed to the app cli entrypoint.
 
+9. **Claude Code Directory Traversal Limit**:
+   - Limit the folder scanning depth for Claude Code (`~/.claude/projects`) strictly to a maximum depth of `3` (`max_depth = 3`).
+   - This prevents the directory scanner from traversing into massive project workspace folders or following cyclic symlinks under user projects, avoiding thread lockup and extreme performance degradation.
+   - It also ensures search index correctness by preventing the scan from picking up subagent transcripts (located at depth 4). Because subagent logs share their parent's `sessionId`, parsing them would cause duplicate IDs and overwrite the parent session in the search index with incomplete subagent data.
+
 ---
 
 ## 🛠️ Common Cargo & NPM Development Commands
