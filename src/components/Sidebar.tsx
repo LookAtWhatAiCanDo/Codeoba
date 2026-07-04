@@ -4,7 +4,7 @@ import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import { 
   Search, 
   Sparkles, 
-  SlidersHorizontal, 
+  Filter, 
   Pin, 
   Archive, 
   Loader2,
@@ -137,6 +137,14 @@ interface SidebarProps {
   onSelectSession: (session: Session) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  matchCase: boolean;
+  onMatchCaseToggle: () => void;
+  wholeWord: boolean;
+  onWholeWordToggle: () => void;
+  useRegex: boolean;
+  onRegexToggle: () => void;
+  multiline: boolean;
+  onMultilineToggle: () => void;
   isSemantic: boolean;
   onSemanticToggle: () => void;
   selectedSources: Set<string>;
@@ -295,6 +303,42 @@ export const Sidebar = (props: SidebarProps) => {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const [groupsHeight, setGroupsHeight] = createSignal(
+    parseInt(localStorage.getItem("codeoba-groups-height") || "192", 10)
+  );
+
+  createEffect(() => {
+    localStorage.setItem("codeoba-groups-height", String(groupsHeight()));
+  });
+
+  const handleGroupsResizeMouseDown = (e: MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const isInitiallyExpanded = showGroups();
+    const startHeight = isInitiallyExpanded ? groupsHeight() : 0;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      
+      if (!showGroups() && deltaY > 10) {
+        setShowGroups(true);
+      }
+      
+      if (showGroups()) {
+        const newHeight = Math.max(80, Math.min(500, startHeight + deltaY));
+        setGroupsHeight(newHeight);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+    
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
   // Helper to format source tags
   const getSourceStyle = (sourceId: string) => {
     switch (sourceId.toLowerCase()) {
@@ -433,7 +477,7 @@ export const Sidebar = (props: SidebarProps) => {
     return t("sidebar.noMessages");
   };
 
-  const [showGroups, setShowGroups] = createSignal(true);
+  const [showGroups, setShowGroups] = createSignal(false);
   const [isAddingGroup, setIsAddingGroup] = createSignal(false);
   const [newGroupName, setNewGroupName] = createSignal("");
   const [renamingGroupPath, setRenamingGroupPath] = createSignal<string | null>(null);
@@ -668,60 +712,138 @@ export const Sidebar = (props: SidebarProps) => {
         }}
       />
       {/* Sticky Header Section */}
-      <div class="p-4 border-b border-border space-y-3 flex-shrink-0">
-        <div class="flex items-center justify-between">
-          <span class="text-[18px] font-semibold text-text-primary tracking-wide">
-            {t("sidebar.title")}
-          </span>
-        </div>
+      <div class="p-4 space-y-3 flex-shrink-0">
 
         {/* Search Bar Group */}
-        <div class="flex gap-2">
-          <div class="relative flex-grow">
-            <Search class="absolute left-3 top-2.5 w-4 h-4 text-text-secondary rtl:left-auto rtl:right-3" />
-            <input
-              type="text"
+        <div class="relative flex items-center w-full">
+          <Search class="absolute left-3 top-2.5 w-4 h-4 text-text-secondary rtl:left-auto rtl:right-3 pointer-events-none" />
+          
+          <Show 
+            when={props.multiline} 
+            fallback={
+              <input
+                type="text"
+                value={props.searchQuery}
+                onInput={(e) => props.onSearchChange(e.currentTarget.value)}
+                placeholder={t("sidebar.searchPlaceholder")}
+                class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-[175px] py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60 h-[38px]"
+              />
+            }
+          >
+            <textarea
               value={props.searchQuery}
               onInput={(e) => props.onSearchChange(e.currentTarget.value)}
               placeholder={t("sidebar.searchPlaceholder")}
-               class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-9 py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60"
+              class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-[175px] py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60 resize-none overflow-y-auto min-h-[38px] max-h-[120px]"
+              rows={1}
+              ref={(el) => {
+                if (el) {
+                  const adjustHeight = () => {
+                    el.style.height = "auto";
+                    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                  };
+                  el.addEventListener("input", adjustHeight);
+                  setTimeout(adjustHeight, 0);
+                }
+              }}
             />
+          </Show>
+
+          {/* Nested Modifiers Toolbar (Option B) */}
+          <div class="absolute right-2 flex items-center gap-1 select-none">
             <Show when={props.searchQuery.length > 0}>
               <button
                 onClick={() => props.onSearchChange("")}
                 title={t("common.clear")}
-                class="absolute right-3 top-2.5 text-text-secondary hover:text-text-primary transition-colors cursor-pointer rtl:right-auto rtl:left-3"
+                class="p-1 text-text-secondary/60 hover:text-text-primary transition-colors cursor-pointer"
               >
-                <X class="w-4 h-4" />
+                <X class="w-3.5 h-3.5" />
               </button>
             </Show>
+
+            {/* Case Sensitivity */}
+            <button
+              onClick={() => props.onMatchCaseToggle()}
+              title={t("sidebar.matchCase")}
+              class={`w-5 h-5 text-[10px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                props.matchCase 
+                  ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              Aa
+            </button>
+
+            {/* Whole Word */}
+            <button
+              onClick={() => props.onWholeWordToggle()}
+              title={t("sidebar.wholeWord")}
+              class={`w-5 h-5 text-[10px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                props.wholeWord 
+                  ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              \b
+            </button>
+
+            {/* Regex */}
+            <button
+              onClick={() => props.onRegexToggle()}
+              title={t("sidebar.useRegex")}
+              class={`w-5 h-5 text-[10px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                props.useRegex 
+                  ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              .*
+            </button>
+
+            {/* Multiline Toggle */}
+            <button
+              onClick={() => props.onMultilineToggle()}
+              title={t("sidebar.multiline")}
+              class={`w-5 h-5 text-[10px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                props.multiline 
+                  ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              \n
+            </button>
+
+            {/* Semantic Search */}
+            <button
+              onClick={() => props.onSemanticToggle()}
+              title={props.isSemantic ? t("sidebar.semanticEnabled") : t("sidebar.lexicalEnabled")}
+              class={`w-5 h-5 rounded flex items-center justify-center border transition-all cursor-pointer ${
+                props.isSemantic 
+                  ? "bg-accent/15 border-accent text-accent shadow-xs shadow-accent/20" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              <Sparkles class="w-3.5 h-3.5" />
+            </button>
+
+            {/* Filter (Filters Panel) */}
+            <button
+              onClick={() => setShowFilters(!showFilters())}
+              title={t("sidebar.filters")}
+              class={`w-5 h-5 rounded flex items-center justify-center border transition-all cursor-pointer ${
+                showFilters() 
+                  ? "bg-accent/15 border-accent text-accent" 
+                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+              }`}
+            >
+              <Filter class="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button
-            onClick={() => props.onSemanticToggle()}
-            title={props.isSemantic ? t("sidebar.semanticEnabled") : t("sidebar.lexicalEnabled")}
-            class={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
-              props.isSemantic 
-                ? "bg-accent/15 border-accent text-accent shadow-sm shadow-accent/20" 
-                : "bg-surface border-border text-text-secondary hover:text-text-primary hover:border-border/80"
-            }`}
-          >
-            <Sparkles class="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setShowFilters(!showFilters())}
-            title={t("sidebar.filters")}
-            class={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
-              showFilters() 
-                ? "bg-surface border-accent text-accent" 
-                : "bg-surface border-border text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            <SlidersHorizontal class="w-4 h-4" />
-          </button>
         </div>
 
         {/* Collapsible Filter panel */}
         <Show when={showFilters()}>
+          {/* Sources and Status Box */}
           <div class="p-3 bg-surface/50 border border-border/80 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Source checkboxes */}
             <div class="space-y-1.5">
@@ -790,44 +912,6 @@ export const Sidebar = (props: SidebarProps) => {
                 </For>
               </div>
             </div>
-
-            {/* Sort by controls */}
-            <div class="space-y-1.5 pt-1.5 border-t border-border/40">
-              <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                {t("sidebar.sortBy")}
-              </div>
-              <div class="flex flex-wrap gap-1.5">
-                <For each={availableDimensions()}>
-                  {(dimension) => {
-                    const isSelected = createMemo(() => effectiveSortBy() === dimension);
-                    return (
-                      <button
-                        onClick={() => {
-                          if (sortBy() === dimension) {
-                            setSortAscending(!sortAscending());
-                          } else {
-                            setSortBy(dimension);
-                            setSortAscending(false);
-                          }
-                        }}
-                        class={`px-2.5 py-1.5 border rounded-lg text-xs cursor-pointer transition-all flex items-center gap-1 ${
-                          isSelected() 
-                            ? "bg-accent/10 border-accent/40 text-accent font-medium" 
-                            : "border-border/40 hover:bg-surface text-text-secondary"
-                        }`}
-                      >
-                        <span>{t(`sidebar.sort${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`)}</span>
-                        <Show when={isSelected()}>
-                          <Show when={sortAscending()} fallback={<ArrowDown class="w-3 h-3 flex-shrink-0" />}>
-                            <ArrowUp class="w-3 h-3 flex-shrink-0" />
-                          </Show>
-                        </Show>
-                      </button>
-                    );
-                  }}
-                </For>
-              </div>
-            </div>
           </div>
         </Show>
 
@@ -835,7 +919,13 @@ export const Sidebar = (props: SidebarProps) => {
         <div class="flex flex-col border border-border/80 rounded-xl bg-surface/30 p-2.5 gap-2 flex-shrink-0">
           <div class="flex items-center justify-between">
             <button
-              onClick={() => setShowGroups(!showGroups())}
+              onClick={() => {
+                const nextShow = !showGroups();
+                setShowGroups(nextShow);
+                if (!nextShow) {
+                  setIsAddingGroup(false);
+                }
+              }}
               class="flex items-center gap-1.5 text-xs font-semibold text-text-secondary hover:text-text-primary uppercase tracking-wider cursor-pointer"
             >
               <Show when={showGroups()} fallback={<ChevronRight class="w-3.5 h-3.5" />}>
@@ -921,7 +1011,13 @@ export const Sidebar = (props: SidebarProps) => {
           </Show>
           
           <Show when={showGroups()}>
-            <div class="flex flex-col gap-1 mt-1 max-h-48 overflow-y-auto">
+            <div 
+              style={{
+                height: `${groupsHeight()}px`,
+                "max-height": `${groupsHeight()}px`
+              }}
+              class="flex flex-col gap-1 mt-1 overflow-y-auto scrollbar"
+            >
               {/* Unassigned / [No Group] Filter */}
               <div
                 class={`w-full flex items-center justify-between px-2 py-1 rounded-lg cursor-pointer transition-all border ${
@@ -974,6 +1070,14 @@ export const Sidebar = (props: SidebarProps) => {
         </div>
       </div>
 
+      {/* Resizable Divider just above Sort By */}
+      <div 
+        onMouseDown={handleGroupsResizeMouseDown}
+        class="h-2 -my-1 bg-transparent cursor-row-resize z-40 select-none flex-shrink-0 flex items-center justify-center relative group/resize"
+      >
+        <div class="absolute inset-x-0 h-[1px] bg-border group-hover/resize:bg-accent group-active/resize:bg-accent transition-colors pointer-events-none" />
+      </div>
+
       {/* Indexing Progress Indicator */}
       <Show when={props.indexingProgress}>
         <div class="px-4 py-3 bg-accent/5 border-b border-border/40 space-y-1.5 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
@@ -996,6 +1100,44 @@ export const Sidebar = (props: SidebarProps) => {
           </div>
         </div>
       </Show>
+
+      {/* Sort By Header (persistent above sessions list) */}
+      <div class="px-4 py-2 border-b border-border bg-surface/10 flex items-center justify-between flex-shrink-0 gap-3">
+        <span class="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
+          {t("sidebar.sortBy")}
+        </span>
+        <div class="flex flex-wrap gap-1 justify-end">
+          <For each={availableDimensions()}>
+            {(dimension) => {
+              const isSelected = createMemo(() => effectiveSortBy() === dimension);
+              return (
+                <button
+                  onClick={() => {
+                    if (sortBy() === dimension) {
+                      setSortAscending(!sortAscending());
+                    } else {
+                      setSortBy(dimension);
+                      setSortAscending(false);
+                    }
+                  }}
+                  class={`px-2 py-0.5 border rounded-lg text-[10.5px] cursor-pointer transition-all flex items-center gap-0.5 ${
+                    isSelected() 
+                      ? "bg-accent/15 border-accent text-accent font-semibold shadow-xs" 
+                      : "border-border/40 hover:bg-surface text-text-secondary/80 hover:text-text-primary"
+                  }`}
+                >
+                  <span>{t(`sidebar.sort${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`)}</span>
+                  <Show when={isSelected()}>
+                    <Show when={sortAscending()} fallback={<ArrowDown class="w-2.5 h-2.5 flex-shrink-0" />}>
+                      <ArrowUp class="w-2.5 h-2.5 flex-shrink-0" />
+                    </Show>
+                  </Show>
+                </button>
+              );
+            }}
+          </For>
+        </div>
+      </div>
 
       {/* Sessions List Area */}
       <div class="flex-grow overflow-y-auto min-h-0 p-3 flex flex-col gap-2.5">

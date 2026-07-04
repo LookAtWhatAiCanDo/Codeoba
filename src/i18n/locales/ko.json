@@ -41,7 +41,11 @@
     "sortTokens": "토큰",
     "sortSpeed": "속도",
     "sortTurns": "턴",
-    "sortDuration": "기간"
+    "sortDuration": "기간",
+    "matchCase": "대소문자 구분 (Aa)",
+    "wholeWord": "단어 단위로 (\\b)",
+    "useRegex": "정규식 사용 (.*)",
+    "multiline": "여러 줄 토글 (\\n)"
   },
   "dashboard": {
     "globalStats": "전체 통계",
@@ -97,7 +101,8 @@
     "revoke": "철회",
     "grantAccess": "접근 권한 부여",
     "noPermissions": "아직 부여된 권한이 없습니다.",
-    "startedOn": "시작일"
+    "startedOn": "시작일",
+    "aiSummaryTitle": "AI 세션 요약"
   },
   "fileViewer": {
     "title": "파일 뷰어",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "그룹별 필터",
+    "filterByGroup": "그룹",
     "addGroup": "그룹 추가",
     "noGroup": "[그룹 없음]",
     "noGroupsDefined": "정의된 그룹이 없습니다. 폴더 아이콘을 클릭하여 추가하세요.",
     "noMatchingSessions": "일치하는 세션을 찾을 수 없습니다.",
-    "tagInputPlaceholder": "새 태그 이름 (중첩하려면 '/' 또는 '\\' 사용)...",
+    "tagInputPlaceholder": "새 그룹 이름 (중첩하려면 '/' 또는 '\\' 사용)...",
     "deleteGroupConfirm": "정말로 \"{name}\" 그룹과 모든 하위 그룹을 삭제하시겠습니까?",
     "pinConversation": "대화 고정",
     "unpinConversation": "대화 고정 해제",

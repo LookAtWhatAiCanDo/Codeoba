@@ -41,7 +41,11 @@
     "sortTokens": "الرموز",
     "sortSpeed": "السرعة",
     "sortTurns": "الأدوار",
-    "sortDuration": "المدة"
+    "sortDuration": "المدة",
+    "matchCase": "حالة الأحرف (Aa)",
+    "wholeWord": "كلمة بالكامل (\\b)",
+    "useRegex": "تعبير نمطي (.*)",
+    "multiline": "تبديل متعدد الأسطر (\\n)"
   },
   "dashboard": {
     "globalStats": "الإحصائيات العامة",
@@ -97,7 +101,8 @@
     "revoke": "إلغاء",
     "grantAccess": "منح صلاحية الوصول",
     "noPermissions": "لم يتم منح أي أذونات بعد.",
-    "startedOn": "بدأ في"
+    "startedOn": "بدأ في",
+    "aiSummaryTitle": "ملخص جلسة الذكاء الاصطناعي"
   },
   "fileViewer": {
     "title": "عارض الملفات",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "تصفية حسب المجموعة",
+    "filterByGroup": "المجموعات",
     "addGroup": "إضافة مجموعة",
     "noGroup": "[بلا مجموعة]",
     "noGroupsDefined": "لا توجد مجموعات معرفة. انقر على أيقونة المجلد للإضافة.",
     "noMatchingSessions": "لم يتم العثور على جلسات مطابقة.",
-    "tagInputPlaceholder": "اسم وسم جديد (استخدم '/' أو '\\' للتداخل)...",
+    "tagInputPlaceholder": "اسم المجموعة الجديد (استخدم '/' أو '\\' للتداخل)...",
     "deleteGroupConfirm": "هل أنت متأكد أنك تريد حذف المجموعة \"{name}\" وجميع مجموعاتها الفرعية؟",
     "pinConversation": "تثبيت المحادثة",
     "unpinConversation": "إلغاء تثبيت المحادثة",

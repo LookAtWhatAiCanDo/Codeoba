@@ -41,7 +41,11 @@
     "sortTokens": "トークン数",
     "sortSpeed": "速度",
     "sortTurns": "ターン数",
-    "sortDuration": "所要時間"
+    "sortDuration": "所要時間",
+    "matchCase": "大文字と小文字を区別 (Aa)",
+    "wholeWord": "単語全体 (\\b)",
+    "useRegex": "正規表現を使用 (.*)",
+    "multiline": "複数行の切り替え (\\n)"
   },
   "dashboard": {
     "globalStats": "グローバル統計",
@@ -97,7 +101,8 @@
     "revoke": "取り消し",
     "grantAccess": "アクセス許可",
     "noPermissions": "権限はまだ付与されていません。",
-    "startedOn": "開始日時"
+    "startedOn": "開始日時",
+    "aiSummaryTitle": "AIセッションの概要"
   },
   "fileViewer": {
     "title": "ファイルビューア",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "グループでフィルター",
+    "filterByGroup": "グループ",
     "addGroup": "グループを追加",
     "noGroup": "[グループなし]",
     "noGroupsDefined": "グループが定義されていません。フォルダアイコンをクリックして追加してください。",
     "noMatchingSessions": "一致するセッションが見つかりませんでした。",
-    "tagInputPlaceholder": "新しいタグ名（ネストするには '/' または '\\' を使用）...",
+    "tagInputPlaceholder": "新しいグループ名（ネストするには「/」または「\\」を使用）...",
     "deleteGroupConfirm": "本当にグループ \"{name}\" とそのすべてのサブグループを削除しますか？",
     "pinConversation": "会話をピン留め",
     "unpinConversation": "会話のピン留めを解除",

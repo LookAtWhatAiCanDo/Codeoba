@@ -41,7 +41,11 @@
     "sortTokens": "Токены",
     "sortSpeed": "Скорость",
     "sortTurns": "Ходы",
-    "sortDuration": "Длительность"
+    "sortDuration": "Длительность",
+    "matchCase": "Учитывать регистр (Aa)",
+    "wholeWord": "Слово целиком (\\b)",
+    "useRegex": "Регулярное выражение (.*)",
+    "multiline": "Многострочный режим (\\n)"
   },
   "dashboard": {
     "globalStats": "Глобальная статистика",
@@ -97,7 +101,8 @@
     "revoke": "Отозвать",
     "grantAccess": "Предоставить доступ",
     "noPermissions": "Разрешения пока не предоставлены.",
-    "startedOn": "Начато"
+    "startedOn": "Начато",
+    "aiSummaryTitle": "Сводка сеанса ИИ"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "Фильтровать по группе",
+    "filterByGroup": "Группы",
     "addGroup": "Добавить группу",
     "noGroup": "[Без группы]",
     "noGroupsDefined": "Группы не определены. Нажмите на иконку папки, чтобы добавить.",
     "noMatchingSessions": "Совпадающие сессии не найдены.",
-    "tagInputPlaceholder": "Имя нового тега (используйте '/' или '\\' для вложенности)...",
+    "tagInputPlaceholder": "Новое имя группы (используйте '/' или '\\' для вложения)...",
     "deleteGroupConfirm": "Вы уверены, что хотите удалить группу \"{name}\" и все ее подгруппы?",
     "pinConversation": "Закрепить беседу",
     "unpinConversation": "Открепить беседу",

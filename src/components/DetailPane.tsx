@@ -23,7 +23,7 @@ import { logFE } from "../utils/logger";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
 import { Turn, Session } from "../types";
-
+import { checkTextMatch, highlightContainer } from "../utils/highlighter";
 
 interface DetailPaneProps {
   session: Session | null;
@@ -32,6 +32,9 @@ interface DetailPaneProps {
   isLoading: boolean;
   sidebarCollapsed?: boolean;
   searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
   dateFormat?: string;
   timeFormat?: string;
   showSeconds?: boolean;
@@ -334,6 +337,19 @@ export const DetailPane = (props: DetailPaneProps) => {
               </Show>
             </div>
 
+            {/* AI Summary Card (Component 2) */}
+            <Show when={props.session!.summary}>
+              <div class="p-5 bg-accent/5 border border-accent/20 rounded-2xl space-y-2 animate-in fade-in duration-300">
+                <div class="flex items-center gap-2 text-accent">
+                  <Cpu class="w-4 h-4" />
+                  <h3 class="text-xs font-bold uppercase tracking-wider">{t("detailPane.aiSummaryTitle")}</h3>
+                </div>
+                <p class="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
+                  {props.session!.summary}
+                </p>
+              </div>
+            </Show>
+
             {/* Pagination Trigger */}
             <Show when={props.session!.turns.length > visibleTurns()}>
               <div class="flex justify-center pb-4 border-b border-border/40 gap-3">
@@ -367,6 +383,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                     getCachedHeight={getCachedHeight}
                     setCachedHeight={setCachedHeight}
                     searchQuery={props.searchQuery}
+                    matchCase={props.matchCase}
+                    wholeWord={props.wholeWord}
+                    useRegex={props.useRegex}
                     numberFormat={props.numberFormat}
                   />
                 );
@@ -389,6 +408,9 @@ interface VirtualTurnProps {
   getCachedHeight: (turnId: string) => number | undefined;
   setCachedHeight: (turnId: string, h: number) => void;
   searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
   numberFormat?: string;
 }
 
@@ -468,7 +490,13 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             </span>
           </div>
           <div class="w-full bg-surface border border-border/50 p-4 rounded-2xl text-[14.5px] leading-relaxed text-text-primary/90 font-sans shadow-sm">
-            <p class="whitespace-pre-wrap">{props.turn.userMessage}</p>
+            <UserMessageRenderer 
+              message={props.turn.userMessage} 
+              searchQuery={props.searchQuery} 
+              matchCase={props.matchCase} 
+              wholeWord={props.wholeWord} 
+              useRegex={props.useRegex} 
+            />
           </div>
         </div>
 
@@ -493,7 +521,13 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             </Show>
           </div>
           <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
-            <AssistantMessageRenderer message={props.turn.assistantMessage} searchQuery={props.searchQuery} />
+            <AssistantMessageRenderer 
+              message={props.turn.assistantMessage} 
+              searchQuery={props.searchQuery} 
+              matchCase={props.matchCase}
+              wholeWord={props.wholeWord}
+              useRegex={props.useRegex}
+            />
           </div>
         </div>
       </Show>
@@ -501,7 +535,38 @@ const VirtualTurn = (props: VirtualTurnProps) => {
   );
 };
 
-const AssistantMessageRenderer = (props: { message: string; searchQuery?: string }) => {
+const UserMessageRenderer = (props: {
+  message: string;
+  searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
+}) => {
+  let ref: HTMLDivElement | undefined;
+
+  createEffect(() => {
+    const text = props.message;
+    const q = props.searchQuery;
+    const mc = props.matchCase;
+    const ww = props.wholeWord;
+    const rx = props.useRegex;
+
+    if (ref) {
+      ref.textContent = text;
+      highlightContainer(ref, q || "", mc || false, ww || false, rx || false);
+    }
+  });
+
+  return <div ref={ref} class="whitespace-pre-wrap select-text" />;
+};
+
+const AssistantMessageRenderer = (props: { 
+  message: string; 
+  searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
+}) => {
   const parts = createMemo(() => parseAssistantMessage(props.message));
   
   const groupedParts = createMemo(() => {
@@ -533,9 +598,25 @@ const AssistantMessageRenderer = (props: { message: string; searchQuery?: string
       <For each={groupedParts()}>
         {(part) => {
           if (part.type === "text") {
-            return <MarkdownRenderer content={part.content} />;
+            return (
+              <MarkdownRenderer 
+                content={part.content} 
+                searchQuery={props.searchQuery}
+                matchCase={props.matchCase}
+                wholeWord={props.wholeWord}
+                useRegex={props.useRegex}
+              />
+            );
           } else {
-            return <WorkedForBlock tools={part.tools} searchQuery={props.searchQuery} />;
+            return (
+              <WorkedForBlock 
+                tools={part.tools} 
+                searchQuery={props.searchQuery} 
+                matchCase={props.matchCase}
+                wholeWord={props.wholeWord}
+                useRegex={props.useRegex}
+              />
+            );
           }
         }}
       </For>
@@ -543,13 +624,19 @@ const AssistantMessageRenderer = (props: { message: string; searchQuery?: string
   );
 };
 
-const WorkedForBlock = (props: { tools: MessageToolPart[]; searchQuery?: string }) => {
+const WorkedForBlock = (props: { 
+  tools: MessageToolPart[]; 
+  searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
+}) => {
   const matchesSearch = createMemo(() => {
-    if (!props.searchQuery || props.searchQuery.trim() === "") return false;
-    const q = props.searchQuery.toLowerCase();
+    const q = props.searchQuery;
+    if (!q || q.trim() === "") return false;
     return props.tools.some(tool => 
-      tool.header.toLowerCase().includes(q) || 
-      tool.content.toLowerCase().includes(q)
+      checkTextMatch(tool.header, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false) || 
+      checkTextMatch(tool.content, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false)
     );
   });
 
@@ -588,7 +675,14 @@ const WorkedForBlock = (props: { tools: MessageToolPart[]; searchQuery?: string 
           <div class="space-y-3 pl-6">
             <For each={props.tools}>
               {(tool) => (
-                <ToolOutputBlock tool={tool} searchQuery={props.searchQuery} startExpanded={matchesSearch()} />
+                <ToolOutputBlock 
+                  tool={tool} 
+                  searchQuery={props.searchQuery} 
+                  matchCase={props.matchCase}
+                  wholeWord={props.wholeWord}
+                  useRegex={props.useRegex}
+                  startExpanded={matchesSearch()} 
+                />
               )}
             </For>
           </div>
@@ -598,11 +692,21 @@ const WorkedForBlock = (props: { tools: MessageToolPart[]; searchQuery?: string 
   );
 };
 
-const ToolOutputBlock = (props: { tool: MessageToolPart; searchQuery?: string; startExpanded: boolean }) => {
+const ToolOutputBlock = (props: {
+  tool: MessageToolPart;
+  searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
+  startExpanded: boolean;
+}) => {
   const matchesSearch = createMemo(() => {
-    if (!props.searchQuery || props.searchQuery.trim() === "") return false;
-    const q = props.searchQuery.toLowerCase();
-    return props.tool.header.toLowerCase().includes(q) || props.tool.content.toLowerCase().includes(q);
+    const q = props.searchQuery;
+    if (!q || q.trim() === "") return false;
+    return (
+      checkTextMatch(props.tool.header, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false) ||
+      checkTextMatch(props.tool.content, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false)
+    );
   });
 
   const [isOpen, setIsOpen] = createSignal(props.startExpanded || matchesSearch());
@@ -624,6 +728,35 @@ const ToolOutputBlock = (props: { tool: MessageToolPart; searchQuery?: string; s
     return <FileText class="w-3.5 h-3.5 text-text-secondary/70" />;
   });
 
+  let headerRef: HTMLSpanElement | undefined;
+  let codeRef: HTMLElement | undefined;
+
+  createEffect(() => {
+    const q = props.searchQuery;
+    const mc = props.matchCase;
+    const ww = props.wholeWord;
+    const rx = props.useRegex;
+
+    if (headerRef) {
+      headerRef.textContent = props.tool.header;
+      highlightContainer(headerRef, q || "", mc || false, ww || false, rx || false);
+    }
+  });
+
+  createEffect(() => {
+    const q = props.searchQuery;
+    const mc = props.matchCase;
+    const ww = props.wholeWord;
+    const rx = props.useRegex;
+    const opened = isOpen();
+    const text = props.tool.content;
+
+    if (opened && codeRef) {
+      codeRef.textContent = text;
+      highlightContainer(codeRef, q || "", mc || false, ww || false, rx || false);
+    }
+  });
+
   return (
     <div class="space-y-1.5">
       {/* Level 2: Tool header */}
@@ -633,13 +766,13 @@ const ToolOutputBlock = (props: { tool: MessageToolPart; searchQuery?: string; s
       >
         <span class="opacity-60">{isOpen() ? "▼" : "▶"}</span>
         {icon()}
-        <span class="hover:underline">{props.tool.header}</span>
+        <span ref={headerRef} class="hover:underline" />
       </button>
 
       <Show when={isOpen()}>
         <div class="ml-4 pl-1">
           <pre dir="ltr" class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner text-left">
-            <code>{props.tool.content}</code>
+            <code ref={codeRef} />
           </pre>
         </div>
       </Show>

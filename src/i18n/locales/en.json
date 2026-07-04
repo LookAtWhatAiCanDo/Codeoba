@@ -41,7 +41,11 @@
     "sortTokens": "Tokens",
     "sortSpeed": "Speed",
     "sortTurns": "Turns",
-    "sortDuration": "Duration"
+    "sortDuration": "Duration",
+    "matchCase": "Match Case (Aa)",
+    "wholeWord": "Match Whole Word (\\b)",
+    "useRegex": "Use Regular Expression (.*)",
+    "multiline": "Toggle Multiline (\\n)"
   },
   "dashboard": {
     "globalStats": "Global Stats",
@@ -97,7 +101,8 @@
     "revoke": "Revoke",
     "grantAccess": "Grant access",
     "noPermissions": "No permissions granted yet.",
-    "startedOn": "Started On"
+    "startedOn": "Started On",
+    "aiSummaryTitle": "AI Session Summary"
   },
   "fileViewer": {
     "title": "File Viewer",
@@ -117,7 +122,7 @@
       "tab": "General",
       "title": "General Settings",
       "theme": "Application Theme",
-      "themeDesc": "Select the visual appearance of the workspace.",
+      "themeDesc": "Select color palette theme.",
       "cache": "Persistent Startup Cache",
       "cacheDesc": "Speed up startup time by caching parsed sessions on disk.",
       "logMode": "Log Parsing Mode",
@@ -165,7 +170,6 @@
       "appearanceDark": "Dark Mode",
       "appearanceLight": "Light Mode",
       "appearanceSystem": "System Mode",
-      "themeDesc": "Select color palette theme.",
       "themeSwitchTo": "Switch to {name}",
       "themeObsidian": "Obsidian",
       "themeNordicFrost": "Nordic Frost",
@@ -273,12 +277,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "Filter by Group",
+    "filterByGroup": "Groups",
     "addGroup": "Add Group",
     "noGroup": "[No Group]",
     "noGroupsDefined": "No groups defined. Click folder icon to add.",
     "noMatchingSessions": "No matching sessions found.",
-    "tagInputPlaceholder": "New tag name (use '/' or '\\' to nest)...",
+    "tagInputPlaceholder": "New group name (use '/' or '\\' to nest)...",
     "deleteGroupConfirm": "Are you sure you want to delete the group \"{name}\" and all its subgroups?",
     "pinConversation": "Pin Conversation",
     "unpinConversation": "Unpin Conversation",

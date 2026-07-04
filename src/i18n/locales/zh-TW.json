@@ -41,7 +41,11 @@
     "sortTokens": "Token數",
     "sortSpeed": "速度",
     "sortTurns": "輪數",
-    "sortDuration": "時長"
+    "sortDuration": "時長",
+    "matchCase": "區分大小寫 (Aa)",
+    "wholeWord": "全字相符 (\\b)",
+    "useRegex": "使用正規表示式 (.*)",
+    "multiline": "切換多行 (\\n)"
   },
   "dashboard": {
     "globalStats": "全域統計",
@@ -97,7 +101,8 @@
     "revoke": "撤銷權限",
     "grantAccess": "授予存取權限",
     "noPermissions": "尚未授予任何權限。",
-    "startedOn": "開始於"
+    "startedOn": "開始於",
+    "aiSummaryTitle": "AI 對話摘要"
   },
   "fileViewer": {
     "title": "檔案檢視器",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "按分組篩選",
+    "filterByGroup": "群組",
     "addGroup": "新增分組",
     "noGroup": "[無分組]",
     "noGroupsDefined": "未定義分組。點擊資料夾圖示以新增。",
     "noMatchingSessions": "未找到匹配的會話。",
-    "tagInputPlaceholder": "新標籤名稱（使用 '/' 或 '\\' 進行嵌套）...",
+    "tagInputPlaceholder": "新群組名稱（使用 '/' 或 '\\' 進行嵌套）...",
     "deleteGroupConfirm": "確定要刪除分組 \"{name}\" 及其所有子分組嗎？",
     "pinConversation": "置頂會話",
     "unpinConversation": "取消置頂會話",

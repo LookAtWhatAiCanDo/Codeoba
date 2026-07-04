@@ -41,7 +41,11 @@
     "sortTokens": "Tokens",
     "sortSpeed": "Velocidade",
     "sortTurns": "Turnos",
-    "sortDuration": "Duración"
+    "sortDuration": "Duración",
+    "matchCase": "Coincidir mayúsculas y minúsculas (Aa)",
+    "wholeWord": "Palabra completa (\\b)",
+    "useRegex": "Usar expresión regular (.*)",
+    "multiline": "Alternar multilínea (\\n)"
   },
   "dashboard": {
     "globalStats": "Estadísticas globales",
@@ -97,7 +101,8 @@
     "revoke": "Revocar",
     "grantAccess": "Conceder acceso",
     "noPermissions": "Aún no se han concedido permisos.",
-    "startedOn": "Iniciado el"
+    "startedOn": "Iniciado el",
+    "aiSummaryTitle": "Resumen de sesión IA"
   },
   "fileViewer": {
     "title": "Visor de archivos",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "Filtrar por grupo",
+    "filterByGroup": "Grupos",
     "addGroup": "Agregar grupo",
     "noGroup": "[Sin grupo]",
     "noGroupsDefined": "No hay grupos definidos. Haga clic en el icono de carpeta para agregar.",
     "noMatchingSessions": "No se encontraron sesiones coincidentes.",
-    "tagInputPlaceholder": "Nuevo nombre de etiqueta (use '/' o '\\' para anidar)...",
+    "tagInputPlaceholder": "Nuevo nombre de grupo (use '/' o '\\' para anidar)...",
     "deleteGroupConfirm": "¿Está seguro de que desea eliminar el grupo \"{name}\" y todos sus subgrupos?",
     "pinConversation": "Fijar conversación",
     "unpinConversation": "Desfijar conversación",

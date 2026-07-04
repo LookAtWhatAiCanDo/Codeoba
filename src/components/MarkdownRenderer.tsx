@@ -17,9 +17,14 @@ import "prismjs/components/prism-markdown";
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import DOMPurify from "dompurify";
+import { highlightContainer } from "../utils/highlighter";
 
 interface MarkdownRendererProps {
   content: string;
+  searchQuery?: string;
+  matchCase?: boolean;
+  wholeWord?: boolean;
+  useRegex?: boolean;
 }
 
 export const MarkdownRenderer = (props: MarkdownRendererProps) => {
@@ -121,6 +126,21 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         }
       }, idx * 4); // Stagger highlighting slightly (4ms per block) to avoid frame drops
     });
+  });
+
+  // Apply text search highlights (Component 2)
+  createEffect(() => {
+    htmlContent();
+    const query = props.searchQuery;
+    const mc = props.matchCase;
+    const ww = props.wholeWord;
+    const rx = props.useRegex;
+
+    setTimeout(() => {
+      if (containerRef) {
+        highlightContainer(containerRef, query || "", mc || false, ww || false, rx || false);
+      }
+    }, 50);
   });
 
   const handleLinkClick = (e: MouseEvent) => {

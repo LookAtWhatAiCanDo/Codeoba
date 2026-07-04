@@ -22,6 +22,7 @@ export interface Session {
   workspaceName?: string | null;
   status?: string | null;
   snippet?: string | null;
+  summary?: string | null;
 }
 
 export interface SearchResult {

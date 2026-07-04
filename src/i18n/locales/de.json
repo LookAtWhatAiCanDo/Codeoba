@@ -41,7 +41,11 @@
     "sortTokens": "Tokens",
     "sortSpeed": "Geschwindigkeit",
     "sortTurns": "Runden",
-    "sortDuration": "Dauer"
+    "sortDuration": "Dauer",
+    "matchCase": "Groß-/Kleinschreibung beachten (Aa)",
+    "wholeWord": "Ganzes Wort (\\b)",
+    "useRegex": "Regulären Ausdruck verwenden (.*)",
+    "multiline": "Mehrzeilig umschalten (\\n)"
   },
   "dashboard": {
     "globalStats": "Globale Statistiken",
@@ -97,7 +101,8 @@
     "revoke": "Widerrufen",
     "grantAccess": "Zugriff gewähren",
     "noPermissions": "Noch keine Berechtigungen erteilt.",
-    "startedOn": "Gestartet am"
+    "startedOn": "Gestartet am",
+    "aiSummaryTitle": "KI-Sitzungszusammenfassung"
   },
   "fileViewer": {
     "title": "Dateibetrachter",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "Nach Gruppe filtern",
+    "filterByGroup": "Gruppen",
     "addGroup": "Gruppe hinzufügen",
     "noGroup": "[Keine Gruppe]",
     "noGroupsDefined": "Keine Gruppen definiert. Klicken Sie auf das Ordnersymbol, um eine hinzuzufügen.",
     "noMatchingSessions": "Keine übereinstimmenden Sitzungen gefunden.",
-    "tagInputPlaceholder": "Neuer Tag-Name (verwenden Sie '/' oder '\\' zum Verschachteln)...",
+    "tagInputPlaceholder": "Neuer Gruppenname (verwenden Sie '/' oder '\\' zum Verschachteln)...",
     "deleteGroupConfirm": "Sind Sie sicher, dass Sie die Gruppe \"{name}\" und alle ihre Untergruppen löschen möchten?",
     "pinConversation": "Unterhaltung anheften",
     "unpinConversation": "Unterhaltung loslösen",

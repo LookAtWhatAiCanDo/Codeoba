@@ -41,7 +41,11 @@
     "sortTokens": "Tokens",
     "sortSpeed": "Snelheid",
     "sortTurns": "Beurten",
-    "sortDuration": "Duur"
+    "sortDuration": "Duur",
+    "matchCase": "Hoofdlettergevoelig (Aa)",
+    "wholeWord": "Heel woord (\\b)",
+    "useRegex": "Reguliere expressie gebruiken (.*)",
+    "multiline": "Multi-regel omschakelen (\\n)"
   },
   "dashboard": {
     "globalStats": "Globale statistieken",
@@ -97,7 +101,8 @@
     "revoke": "Intrekken",
     "grantAccess": "Toegang verlenen",
     "noPermissions": "Nog geen machtigingen verleend.",
-    "startedOn": "Gestart op"
+    "startedOn": "Gestart op",
+    "aiSummaryTitle": "AI-sessie samenvatting"
   },
   "fileViewer": {
     "title": "Bestandsviewer",
@@ -271,12 +276,12 @@
     }
   },
   "groups": {
-    "filterByGroup": "Filteren op groep",
+    "filterByGroup": "Groepen",
     "addGroup": "Groep toevoegen",
     "noGroup": "[Geen groep]",
     "noGroupsDefined": "Geen groepen gedefinieerd. Klik op het mappictogram om toe te voegen.",
     "noMatchingSessions": "Geen overeenkomende sessies gevonden.",
-    "tagInputPlaceholder": "Nieuwe tagnaam (gebruik '/' of '\\' om te nesten)...",
+    "tagInputPlaceholder": "Nieuwe groepsnaam (gebruik '/' of '\\' om te nesten)...",
     "deleteGroupConfirm": "Weet u zeker dat u de groep \"{name}\" en alle bijbehorende subgroepen wilt verwijderen?",
     "pinConversation": "Gesprek vastpinnen",
     "unpinConversation": "Gesprek losmaken",

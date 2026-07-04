@@ -153,6 +153,11 @@ function App() {
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
 
+  const [matchCase, setMatchCase] = createSignal(localStorage.getItem("codeoba-search-match-case") === "true");
+  const [wholeWord, setWholeWord] = createSignal(localStorage.getItem("codeoba-search-whole-word") === "true");
+  const [useRegex, setUseRegex] = createSignal(localStorage.getItem("codeoba-search-use-regex") === "true");
+  const [multiline, setMultiline] = createSignal(localStorage.getItem("codeoba-search-multiline") === "true");
+
   const [groups, setGroups] = createSignal<any[]>([]);
   const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
     localStorage.getItem("codeoba-active-group-filter") || null
@@ -197,6 +202,13 @@ function App() {
 
   createEffect(() => {
     localStorage.setItem("codeoba-archival-filter", archivalFilter());
+  });
+
+  createEffect(() => {
+    localStorage.setItem("codeoba-search-match-case", matchCase() ? "true" : "false");
+    localStorage.setItem("codeoba-search-whole-word", wholeWord() ? "true" : "false");
+    localStorage.setItem("codeoba-search-use-regex", useRegex() ? "true" : "false");
+    localStorage.setItem("codeoba-search-multiline", multiline() ? "true" : "false");
   });
 
   const togglePinSession = async (sessionId: string) => {
@@ -678,6 +690,9 @@ function App() {
     const sem = isSemantic();
     const thresh = similarityThreshold();
     activeGroupFilter();
+    matchCase();
+    wholeWord();
+    useRegex();
 
     if (query.trim() === "") {
       setSearchResults(null);
@@ -699,13 +714,16 @@ function App() {
     try {
       setErrorMsg(null);
       const filter = {
+        // Intentionally query all sources and all archival states from the Tauri backend
+        // so that we can calculate matches count for all filter options on the frontend
+        // and filter the displayed sessions list in-memory.
         sourceIds: [],
         minTimestamp: 0,
         maxTimestamp: null,
         cwdFilter: null,
-        matchCase: false,
-        wholeWord: false,
-        useRegex: false,
+        matchCase: matchCase(),
+        wholeWord: wholeWord(),
+        useRegex: useRegex(),
         archivalFilter: "all",
         sessionIds: getSessionIdsForGroupAndDescendants(activeGroupFilter(), groups())
       };
@@ -972,6 +990,14 @@ function App() {
           onSelectSession={handleSelectSession}
           searchQuery={searchQuery()}
           onSearchChange={setSearchQuery}
+          matchCase={matchCase()}
+          onMatchCaseToggle={() => setMatchCase(!matchCase())}
+          wholeWord={wholeWord()}
+          onWholeWordToggle={() => setWholeWord(!wholeWord())}
+          useRegex={useRegex()}
+          onRegexToggle={() => setUseRegex(!useRegex())}
+          multiline={multiline()}
+          onMultilineToggle={() => setMultiline(!multiline())}
           isSemantic={isSemantic()}
           onSemanticToggle={() => setIsSemantic(!isSemantic())}
           selectedSources={selectedSources()}
@@ -1033,6 +1059,9 @@ function App() {
                 isLoading={loadingSessionId() !== null}
                 sidebarCollapsed={sidebarCollapsed()}
                 searchQuery={searchQuery()}
+                matchCase={matchCase()}
+                wholeWord={wholeWord()}
+                useRegex={useRegex()}
                 dateFormat={dateFormat()}
                 timeFormat={timeFormat()}
                 showSeconds={showSeconds()}
