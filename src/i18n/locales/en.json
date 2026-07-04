@@ -64,7 +64,9 @@
     "name": "Name",
     "sort": "Sort",
     "unknownModel": "Unknown Model",
-    "scanning": "Scanning local session adapters..."
+    "scanning": "Scanning local session adapters...",
+    "totalComputeTime": "Total Compute Time",
+    "avgSessionDuration": "Avg. Session Duration"
   },
   "detailPane": {
     "noSelection": "No conversation selected",

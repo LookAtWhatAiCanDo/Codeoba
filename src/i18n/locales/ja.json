@@ -64,7 +64,9 @@
     "name": "名前",
     "sort": "並び替え",
     "unknownModel": "不明なモデル",
-    "scanning": "ローカルセッションアダプターをスキャン中..."
+    "scanning": "ローカルセッションアダプターをスキャン中...",
+    "totalComputeTime": "総計算時間",
+    "avgSessionDuration": "平均セッション時間"
   },
   "detailPane": {
     "noSelection": "会話が選択されていません",

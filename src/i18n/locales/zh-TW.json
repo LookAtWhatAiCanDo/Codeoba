@@ -64,7 +64,9 @@
     "name": "名稱",
     "sort": "排序",
     "unknownModel": "未知模型",
-    "scanning": "正在掃描本機工作階段配接器..."
+    "scanning": "正在掃描本機工作階段配接器...",
+    "totalComputeTime": "總計算時間",
+    "avgSessionDuration": "平均會話時長"
   },
   "detailPane": {
     "noSelection": "未選擇任何對話",

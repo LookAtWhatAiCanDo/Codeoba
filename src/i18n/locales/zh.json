@@ -64,7 +64,9 @@
     "name": "名称",
     "sort": "排序",
     "unknownModel": "未知模型",
-    "scanning": "正在扫描本地会话适配器..."
+    "scanning": "正在扫描本地会话适配器...",
+    "totalComputeTime": "总计算时间",
+    "avgSessionDuration": "平均会话时长"
   },
   "detailPane": {
     "noSelection": "未选择对话",

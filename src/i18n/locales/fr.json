@@ -64,7 +64,9 @@
     "name": "Nom",
     "sort": "Trier",
     "unknownModel": "Modèle inconnu",
-    "scanning": "Analyse des adaptateurs de session locaux..."
+    "scanning": "Analyse des adaptateurs de session locaux...",
+    "totalComputeTime": "Temps de calcul total",
+    "avgSessionDuration": "Durée moyenne de session"
   },
   "detailPane": {
     "noSelection": "Aucune conversation sélectionnée",

@@ -64,7 +64,9 @@
     "name": "Naam",
     "sort": "Sorteren",
     "unknownModel": "Onbekend model",
-    "scanning": "Lokale sessie-adapters scannen..."
+    "scanning": "Lokale sessie-adapters scannen...",
+    "totalComputeTime": "Totale rekentijd",
+    "avgSessionDuration": "Gemiddelde sessieduur"
   },
   "detailPane": {
     "noSelection": "Geen gesprek geselecteerd",

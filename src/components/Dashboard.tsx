@@ -301,13 +301,13 @@ export const Dashboard = (props: DashboardProps) => {
             icon={<Cpu class="w-5 h-5" />}
           />
           <StatCard
-            title={t("dashboard.totalCompactionTime")}
+            title={t("dashboard.totalComputeTime")}
             value={formatDuration(stats().totalDurationMs)}
             subtitle={t("settings.general.cacheDesc")}
             icon={<Clock class="w-5 h-5" />}
           />
           <StatCard
-            title={t("dashboard.duration")}
+            title={t("dashboard.avgSessionDuration")}
             value={formatDuration(stats().avgDurationMs)}
             subtitle={t("settings.general.logModeDesc")}
             icon={<Clock class="w-5 h-5" />}

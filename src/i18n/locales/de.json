@@ -64,7 +64,9 @@
     "name": "Name",
     "sort": "Sortieren",
     "unknownModel": "Unbekanntes Modell",
-    "scanning": "Lokale Sitzungsadapter werden gescannt..."
+    "scanning": "Lokale Sitzungsadapter werden gescannt...",
+    "totalComputeTime": "Rechenzeit insgesamt",
+    "avgSessionDuration": "Durchschnittliche Sitzungsdauer"
   },
   "detailPane": {
     "noSelection": "Keine Unterhaltung ausgewählt",

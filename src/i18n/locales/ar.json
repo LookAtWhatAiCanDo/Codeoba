@@ -64,7 +64,9 @@
     "name": "الاسم",
     "sort": "فرز",
     "unknownModel": "نموذج غير معروف",
-    "scanning": "جاري فحص محولات الجلسات المحلية..."
+    "scanning": "جاري فحص محولات الجلسات المحلية...",
+    "totalComputeTime": "إجمالي وقت الحوسبة",
+    "avgSessionDuration": "متوسط مدة الجلسة"
   },
   "detailPane": {
     "noSelection": "لم يتم تحديد محادثة",

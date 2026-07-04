@@ -64,7 +64,9 @@
     "name": "이름",
     "sort": "정렬",
     "unknownModel": "알 수 없는 모델",
-    "scanning": "로컬 세션 어댑터 스캔 중..."
+    "scanning": "로컬 세션 어댑터 스캔 중...",
+    "totalComputeTime": "총 계산 시간",
+    "avgSessionDuration": "평균 세션 소요 시간"
   },
   "detailPane": {
     "noSelection": "선택된 대화가 없습니다",
