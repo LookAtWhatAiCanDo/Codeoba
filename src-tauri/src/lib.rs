@@ -274,6 +274,7 @@ pub fn run() {
             commands::assign_session_to_group,
             commands::remove_session_from_group,
             commands::set_group_pinned,
+            commands::update_group_details,
             commands::get_pinned_sessions,
             commands::save_pinned_sessions,
             commands::save_theme_settings,

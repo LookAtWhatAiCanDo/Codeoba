@@ -292,3 +292,32 @@ pub fn clean_orphaned_sessions(all_valid_session_ids: &HashSet<String>) -> Resul
     }
     Ok(())
 }
+
+pub fn update_group_details(
+    name: &str,
+    description: &str,
+    status: &str,
+    past_work_summary: &str,
+    tasks: Vec<GroupTask>,
+) -> Result<(), String> {
+    let name_normalized = name.replace('\\', "/");
+    let name = name_normalized.trim();
+    
+    let mut groups = load_groups();
+    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == name.to_lowercase());
+    if let Some(idx) = existing_idx {
+        let group = &mut groups[idx];
+        group.description = description.to_string();
+        group.status = status.to_string();
+        group.past_work_summary = past_work_summary.to_string();
+        group.tasks = tasks;
+        group.updated_at = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        save_groups(&groups)?;
+        Ok(())
+    } else {
+        Err(format!("Group '{}' not found", name))
+    }
+}

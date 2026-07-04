@@ -574,6 +574,19 @@ pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name
 }
 
 #[tauri::command]
+pub fn update_group_details(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    name: String,
+    description: String,
+    status: String,
+    past_work_summary: String,
+    tasks: Vec<crate::groups::GroupTask>,
+) -> Result<(), String> {
+    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+    crate::groups::update_group_details(&name, &description, &status, &past_work_summary, tasks)
+}
+
+#[tauri::command]
 pub fn get_pinned_sessions() -> Vec<String> {
     crate::keyring::get_pinned_sessions()
 }

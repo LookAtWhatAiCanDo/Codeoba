@@ -11,6 +11,7 @@ import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { FileViewerDialog } from "./components/FileViewerDialog";
 import { TitleBar } from "./components/TitleBar";
+import GroupDetailsView from "./components/GroupDetailsView";
 import { ConsentModal } from "./components/ConsentModal";
 import { UpdateModal } from "./components/UpdateModal";
 import { SourceDetectedModal } from "./components/SourceDetectedModal";
@@ -297,6 +298,27 @@ function App() {
       await loadGroups();
     } catch (err) {
       console.error("Failed to toggle group pin:", err);
+    }
+  };
+
+  const handleUpdateGroupDetails = async (
+    name: string,
+    description: string,
+    status: string,
+    pastWorkSummary: string,
+    tasks: any[]
+  ): Promise<void> => {
+    try {
+      await invoke("update_group_details", {
+        name,
+        description,
+        status,
+        pastWorkSummary,
+        tasks
+      });
+      await loadGroups();
+    } catch (err) {
+      console.error("Failed to update group details:", err);
     }
   };
 
@@ -1051,7 +1073,24 @@ function App() {
               </div>
             }
           >
-            <Show when={selectedSession()} fallback={<Dashboard sessions={filteredSessions()} numberFormat={numberFormat()} />}>
+            <Show 
+              when={selectedSession()} 
+              fallback={
+                <Show 
+                  when={activeGroupFilter()} 
+                  fallback={<Dashboard sessions={filteredSessions()} numberFormat={numberFormat()} />}
+                >
+                  <GroupDetailsView
+                    groupName={activeGroupFilter()!}
+                    groups={groups()}
+                    sessions={sessions()}
+                    onUpdateGroupDetails={handleUpdateGroupDetails}
+                    onSelectSession={handleSelectSession}
+                    onActiveGroupFilterChange={setActiveGroupFilter}
+                  />
+                </Show>
+              }
+            >
               <DetailPane
                 session={selectedSession()}
                 onCopyPath={handleCopyPath}
