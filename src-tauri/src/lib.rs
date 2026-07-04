@@ -198,6 +198,8 @@ pub fn run() {
             commands::assign_session_to_group,
             commands::remove_session_from_group,
             commands::set_group_pinned,
+            commands::get_pinned_sessions,
+            commands::save_pinned_sessions,
             commands::get_source_decisions,
             commands::save_source_decision,
             commands::reset_detected_sources

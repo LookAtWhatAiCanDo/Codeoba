@@ -181,3 +181,22 @@ pub fn get_or_create_cache_key() -> [u8; 32] {
     put_secret(key_name, Some(&key_hex));
     key_bytes
 }
+
+pub fn get_pinned_sessions() -> Vec<String> {
+    let config = load_fallback_config();
+    if let Some(val) = config.get("pinned_sessions") {
+        if let Ok(ids) = serde_json::from_str::<Vec<String>>(val) {
+            return ids;
+        }
+    }
+    Vec::new()
+}
+
+pub fn save_pinned_sessions(ids: &[String]) {
+    let mut config = load_fallback_config();
+    if let Ok(json) = serde_json::to_string(ids) {
+        config.insert("pinned_sessions".to_string(), json);
+        save_fallback_config(&config);
+    }
+}
+

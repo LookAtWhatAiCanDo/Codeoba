@@ -162,7 +162,7 @@ function App() {
     localStorage.setItem("codeoba-archival-filter", archivalFilter());
   });
 
-  const togglePinSession = (sessionId: string) => {
+  const togglePinSession = async (sessionId: string) => {
     const next = new Set(pinnedSessionIds());
     if (next.has(sessionId)) {
       next.delete(sessionId);
@@ -170,8 +170,16 @@ function App() {
       next.add(sessionId);
     }
     setPinnedSessionIds(next);
-    localStorage.setItem("codeoba-pinned-sessions", JSON.stringify(Array.from(next)));
+    const arr = Array.from(next);
+    localStorage.setItem("codeoba-pinned-sessions", JSON.stringify(arr));
     
+    // Sync to backend config.json
+    try {
+      await invoke("save_pinned_sessions", { ids: arr });
+    } catch (err) {
+      console.error("Failed to save pinned sessions to backend:", err);
+    }
+
     // Refresh sessions to apply sorting/enriching
     setSessions(enrichedSessions(sessions()));
   };
@@ -442,6 +450,22 @@ function App() {
       await loadGroups();
       const metadata = await invoke<SourceMetadata[]>("get_sources");
       setSources(metadata);
+
+      // Sync pinned sessions from backend config
+      try {
+        const backendPinned = await invoke<string[]>("get_pinned_sessions");
+        if (backendPinned && backendPinned.length > 0) {
+          setPinnedSessionIds(new Set(backendPinned));
+          localStorage.setItem("codeoba-pinned-sessions", JSON.stringify(backendPinned));
+        } else {
+          const localPinned = JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]");
+          if (localPinned.length > 0) {
+            await invoke("save_pinned_sessions", { ids: localPinned });
+          }
+        }
+      } catch (errPinned) {
+        console.error("Failed to sync pinned sessions on startup:", errPinned);
+      }
 
       const list = await invoke<Session[]>("get_all_sessions");
       setSessions(enrichedSessions(list));

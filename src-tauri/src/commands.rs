@@ -573,4 +573,12 @@ pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name
     crate::groups::set_group_pinned(&name, pinned)
 }
 
+#[tauri::command]
+pub fn get_pinned_sessions() -> Vec<String> {
+    crate::keyring::get_pinned_sessions()
+}
 
+#[tauri::command]
+pub fn save_pinned_sessions(ids: Vec<String>) {
+    crate::keyring::save_pinned_sessions(&ids);
+}
