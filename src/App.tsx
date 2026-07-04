@@ -22,7 +22,23 @@ import "./App.css";
 
 function App() {
   const { t } = useI18n();
-  const [theme, setTheme] = createSignal(localStorage.getItem("codeoba-theme") || "obsidian");
+  const [appearance, setAppearance] = createSignal(localStorage.getItem("codeoba-appearance") || "dark");
+  const [darkTheme, setDarkTheme] = createSignal(localStorage.getItem("codeoba-dark-theme") || "obsidian");
+  const [lightTheme, setLightTheme] = createSignal(localStorage.getItem("codeoba-light-theme") || "obsidian-light");
+  const [systemDark, setSystemDark] = createSignal(window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  const theme = createMemo(() => {
+    const appMode = appearance();
+    if (appMode === "system") {
+      return systemDark() ? darkTheme() : lightTheme();
+    }
+    return appMode === "dark" ? darkTheme() : lightTheme();
+  });
+
+  const activeColorMode = () => {
+    const appMode = appearance();
+    return appMode === "system" ? (systemDark() ? "dark" : "light") : appMode;
+  };
   const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
@@ -144,6 +160,27 @@ function App() {
   const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(new Set(
     JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]")
   ));
+
+  const getStoredHsl = (mode: "dark" | "light", prefix: string, defH: number, defS: number, defL: number) => {
+    const h = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-h`) || String(defH), 10);
+    const s = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-s`) || String(defS), 10);
+    const l = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-l`) || String(defL), 10);
+    return { h, s, l };
+  };
+
+  const [customDarkTheme, setCustomDarkTheme] = createSignal({
+    bg: getStoredHsl("dark", "bg", 228, 15, 8),
+    surface: getStoredHsl("dark", "surface", 228, 15, 11),
+    accent1: getStoredHsl("dark", "accent1", 238, 82, 66),
+    accent2: getStoredHsl("dark", "accent2", 244, 79, 58)
+  });
+
+  const [customLightTheme, setCustomLightTheme] = createSignal({
+    bg: getStoredHsl("light", "bg", 210, 20, 95),
+    surface: getStoredHsl("light", "surface", 210, 20, 98),
+    accent1: getStoredHsl("light", "accent1", 238, 82, 66),
+    accent2: getStoredHsl("light", "accent2", 244, 79, 58)
+  });
 
   createEffect(() => {
     const filter = activeGroupFilter();
@@ -299,10 +336,68 @@ function App() {
     return Array.from(ids);
   };
 
+  let themeSaveTimeout: any = null;
+  const saveThemeToBackend = () => {
+    if (themeSaveTimeout) clearTimeout(themeSaveTimeout);
+    themeSaveTimeout = setTimeout(() => {
+      invoke("save_theme_settings", {
+        appearance: appearance(),
+        darkTheme: darkTheme(),
+        lightTheme: lightTheme()
+      }).catch(err => console.error("Failed to save theme settings to backend config:", err));
+
+      const activeTheme = theme();
+      if (activeTheme === "custom") {
+        const isDark = activeColorMode() === "dark";
+        const colors = isDark ? customDarkTheme() : customLightTheme();
+        invoke("save_custom_theme_bg", {
+          mode: isDark ? "dark" : "light",
+          h: colors.bg.h,
+          s: colors.bg.s,
+          l: colors.bg.l
+        }).catch(err => console.error("Failed to save custom theme bg to backend config:", err));
+      }
+    }, 250);
+  };
+
   // Sync theme selection to DOM
   createEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme());
-    localStorage.setItem("codeoba-theme", theme());
+    const activeTheme = theme();
+    document.documentElement.setAttribute("data-theme", activeTheme);
+    localStorage.setItem("codeoba-appearance", appearance());
+    localStorage.setItem("codeoba-dark-theme", darkTheme());
+    localStorage.setItem("codeoba-light-theme", lightTheme());
+    saveThemeToBackend();
+
+    if (activeTheme === "custom") {
+      const isDark = activeColorMode() === "dark";
+      const colors = isDark ? customDarkTheme() : customLightTheme();
+
+      const bgStr = `hsl(${colors.bg.h}, ${colors.bg.s}%, ${colors.bg.l}%)`;
+      const surfaceStr = `hsl(${colors.surface.h}, ${colors.surface.s}%, ${colors.surface.l}%)`;
+      const borderStr = `hsl(${colors.surface.h}, ${colors.surface.s}%, ${isDark ? colors.surface.l + 8 : colors.surface.l - 8}%)`;
+      const accentStr = `hsl(${colors.accent1.h}, ${colors.accent1.s}%, ${colors.accent1.l}%)`;
+      const accentHoverStr = `hsl(${colors.accent2.h}, ${colors.accent2.s}%, ${colors.accent2.l}%)`;
+      const accentLightStr = `hsla(${colors.accent1.h}, ${colors.accent1.s}%, ${colors.accent1.l}%, 0.15)`;
+
+      document.documentElement.style.setProperty("--background", bgStr);
+      document.documentElement.style.setProperty("--surface", surfaceStr);
+      document.documentElement.style.setProperty("--border", borderStr);
+      document.documentElement.style.setProperty("--accent", accentStr);
+      document.documentElement.style.setProperty("--accent-hover", accentHoverStr);
+      document.documentElement.style.setProperty("--accent-light", accentLightStr);
+      document.documentElement.style.setProperty("--text-primary", isDark ? "#f3f4f6" : "#0f172a");
+      document.documentElement.style.setProperty("--text-secondary", isDark ? "#9ca3af" : "#475569");
+    } else {
+      document.documentElement.style.removeProperty("--background");
+      document.documentElement.style.removeProperty("--surface");
+      document.documentElement.style.removeProperty("--border");
+      document.documentElement.style.removeProperty("--text-primary");
+      document.documentElement.style.removeProperty("--text-secondary");
+      document.documentElement.style.removeProperty("--accent");
+      document.documentElement.style.removeProperty("--accent-hover");
+      document.documentElement.style.removeProperty("--accent-light");
+    }
   });
 
   // Sync sidebar width selection to localStorage
@@ -328,6 +423,12 @@ function App() {
   });
 
   onMount(async () => {
+    // Listen to system color preference change
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mediaQuery.addEventListener("change", handler);
+    onCleanup(() => mediaQuery.removeEventListener("change", handler));
+
     // Set window title with app version
     try {
       const version = await getVersion();
@@ -946,7 +1047,17 @@ function App() {
         isOpen={showSettings()}
         onClose={handleCloseSettings}
         theme={theme()}
-        onThemeChange={setTheme}
+        onThemeChange={(newTheme) => {
+          if (activeColorMode() === "dark") {
+            setDarkTheme(newTheme);
+          } else {
+            setLightTheme(newTheme);
+          }
+        }}
+        appearance={appearance()}
+        onAppearanceChange={setAppearance}
+        customTheme={activeColorMode() === "dark" ? customDarkTheme() : customLightTheme()}
+        onCustomThemeChange={activeColorMode() === "dark" ? setCustomDarkTheme : setCustomLightTheme}
         sources={sources()}
         onRefreshSources={async () => {
           const metadata = await invoke<SourceMetadata[]>("get_sources");

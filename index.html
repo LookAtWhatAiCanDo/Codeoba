@@ -14,8 +14,53 @@
     <script>
       (function() {
         // Read theme settings to prevent theme flash
-        const theme = localStorage.getItem('codeoba-theme') || 'obsidian';
-        document.documentElement.setAttribute('data-theme', theme);
+        const appearance = localStorage.getItem('codeoba-appearance') || 'dark';
+        const darkTheme = localStorage.getItem('codeoba-dark-theme') || 'obsidian';
+        const lightTheme = localStorage.getItem('codeoba-light-theme') || 'obsidian-light';
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        let activeTheme = 'obsidian';
+        if (appearance === 'system') {
+          activeTheme = systemDark ? darkTheme : lightTheme;
+        } else {
+          activeTheme = appearance === 'dark' ? darkTheme : lightTheme;
+        }
+        document.documentElement.setAttribute('data-theme', activeTheme);
+
+        if (activeTheme === 'custom') {
+          const isDark = (appearance === 'system') ? systemDark : (appearance === 'dark');
+          const mode = isDark ? 'dark' : 'light';
+
+          const getStoredHsl = (prefix, defH, defS, defL) => {
+            const h = localStorage.getItem(`codeoba-custom-${mode}-${prefix}-h`) || String(defH);
+            const s = localStorage.getItem(`codeoba-custom-${mode}-${prefix}-s`) || String(defS);
+            const l = localStorage.getItem(`codeoba-custom-${mode}-${prefix}-l`) || String(defL);
+            return { h, s, l };
+          };
+
+          const colors = {
+            bg: isDark ? getStoredHsl('bg', 228, 15, 8) : getStoredHsl('bg', 210, 20, 95),
+            surface: isDark ? getStoredHsl('surface', 228, 15, 11) : getStoredHsl('surface', 210, 20, 98),
+            accent1: getStoredHsl('accent1', 238, 82, 66),
+            accent2: getStoredHsl('accent2', 244, 79, 58)
+          };
+
+          const bgStr = `hsl(${colors.bg.h}, ${colors.bg.s}%, ${colors.bg.l}%)`;
+          const surfaceStr = `hsl(${colors.surface.h}, ${colors.surface.s}%, ${colors.surface.l}%)`;
+          const borderStr = `hsl(${colors.surface.h}, ${colors.surface.s}%, ${isDark ? parseInt(colors.surface.l) + 8 : parseInt(colors.surface.l) - 8}%)`;
+          const accentStr = `hsl(${colors.accent1.h}, ${colors.accent1.s}%, ${colors.accent1.l}%)`;
+          const accentHoverStr = `hsl(${colors.accent2.h}, ${colors.accent2.s}%, ${colors.accent2.l}%)`;
+          const accentLightStr = `hsla(${colors.accent1.h}, ${colors.accent1.s}%, ${colors.accent1.l}%, 0.15)`;
+
+          document.documentElement.style.setProperty('--background', bgStr);
+          document.documentElement.style.setProperty('--surface', surfaceStr);
+          document.documentElement.style.setProperty('--border', borderStr);
+          document.documentElement.style.setProperty('--accent', accentStr);
+          document.documentElement.style.setProperty('--accent-hover', accentHoverStr);
+          document.documentElement.style.setProperty('--accent-light', accentLightStr);
+          document.documentElement.style.setProperty('--text-primary', isDark ? '#f3f4f6' : '#0f172a');
+          document.documentElement.style.setProperty('--text-secondary', isDark ? '#9ca3af' : '#475569');
+        }
 
         // Read language settings to prevent layout flash / RTL shifts
         const lang = localStorage.getItem('codeoba-language') || 'en';
@@ -105,6 +150,70 @@
         --text-primary: #f8fafc;
         --text-secondary: #94a3b8;
         --accent: #64748b;
+      }
+      [data-theme="obsidian-light"] {
+        --background: #f8fafc;
+        --surface: #ffffff;
+        --border: #e2e8f0;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --accent: #4f46e5;
+      }
+      [data-theme="nordic-light"] {
+        --background: #f0f4f8;
+        --surface: #ffffff;
+        --border: #d9e2ec;
+        --text-primary: #102a43;
+        --text-secondary: #486581;
+        --accent: #1982c4;
+      }
+      [data-theme="emerald-light"] {
+        --background: #f0fdf4;
+        --surface: #ffffff;
+        --border: #dcfce7;
+        --text-primary: #064e3b;
+        --text-secondary: #047857;
+        --accent: #10b981;
+      }
+      [data-theme="sunset-light"] {
+        --background: #fffbeb;
+        --surface: #ffffff;
+        --border: #fef3c7;
+        --text-primary: #78350f;
+        --text-secondary: #b45309;
+        --accent: #f59e0b;
+      }
+      [data-theme="royal-light"] {
+        --background: #faf5ff;
+        --surface: #ffffff;
+        --border: #f3e8ff;
+        --text-primary: #581c87;
+        --text-secondary: #7e22ce;
+        --accent: #a855f7;
+      }
+      [data-theme="dracula-light"] {
+        --background: #fff0f6;
+        --surface: #ffffff;
+        --border: #ffd6e7;
+        --text-primary: #860e42;
+        --text-secondary: #c71585;
+        --accent: #cba6f7;
+      }
+      [data-theme="cyberpunk-light"] {
+        --background: #fdf4ff;
+        --surface: #ffffff;
+        --border: #fae8ff;
+        --text-primary: #701a75;
+        --text-secondary: #a21caf;
+        --accent: #ff007f;
+      }
+      [data-theme="monochrome-light"] {
+        --background: #ffffff;
+        --surface: #f8fafc;
+        --border: #e2e8f0;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --accent: #000000;
       }
 
       /* Base app-shell styling */
@@ -227,6 +336,15 @@
       [data-theme="dracula"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(37, 37, 56, 0.7); }
       [data-theme="cyberpunk-neon"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(16, 15, 32, 0.7); }
       [data-theme="monochrome-slate"] .sk-header { border-bottom-color: rgba(255, 255, 255, 0.05); background: rgba(30, 41, 59, 0.7); }
+
+      [data-theme="obsidian-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="nordic-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="emerald-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="sunset-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="royal-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="dracula-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="cyberpunk-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
+      [data-theme="monochrome-light"] .sk-header { border-bottom-color: rgba(0, 0, 0, 0.05); background: rgba(255, 255, 255, 0.7); }
 
       .sk-header-left {
         display: flex;

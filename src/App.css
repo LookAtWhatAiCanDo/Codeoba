@@ -106,6 +106,96 @@
   --accent-light: rgba(100, 116, 139, 0.15);
 }
 
+[data-theme="obsidian-light"] {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-light: rgba(79, 70, 229, 0.1);
+}
+
+[data-theme="nordic-light"] {
+  --background: #f0f4f8;
+  --surface: #ffffff;
+  --border: #d9e2ec;
+  --text-primary: #102a43;
+  --text-secondary: #486581;
+  --accent: #1982c4;
+  --accent-hover: #11689e;
+  --accent-light: rgba(25, 130, 196, 0.1);
+}
+
+[data-theme="emerald-light"] {
+  --background: #f0fdf4;
+  --surface: #ffffff;
+  --border: #dcfce7;
+  --text-primary: #064e3b;
+  --text-secondary: #047857;
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --accent-light: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="sunset-light"] {
+  --background: #fffbeb;
+  --surface: #ffffff;
+  --border: #fef3c7;
+  --text-primary: #78350f;
+  --text-secondary: #b45309;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-light: rgba(245, 158, 11, 0.1);
+}
+
+[data-theme="royal-light"] {
+  --background: #faf5ff;
+  --surface: #ffffff;
+  --border: #f3e8ff;
+  --text-primary: #581c87;
+  --text-secondary: #7e22ce;
+  --accent: #a855f7;
+  --accent-hover: #9333ea;
+  --accent-light: rgba(168, 85, 247, 0.1);
+}
+
+[data-theme="dracula-light"] {
+  --background: #fff0f6;
+  --surface: #ffffff;
+  --border: #ffd6e7;
+  --text-primary: #860e42;
+  --text-secondary: #c71585;
+  --accent: #cba6f7;
+  --accent-hover: #ea80fc;
+  --accent-light: rgba(203, 166, 247, 0.1);
+}
+
+[data-theme="cyberpunk-light"] {
+  --background: #fdf4ff;
+  --surface: #ffffff;
+  --border: #fae8ff;
+  --text-primary: #701a75;
+  --text-secondary: #a21caf;
+  --accent: #ff007f;
+  --accent-hover: #e60073;
+  --accent-light: rgba(255, 0, 127, 0.1);
+}
+
+[data-theme="monochrome-light"] {
+  --background: #ffffff;
+  --surface: #f8fafc;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --accent: #000000;
+  --accent-hover: #334155;
+  --accent-light: rgba(0, 0, 0, 0.05);
+}
+
+
+
 body {
   margin: 0;
   padding: 0;

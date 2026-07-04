@@ -11,7 +11,7 @@ fn get_fallback_file_path() -> PathBuf {
     home.join(".codeoba/config.json")
 }
 
-fn load_fallback_config() -> HashMap<String, String> {
+pub fn load_fallback_config() -> HashMap<String, String> {
     let path = get_fallback_file_path();
     if !path.exists() {
         return HashMap::new();
@@ -27,7 +27,7 @@ fn load_fallback_config() -> HashMap<String, String> {
     HashMap::new()
 }
 
-fn save_fallback_config(config: &HashMap<String, String>) {
+pub fn save_fallback_config(config: &HashMap<String, String>) {
     let path = get_fallback_file_path();
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
@@ -198,5 +198,21 @@ pub fn save_pinned_sessions(ids: &[String]) {
         config.insert("pinned_sessions".to_string(), json);
         save_fallback_config(&config);
     }
+}
+
+pub fn save_theme_settings(appearance: &str, dark_theme: &str, light_theme: &str) {
+    let mut config = load_fallback_config();
+    config.insert("appearance".to_string(), appearance.to_string());
+    config.insert("dark_theme".to_string(), dark_theme.to_string());
+    config.insert("light_theme".to_string(), light_theme.to_string());
+    save_fallback_config(&config);
+}
+
+pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
+    let mut config = load_fallback_config();
+    config.insert(format!("custom_{}_bg_h", mode), h.to_string());
+    config.insert(format!("custom_{}_bg_s", mode), s.to_string());
+    config.insert(format!("custom_{}_bg_l", mode), l.to_string());
+    save_fallback_config(&config);
 }
 

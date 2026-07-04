@@ -582,3 +582,13 @@ pub fn get_pinned_sessions() -> Vec<String> {
 pub fn save_pinned_sessions(ids: Vec<String>) {
     crate::keyring::save_pinned_sessions(&ids);
 }
+
+#[tauri::command]
+pub fn save_theme_settings(appearance: String, dark_theme: String, light_theme: String) {
+    crate::keyring::save_theme_settings(&appearance, &dark_theme, &light_theme);
+}
+
+#[tauri::command]
+pub fn save_custom_theme_bg(mode: String, h: i32, s: i32, l: i32) {
+    crate::keyring::save_custom_theme_bg(&mode, h, s, l);
+}

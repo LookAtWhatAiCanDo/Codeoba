@@ -6,6 +6,7 @@
         "title": "Codeoba",
         "theme": "Dark",
         "backgroundColor": "#0f1015",
+        "transparent": true,
         "decorations": false,
         "acceptFirstMouse": true,
         "width": 800,

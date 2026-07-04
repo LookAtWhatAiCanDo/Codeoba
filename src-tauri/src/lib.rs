@@ -131,9 +131,85 @@ pub fn run() {
             let handle = app.handle().clone();
             let _ = watcher::start_watcher(handle.clone());
 
-            #[cfg(not(target_os = "macos"))]
-            {
-                if let Some(window) = app.get_webview_window("main") {
+            if let Some(window) = app.get_webview_window("main") {
+                // Read configurations
+                let config = crate::keyring::load_fallback_config();
+                let appearance = config.get("appearance").map(|s| s.as_str()).unwrap_or("dark");
+                let dark_theme = config.get("dark_theme").map(|s| s.as_str()).unwrap_or("obsidian");
+                let light_theme = config.get("light_theme").map(|s| s.as_str()).unwrap_or("obsidian-light");
+
+                // Get preferred color scheme if "system"
+                let is_dark = if appearance == "system" {
+                    if let Ok(theme) = window.theme() {
+                        theme == tauri::Theme::Dark
+                    } else {
+                        true // Default fallback
+                    }
+                } else {
+                    appearance == "dark"
+                };
+
+                let active_theme_id = if is_dark { dark_theme } else { light_theme };
+
+                // Get RGB background color
+                let rgb = match active_theme_id {
+                    "obsidian" => (13, 14, 18),
+                    "nordic-frost" => (11, 17, 22),
+                    "emerald-forest" => (9, 17, 15),
+                    "sunset-copper" => (19, 15, 13),
+                    "royal-amethyst" => (16, 13, 24),
+                    "dracula" => (30, 30, 46),
+                    "cyberpunk-neon" => (8, 7, 16),
+                    "monochrome-slate" => (15, 23, 42),
+                    "obsidian-light" => (248, 250, 252),
+                    "nordic-light" => (240, 244, 248),
+                    "emerald-light" => (240, 253, 244),
+                    "sunset-light" => (255, 251, 235),
+                    "royal-light" => (250, 245, 255),
+                    "dracula-light" => (255, 240, 246),
+                    "cyberpunk-light" => (253, 244, 255),
+                    "monochrome-light" => (255, 255, 255),
+                    "custom" => {
+                        let mode_str = if is_dark { "dark" } else { "light" };
+                        let h: f64 = config.get(&format!("custom_{}_bg_h", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 228.0 } else { 210.0 });
+                        let s: f64 = config.get(&format!("custom_{}_bg_s", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 15.0 } else { 20.0 });
+                        let l: f64 = config.get(&format!("custom_{}_bg_l", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 8.0 } else { 95.0 });
+
+                        // Convert HSL to RGB
+                        let s_pct = s / 100.0;
+                        let l_pct = l / 100.0;
+                        
+                        let c = (1.0 - (2.0 * l_pct - 1.0).abs()) * s_pct;
+                        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+                        let m = l_pct - c / 2.0;
+
+                        let (r_p, g_p, b_p) = if h < 60.0 {
+                            (c, x, 0.0)
+                        } else if h < 120.0 {
+                            (x, c, 0.0)
+                        } else if h < 180.0 {
+                            (0.0, c, x)
+                        } else if h < 240.0 {
+                            (0.0, x, c)
+                        } else if h < 300.0 {
+                            (x, 0.0, c)
+                        } else {
+                            (c, 0.0, x)
+                        };
+
+                        (
+                            ((r_p + m) * 255.0).round() as u8,
+                            ((g_p + m) * 255.0).round() as u8,
+                            ((b_p + m) * 255.0).round() as u8,
+                        )
+                    }
+                    _ => (13, 14, 18),
+                };
+
+                let _ = window.set_background_color(Some(tauri::window::Color(rgb.0, rgb.1, rgb.2, 255)));
+
+                #[cfg(not(target_os = "macos"))]
+                {
                     let _ = window.set_decorations(false);
                 }
             }
@@ -200,6 +276,8 @@ pub fn run() {
             commands::set_group_pinned,
             commands::get_pinned_sessions,
             commands::save_pinned_sessions,
+            commands::save_theme_settings,
+            commands::save_custom_theme_bg,
             commands::get_source_decisions,
             commands::save_source_decision,
             commands::reset_detected_sources

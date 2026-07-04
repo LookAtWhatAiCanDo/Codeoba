@@ -16,6 +16,7 @@ To ensure the project context remains accurate:
 5. **Plan Synchronization:** Any time a CLI command, parameter, file path, or configuration flag changes or is corrected during implementation, you must immediately propagate that change to the local `implementation_plan.md` in the system app data directory.
 6. **Test Verification:** Before completing any task, code modifications, or refactoring, you MUST run all unit and integration tests locally (e.g., `npm run build`, `npm run test`, and `cargo test --manifest-path src-tauri/Cargo.toml` if Rust core code changes are made) to ensure all tests pass and no regressions are introduced.
 7. **Conventional Commits:** All commits MUST follow the Conventional Commits specification (https://www.conventionalcommits.org) using standard prefixes (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
+8. **Zero Hardcoded User-Facing Strings & Locales:** Never hardcode user-facing text strings, templates, dates, times, numbers, or formatting assumptions. Always utilize the application's localization framework (e.g. translation files, initially targeting English) and preferences. All code, templates, dates, numbers, times, and UI components MUST consider locale, timezone, formatting, translation, and internationalization requirements.
 
 ---
 
