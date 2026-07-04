@@ -530,8 +530,6 @@ function App() {
   createEffect(() => {
     const query = searchQuery();
     const sem = isSemantic();
-    const sources = selectedSources();
-    const filter = archivalFilter();
     const thresh = similarityThreshold();
     activeGroupFilter();
 
@@ -541,7 +539,7 @@ function App() {
     }
 
     const delayDebounce = setTimeout(() => {
-      performSearch(query, sem, sources, filter, thresh);
+      performSearch(query, sem, thresh);
     }, 250);
 
     onCleanup(() => clearTimeout(delayDebounce));
@@ -550,21 +548,19 @@ function App() {
   const performSearch = async (
     query: string,
     sem: boolean,
-    sourcesSet: Set<string>,
-    filterType: "all" | "active" | "archived",
     thresh: number
   ) => {
     try {
       setErrorMsg(null);
       const filter = {
-        sourceIds: Array.from(sourcesSet),
+        sourceIds: [],
         minTimestamp: 0,
         maxTimestamp: null,
         cwdFilter: null,
         matchCase: false,
         wholeWord: false,
         useRegex: false,
-        archivalFilter: filterType,
+        archivalFilter: "all",
         sessionIds: getSessionIdsForGroupAndDescendants(activeGroupFilter(), groups())
       };
 
@@ -604,7 +600,7 @@ function App() {
       // Re-trigger search if query exists
       const query = searchQuery();
       if (query.trim() !== "") {
-        performSearch(query, isSemantic(), selectedSources(), archivalFilter(), similarityThreshold());
+        performSearch(query, isSemantic(), similarityThreshold());
       }
     } catch (err: any) {
       logFE("error", `Rebuild error: ${err}`);
@@ -713,7 +709,18 @@ function App() {
 
   const filteredSessions = createMemo(() => {
     if (searchResults() !== null) {
-      return searchResults()!.map(r => r.session);
+      return searchResults()!
+        .filter(r => {
+          // Source filter
+          if (selectedSources().size > 0 && !selectedSources().has(r.session.sourceId)) {
+            return false;
+          }
+          // Archival filter
+          if (archivalFilter() === "active" && r.session.isArchived) return false;
+          if (archivalFilter() === "archived" && !r.session.isArchived) return false;
+          return true;
+        })
+        .map(r => r.session);
     }
     return sessions().filter(s => {
       // Source filter

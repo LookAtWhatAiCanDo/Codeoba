@@ -496,16 +496,72 @@ export const Sidebar = (props: SidebarProps) => {
     return ids;
   });
 
+  const groupSessions = createMemo(() => {
+    const ids = activeGroupSessionIds();
+    if (!ids) return props.sessions;
+    if (props.activeGroupFilter === "_none_") {
+      return props.sessions.filter(s => !ids.has(s.id));
+    }
+    return props.sessions.filter(s => ids.has(s.id));
+  });
+
+  const sourceCounts = createMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const src of props.sources) {
+      counts[src.id] = 0;
+    }
+    const baseline = props.searchResults !== null 
+      ? props.searchResults.map(r => r.session) 
+      : groupSessions();
+    for (const s of baseline) {
+      if (counts[s.sourceId] !== undefined) {
+        counts[s.sourceId]++;
+      }
+    }
+    return counts;
+  });
+
+  const archivalCounts = createMemo(() => {
+    const baseline = props.searchResults !== null 
+      ? props.searchResults.map(r => r.session) 
+      : groupSessions();
+    let active = 0;
+    let archived = 0;
+    for (const s of baseline) {
+      if (s.isArchived) {
+        archived++;
+      } else {
+        active++;
+      }
+    }
+    return {
+      all: baseline.length,
+      active,
+      archived
+    };
+  });
+
   // Determine what to display based on search results and filters
   const listItems = createMemo(() => {
     let items: { session: Session; matchedTurns?: number[]; score?: number }[] = [];
 
     if (props.searchResults !== null) {
-      items = props.searchResults.map(r => ({
-        session: r.session,
-        matchedTurns: r.matchedTurnIndexes,
-        score: r.score
-      }));
+      items = props.searchResults
+        .filter(r => {
+          // Source filter
+          if (props.selectedSources.size > 0 && !props.selectedSources.has(r.session.sourceId)) {
+            return false;
+          }
+          // Archival filter
+          if (props.archivalFilter === "active" && r.session.isArchived) return false;
+          if (props.archivalFilter === "archived" && !r.session.isArchived) return false;
+          return true;
+        })
+        .map(r => ({
+          session: r.session,
+          matchedTurns: r.matchedTurnIndexes,
+          score: r.score
+        }));
     } else {
       items = props.sessions
         .filter(s => {
@@ -690,7 +746,14 @@ export const Sidebar = (props: SidebarProps) => {
                           onChange={() => props.onToggleSource(src.id)}
                           class="hidden"
                         />
-                        <span>{src.displayName}</span>
+                        <span class="flex items-center gap-1">
+                          {src.displayName}
+                          <Show when={props.searchResults !== null}>
+                            <span class="text-[10px] opacity-60 ml-0.5">
+                              ({sourceCounts()[src.id] || 0})
+                            </span>
+                          </Show>
+                        </span>
                       </label>
                     );
                   }}
@@ -714,7 +777,14 @@ export const Sidebar = (props: SidebarProps) => {
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
+                      <span class="flex items-center justify-center gap-1">
+                        {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
+                        <Show when={props.searchResults !== null}>
+                          <span class="text-[10px] opacity-60 ml-0.5">
+                            ({archivalCounts()[tab]})
+                          </span>
+                        </Show>
+                      </span>
                     </button>
                   )}
                 </For>
