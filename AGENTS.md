@@ -30,7 +30,7 @@ To ensure the project context remains accurate:
   - `panels/`: Complex panels:
     * `Sidebar.tsx`: Search inputs, source selectors, sorting dropdowns, and index thread lists.
     * `DetailPane.tsx`: Conversation dialogue display, Markdown parsing, metadata tags, and copy buttons.
-    * `SettingsDialog.tsx`: General settings, source path managers, permissions console.
+    * `SettingsDialog.tsx`: General settings, source path managers, permissions console, and app updates.
   - `hooks/`: React state and lifecycle hooks (`useSearch`, `useWatcher`, `useAuth`).
   - `services/`: Bridges to call Tauri commands via TS functions (`tauriBridge.ts`).
 

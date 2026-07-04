@@ -118,11 +118,6 @@
       "themeDesc": "ワークスペースの表示テーマを選択します。",
       "cache": "永続的な起動キャッシュ",
       "cacheDesc": "解析済みセッションをディスクにキャッシュすることで、起動時間を短縮します。",
-      "autoUpdate": "自動アップデート",
-      "autoUpdateDesc": "起動時に新しいバージョンを自動的にチェックします。",
-      "version": "現在のバージョン",
-      "checkUpdate": "アップデートをチェック",
-      "checking": "チェック中...",
       "logMode": "ログ解析モード",
       "logModeDesc": "会話ログの処理と要約の方法を設定します。",
       "modeStandard": "標準解析",
@@ -187,6 +182,19 @@
       "revoke": "権限を解除",
       "clearAll": "すべての権限をクリア",
       "noPermissions": "権限はまだ付与されていません。"
+    },
+    "updates": {
+      "tab": "アップデート",
+      "title": "アップデート設定",
+      "autoUpdate": "自動アップデート",
+      "autoUpdateDesc": "起動時に新しいバージョンを自動的にチェックします。",
+      "version": "現在のバージョン",
+      "checkUpdate": "アップデートをチェック",
+      "checking": "チェック中...",
+      "notActive": "自動アップデートはこのビルドでは有効でないか、サポートされていません。",
+      "upToDate": "Codeobaは最新です！",
+      "updateFound": "アップデートが見つかりました: v{version}",
+      "error": "アップデート確認エラー: {error}"
     }
   },
   "updater": {

@@ -118,11 +118,6 @@
       "themeDesc": "Seleziona l'aspetto visivo dello spazio di lavoro.",
       "cache": "Cache di avvio persistente",
       "cacheDesc": "Velocizza il tempo di avvio memorizzando in cache le sessioni analizzate su disco.",
-      "autoUpdate": "Aggiornamenti automatici",
-      "autoUpdateDesc": "Controlla automaticamente nuove versioni all'avvio.",
-      "version": "Versione attuale",
-      "checkUpdate": "Verifica aggiornamenti",
-      "checking": "Controllo in corso...",
       "logMode": "Modalità di analisi dei log",
       "logModeDesc": "Configura come vengono elaborati e riassunti i log delle conversazioni.",
       "modeStandard": "Analisi standard",
@@ -187,6 +182,19 @@
       "revoke": "Revoca permesso",
       "clearAll": "Cancella tutti i permessi",
       "noPermissions": "Nessun permesso concesso ancora."
+    },
+    "updates": {
+      "tab": "Aggiornamenti",
+      "title": "Impostazioni di aggiornamento",
+      "autoUpdate": "Aggiornamenti automatici",
+      "autoUpdateDesc": "Controlla automaticamente nuove versioni all'avvio.",
+      "version": "Versione attuale",
+      "checkUpdate": "Verifica aggiornamenti",
+      "checking": "Controllo in corso...",
+      "notActive": "Gli aggiornamenti automatici non sono attivi o supportati in questa build.",
+      "upToDate": "Codeoba è aggiornato!",
+      "updateFound": "Aggiornamento trovato: v{version}",
+      "error": "Errore durante la verifica degli aggiornamenti: {error}"
     }
   },
   "updater": {

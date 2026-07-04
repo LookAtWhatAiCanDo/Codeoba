@@ -118,11 +118,6 @@
       "themeDesc": "選擇工作區的視覺外觀。",
       "cache": "持久啟動快取",
       "cacheDesc": "將解析的工作階段快取到磁碟中，以加快啟動速度。",
-      "autoUpdate": "自動更新",
-      "autoUpdateDesc": "啟動時自動檢查新版本。",
-      "version": "目前版本",
-      "checkUpdate": "檢查更新",
-      "checking": "檢查中...",
       "logMode": "日誌解析模式",
       "logModeDesc": "設定對話記錄的處理和摘要方式。",
       "modeStandard": "標準解析",
@@ -187,6 +182,19 @@
       "revoke": "撤銷權限",
       "clearAll": "清除所有權限",
       "noPermissions": "尚未授予任何權限。"
+    },
+    "updates": {
+      "tab": "更新",
+      "title": "更新設定",
+      "autoUpdate": "自動更新",
+      "autoUpdateDesc": "啟動時自動檢查新版本。",
+      "version": "目前版本",
+      "checkUpdate": "檢查更新",
+      "checking": "檢查中...",
+      "notActive": "此版本未啟用或不支援自動更新。",
+      "upToDate": "Codeoba 已是最新版本！",
+      "updateFound": "發現新版本：v{version}",
+      "error": "檢查更新出錯：{error}"
     }
   },
   "updater": {

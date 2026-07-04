@@ -118,11 +118,6 @@
       "themeDesc": "Selecteer de visuele weergave van de werkruimte.",
       "cache": "Persistente opstartcache",
       "cacheDesc": "Versnel de opstarttijd door geparseerde sessies op schijf te cachen.",
-      "autoUpdate": "Automatische updates",
-      "autoUpdateDesc": "Controleer automatisch op nieuwe versies bij het opstarten.",
-      "version": "Huidige versie",
-      "checkUpdate": "Controleren op updates",
-      "checking": "Controleren...",
       "logMode": "Logboekparseermodus",
       "logModeDesc": "Configureer hoe gesprekslogboeken worden verwerkt en samengevat.",
       "modeStandard": "Standaard parsing",
@@ -187,6 +182,19 @@
       "revoke": "Machtiging intrekken",
       "clearAll": "Alle machtigingen wissen",
       "noPermissions": "Nog geen machtigingen verleend."
+    },
+    "updates": {
+      "tab": "Updates",
+      "title": "Update-instellingen",
+      "autoUpdate": "Automatische updates",
+      "autoUpdateDesc": "Controleer automatisch op nieuwe versies bij het opstarten.",
+      "version": "Huidige versie",
+      "checkUpdate": "Controleren op updates",
+      "checking": "Controleren...",
+      "notActive": "Automatische updates zijn niet actief of worden niet ondersteund in deze build.",
+      "upToDate": "Codeoba is up-to-date!",
+      "updateFound": "Update gevonden: v{version}",
+      "error": "Fout bij controleren op updates: {error}"
     }
   },
   "updater": {

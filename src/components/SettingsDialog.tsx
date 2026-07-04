@@ -41,7 +41,7 @@ interface SettingsDialogProps {
   onNumberFormatChange: (val: string) => void;
 }
 
-type Category = "general" | "sources" | "semantic" | "permissions";
+type Category = "general" | "sources" | "semantic" | "permissions" | "updates";
 
 const THEMES = [
   { id: "obsidian", name: "Obsidian", color: "bg-[#0d0e12] border-slate-700" },
@@ -266,18 +266,18 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       setCheckingUpdates(false);
       if (update && update.available) {
         logFE("info", `Settings: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);
-        setUpdateCheckResult(`Update found: v${update.version}`);
+        setUpdateCheckResult(t("settings.updates.updateFound", { version: update.version }));
         if (props.onUpdateAvailable) {
           props.onUpdateAvailable(update);
         }
       } else {
         logFE("info", "Settings: Update check successful. The application is up to date.");
-        setUpdateCheckResult("Codeoba is up to date!");
+        setUpdateCheckResult(t("settings.updates.upToDate"));
       }
     } catch (err: any) {
       logFE("error", `Settings: Update check failed. Error details: ${err}`);
       setCheckingUpdates(false);
-      setUpdateCheckResult(`Error checking updates: ${err}`);
+      setUpdateCheckResult(t("settings.updates.error", { error: String(err) }));
       
       // Attempt diagnostic connection to extract actual HTTP response status and body
       try {
@@ -292,7 +292,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           if (!diagResponse.ok) {
             const bodyText = await diagResponse.text();
             logFE("error", `Settings: Diagnostic fetch returned HTTP ${diagResponse.status}: ${bodyText}`);
-            setUpdateCheckResult(`Error checking updates: ${bodyText}`);
+            setUpdateCheckResult(t("settings.updates.error", { error: bodyText }));
           } else {
             logFE("info", "Settings: Diagnostic fetch succeeded. Update manifest exists but is likely not compatible.");
           }
@@ -431,6 +431,19 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <Shield class="w-3.5 h-3.5" />
                 <span>{t("settings.permissions.tab")}</span>
               </button>
+              <Show when={updaterActive()}>
+                <button
+                  onClick={() => setActiveCategory("updates")}
+                  class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                    activeCategory() === "updates"
+                      ? "bg-accent-light/20 text-accent border border-accent/20"
+                      : "text-text-secondary hover:text-text-primary border border-transparent"
+                  }`}
+                >
+                  <RefreshCw class="w-3.5 h-3.5" />
+                  <span>{t("settings.updates.tab")}</span>
+                </button>
+              </Show>
             </div>
 
             {/* Version Display */}
@@ -606,50 +619,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   </div>
                 </Show>
 
-                {/* Auto Update Check */}
-                <Show when={updaterActive()}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <h4 class="text-xs font-bold text-text-primary">Auto-Updates</h4>
-                        <p class="text-[10px] text-text-secondary/70">Automatically check for new versions on startup.</p>
-                      </div>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={autoUpdateEnabled()} 
-                          onChange={(e) => handleToggleAutoUpdate(e.currentTarget.checked)}
-                          class="sr-only peer"
-                        />
-                        <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
-                      </label>
-                    </div>
-                    <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
-                      <span class="text-text-secondary">{t("settings.general.version")}: v{appVersion()}</span>
-                      <button
-                        onClick={handleCheckUpdates}
-                        disabled={checkingUpdates()}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        <Show when={checkingUpdates()} fallback={<span>{t("settings.general.checkUpdate")}</span>}>
-                          <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                          <span>{t("settings.general.checking")}</span>
-                        </Show>
-                      </button>
-                    </div>
-                    <Show when={updateCheckResult()}>
-                      <div 
-                        class="text-[11px] font-semibold"
-                        classList={{
-                          "text-red-400": updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"),
-                          "text-emerald-400": !(updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"))
-                        }}
-                      >
-                        {updateCheckResult()}
-                      </div>
-                    </Show>
-                  </div>
-                </Show>
+
 
                 {/* Log Parsing Mode */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
@@ -916,6 +886,64 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         </div>
                       )}
                     </For>
+                  </div>
+                </Show>
+              </div>
+            </Show>
+
+            <Show when={activeCategory() === "updates"}>
+              {/* Updates Tab */}
+              <div class="space-y-5">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
+                  {t("settings.updates.title")}
+                </h3>
+
+                {/* Auto Update Check */}
+                <Show when={updaterActive()} fallback={
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 text-center text-xs text-text-secondary">
+                    {t("settings.updates.notActive")}
+                  </div>
+                }>
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <h4 class="text-xs font-bold text-text-primary">{t("settings.updates.autoUpdate")}</h4>
+                        <p class="text-[10px] text-text-secondary/70">{t("settings.updates.autoUpdateDesc")}</p>
+                      </div>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={autoUpdateEnabled()} 
+                          onChange={(e) => handleToggleAutoUpdate(e.currentTarget.checked)}
+                          class="sr-only peer"
+                        />
+                        <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                      </label>
+                    </div>
+                    <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
+                      <span class="text-text-secondary">{t("settings.updates.version")}: v{appVersion()}</span>
+                      <button
+                        onClick={handleCheckUpdates}
+                        disabled={checkingUpdates()}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Show when={checkingUpdates()} fallback={<span>{t("settings.updates.checkUpdate")}</span>}>
+                          <RefreshCw class="w-3.5 h-3.5 animate-spin" />
+                          <span>{t("settings.updates.checking")}</span>
+                        </Show>
+                      </button>
+                    </div>
+                    <Show when={updateCheckResult()}>
+                      <div 
+                        class="text-[11px] font-semibold"
+                        classList={{
+                          "text-red-400": updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"),
+                          "text-emerald-400": !(updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"))
+                        }}
+                      >
+                        {updateCheckResult()}
+                      </div>
+                    </Show>
                   </div>
                 </Show>
               </div>

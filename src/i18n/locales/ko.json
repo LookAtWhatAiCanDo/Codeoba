@@ -118,11 +118,6 @@
       "themeDesc": "작업 공간의 시각적 테마를 선택하세요.",
       "cache": "영구 시작 캐시",
       "cacheDesc": "구문 분석된 세션을 디스크에 캐시하여 시작 속도를 높입니다.",
-      "autoUpdate": "자동 업데이트",
-      "autoUpdateDesc": "시작 시 새 버전을 자동으로 확인합니다.",
-      "version": "현재 버전",
-      "checkUpdate": "업데이트 확인",
-      "checking": "확인 중...",
       "logMode": "로그 구문 분석 모드",
       "logModeDesc": "대화 기록이 처리되고 요약되는 방식을 구성합니다.",
       "modeStandard": "표준 분석",
@@ -187,6 +182,19 @@
       "revoke": "권한 취소",
       "clearAll": "모든 권한 지우기",
       "noPermissions": "아직 부여된 권한이 없습니다."
+    },
+    "updates": {
+      "tab": "업데이트",
+      "title": "업데이트 설정",
+      "autoUpdate": "자동 업데이트",
+      "autoUpdateDesc": "시작 시 새 버전을 자동으로 확인합니다.",
+      "version": "현재 버전",
+      "checkUpdate": "업데이트 확인",
+      "checking": "확인 중...",
+      "notActive": "이 빌드에서는 자동 업데이트가 활성화되지 않았거나 지원되지 않습니다.",
+      "upToDate": "Codeoba가 최신 상태입니다!",
+      "updateFound": "업데이트 발견: v{version}",
+      "error": "업데이트 확인 오류: {error}"
     }
   },
   "updater": {

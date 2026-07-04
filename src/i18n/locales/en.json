@@ -118,11 +118,6 @@
       "themeDesc": "Select the visual appearance of the workspace.",
       "cache": "Persistent Startup Cache",
       "cacheDesc": "Speed up startup time by caching parsed sessions on disk.",
-      "autoUpdate": "Auto-Updates",
-      "autoUpdateDesc": "Automatically check for new versions on startup.",
-      "version": "Current Version",
-      "checkUpdate": "Check for Updates",
-      "checking": "Checking...",
       "logMode": "Log Parsing Mode",
       "logModeDesc": "Configure how conversation transcripts are processed and summarized.",
       "modeStandard": "Standard Parsing",
@@ -188,6 +183,19 @@
       "revoke": "Revoke Permission",
       "clearAll": "Clear All Permissions",
       "noPermissions": "No permissions granted yet."
+    },
+    "updates": {
+      "tab": "Updates",
+      "title": "Update Settings",
+      "autoUpdate": "Auto-Updates",
+      "autoUpdateDesc": "Automatically check for new versions on startup.",
+      "version": "Current Version",
+      "checkUpdate": "Check for Updates",
+      "checking": "Checking...",
+      "notActive": "Automatic updates are not active or supported in this build.",
+      "upToDate": "Codeoba is up to date!",
+      "updateFound": "Update found: v{version}",
+      "error": "Error checking updates: {error}"
     }
   },
   "updater": {

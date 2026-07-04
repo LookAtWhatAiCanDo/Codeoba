@@ -118,11 +118,6 @@
       "themeDesc": "选择工作区的视觉外观。",
       "cache": "持久启动缓存",
       "cacheDesc": "通过将已解析的会话缓存到磁盘来加快启动时间。",
-      "autoUpdate": "自动更新",
-      "autoUpdateDesc": "在启动时自动检查新版本。",
-      "version": "当前版本",
-      "checkUpdate": "检查更新",
-      "checking": "正在检查...",
       "logMode": "日志解析模式",
       "logModeDesc": "配置会话记录的解析和总结方式。",
       "modeStandard": "标准解析",
@@ -187,6 +182,19 @@
       "revoke": "撤销权限",
       "clearAll": "清除所有权限",
       "noPermissions": "暂无已授权权限。"
+    },
+    "updates": {
+      "tab": "更新",
+      "title": "更新设置",
+      "autoUpdate": "自动更新",
+      "autoUpdateDesc": "在启动时自动检查新版本。",
+      "version": "当前版本",
+      "checkUpdate": "检查更新",
+      "checking": "正在检查...",
+      "notActive": "此版本未启用或不支持自动更新。",
+      "upToDate": "Codeoba 已是最新版本！",
+      "updateFound": "发现新版本：v{version}",
+      "error": "检查更新出错：{error}"
     }
   },
   "updater": {

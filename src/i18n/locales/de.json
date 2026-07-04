@@ -118,11 +118,6 @@
       "themeDesc": "Wählen Sie das visuelle Erscheinungsbild des Arbeitsbereichs.",
       "cache": "Persistenter Start-Cache",
       "cacheDesc": "Beschleunigen Sie die Startzeit, indem Sie geparste Sitzungen auf der Festplatte zwischenspeichern.",
-      "autoUpdate": "Automatische Updates",
-      "autoUpdateDesc": "Beim Start automatisch nach neuen Versionen suchen.",
-      "version": "Aktuelle Version",
-      "checkUpdate": "Auf Updates prüfen",
-      "checking": "Wird geprüft...",
       "logMode": "Protokoll-Parsing-Modus",
       "logModeDesc": "Konfigurieren Sie, wie Unterhaltungstranskripte verarbeitet und zusammengefasst werden.",
       "modeStandard": "Standard-Parsing",
@@ -187,6 +182,19 @@
       "revoke": "Berechtigung widerrufen",
       "clearAll": "Alle Berechtigungen löschen",
       "noPermissions": "Noch keine Berechtigungen erteilt."
+    },
+    "updates": {
+      "tab": "Updates",
+      "title": "Update-Einstellungen",
+      "autoUpdate": "Automatische Updates",
+      "autoUpdateDesc": "Beim Start automatisch nach neuen Versionen suchen.",
+      "version": "Aktuelle Version",
+      "checkUpdate": "Auf Updates prüfen",
+      "checking": "Wird geprüft...",
+      "notActive": "Automatische Updates sind in diesem Build nicht aktiv oder werden nicht unterstützt.",
+      "upToDate": "Codeoba ist auf dem neuesten Stand!",
+      "updateFound": "Update gefunden: v{version}",
+      "error": "Fehler beim Prüfen auf Updates: {error}"
     }
   },
   "updater": {
