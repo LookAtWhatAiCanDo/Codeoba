@@ -136,7 +136,15 @@
       "numberFormat": "数値形式",
       "numberFormatDesc": "大きな数値とメトリックの表示形式を選択します。",
       "secureStorage": "セキュアストレージ",
-      "secureStorageDesc": "認証情報にシステムセキュアキーチェーン（Keyring）を使用します。"
+      "secureStorageDesc": "認証情報にシステムセキュアキーチェーン（Keyring）を使用します。",
+      "dateFormatISO": "ISO形式 (YYYY-MM-DD)",
+      "dateFormatUS": "米国形式 (MM/DD/YYYY)",
+      "dateFormatEU": "欧州形式 (DD/MM/YYYY)",
+      "timeFormat12": "12時間制 (午前/午後)",
+      "timeFormat24": "24時間制",
+      "numberFormatUS": "米国形式 (1,234,567.89)",
+      "numberFormatEU": "欧州形式 (1.234.567,89)",
+      "numberFormatFR": "スペース区切り (1 234 567,89)"
     },
     "sources": {
       "tab": "ソース",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "後で設定する",
       "detectedMultiPromptAllowSelected": "選択したアプリを有効にする",
       "detectedMultiPromptFootnotePrivate": "🔒 100% プライベート: すべての検索解析とインデックス構築はデバイス上で完全にオフラインで実行されます。オプションのクラウド機能（アップデート確認など）は、必要なメタデータのみをバックエンドに送信します。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必須: どのソースも許可しない場合、検索結果は空のままになります。"
+      "detectedMultiPromptFootnoteEmpty": "🔍 必須: どのソースも許可しない場合、検索結果は空のままになります。",
+      "allow": "許可",
+      "deny": "拒否",
+      "ask": "確認"
     },
     "semantic": {
       "tab": "セマンティック",
@@ -171,7 +182,8 @@
       "failedDownload": "モデルのダウンロードに失敗しました: {error}",
       "downloadBtn": "埋め込みモデルをダウンロード",
       "threshold": "類似度しきい値",
-      "thresholdDesc": "マッチングの許容度を設定します（値が高いほど厳格になります）。"
+      "thresholdDesc": "マッチングの許容度を設定します（値が高いほど厳格になります）。",
+      "restoreDefault": "デフォルトに戻す"
     },
     "permissions": {
       "tab": "権限",
@@ -181,7 +193,10 @@
       "authorizedOn": "許可日時",
       "revoke": "権限を解除",
       "clearAll": "すべての権限をクリア",
-      "noPermissions": "権限はまだ付与されていません。"
+      "noPermissions": "権限はまだ付与されていません。",
+      "external": "外部",
+      "resetPreview": "プレビューをリセット",
+      "resetExternal": "外部設定をリセット"
     },
     "updates": {
       "tab": "アップデート",

@@ -136,7 +136,15 @@
       "numberFormat": "Formato de número",
       "numberFormatDesc": "Seleccione cómo se formatean los números grandes y las métricas.",
       "secureStorage": "Almacenamiento seguro",
-      "secureStorageDesc": "Utilice el llavero seguro del sistema (Keyring) para las credenciales."
+      "secureStorageDesc": "Utilice el llavero seguro del sistema (Keyring) para las credenciales.",
+      "dateFormatISO": "Formato ISO (AAAA-MM-DD)",
+      "dateFormatUS": "Formato de EE. UU. (MM/DD/AAAA)",
+      "dateFormatEU": "Formato de la UE (DD/MM/AAAA)",
+      "timeFormat12": "12 horas (a. m./p. m.)",
+      "timeFormat24": "24 horas",
+      "numberFormatUS": "Formato de EE. UU. (1,234,567.89)",
+      "numberFormatEU": "Formato de la UE (1.234.567,89)",
+      "numberFormatFR": "Separado por espacios (1 234 567,89)"
     },
     "sources": {
       "tab": "Fuentes",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Configurar más tarde",
       "detectedMultiPromptAllowSelected": "Habilitar aplicaciones seleccionadas",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privado: Todo el análisis de búsqueda y la creación del índice ocurren completamente fuera de línea en su dispositivo. Las funciones opcionales en la nube (como las comprobaciones de actualizaciones) solo comunican los metadatos necesarios a nuestro servidor,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Requerido: Si no autoriza ninguna fuente, los resultados de búsqueda permanecerán vacíos."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Requerido: Si no autoriza ninguna fuente, los resultados de búsqueda permanecerán vacíos.",
+      "allow": "Permitir",
+      "deny": "Denegar",
+      "ask": "Preguntar"
     },
     "semantic": {
       "tab": "Semántica",
@@ -171,7 +182,8 @@
       "failedDownload": "Error al descargar el modelo: {error}",
       "downloadBtn": "Descargar modelo de embeddings",
       "threshold": "Umbral de similitud",
-      "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos)."
+      "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos).",
+      "restoreDefault": "Restaurar valores predeterminados"
     },
     "permissions": {
       "tab": "Permisos",
@@ -181,7 +193,10 @@
       "authorizedOn": "Autorizado el",
       "revoke": "Revocar permiso",
       "clearAll": "Limpiar todos los permisos",
-      "noPermissions": "Aún no se han concedido permisos."
+      "noPermissions": "Aún no se han concedido permisos.",
+      "external": "Externo",
+      "resetPreview": "Restablecer vista previa",
+      "resetExternal": "Restablecer externo"
     },
     "updates": {
       "tab": "Actualizaciones",

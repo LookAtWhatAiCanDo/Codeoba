@@ -136,7 +136,15 @@
       "numberFormat": "數字格式",
       "numberFormatDesc": "選取大型數字和度量資料的格式。",
       "secureStorage": "安全儲存區",
-      "secureStorageDesc": "使用系統安全金鑰鏈 (Keyring) 儲存憑證。"
+      "secureStorageDesc": "使用系統安全金鑰鏈 (Keyring) 儲存憑證。",
+      "dateFormatISO": "ISO 格式 (YYYY-MM-DD)",
+      "dateFormatUS": "美國格式 (MM/DD/YYYY)",
+      "dateFormatEU": "歐盟格式 (DD/MM/YYYY)",
+      "timeFormat12": "12 小時制 (AM/PM)",
+      "timeFormat24": "24 小時制",
+      "numberFormatUS": "美國格式 (1,234,567.89)",
+      "numberFormatEU": "歐盟格式 (1.234.567,89)",
+      "numberFormatFR": "空格分隔 (1 234 567,89)"
     },
     "sources": {
       "tab": "來源",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "稍後設定",
       "detectedMultiPromptAllowSelected": "啟用所選應用程式",
       "detectedMultiPromptFootnotePrivate": "🔒 100% 隱私保護：所有搜尋解析與索引建立完全在您的裝置上離線完成。可選的雲端功能（如更新檢查）僅向我們的後端傳輸必要的元數據。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必要條件：如果您不授權任何來源，搜尋結果將保持為空。"
+      "detectedMultiPromptFootnoteEmpty": "🔍 必要條件：如果您不授權任何來源，搜尋結果將保持為空。",
+      "allow": "允許",
+      "deny": "拒絕",
+      "ask": "詢問"
     },
     "semantic": {
       "tab": "語意",
@@ -171,7 +182,8 @@
       "failedDownload": "下載模型失敗：{error}",
       "downloadBtn": "下載嵌入式模型",
       "threshold": "相似度閾值",
-      "thresholdDesc": "設定匹配容差（值越高越嚴格）。"
+      "thresholdDesc": "設定匹配容差（值越高越嚴格）。",
+      "restoreDefault": "恢復預設值"
     },
     "permissions": {
       "tab": "權限",
@@ -181,7 +193,10 @@
       "authorizedOn": "授權於",
       "revoke": "撤銷權限",
       "clearAll": "清除所有權限",
-      "noPermissions": "尚未授予任何權限。"
+      "noPermissions": "尚未授予任何權限。",
+      "external": "外部",
+      "resetPreview": "重置預覽",
+      "resetExternal": "重置外部"
     },
     "updates": {
       "tab": "更新",

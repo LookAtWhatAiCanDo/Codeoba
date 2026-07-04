@@ -136,7 +136,15 @@
       "numberFormat": "Formato do número",
       "numberFormatDesc": "Selecione como números grandes e métricas são formatados.",
       "secureStorage": "Armazenamento seguro",
-      "secureStorageDesc": "Use o chaveiro seguro do sistema (Keyring) para credenciais."
+      "secureStorageDesc": "Use o chaveiro seguro do sistema (Keyring) para credenciais.",
+      "dateFormatISO": "Formato ISO (AAAA-MM-DD)",
+      "dateFormatUS": "Formato dos EUA (MM/DD/AAAA)",
+      "dateFormatEU": "Formato da UE (DD/MM/AAAA)",
+      "timeFormat12": "12 horas (AM/PM)",
+      "timeFormat24": "24 horas",
+      "numberFormatUS": "Formato dos EUA (1,234,567.89)",
+      "numberFormatEU": "Formato da UE (1.234.567,89)",
+      "numberFormatFR": "Separado por espaços (1 234 567,89)"
     },
     "sources": {
       "tab": "Fontes",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Configurar mais tarde",
       "detectedMultiPromptAllowSelected": "Ativar aplicativos selecionados",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privado: Toda a análise e criação do índice ocorrem completamente offline no seu dispositivo. Recursos opcionais na nuvem (como verificações de atualização) comunicam apenas metadados necessários ao nosso servidor,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Obrigatório: Se não autorizar nenhuma fonte, os resultados da pesquisa permanecerão vazios."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Obrigatório: Se não autorizar nenhuma fonte, os resultados da pesquisa permanecerão vazios.",
+      "allow": "Permitir",
+      "deny": "Negar",
+      "ask": "Perguntar"
     },
     "semantic": {
       "tab": "Semântica",
@@ -171,7 +182,8 @@
       "failedDownload": "Falha ao baixar o modelo: {error}",
       "downloadBtn": "Baixar modelo de embeddings",
       "threshold": "Limiar de similaridade",
-      "thresholdDesc": "Configure a tolerância de correspondência (quanto maior, mais rigoroso)."
+      "thresholdDesc": "Configure a tolerância de correspondência (quanto maior, mais rigoroso).",
+      "restoreDefault": "Restaurar padrão"
     },
     "permissions": {
       "tab": "Permissões",
@@ -181,7 +193,10 @@
       "authorizedOn": "Autorizado em",
       "revoke": "Revogar permissão",
       "clearAll": "Limpar todas as permissões",
-      "noPermissions": "Nenhuma permissão concedida ainda."
+      "noPermissions": "Nenhuma permissão concedida ainda.",
+      "external": "Externo",
+      "resetPreview": "Redefinir visualização",
+      "resetExternal": "Redefinir externo"
     },
     "updates": {
       "tab": "Atualizações",

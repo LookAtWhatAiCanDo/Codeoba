@@ -495,9 +495,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
                   >
                     <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
-                    <option value="iso">ISO Format (YYYY-MM-DD)</option>
-                    <option value="us">US Format (MM/DD/YYYY)</option>
-                    <option value="eu">EU Format (DD/MM/YYYY)</option>
+                    <option value="iso">{t("settings.general.dateFormatISO")}</option>
+                    <option value="us">{t("settings.general.dateFormatUS")}</option>
+                    <option value="eu">{t("settings.general.dateFormatEU")}</option>
                   </select>
                 </div>
 
@@ -513,8 +513,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
                   >
                     <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
-                    <option value="12">12-Hour (AM/PM)</option>
-                    <option value="24">24-Hour</option>
+                    <option value="12">{t("settings.general.timeFormat12")}</option>
+                    <option value="24">{t("settings.general.timeFormat24")}</option>
                   </select>
                 </div>
 
@@ -547,9 +547,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
                   >
                     <option value="system">{t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}</option>
-                    <option value="us">US Format (1,234,567.89)</option>
-                    <option value="eu">EU Format (1.234.567,89)</option>
-                    <option value="fr">Space Separated (1 234 567,89)</option>
+                    <option value="us">{t("settings.general.numberFormatUS")}</option>
+                    <option value="eu">{t("settings.general.numberFormatEU")}</option>
+                    <option value="fr">{t("settings.general.numberFormatFR")}</option>
                   </select>
                 </div>
 
@@ -697,7 +697,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                         : "text-text-secondary hover:text-text-primary"
                                     }`}
                                   >
-                                    {option}
+                                    {t("settings.sources." + option)}
                                   </button>
                                 )}
                               </For>
@@ -812,7 +812,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         onClick={handleRestoreThresholdDefault}
                         class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
                       >
-                        Restore to Default
+                        {t("settings.semantic.restoreDefault")}
                       </button>
                     </div>
                   </div>
@@ -855,7 +855,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             </div>
                             <div class="flex gap-4 text-[10px] text-text-secondary/70">
                               <span>{t("fileViewer.title")}: <span class={p.preview === 'allow' ? 'text-accent font-semibold' : ''}>{p.preview}</span></span>
-                              <span>External: <span class={p.external === 'allow' ? 'text-accent font-semibold' : ''}>{p.external}</span></span>
+                              <span>{t("settings.permissions.external")}: <span class={p.external === 'allow' ? 'text-accent font-semibold' : ''}>{p.external}</span></span>
                             </div>
                           </div>
 
@@ -865,7 +865,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                 onClick={() => handleResetPermission(p.path, "preview")}
                                 class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-primary transition-all font-semibold cursor-pointer"
                               >
-                                Reset Preview
+                                {t("settings.permissions.resetPreview")}
                               </button>
                             </Show>
                             <Show when={p.external !== 'ask'}>
@@ -873,7 +873,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                 onClick={() => handleResetPermission(p.path, "external")}
                                 class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-primary transition-all font-semibold cursor-pointer"
                               >
-                                Reset External
+                                {t("settings.permissions.resetExternal")}
                               </button>
                             </Show>
                             <button

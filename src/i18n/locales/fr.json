@@ -136,7 +136,15 @@
       "numberFormat": "Format des nombres",
       "numberFormatDesc": "Sélectionnez comment les grands nombres et les métriques sont formatés.",
       "secureStorage": "Stockage sécurisé",
-      "secureStorageDesc": "Utilisez le trousseau sécurisé du système (Keyring) pour les identifiants."
+      "secureStorageDesc": "Utilisez le trousseau sécurisé du système (Keyring) pour les identifiants.",
+      "dateFormatISO": "Format ISO (AAAA-MM-JJ)",
+      "dateFormatUS": "Format US (MM/JJ/AAAA)",
+      "dateFormatEU": "Format UE (JJ/MM/AAAA)",
+      "timeFormat12": "12 heures (AM/PM)",
+      "timeFormat24": "24 heures",
+      "numberFormatUS": "Format US (1,234,567.89)",
+      "numberFormatEU": "Format UE (1.234.567,89)",
+      "numberFormatFR": "Séparé par des espaces (1 234 567,89)"
     },
     "sources": {
       "tab": "Sources",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Configurer plus tard",
       "detectedMultiPromptAllowSelected": "Activer les applications sélectionnées",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privé : Toutes les analyses et créations d'index s'effectuent entièrement hors ligne sur votre appareil. Les fonctionnalités cloud facultatives (telles que les vérifications de mise à jour) ne communiquent que les métadonnées nécessaires à notre backend,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Requis : Si vous n'autorisez aucune source, les résultats de la recherche resteront vides."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Requis : Si vous n'autorisez aucune source, les résultats de la recherche resteront vides.",
+      "allow": "Autoriser",
+      "deny": "Refuser",
+      "ask": "Demander"
     },
     "semantic": {
       "tab": "Sémantique",
@@ -171,7 +182,8 @@
       "failedDownload": "Échec du téléchargement du modèle : {error}",
       "downloadBtn": "Télécharger le modèle d'embeddings",
       "threshold": "Seuil de similitude",
-      "thresholdDesc": "Configurez la tolérance de correspondance (plus la valeur est élevée, plus la correspondance est stricte)."
+      "thresholdDesc": "Configurez la tolérance de correspondance (plus la valeur est élevée, plus la correspondance est stricte).",
+      "restoreDefault": "Restaurer par défaut"
     },
     "permissions": {
       "tab": "Autorisations",
@@ -181,7 +193,10 @@
       "authorizedOn": "Autorisé le",
       "revoke": "Révoquer l'autorisation",
       "clearAll": "Effacer toutes les autorisations",
-      "noPermissions": "Aucune autorisation accordée pour le moment."
+      "noPermissions": "Aucune autorisation accordée pour le moment.",
+      "external": "Externe",
+      "resetPreview": "Réinitialiser l'aperçu",
+      "resetExternal": "Réinitialiser l'externe"
     },
     "updates": {
       "tab": "Mises à jour",

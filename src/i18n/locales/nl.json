@@ -136,7 +136,15 @@
       "numberFormat": "Getalformaat",
       "numberFormatDesc": "Selecteer hoe grote getallen en statistieken worden geformatteerd.",
       "secureStorage": "Beveiligde opslag",
-      "secureStorageDesc": "Gebruik de beveiligde systeemsleutelhanger (Keyring) voor inloggegevens."
+      "secureStorageDesc": "Gebruik de beveiligde systeemsleutelhanger (Keyring) voor inloggegevens.",
+      "dateFormatISO": "ISO-indeling (YYYY-MM-DD)",
+      "dateFormatUS": "US-indeling (MM/DD/YYYY)",
+      "dateFormatEU": "EU-indeling (DD/MM/YYYY)",
+      "timeFormat12": "12-uurs (AM/PM)",
+      "timeFormat24": "24-uurs",
+      "numberFormatUS": "US-indeling (1,234,567.89)",
+      "numberFormatEU": "EU-indeling (1.234.567,89)",
+      "numberFormatFR": "Gescheiden door spaties (1 234 567,89)"
     },
     "sources": {
       "tab": "Bronnen",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Later configureren",
       "detectedMultiPromptAllowSelected": "Geselecteerde applicaties inschakelen",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privé: Alle zoekanalyses en indexopbouw vinden volledig offline plaats op uw apparaat. Optionele cloudfuncties (zoals updatecontroles) communiceren alleen de benodigde metadata met onze backend,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Vereist: Als u geen bronnen autoriseert, blijven de zoekresultaten leeg."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Vereist: Als u geen bronnen autoriseert, blijven de zoekresultaten leeg.",
+      "allow": "Toestaan",
+      "deny": "Weigeren",
+      "ask": "Vragen"
     },
     "semantic": {
       "tab": "Semantisch",
@@ -171,7 +182,8 @@
       "failedDownload": "Downloaden model mislukt: {error}",
       "downloadBtn": "Embeddingsmodel downloaden",
       "threshold": "Gelijkenisdrempel",
-      "thresholdDesc": "Stel de matchtolerantie in (hogere waarden zijn strikter)."
+      "thresholdDesc": "Stel de matchtolerantie in (hogere waarden zijn strikter).",
+      "restoreDefault": "Standaardinstellingen herstellen"
     },
     "permissions": {
       "tab": "Machtigingen",
@@ -181,7 +193,10 @@
       "authorizedOn": "Gemachtigd op",
       "revoke": "Machtiging intrekken",
       "clearAll": "Alle machtigingen wissen",
-      "noPermissions": "Nog geen machtigingen verleend."
+      "noPermissions": "Nog geen machtigingen verleend.",
+      "external": "Extern",
+      "resetPreview": "Voorbeeld herstellen",
+      "resetExternal": "Extern herstellen"
     },
     "updates": {
       "tab": "Updates",

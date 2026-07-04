@@ -136,7 +136,15 @@
       "numberFormat": "Formato numeri",
       "numberFormatDesc": "Selezionare come vengono formattati i numeri grandi e le metriche.",
       "secureStorage": "Archiviazione sicura",
-      "secureStorageDesc": "Usare il portachiavi sicuro del sistema (Keyring) per le credenziali."
+      "secureStorageDesc": "Usare il portachiavi sicuro del sistema (Keyring) per le credenziali.",
+      "dateFormatISO": "Formato ISO (AAAA-MM-GG)",
+      "dateFormatUS": "Formato USA (MM/GG/AAAA)",
+      "dateFormatEU": "Formato UE (GG/MM/AAAA)",
+      "timeFormat12": "12 ore (AM/PM)",
+      "timeFormat24": "24 ore",
+      "numberFormatUS": "Formato USA (1,234,567.89)",
+      "numberFormatEU": "Formato UE (1.234.567,89)",
+      "numberFormatFR": "Separato da spazi (1 234 567,89)"
     },
     "sources": {
       "tab": "Sorgenti",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Configura più tardi",
       "detectedMultiPromptAllowSelected": "Attiva applicazioni selezionate",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privato: Tutte le analisi e le creazioni dell'indice avvengono completamente offline sul tuo dispositivo. Le funzionalità cloud opzionali (come i controlli degli aggiornamenti) comunicano solo i metadati necessari al nostro backend,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Richiesto: Se non autorizzi alcuna sorgente, i risultati della ricerca rimarranno vuoti."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Richiesto: Se non autorizzi alcuna sorgente, i risultati della ricerca rimarranno vuoti.",
+      "allow": "Consenti",
+      "deny": "Nega",
+      "ask": "Chiedi"
     },
     "semantic": {
       "tab": "Semantica",
@@ -171,7 +182,8 @@
       "failedDownload": "Impossibile scaricare il modello: {error}",
       "downloadBtn": "Scarica modello embeddings",
       "threshold": "Soglia di similarità",
-      "thresholdDesc": "Configura la tolleranza di corrispondenza (valori più alti sono più restrittivi)."
+      "thresholdDesc": "Configura la tolleranza di corrispondenza (valori più alti sono più restrittivi).",
+      "restoreDefault": "Ripristina predefinito"
     },
     "permissions": {
       "tab": "Permessi",
@@ -181,7 +193,10 @@
       "authorizedOn": "Autorizzato il",
       "revoke": "Revoca permesso",
       "clearAll": "Cancella tutti i permessi",
-      "noPermissions": "Nessun permesso concesso ancora."
+      "noPermissions": "Nessun permesso concesso ancora.",
+      "external": "Esterno",
+      "resetPreview": "Reimposta anteprima",
+      "resetExternal": "Reimposta esterno"
     },
     "updates": {
       "tab": "Aggiornamenti",

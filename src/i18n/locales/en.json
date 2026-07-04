@@ -136,7 +136,15 @@
       "numberFormat": "Number Format",
       "numberFormatDesc": "Select how large numbers and metrics are formatted.",
       "secureStorage": "Secure Storage",
-      "secureStorageDesc": "Use system secure keychain (Keyring) for credentials."
+      "secureStorageDesc": "Use system secure keychain (Keyring) for credentials.",
+      "dateFormatISO": "ISO Format (YYYY-MM-DD)",
+      "dateFormatUS": "US Format (MM/DD/YYYY)",
+      "dateFormatEU": "EU Format (DD/MM/YYYY)",
+      "timeFormat12": "12-Hour (AM/PM)",
+      "timeFormat24": "24-Hour",
+      "numberFormatUS": "US Format (1,234,567.89)",
+      "numberFormatEU": "EU Format (1.234.567,89)",
+      "numberFormatFR": "Space Separated (1 234 567,89)"
     },
     "sources": {
       "tab": "Sources",
@@ -157,7 +165,10 @@
       "detectedMultiPromptDenyAll": "Configure Later",
       "detectedMultiPromptAllowSelected": "Enable Selected Applications",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Private: All search parsing and index builds happen completely offline on your device. Optional cloud features (such as update checks) communicate only necessary metadata to our backend.",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Required: If you do not authorize any sources, search results will remain empty."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Required: If you do not authorize any sources, search results will remain empty.",
+      "allow": "Allow",
+      "deny": "Deny",
+      "ask": "Ask"
     },
     "semantic": {
       "tab": "Semantic",
@@ -172,7 +183,8 @@
       "failedDownload": "Failed to download model: {error}",
       "downloadBtn": "Download Embeddings Model",
       "threshold": "Similarity Threshold",
-      "thresholdDesc": "Configure matching tolerance (higher is stricter)."
+      "thresholdDesc": "Configure matching tolerance (higher is stricter).",
+      "restoreDefault": "Restore to Default"
     },
     "permissions": {
       "tab": "Permissions",
@@ -182,7 +194,10 @@
       "authorizedOn": "Authorized On",
       "revoke": "Revoke Permission",
       "clearAll": "Clear All Permissions",
-      "noPermissions": "No permissions granted yet."
+      "noPermissions": "No permissions granted yet.",
+      "external": "External",
+      "resetPreview": "Reset Preview",
+      "resetExternal": "Reset External"
     },
     "updates": {
       "tab": "Updates",

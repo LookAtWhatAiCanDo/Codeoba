@@ -136,7 +136,15 @@
       "numberFormat": "Zahlenformat",
       "numberFormatDesc": "Wählen Sie, wie große Zahlen und Metriken formatiert werden sollen.",
       "secureStorage": "Sicherer Speicher",
-      "secureStorageDesc": "Verwenden Sie den sicheren Systemspeicher (Schlüsselbund) für Anmeldeinformationen."
+      "secureStorageDesc": "Verwenden Sie den sicheren Systemspeicher (Schlüsselbund) für Anmeldeinformationen.",
+      "dateFormatISO": "ISO-Format (JJJJ-MM-TT)",
+      "dateFormatUS": "US-Format (MM/TT/JJJJ)",
+      "dateFormatEU": "EU-Format (TT/MM/JJJJ)",
+      "timeFormat12": "12-Stunden-Format (AM/PM)",
+      "timeFormat24": "24-Stunden-Format",
+      "numberFormatUS": "US-Format (1,234,567.89)",
+      "numberFormatEU": "EU-Format (1.234.567,89)",
+      "numberFormatFR": "Mit Leerzeichen getrennt (1 234 567,89)"
     },
     "sources": {
       "tab": "Quellen",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "Später konfigurieren",
       "detectedMultiPromptAllowSelected": "Ausgewählte Anwendungen aktivieren",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privat: Alle Analysen und Indexerstellungen finden vollständig offline auf Ihrem Gerät statt. Optionale Cloud-Funktionen (wie Update-Prüfungen) übertragen nur notwendige Metadaten an unser Backend,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Erforderlich: Wenn Sie keine Quellen autorisieren, bleiben die Suchergebnisse leer."
+      "detectedMultiPromptFootnoteEmpty": "🔍 Erforderlich: Wenn Sie keine Quellen autorisieren, bleiben die Suchergebnisse leer.",
+      "allow": "Zulassen",
+      "deny": "Ablehnen",
+      "ask": "Fragen"
     },
     "semantic": {
       "tab": "Semantik",
@@ -171,7 +182,8 @@
       "failedDownload": "Fehler beim Herunterladen des Modells: {error}",
       "downloadBtn": "Einbettungsmodell herunterladen",
       "threshold": "Ähnlichkeitsschwelle",
-      "thresholdDesc": "Konfigurieren Sie die Übereinstimmungstoleranz (höhere Werte sind strenger)."
+      "thresholdDesc": "Konfigurieren Sie die Übereinstimmungstoleranz (höhere Werte sind strenger).",
+      "restoreDefault": "Standard wiederherstellen"
     },
     "permissions": {
       "tab": "Berechtigungen",
@@ -181,7 +193,10 @@
       "authorizedOn": "Autorisiert am",
       "revoke": "Berechtigung widerrufen",
       "clearAll": "Alle Berechtigungen löschen",
-      "noPermissions": "Noch keine Berechtigungen erteilt."
+      "noPermissions": "Noch keine Berechtigungen erteilt.",
+      "external": "Extern",
+      "resetPreview": "Vorschau zurücksetzen",
+      "resetExternal": "Extern zurücksetzen"
     },
     "updates": {
       "tab": "Updates",

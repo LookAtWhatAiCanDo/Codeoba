@@ -136,7 +136,15 @@
       "numberFormat": "数字格式",
       "numberFormatDesc": "选择大数字和指标的格式化方式。",
       "secureStorage": "安全存储",
-      "secureStorageDesc": "使用系统安全密钥链（Keyring）存储凭据。"
+      "secureStorageDesc": "使用系统安全密钥链（Keyring）存储凭据。",
+      "dateFormatISO": "ISO 格式 (YYYY-MM-DD)",
+      "dateFormatUS": "美国格式 (MM/DD/YYYY)",
+      "dateFormatEU": "欧盟格式 (DD/MM/YYYY)",
+      "timeFormat12": "12 小时制 (AM/PM)",
+      "timeFormat24": "24 小时制",
+      "numberFormatUS": "美国格式 (1,234,567.89)",
+      "numberFormatEU": "欧盟格式 (1.234.567,89)",
+      "numberFormatFR": "空格分隔 (1 234 567,89)"
     },
     "sources": {
       "tab": "数据源",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "稍后配置",
       "detectedMultiPromptAllowSelected": "启用所选应用",
       "detectedMultiPromptFootnotePrivate": "🔒 100% 隐私保护：所有搜索解析和索引构建完全在您的设备上离线完成。可选的云端功能（如更新检查）仅向我们的后端传输必要的元数据。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必要条件：如果您不授权任何来源，搜索结果将保持为空。"
+      "detectedMultiPromptFootnoteEmpty": "🔍 必要条件：如果您不授权任何来源，搜索结果将保持为空。",
+      "allow": "允许",
+      "deny": "拒绝",
+      "ask": "询问"
     },
     "semantic": {
       "tab": "语义",
@@ -171,7 +182,8 @@
       "failedDownload": "下载模型失败：{error}",
       "downloadBtn": "下载嵌入模型",
       "threshold": "相似度阈值",
-      "thresholdDesc": "配置匹配容差（值越高，要求越严格）。"
+      "thresholdDesc": "配置匹配容差（值越高，要求越严格）。",
+      "restoreDefault": "恢复默认值"
     },
     "permissions": {
       "tab": "权限",
@@ -181,7 +193,10 @@
       "authorizedOn": "授权时间",
       "revoke": "撤销权限",
       "clearAll": "清除所有权限",
-      "noPermissions": "暂无已授权权限。"
+      "noPermissions": "暂无已授权权限。",
+      "external": "外部",
+      "resetPreview": "重置预览",
+      "resetExternal": "重置外部"
     },
     "updates": {
       "tab": "更新",

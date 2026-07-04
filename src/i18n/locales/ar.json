@@ -136,7 +136,15 @@
       "numberFormat": "تنسيق الأرقام",
       "numberFormatDesc": "اختر كيفية تنسيق الأرقام الكبيرة والمقاييس.",
       "secureStorage": "التخزين الآمن",
-      "secureStorageDesc": "استخدم سلسلة مفاتيح النظام الآمنة (Keyring) لبيانات الاعتماد."
+      "secureStorageDesc": "استخدم سلسلة مفاتيح النظام الآمنة (Keyring) لبيانات الاعتماد.",
+      "dateFormatISO": "تنسيق ISO (YYYY-MM-DD)",
+      "dateFormatUS": "تنسيق الولايات المتحدة (MM/DD/YYYY)",
+      "dateFormatEU": "تنسيق الاتحاد الأوروبي (DD/MM/YYYY)",
+      "timeFormat12": "12 ساعة (ص/م)",
+      "timeFormat24": "24 ساعة",
+      "numberFormatUS": "تنسيق الولايات المتحدة (1,234,567.89)",
+      "numberFormatEU": "تنسيق الاتحاد الأوروبي (1.234.567,89)",
+      "numberFormatFR": "مفصول بمسافات (1 234 567,89)"
     },
     "sources": {
       "tab": "المصادر",
@@ -156,7 +164,10 @@
       "detectedMultiPromptDenyAll": "التكوين لاحقًا",
       "detectedMultiPromptAllowSelected": "تمكين التطبيقات المحددة",
       "detectedMultiPromptFootnotePrivate": "🔒 خصوصية 100%: تتم جميع عمليات التحليل وبناء فهرس البحث بالكامل دون اتصال بالإنترنت على جهازك. تتواصل الميزات السحابية الاختيارية (مثل التحقق من التحديثات) بالحد الأدنى من البيانات الوصفية اللازمة مع خوادمنا.",
-      "detectedMultiPromptFootnoteEmpty": "🔍 مطلوب: إذا لم تفوض أي مصادر، فستظل نتائج البحث فارغة."
+      "detectedMultiPromptFootnoteEmpty": "🔍 مطلوب: إذا لم تفوض أي مصادر، فستظل نتائج البحث فارغة.",
+      "allow": "السماح",
+      "deny": "الرفض",
+      "ask": "السؤال"
     },
     "semantic": {
       "tab": "دلالي",
@@ -171,7 +182,8 @@
       "failedDownload": "فشل تنزيل النموذج: {error}",
       "downloadBtn": "تنزيل نموذج التضمينات",
       "threshold": "عتبة التشابه",
-      "thresholdDesc": "تكوين تحمل المطابقة (الأعلى يعني أكثر صرامة)."
+      "thresholdDesc": "تكوين تحمل المطابقة (الأعلى يعني أكثر صرامة).",
+      "restoreDefault": "استعادة الافتراضي"
     },
     "permissions": {
       "tab": "الأذونات",
@@ -181,7 +193,10 @@
       "authorizedOn": "مُصرح به في",
       "revoke": "إلغاء الإذن",
       "clearAll": "مسح جميع الأذونات",
-      "noPermissions": "لم يتم منح أي أذونات بعد."
+      "noPermissions": "لم يتم منح أي أذونات بعد.",
+      "external": "خارجي",
+      "resetPreview": "إعادة تعيين المعاينة",
+      "resetExternal": "إعادة تعيين الخارجي"
     },
     "updates": {
       "tab": "التحديثات",
