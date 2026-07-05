@@ -961,7 +961,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                           <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">
                               <h4 class="text-xs font-bold text-text-primary capitalize">{src.displayName}</h4>
-                              <Show when={src.productUrl}>
+                              <Show when={src.productUrl && !src.isAvailable}>
                                 <button
                                   onClick={() => openUrl(src.productUrl!)}
                                   class="text-[10px] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
