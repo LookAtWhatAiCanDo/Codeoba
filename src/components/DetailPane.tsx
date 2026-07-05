@@ -943,16 +943,59 @@ const ToolOutputBlock = (props: {
     }
   });
 
-  const icon = createMemo(() => {
+  const getToolMeta = () => {
     const type = props.tool.toolType.toLowerCase();
-    if (type.includes("command") || type.includes("shell") || type.includes("terminal")) {
-      return <Terminal class="w-3.5 h-3.5 text-accent-hover" />;
+    const content = props.tool.content.toLowerCase();
+    
+    const isError = content.includes("error:") || content.includes("failed with") || content.includes("exit code:") || content.includes("invalid tool call");
+    const isEdit = type.includes("edit") || type.includes("write") || type.includes("replace") || type.includes("create");
+    const isRead = type.includes("view") || type.includes("read") || type.includes("list");
+    const isSearch = type.includes("search") || type.includes("find") || type.includes("grep");
+    const isCommand = type.includes("command") || type.includes("shell") || type.includes("terminal");
+    
+    if (isError) {
+      return {
+        icon: <AlertCircle class="w-3.5 h-3.5 text-red-400" />,
+        colorClass: "text-red-400 hover:text-red-300",
+        preBorder: "border-red-500/20 bg-red-500/5 text-red-200/90"
+      };
     }
-    if (type.includes("search") || type.includes("find") || type.includes("grep")) {
-      return <Search class="w-3.5 h-3.5 text-sky-400" />;
+    if (isEdit) {
+      return {
+        icon: <Edit class="w-3.5 h-3.5 text-amber-400" />,
+        colorClass: "text-amber-400 hover:text-amber-300",
+        preBorder: "border-amber-500/20 bg-amber-500/5 text-amber-200/90"
+      };
     }
-    return <FileText class="w-3.5 h-3.5 text-text-secondary/70" />;
-  });
+    if (isRead) {
+      return {
+        icon: <FileText class="w-3.5 h-3.5 text-emerald-400" />,
+        colorClass: "text-emerald-400 hover:text-emerald-300",
+        preBorder: "border-emerald-500/20 bg-emerald-500/5 text-emerald-200/90"
+      };
+    }
+    if (isSearch) {
+      return {
+        icon: <Search class="w-3.5 h-3.5 text-purple-400" />,
+        colorClass: "text-purple-400 hover:text-purple-300",
+        preBorder: "border-purple-500/20 bg-purple-500/5 text-purple-200/90"
+      };
+    }
+    if (isCommand) {
+      return {
+        icon: <Terminal class="w-3.5 h-3.5 text-sky-400" />,
+        colorClass: "text-sky-400 hover:text-sky-300",
+        preBorder: "border-sky-500/20 bg-sky-500/5 text-sky-200/90"
+      };
+    }
+    return {
+      icon: <Cpu class="w-3.5 h-3.5 text-text-secondary/70" />,
+      colorClass: "text-text-secondary hover:text-text-primary",
+      preBorder: "border-border/60 bg-background/50 text-text-primary/80"
+    };
+  };
+
+  const meta = createMemo(() => getToolMeta());
 
   let headerRef: HTMLSpanElement | undefined;
   let codeRef: HTMLElement | undefined;
@@ -988,10 +1031,10 @@ const ToolOutputBlock = (props: {
       {/* Level 2: Tool header */}
       <button
         onClick={() => setIsOpen(!isOpen())}
-        class="flex items-center gap-2 hover:text-text-primary text-text-secondary transition-all text-xs font-semibold cursor-pointer select-none text-left"
+        class={`flex items-center gap-2 transition-all text-xs font-semibold cursor-pointer select-none text-left ${meta().colorClass}`}
       >
         <span class="opacity-60">{isOpen() ? "▼" : "▶"}</span>
-        {icon()}
+        {meta().icon}
         <span ref={headerRef} class="hover:underline" />
       </button>
 
@@ -1000,7 +1043,7 @@ const ToolOutputBlock = (props: {
           <pre 
             onContextMenu={(e) => props.onContextMenu(e, "tool", props.tool.content)}
             dir="ltr" 
-            class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner text-left"
+            class={`border rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono max-h-96 scrollbar shadow-inner text-left ${meta().preBorder}`}
           >
             <code ref={codeRef} />
           </pre>
