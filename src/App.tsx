@@ -1105,6 +1105,11 @@ function App() {
                 timeFormat={timeFormat()}
                 showSeconds={showSeconds()}
                 numberFormat={numberFormat()}
+                groups={groups()}
+                pinnedSessionIds={pinnedSessionIds()}
+                onTogglePinSession={togglePinSession}
+                onAssignSessionToGroup={handleAssignSessionToGroup}
+                onRemoveSessionFromGroup={handleRemoveSessionFromGroup}
               />
             </Show>
           </Show>

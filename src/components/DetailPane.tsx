@@ -1,4 +1,5 @@
 import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { invoke } from "@tauri-apps/api/core";
 import { 
   Folder, 
   Copy, 
@@ -15,7 +16,11 @@ import {
   FileText,
   HelpCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  MoreVertical,
+  Pin,
+  AlertCircle,
+  Edit
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
@@ -39,6 +44,11 @@ interface DetailPaneProps {
   timeFormat?: string;
   showSeconds?: boolean;
   numberFormat?: string;
+  groups?: any[];
+  pinnedSessionIds?: Set<string>;
+  onTogglePinSession?: (sessionId: string) => void;
+  onAssignSessionToGroup?: (sessionId: string, groupName: string) => Promise<void>;
+  onRemoveSessionFromGroup?: (sessionId: string, groupName: string) => Promise<void>;
 }
 
 export const DetailPane = (props: DetailPaneProps) => {
@@ -46,6 +56,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedSession, setCopiedSession] = createSignal(false);
   const [visibleTurns, setVisibleTurns] = createSignal(10);
+  const [showActionsDropdown, setShowActionsDropdown] = createSignal(false);
 
   const [contextMenu, setContextMenu] = createSignal<{
     x: number;
@@ -79,6 +90,7 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
+    window.addEventListener("click", () => setShowActionsDropdown(false));
     observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const setter = visibilitySetters.get(entry.target);
@@ -93,6 +105,7 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   onCleanup(() => {
     window.removeEventListener("click", closeContextMenu);
+    window.removeEventListener("click", () => setShowActionsDropdown(false));
     if (observer) {
       observer.disconnect();
     }
@@ -325,6 +338,136 @@ export const DetailPane = (props: DetailPaneProps) => {
                 </Show>
                 <span>{t("detailPane.copyCwdLabel")}</span>
               </button>
+
+              <div class="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowActionsDropdown(!showActionsDropdown());
+                  }}
+                  title="More actions"
+                  class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center justify-center cursor-pointer"
+                >
+                  <MoreVertical class="w-3.5 h-3.5" />
+                </button>
+                
+                <Show when={showActionsDropdown()}>
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    class="absolute right-0 mt-2 bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none text-left flex flex-col"
+                  >
+                    {/* Pin/Unpin */}
+                    <Show when={props.onTogglePinSession && props.pinnedSessionIds && props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          props.onTogglePinSession!(props.session!.id);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Pin class="w-3.5 h-3.5" />
+                        <span>
+                          {props.pinnedSessionIds!.has(props.session!.id)
+                            ? t("groups.unpinConversation") || "Unpin Conversation"
+                            : t("groups.pinConversation") || "Pin Conversation"}
+                        </span>
+                      </button>
+                    </Show>
+
+                    {/* Open Session File */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={async () => {
+                          setShowActionsDropdown(false);
+                          try {
+                            await invoke("open_file_externally", {
+                              rawPath: props.session!.filePath,
+                              sessionCwd: props.session!.cwd || null
+                            });
+                          } catch (e) {
+                            console.error("Failed to open file externally", e);
+                          }
+                        }}
+                      >
+                        <HelpCircle class="w-3.5 h-3.5" />
+                        <span>{t("groups.openSessionFile") || "Open Session File"}</span>
+                      </button>
+                    </Show>
+
+                    {/* Copy Session ID */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(props.session!.id);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Copy class="w-3.5 h-3.5" />
+                        <span>{t("groups.copySessionId") || "Copy Session ID"}</span>
+                      </button>
+                    </Show>
+
+                    {/* Copy File Path */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(props.session!.filePath);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Copy class="w-3.5 h-3.5" />
+                        <span>{t("detailPane.copyPathLabel") || "Copy Path"}</span>
+                      </button>
+                    </Show>
+
+                    {/* Assign Group Submenu Header */}
+                    <Show when={props.groups && props.groups.length > 0 && props.onAssignSessionToGroup && props.session}>
+                      <div class="border-t border-border/60 my-1"></div>
+                      <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary/55">
+                        {t("groups.filterByGroup") || "Groups"}
+                      </div>
+                      <div class="max-h-36 overflow-y-auto">
+                        <For each={props.groups}>
+                          {(g) => {
+                            const isAssigned = () => {
+                              const ids = Array.isArray(g.sessionIds) 
+                                ? g.sessionIds 
+                                : Array.from(g.sessionIds || []);
+                              return ids.includes(props.session!.id);
+                            };
+                            
+                            return (
+                              <button
+                                class={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 transition-all flex items-center justify-between cursor-pointer ${
+                                  isAssigned() ? "text-accent font-semibold" : "text-text-secondary hover:text-text-primary"
+                                }`}
+                                onClick={async () => {
+                                  setShowActionsDropdown(false);
+                                  if (isAssigned()) {
+                                    if (props.onRemoveSessionFromGroup) {
+                                      await props.onRemoveSessionFromGroup(props.session!.id, g.name);
+                                    }
+                                  } else {
+                                    await props.onAssignSessionToGroup!(props.session!.id, g.name);
+                                  }
+                                }}
+                              >
+                                <span class="truncate pr-2">{g.name}</span>
+                                <Show when={isAssigned()}>
+                                  <Check class="w-3 h-3 text-accent flex-shrink-0" />
+                                </Show>
+                              </button>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
+              </div>
             </div>
           </div>
 
