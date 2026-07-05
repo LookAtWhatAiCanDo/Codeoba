@@ -102,7 +102,9 @@
     "grantAccess": "Предоставить доступ",
     "noPermissions": "Разрешения пока не предоставлены.",
     "startedOn": "Начато",
-    "aiSummaryTitle": "Сводка сеанса ИИ"
+    "aiSummaryTitle": "Сводка сеанса ИИ",
+    "copyMessageText": "Копировать текст сообщения",
+    "copyToolOutput": "Копировать вывод инструмента"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",

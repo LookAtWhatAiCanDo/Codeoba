@@ -102,7 +102,9 @@
     "grantAccess": "منح صلاحية الوصول",
     "noPermissions": "لم يتم منح أي أذونات بعد.",
     "startedOn": "بدأ في",
-    "aiSummaryTitle": "ملخص جلسة الذكاء الاصطناعي"
+    "aiSummaryTitle": "ملخص جلسة الذكاء الاصطناعي",
+    "copyMessageText": "نسخ نص الرسالة",
+    "copyToolOutput": "نسخ مخرجات الأداة"
   },
   "fileViewer": {
     "title": "عارض الملفات",

@@ -47,6 +47,26 @@ export const DetailPane = (props: DetailPaneProps) => {
   const [copiedSession, setCopiedSession] = createSignal(false);
   const [visibleTurns, setVisibleTurns] = createSignal(10);
 
+  const [contextMenu, setContextMenu] = createSignal<{
+    x: number;
+    y: number;
+    text: string;
+    type: "user" | "assistant" | "tool";
+  } | null>(null);
+
+  const handleContextMenu = (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      text,
+      type
+    });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
   const compactionCount = createMemo(() => {
     if (!props.session) return 0;
     return props.session.turns.filter(t => t.extraData?.isCompaction === "true").length;
@@ -58,6 +78,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   let observer: IntersectionObserver | undefined;
 
   onMount(() => {
+    window.addEventListener("click", closeContextMenu);
     observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const setter = visibilitySetters.get(entry.target);
@@ -71,6 +92,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   });
 
   onCleanup(() => {
+    window.removeEventListener("click", closeContextMenu);
     if (observer) {
       observer.disconnect();
     }
@@ -387,12 +409,61 @@ export const DetailPane = (props: DetailPaneProps) => {
                     wholeWord={props.wholeWord}
                     useRegex={props.useRegex}
                     numberFormat={props.numberFormat}
+                    onContextMenu={handleContextMenu}
                   />
                 );
               }}
             </For>
           </div>
         </Show>
+      </Show>
+
+      {/* Context Menu Overlay */}
+      <Show when={contextMenu()}>
+        {(context) => {
+          const [copied, setCopied] = createSignal(false);
+          
+          const handleCopy = async () => {
+            try {
+              await navigator.clipboard.writeText(context().text);
+              setCopied(true);
+              setTimeout(() => {
+                setCopied(false);
+                setContextMenu(null);
+              }, 800);
+            } catch (err) {
+              console.error("Failed to copy context text:", err);
+            }
+          };
+
+          const getLabel = () => {
+            if (context().type === "user" || context().type === "assistant") {
+              return t("detailPane.copyMessageText");
+            }
+            return t("detailPane.copyToolOutput");
+          };
+
+          return (
+            <div
+              class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
+              style={{
+                top: `${Math.min(window.innerHeight - 80, context().y)}px`,
+                left: `${Math.min(window.innerWidth - 240, context().x)}px`
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                class="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer font-medium"
+                onClick={handleCopy}
+              >
+                <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                  <Check class="w-3.5 h-3.5 text-emerald-400" />
+                </Show>
+                <span>{copied() ? "Copied!" : getLabel()}</span>
+              </button>
+            </div>
+          );
+        }}
       </Show>
     </div>
   );
@@ -412,6 +483,7 @@ interface VirtualTurnProps {
   wholeWord?: boolean;
   useRegex?: boolean;
   numberFormat?: string;
+  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
 }
 
 const VirtualTurn = (props: VirtualTurnProps) => {
@@ -489,7 +561,10 @@ const VirtualTurn = (props: VirtualTurnProps) => {
               {props.formatFullDate(props.turn.timestamp)}
             </span>
           </div>
-          <div class="w-full bg-surface border border-border/50 p-4 rounded-2xl text-[14.5px] leading-relaxed text-text-primary/90 font-sans shadow-sm">
+          <div 
+            onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
+            class="w-full bg-surface border border-border/50 p-4 rounded-2xl text-[14.5px] leading-relaxed text-text-primary/90 font-sans shadow-sm"
+          >
             <UserMessageRenderer 
               message={props.turn.userMessage} 
               searchQuery={props.searchQuery} 
@@ -527,6 +602,7 @@ const VirtualTurn = (props: VirtualTurnProps) => {
               matchCase={props.matchCase}
               wholeWord={props.wholeWord}
               useRegex={props.useRegex}
+              onContextMenu={props.onContextMenu}
             />
           </div>
         </div>
@@ -566,6 +642,7 @@ const AssistantMessageRenderer = (props: {
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
+  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
 }) => {
   const parts = createMemo(() => parseAssistantMessage(props.message));
   
@@ -599,13 +676,15 @@ const AssistantMessageRenderer = (props: {
         {(part) => {
           if (part.type === "text") {
             return (
-              <MarkdownRenderer 
-                content={part.content} 
-                searchQuery={props.searchQuery}
-                matchCase={props.matchCase}
-                wholeWord={props.wholeWord}
-                useRegex={props.useRegex}
-              />
+              <div onContextMenu={(e) => props.onContextMenu(e, "assistant", part.content)}>
+                <MarkdownRenderer 
+                  content={part.content} 
+                  searchQuery={props.searchQuery}
+                  matchCase={props.matchCase}
+                  wholeWord={props.wholeWord}
+                  useRegex={props.useRegex}
+                />
+              </div>
             );
           } else {
             return (
@@ -615,6 +694,7 @@ const AssistantMessageRenderer = (props: {
                 matchCase={props.matchCase}
                 wholeWord={props.wholeWord}
                 useRegex={props.useRegex}
+                onContextMenu={props.onContextMenu}
               />
             );
           }
@@ -630,6 +710,7 @@ const WorkedForBlock = (props: {
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
+  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
 }) => {
   const matchesSearch = createMemo(() => {
     const q = props.searchQuery;
@@ -682,6 +763,7 @@ const WorkedForBlock = (props: {
                   wholeWord={props.wholeWord}
                   useRegex={props.useRegex}
                   startExpanded={matchesSearch()} 
+                  onContextMenu={props.onContextMenu}
                 />
               )}
             </For>
@@ -699,6 +781,7 @@ const ToolOutputBlock = (props: {
   wholeWord?: boolean;
   useRegex?: boolean;
   startExpanded: boolean;
+  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
 }) => {
   const matchesSearch = createMemo(() => {
     const q = props.searchQuery;
@@ -771,7 +854,11 @@ const ToolOutputBlock = (props: {
 
       <Show when={isOpen()}>
         <div class="ml-4 pl-1">
-          <pre dir="ltr" class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner text-left">
+          <pre 
+            onContextMenu={(e) => props.onContextMenu(e, "tool", props.tool.content)}
+            dir="ltr" 
+            class="bg-background border border-border/60 rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono text-text-primary/80 max-h-96 scrollbar shadow-inner text-left"
+          >
             <code ref={codeRef} />
           </pre>
         </div>

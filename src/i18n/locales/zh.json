@@ -102,7 +102,9 @@
     "grantAccess": "授予访问权限",
     "noPermissions": "暂无已授权权限。",
     "startedOn": "开始时间",
-    "aiSummaryTitle": "AI 会话摘要"
+    "aiSummaryTitle": "AI 会话摘要",
+    "copyMessageText": "复制消息文本",
+    "copyToolOutput": "复制工具输出"
   },
   "fileViewer": {
     "title": "文件查看器",

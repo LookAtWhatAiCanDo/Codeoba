@@ -102,7 +102,9 @@
     "grantAccess": "Zugriff gewähren",
     "noPermissions": "Noch keine Berechtigungen erteilt.",
     "startedOn": "Gestartet am",
-    "aiSummaryTitle": "KI-Sitzungszusammenfassung"
+    "aiSummaryTitle": "KI-Sitzungszusammenfassung",
+    "copyMessageText": "Nachrichtentext kopieren",
+    "copyToolOutput": "Tool-Ausgabe kopieren"
   },
   "fileViewer": {
     "title": "Dateibetrachter",

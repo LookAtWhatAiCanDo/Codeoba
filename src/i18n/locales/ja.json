@@ -102,7 +102,9 @@
     "grantAccess": "アクセス許可",
     "noPermissions": "権限はまだ付与されていません。",
     "startedOn": "開始日時",
-    "aiSummaryTitle": "AIセッションの概要"
+    "aiSummaryTitle": "AIセッションの概要",
+    "copyMessageText": "メッセージテキストをコピー",
+    "copyToolOutput": "ツール出力をコピー"
   },
   "fileViewer": {
     "title": "ファイルビューア",

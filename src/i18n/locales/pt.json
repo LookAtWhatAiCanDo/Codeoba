@@ -102,7 +102,9 @@
     "grantAccess": "Conceder acesso",
     "noPermissions": "Nenhuma permissão concedida ainda.",
     "startedOn": "Iniciado em",
-    "aiSummaryTitle": "Resumo da sessão IA"
+    "aiSummaryTitle": "Resumo da sessão IA",
+    "copyMessageText": "Copiar texto da mensagem",
+    "copyToolOutput": "Copiar saída da ferramenta"
   },
   "fileViewer": {
     "title": "Visualizador de arquivos",

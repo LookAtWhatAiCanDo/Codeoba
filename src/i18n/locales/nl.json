@@ -102,7 +102,9 @@
     "grantAccess": "Toegang verlenen",
     "noPermissions": "Nog geen machtigingen verleend.",
     "startedOn": "Gestart op",
-    "aiSummaryTitle": "AI-sessie samenvatting"
+    "aiSummaryTitle": "AI-sessie samenvatting",
+    "copyMessageText": "Berichttekst kopiëren",
+    "copyToolOutput": "Tool output kopiëren"
   },
   "fileViewer": {
     "title": "Bestandsviewer",

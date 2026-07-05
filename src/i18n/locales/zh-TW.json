@@ -102,7 +102,9 @@
     "grantAccess": "授予存取權限",
     "noPermissions": "尚未授予任何權限。",
     "startedOn": "開始於",
-    "aiSummaryTitle": "AI 對話摘要"
+    "aiSummaryTitle": "AI 對話摘要",
+    "copyMessageText": "複製訊息文字",
+    "copyToolOutput": "複製工具輸出"
   },
   "fileViewer": {
     "title": "檔案檢視器",

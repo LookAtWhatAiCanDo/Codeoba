@@ -102,7 +102,9 @@
     "grantAccess": "Grant access",
     "noPermissions": "No permissions granted yet.",
     "startedOn": "Started On",
-    "aiSummaryTitle": "AI Session Summary"
+    "aiSummaryTitle": "AI Session Summary",
+    "copyMessageText": "Copy message text",
+    "copyToolOutput": "Copy tool output"
   },
   "fileViewer": {
     "title": "File Viewer",
