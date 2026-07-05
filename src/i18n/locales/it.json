@@ -188,7 +188,9 @@
       "themeLavender": "Lavanda",
       "themePastel": "Pastello",
       "themeNeon": "Neon",
-      "themePaper": "Carta"
+      "themePaper": "Carta",
+      "excludedPaths": "Percorsi esclusi",
+      "excludedPathsDesc": "Esclusioni (separate da virgola o a capo). I cataloghi o file corrispondenti saranno ignorati nelle liste di conversazione."
     },
     "sources": {
       "tab": "Sorgenti",
@@ -254,6 +256,15 @@
       "upToDate": "Codeoba è aggiornato!",
       "updateFound": "Aggiornamento trovato: v{version}",
       "error": "Errore durante la verifica degli aggiornamenti: {error}"
+    },
+    "exclusions": {
+      "title": "Esclusioni"
+    },
+    "theme": {
+      "title": "Tema"
+    },
+    "regional": {
+      "title": "Regione e lingua"
     }
   },
   "updater": {

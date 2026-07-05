@@ -188,7 +188,9 @@
       "themeLavender": "Lavender",
       "themePastel": "Pastel",
       "themeNeon": "Neon",
-      "themePaper": "Paper"
+      "themePaper": "Paper",
+      "excludedPaths": "Excluded Paths",
+      "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists."
     },
     "sources": {
       "tab": "Sources",
@@ -255,6 +257,15 @@
       "upToDate": "Codeoba is up to date!",
       "updateFound": "Update found: v{version}",
       "error": "Error checking updates: {error}"
+    },
+    "exclusions": {
+      "title": "Exclusions"
+    },
+    "theme": {
+      "title": "Theme"
+    },
+    "regional": {
+      "title": "Region & Language"
     }
   },
   "updater": {

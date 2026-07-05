@@ -188,7 +188,9 @@
       "themeLavender": "ラベンダー",
       "themePastel": "パステル",
       "themeNeon": "ネオン",
-      "themePaper": "ペーパー"
+      "themePaper": "ペーパー",
+      "excludedPaths": "除外するパス",
+      "excludedPathsDesc": "除外設定（カンマまたは改行区切り）。一致するディレクトリやファイルは会話一覧から無視されます。"
     },
     "sources": {
       "tab": "ソース",
@@ -254,6 +256,15 @@
       "upToDate": "Codeobaは最新です！",
       "updateFound": "アップデートが見つかりました: v{version}",
       "error": "アップデート確認エラー: {error}"
+    },
+    "exclusions": {
+      "title": "除外設定"
+    },
+    "theme": {
+      "title": "テーマ"
+    },
+    "regional": {
+      "title": "地域と言語"
     }
   },
   "updater": {

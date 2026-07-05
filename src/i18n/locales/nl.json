@@ -188,7 +188,9 @@
       "themeLavender": "Lavendel",
       "themePastel": "Pastel",
       "themeNeon": "Neon",
-      "themePaper": "Papier"
+      "themePaper": "Papier",
+      "excludedPaths": "Uitgesloten paden",
+      "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten."
     },
     "sources": {
       "tab": "Bronnen",
@@ -254,6 +256,15 @@
       "upToDate": "Codeoba is up-to-date!",
       "updateFound": "Update gevonden: v{version}",
       "error": "Fout bij controleren op updates: {error}"
+    },
+    "exclusions": {
+      "title": "Uitsluitingen"
+    },
+    "theme": {
+      "title": "Thema"
+    },
+    "regional": {
+      "title": "Regio & taal"
     }
   },
   "updater": {

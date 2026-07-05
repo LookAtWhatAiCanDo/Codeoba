@@ -188,7 +188,9 @@
       "themeLavender": "라벤더",
       "themePastel": "파스텔",
       "themeNeon": "네온",
-      "themePaper": "종이"
+      "themePaper": "종이",
+      "excludedPaths": "제외할 경로",
+      "excludedPathsDesc": "제외 항목(쉼표 또는 줄바꿈으로 구분). 일치하는 디렉터리나 파일은 대화 목록에서 무시됩니다."
     },
     "sources": {
       "tab": "소스",
@@ -254,6 +256,15 @@
       "upToDate": "Codeoba가 최신 상태입니다!",
       "updateFound": "업데이트 발견: v{version}",
       "error": "업데이트 확인 오류: {error}"
+    },
+    "exclusions": {
+      "title": "제외 설정"
+    },
+    "theme": {
+      "title": "테마"
+    },
+    "regional": {
+      "title": "지역 및 언어"
     }
   },
   "updater": {

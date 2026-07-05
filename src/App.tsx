@@ -52,6 +52,12 @@ function App() {
   const [timeFormat, setTimeFormat] = createSignal(localStorage.getItem("codeoba-time-format") || "system");
   const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
   const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
+  const [excludedPaths, setExcludedPaths] = createSignal(localStorage.getItem("codeoba-excluded-paths") || "");
+
+  const handleExcludedPathsChange = (val: string) => {
+    setExcludedPaths(val);
+    localStorage.setItem("codeoba-excluded-paths", val);
+  };
 
   const handleDateFormatChange = (val: string) => {
     setDateFormat(val);
@@ -894,6 +900,17 @@ function App() {
   };
 
   const filteredSessions = createMemo(() => {
+    const exclusions = excludedPaths()
+      .split(/[,\n]/)
+      .map(p => p.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isExcluded = (filePath?: string | null) => {
+      if (!filePath) return false;
+      const pathLower = filePath.toLowerCase();
+      return exclusions.some(pattern => pathLower.includes(pattern));
+    };
+
     if (searchResults() !== null) {
       return searchResults()!
         .filter(r => {
@@ -904,6 +921,8 @@ function App() {
           // Archival filter
           if (archivalFilter() === "active" && r.session.isArchived) return false;
           if (archivalFilter() === "archived" && !r.session.isArchived) return false;
+          // Excluded paths filter
+          if (isExcluded(r.session.filePath)) return false;
           return true;
         })
         .map(r => r.session);
@@ -916,6 +935,8 @@ function App() {
       // Archival filter
       if (archivalFilter() === "active" && s.isArchived) return false;
       if (archivalFilter() === "archived" && !s.isArchived) return false;
+      // Excluded paths filter
+      if (isExcluded(s.filePath)) return false;
       return true;
     });
   });
@@ -1146,6 +1167,8 @@ function App() {
         onShowSecondsChange={handleShowSecondsChange}
         numberFormat={numberFormat()}
         onNumberFormatChange={handleNumberFormatChange}
+        excludedPaths={excludedPaths()}
+        onExcludedPathsChange={handleExcludedPathsChange}
         onUpdateAvailable={(update) => {
           setUpdateManifest(update);
           setShowUpdateModal(true);

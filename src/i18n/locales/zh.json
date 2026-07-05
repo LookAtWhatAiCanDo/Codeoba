@@ -188,7 +188,9 @@
       "themeLavender": "薰衣草",
       "themePastel": "粉彩",
       "themeNeon": "霓虹",
-      "themePaper": "纸张"
+      "themePaper": "纸张",
+      "excludedPaths": "排除路径",
+      "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。"
     },
     "sources": {
       "tab": "数据源",
@@ -254,6 +256,15 @@
       "upToDate": "Codeoba 已是最新版本！",
       "updateFound": "发现新版本：v{version}",
       "error": "检查更新出错：{error}"
+    },
+    "exclusions": {
+      "title": "排除项"
+    },
+    "theme": {
+      "title": "主题"
+    },
+    "regional": {
+      "title": "区域与语言"
     }
   },
   "updater": {

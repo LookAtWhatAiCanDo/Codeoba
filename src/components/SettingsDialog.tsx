@@ -45,6 +45,8 @@ interface SettingsDialogProps {
   onShowSecondsChange: (val: boolean) => void;
   numberFormat?: string;
   onNumberFormatChange: (val: string) => void;
+  excludedPaths: string;
+  onExcludedPathsChange: (val: string) => void;
   customTheme?: {
     bg: { h: number; s: number; l: number };
     surface: { h: number; s: number; l: number };
@@ -1182,7 +1184,31 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </Show>
               </div>
             </Show>
+ 
+            <Show when={activeCategory() === "exclusions"}>
+              {/* Exclusions Tab */}
+              <div class="space-y-4">
+                <div class="border-b border-border/30 pb-2 mb-2 flex-shrink-0">
+                  <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
+                    {t("settings.exclusions.title")}
+                  </h3>
+                </div>
 
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex flex-col gap-3">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.excludedPaths")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.excludedPathsDesc")}</p>
+                  </div>
+                  <textarea
+                    value={props.excludedPaths}
+                    onInput={(e) => props.onExcludedPathsChange(e.currentTarget.value)}
+                    placeholder="e.g. node_modules, dist, temp, .git"
+                    class="w-full bg-background border border-border/80 rounded-xl p-3 text-xs text-text-primary focus:outline-none focus:border-accent font-mono resize-none h-32 placeholder:text-text-secondary/30 leading-normal"
+                  />
+                </div>
+              </div>
+            </Show>
+ 
             <Show when={activeCategory() === "updates"}>
               {/* Updates Tab */}
               <div class="space-y-5">

@@ -188,7 +188,9 @@
       "themeLavender": "لافندر",
       "themePastel": "باستيل",
       "themeNeon": "نيون",
-      "themePaper": "ورق"
+      "themePaper": "ورق",
+      "excludedPaths": "المسارات المستبعدة",
+      "excludedPathsDesc": "الاستثناءات (مفصولة بفواصل أو سطور جديدة). سيتم تجاهل المجلدات أو الملفات المطابقة في قوائم المحادثة."
     },
     "sources": {
       "tab": "المصادر",
@@ -254,6 +256,15 @@
       "upToDate": "تطبيق Codeoba محدث!",
       "updateFound": "تم العثور على تحديث: v{version}",
       "error": "خطأ أثناء التحقق من التحديثات: {error}"
+    },
+    "exclusions": {
+      "title": "الاستثناءات"
+    },
+    "theme": {
+      "title": "المظهر"
+    },
+    "regional": {
+      "title": "المنطقة واللغة"
     }
   },
   "updater": {
