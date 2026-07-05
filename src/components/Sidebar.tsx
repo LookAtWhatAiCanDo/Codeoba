@@ -19,7 +19,9 @@ import {
   ArrowDown,
   ChevronRight,
   ChevronDown,
-  Folder
+  Folder,
+  Layers,
+  Activity
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { Session, SearchResult, SourceMetadata } from "../types";
@@ -50,14 +52,23 @@ export interface GroupTreeNode {
   isPinned: boolean;
   directSessionCount: number;
   recursiveSessionCount: number;
+  directActiveCount: number;
+  directArchivedCount: number;
+  recursiveActiveCount: number;
+  recursiveArchivedCount: number;
   containsPinnedSessions: boolean;
 }
 
 export function buildGroupTree(
   groups: ConversationGroup[],
-  pinnedSessionIds: Set<string>
+  pinnedSessionIds: Set<string>,
+  sessions: Session[]
 ): GroupTreeNode[] {
   const rootNodes: GroupTreeNode[] = [];
+  const sessionsMap = new Map<string, Session>();
+  for (const s of sessions) {
+    sessionsMap.set(s.id, s);
+  }
 
   for (const group of groups) {
     const parts = group.name.split("/");
@@ -77,6 +88,10 @@ export function buildGroupTree(
           isPinned: false,
           directSessionCount: 0,
           recursiveSessionCount: 0,
+          directActiveCount: 0,
+          directArchivedCount: 0,
+          recursiveActiveCount: 0,
+          recursiveArchivedCount: 0,
           containsPinnedSessions: false
         };
         currentLevel.push(node);
@@ -84,26 +99,48 @@ export function buildGroupTree(
 
       if (i === parts.length - 1) {
         node.isPinned = group.isPinned;
-        node.directSessionCount = group.sessionIds?.length || 0;
+        let directActive = 0;
+        let directArchived = 0;
+        if (group.sessionIds) {
+          for (const id of group.sessionIds) {
+            const session = sessionsMap.get(id);
+            if (session) {
+              if (session.isArchived) {
+                directArchived++;
+              } else {
+                directActive++;
+              }
+            }
+          }
+        }
+        node.directActiveCount = directActive;
+        node.directArchivedCount = directArchived;
+        node.directSessionCount = directActive + directArchived;
         node.containsPinnedSessions = (group.sessionIds || []).some(id => pinnedSessionIds.has(id));
       }
       currentLevel = node.children;
     }
   }
 
-  function finalizeNode(node: GroupTreeNode): [number, boolean] {
+  function finalizeNode(node: GroupTreeNode): [number, number, number, boolean] {
     let childSessionsCount = 0;
+    let childActiveCount = 0;
+    let childArchivedCount = 0;
     let childHasPinnedSessions = false;
 
     for (const child of node.children) {
-      const [cCount, cPinned] = finalizeNode(child);
+      const [cCount, cActive, cArchived, cPinned] = finalizeNode(child);
       childSessionsCount += cCount;
+      childActiveCount += cActive;
+      childArchivedCount += cArchived;
       if (cPinned) {
         childHasPinnedSessions = true;
       }
     }
 
     node.recursiveSessionCount = node.directSessionCount + childSessionsCount;
+    node.recursiveActiveCount = node.directActiveCount + childActiveCount;
+    node.recursiveArchivedCount = node.directArchivedCount + childArchivedCount;
     node.containsPinnedSessions = node.containsPinnedSessions || childHasPinnedSessions;
 
     node.children.sort((a, b) => {
@@ -112,7 +149,7 @@ export function buildGroupTree(
       return a.segment.toLowerCase().localeCompare(b.segment.toLowerCase());
     });
 
-    return [node.recursiveSessionCount, node.containsPinnedSessions];
+    return [node.recursiveSessionCount, node.recursiveActiveCount, node.recursiveArchivedCount, node.containsPinnedSessions];
   }
 
   for (const root of rootNodes) {
@@ -540,24 +577,53 @@ export const Sidebar = (props: SidebarProps) => {
     return ids;
   });
 
-  const groupSessions = createMemo(() => {
-    const ids = activeGroupSessionIds();
-    if (!ids) return props.sessions;
-    if (props.activeGroupFilter === "_none_") {
-      return props.sessions.filter(s => !ids.has(s.id));
+  const matchingSessions = createMemo(() => {
+    let sessions = props.searchResults !== null 
+      ? props.searchResults.map(r => r.session) 
+      : props.sessions;
+
+    if (props.selectedSources.size > 0) {
+      sessions = sessions.filter(s => props.selectedSources.has(s.sourceId));
     }
-    return props.sessions.filter(s => ids.has(s.id));
+    return sessions;
   });
+
+  const searchedAndGroupedSessions = createMemo(() => {
+    let sessions = props.searchResults !== null 
+      ? props.searchResults.map(r => r.session) 
+      : props.sessions;
+    const ids = activeGroupSessionIds();
+    if (ids) {
+      if (props.activeGroupFilter === "_none_") {
+        sessions = sessions.filter(s => !ids.has(s.id));
+      } else {
+        sessions = sessions.filter(s => ids.has(s.id));
+      }
+    }
+    return sessions;
+  });
+
+  const unassignedSessions = createMemo(() => {
+    return matchingSessions().filter(s => !props.groups.some(g => g.sessionIds?.includes(s.id)));
+  });
+
+  const unassignedActiveCount = createMemo(() => {
+    return unassignedSessions().filter(s => !s.isArchived).length;
+  });
+
+  const unassignedArchivedCount = createMemo(() => {
+    return unassignedSessions().filter(s => s.isArchived).length;
+  });
+
 
   const sourceCounts = createMemo(() => {
     const counts: Record<string, number> = {};
     for (const src of props.sources) {
       counts[src.id] = 0;
     }
-    const baseline = props.searchResults !== null 
-      ? props.searchResults.map(r => r.session) 
-      : groupSessions();
-    for (const s of baseline) {
+    for (const s of searchedAndGroupedSessions()) {
+      if (props.archivalFilter === "active" && s.isArchived) continue;
+      if (props.archivalFilter === "archived" && !s.isArchived) continue;
       if (counts[s.sourceId] !== undefined) {
         counts[s.sourceId]++;
       }
@@ -566,12 +632,12 @@ export const Sidebar = (props: SidebarProps) => {
   });
 
   const archivalCounts = createMemo(() => {
-    const baseline = props.searchResults !== null 
-      ? props.searchResults.map(r => r.session) 
-      : groupSessions();
     let active = 0;
     let archived = 0;
-    for (const s of baseline) {
+    for (const s of searchedAndGroupedSessions()) {
+      if (props.selectedSources.size > 0 && !props.selectedSources.has(s.sourceId)) {
+        continue;
+      }
       if (s.isArchived) {
         archived++;
       } else {
@@ -579,7 +645,7 @@ export const Sidebar = (props: SidebarProps) => {
       }
     }
     return {
-      all: baseline.length,
+      all: active + archived,
       active,
       archived
     };
@@ -870,11 +936,9 @@ export const Sidebar = (props: SidebarProps) => {
                         />
                         <span class="flex items-center gap-1">
                           {src.displayName}
-                          <Show when={props.searchResults !== null}>
-                            <span class="text-[10px] opacity-60 ml-0.5">
-                              ({sourceCounts()[src.id] || 0})
-                            </span>
-                          </Show>
+                          <span class="text-[10px] opacity-60 ml-0.5">
+                            ({sourceCounts()[src.id] || 0})
+                          </span>
                         </span>
                       </label>
                     );
@@ -899,13 +963,20 @@ export const Sidebar = (props: SidebarProps) => {
                           : "text-text-secondary hover:text-text-primary"
                       }`}
                     >
-                      <span class="flex items-center justify-center gap-1">
-                        {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
-                        <Show when={props.searchResults !== null}>
-                          <span class="text-[10px] opacity-60 ml-0.5">
-                            ({archivalCounts()[tab]})
-                          </span>
+                      <span class="flex items-center justify-center gap-1.5">
+                        <Show when={tab === "all"}>
+                          <Layers class="w-3.5 h-3.5" />
                         </Show>
+                        <Show when={tab === "active"}>
+                          <Activity class="w-3.5 h-3.5" />
+                        </Show>
+                        <Show when={tab === "archived"}>
+                          <Archive class="w-3.5 h-3.5" />
+                        </Show>
+                        <span>{t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}</span>
+                        <span class="text-[10px] opacity-60 ml-0.5">
+                          ({archivalCounts()[tab]})
+                        </span>
                       </span>
                     </button>
                   )}
@@ -1038,18 +1109,47 @@ export const Sidebar = (props: SidebarProps) => {
                   <Folder class={`w-4 h-4 flex-shrink-0 ${props.activeGroupFilter === "_none_" ? "text-accent" : "text-text-secondary/70"}`} />
                   <span class="text-xs">{t("groups.noGroup")}</span>
                 </div>
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-surface-light border border-border/40 text-accent">
-                  {props.sessions.filter(s => !props.groups.some(g => g.sessionIds?.includes(s.id))).length}
-                </span>
+                <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                  {/* All */}
+                  <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                    props.archivalFilter === "all"
+                      ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                      : "bg-surface-light border-border/40 text-text-secondary"
+                  }`} title={t("sidebar.filterAll")}>
+                    <Layers class="w-2.5 h-2.5" />
+                    {unassignedSessions().length}
+                  </span>
+                  
+                  {/* Active */}
+                  <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                    props.archivalFilter === "active"
+                      ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                      : "bg-surface-light border-border/40 text-text-secondary/60"
+                  }`} title={t("sidebar.filterActive")}>
+                    <Activity class="w-2.5 h-2.5" />
+                    {unassignedActiveCount()}
+                  </span>
+
+                  {/* Archived */}
+                  <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                    props.archivalFilter === "archived"
+                      ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                      : "bg-surface-light border-border/40 text-text-secondary/60"
+                  }`} title={t("sidebar.filterArchived")}>
+                    <Archive class="w-2.5 h-2.5" />
+                    {unassignedArchivedCount()}
+                  </span>
+                </div>
               </div>
               
               {/* Recursive Group Tree Nodes */}
-              <For each={buildGroupTree(props.groups, props.pinnedSessionIds)}>
+              <For each={buildGroupTree(props.groups, props.pinnedSessionIds, matchingSessions())}>
                 {rootNode => (
                   <GroupTreeItem
                     node={rootNode}
                     depth={0}
                     activeGroupFilter={props.activeGroupFilter}
+                    archivalFilter={props.archivalFilter}
                     onSelect={props.onActiveGroupFilterChange}
                     onContextMenu={(e, node) => handleContextMenu(e, "group", undefined, node)}
                     renamingGroupPath={renamingGroupPath()}
@@ -1562,6 +1662,7 @@ interface GroupTreeItemProps {
   node: GroupTreeNode;
   depth: number;
   activeGroupFilter: string | null;
+  archivalFilter: "all" | "active" | "archived";
   onSelect: (filter: string | null) => void;
   onContextMenu: (e: MouseEvent, node: GroupTreeNode) => void;
   renamingGroupPath: string | null;
@@ -1571,6 +1672,7 @@ interface GroupTreeItemProps {
 }
 
 export const GroupTreeItem = (props: GroupTreeItemProps) => {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = createSignal(true);
   const [tempName, setTempName] = createSignal(props.node.segment);
   const [isDragOver, setIsDragOver] = createSignal(false);
@@ -1662,13 +1764,43 @@ export const GroupTreeItem = (props: GroupTreeItemProps) => {
               <Show when={!props.node.isPinned && props.node.containsPinnedSessions}>
                 <div class={`w-1.5 h-1.5 rounded-full ${isDragOver() ? "bg-white" : "bg-accent"}`} />
               </Show>
-              <span class={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border transition-all ${
-                isDragOver()
-                  ? "bg-white/20 border-white/30 text-white"
-                  : "bg-surface-light border-border/40 text-accent"
-              }`}>
-                {props.node.recursiveSessionCount}
-              </span>
+              <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                {/* All */}
+                <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                  isDragOver() 
+                    ? "bg-white/20 border-white/30 text-white" 
+                    : props.archivalFilter === "all"
+                    ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                    : "bg-surface-light border-border/40 text-text-secondary"
+                }`} title={t("sidebar.filterAll")}>
+                  <Layers class="w-2.5 h-2.5" />
+                  {props.node.recursiveSessionCount}
+                </span>
+                
+                {/* Active */}
+                <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                  isDragOver() 
+                    ? "bg-white/20 border-white/30 text-white" 
+                    : props.archivalFilter === "active"
+                    ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                    : "bg-surface-light border-border/40 text-text-secondary/60"
+                }`} title={t("sidebar.filterActive")}>
+                  <Activity class="w-2.5 h-2.5" />
+                  {props.node.recursiveActiveCount}
+                </span>
+
+                {/* Archived */}
+                <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                  isDragOver() 
+                    ? "bg-white/20 border-white/30 text-white" 
+                    : props.archivalFilter === "archived"
+                    ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                    : "bg-surface-light border-border/40 text-text-secondary/60"
+                }`} title={t("sidebar.filterArchived")}>
+                  <Archive class="w-2.5 h-2.5" />
+                  {props.node.recursiveArchivedCount}
+                </span>
+              </div>
             </div>
           </div>
         }
@@ -1744,6 +1876,7 @@ export const GroupTreeItem = (props: GroupTreeItemProps) => {
                 node={child}
                 depth={props.depth + 1}
                 activeGroupFilter={props.activeGroupFilter}
+                archivalFilter={props.archivalFilter}
                 onSelect={props.onSelect}
                 onContextMenu={props.onContextMenu}
                 renamingGroupPath={props.renamingGroupPath}

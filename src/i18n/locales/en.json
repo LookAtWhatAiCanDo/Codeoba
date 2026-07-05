@@ -293,6 +293,7 @@
     "filterByGroup": "Groups",
     "addGroup": "Add Group",
     "noGroup": "[No Group]",
+    "treeCountFormat": "{all} / {active} / {archived}",
     "noGroupsDefined": "No groups defined. Click folder icon to add.",
     "noMatchingSessions": "No matching sessions found.",
     "tagInputPlaceholder": "New group name (use '/' or '\\' to nest)...",
