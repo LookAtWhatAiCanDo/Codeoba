@@ -9,7 +9,10 @@ import {
   Layers,
   Sliders,
   Settings,
-  Shuffle
+  Shuffle,
+  FolderMinus,
+  Globe,
+  SlidersHorizontal
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -51,7 +54,7 @@ interface SettingsDialogProps {
   onCustomThemeChange?: (val: any) => void;
 }
 
-type Category = "general" | "sources" | "semantic" | "permissions" | "updates";
+type Category = "general" | "regional" | "theme" | "sources" | "exclusions" | "semantic" | "permissions" | "updates";
 
 const DARK_THEMES = [
   { id: "obsidian", nameKey: "themeObsidian", color: "bg-[#0d0e12] border-slate-700" },
@@ -505,8 +508,30 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     : "text-text-secondary hover:text-text-primary border border-transparent"
                 }`}
               >
-                <Palette class="w-3.5 h-3.5" />
+                <SlidersHorizontal class="w-3.5 h-3.5" />
                 <span>{t("settings.general.title")}</span>
+              </button>
+              <button
+                onClick={() => setActiveCategory("regional")}
+                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeCategory() === "regional"
+                    ? "bg-accent-light/20 text-accent border border-accent/20"
+                    : "text-text-secondary hover:text-text-primary border border-transparent"
+                }`}
+              >
+                <Globe class="w-3.5 h-3.5" />
+                <span>{t("settings.regional.title")}</span>
+              </button>
+              <button
+                onClick={() => setActiveCategory("theme")}
+                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeCategory() === "theme"
+                    ? "bg-accent-light/20 text-accent border border-accent/20"
+                    : "text-text-secondary hover:text-text-primary border border-transparent"
+                }`}
+              >
+                <Palette class="w-3.5 h-3.5" />
+                <span>{t("settings.theme.title")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("sources")}
@@ -518,6 +543,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               >
                 <Layers class="w-3.5 h-3.5" />
                 <span>{t("settings.sources.tab")}</span>
+              </button>
+              <button
+                onClick={() => setActiveCategory("exclusions")}
+                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeCategory() === "exclusions"
+                    ? "bg-accent-light/20 text-accent border border-accent/20"
+                    : "text-text-secondary hover:text-text-primary border border-transparent"
+                }`}
+              >
+                <FolderMinus class="w-3.5 h-3.5" />
+                <span>{t("settings.exclusions.title")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("semantic")}
@@ -570,6 +606,87 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               <div class="space-y-5">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.general.title")}
+                </h3>
+
+                {/* Persistent cache switch */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.cache")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.cacheDesc")}</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={cacheEnabled()} 
+                      onChange={(e) => handleToggleCache(e.currentTarget.checked)}
+                      class="sr-only peer"
+                    />
+                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                  </label>
+                </div>
+
+                {/* Secure storage switch */}
+                <Show when={premiumActive()}>
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
+                    <div class="flex-1 pr-4">
+                      <div class="flex items-center gap-2">
+                        <h4 class="text-xs font-bold text-text-primary">{t("settings.general.secureStorage")}</h4>
+                      </div>
+                      <p class="text-[10px] text-text-secondary/70 mt-1">
+                        {t("settings.general.secureStorageDesc")}
+                      </p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={!keyringDisabled()} 
+                        onChange={(e) => handleToggleKeyring(e.currentTarget.checked)}
+                        class="sr-only peer"
+                      />
+                      <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                    </label>
+                  </div>
+                </Show>
+
+
+
+                {/* Log Parsing Mode */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.logMode")}</h4>
+                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.logModeDesc")}</p>
+                  </div>
+                  <div class="flex bg-background p-1 rounded-lg border border-border/60">
+                    <button
+                      onClick={() => handleParserModeChange("standard")}
+                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        parserMode() === "standard" 
+                          ? "bg-surface text-accent border border-border/80 shadow-sm" 
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {t("settings.general.modeStandard")}
+                    </button>
+                    <button
+                      onClick={() => handleParserModeChange("summarizing")}
+                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                        parserMode() === "summarizing" 
+                          ? "bg-surface text-accent border border-border/80 shadow-sm" 
+                          : "text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {t("settings.general.modeCompact")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Show>
+
+            <Show when={activeCategory() === "regional"}>
+              {/* Region & Language Settings Tab */}
+              <div class="space-y-5 animate-in fade-in duration-200">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
+                  {t("settings.regional.title")}
                 </h3>
 
                 {/* Language Selector */}
@@ -662,6 +779,15 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <option value="fr">{t("settings.general.numberFormatFR")}</option>
                   </select>
                 </div>
+              </div>
+            </Show>
+
+            <Show when={activeCategory() === "theme"}>
+              {/* Theme Settings Tab */}
+              <div class="space-y-5 animate-in fade-in duration-200">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
+                  {t("settings.theme.title")}
+                </h3>
 
                 {/* Appearance Mode Selection */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
@@ -816,78 +942,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     </div>
                   </div>
                 </Show>
-
-                {/* Persistent cache switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.cache")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.cacheDesc")}</p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={cacheEnabled()} 
-                      onChange={(e) => handleToggleCache(e.currentTarget.checked)}
-                      class="sr-only peer"
-                    />
-                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
-                  </label>
-                </div>
-
-                {/* Secure storage switch */}
-                <Show when={premiumActive()}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
-                    <div class="flex-1 pr-4">
-                      <div class="flex items-center gap-2">
-                        <h4 class="text-xs font-bold text-text-primary">{t("settings.general.secureStorage")}</h4>
-                      </div>
-                      <p class="text-[10px] text-text-secondary/70 mt-1">
-                        {t("settings.general.secureStorageDesc")}
-                      </p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={!keyringDisabled()} 
-                        onChange={(e) => handleToggleKeyring(e.currentTarget.checked)}
-                        class="sr-only peer"
-                      />
-                      <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
-                    </label>
-                  </div>
-                </Show>
-
-
-
-                {/* Log Parsing Mode */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.logMode")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.logModeDesc")}</p>
-                  </div>
-                  <div class="flex bg-background p-1 rounded-lg border border-border/60">
-                    <button
-                      onClick={() => handleParserModeChange("standard")}
-                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        parserMode() === "standard" 
-                          ? "bg-surface text-accent border border-border/80 shadow-sm" 
-                          : "text-text-secondary hover:text-text-primary"
-                      }`}
-                    >
-                      {t("settings.general.modeStandard")}
-                    </button>
-                    <button
-                      onClick={() => handleParserModeChange("summarizing")}
-                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        parserMode() === "summarizing" 
-                          ? "bg-surface text-accent border border-border/80 shadow-sm" 
-                          : "text-text-secondary hover:text-text-primary"
-                      }`}
-                    >
-                      {t("settings.general.modeCompact")}
-                    </button>
-                  </div>
-                </div>
               </div>
             </Show>
 
