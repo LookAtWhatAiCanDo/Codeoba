@@ -115,8 +115,8 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
             #[cfg(not(unix))]
             {
                 if let Ok(meta) = target.metadata() {
-                    if let Ok(modified) = meta.modified() {
-                        if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+                    if let Ok(created) = meta.created() {
+                        if let Ok(duration) = created.duration_since(std::time::SystemTime::UNIX_EPOCH) {
                             current_ino = duration.as_nanos() as u64;
                         }
                     }
@@ -307,8 +307,8 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
             #[cfg(not(unix))]
             {
                 if let Ok(meta) = path.metadata() {
-                    if let Ok(modified) = meta.modified() {
-                        if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+                    if let Ok(created) = meta.created() {
+                        if let Ok(duration) = created.duration_since(std::time::SystemTime::UNIX_EPOCH) {
                             new_ino = duration.as_nanos() as u64;
                         }
                     }
@@ -340,7 +340,11 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
 fn is_relevant_event(kind: &EventKind) -> bool {
     matches!(
         kind,
-        EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_)
+        EventKind::Any
+            | EventKind::Modify(_)
+            | EventKind::Create(_)
+            | EventKind::Remove(_)
+            | EventKind::Other
     )
 }
 

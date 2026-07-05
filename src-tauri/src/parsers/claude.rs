@@ -64,7 +64,19 @@ impl SourceAdapter for ClaudeSource {
     }
 
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
-        Some(|path| path.ends_with(".jsonl"))
+        Some(|path_str| {
+            if !path_str.ends_with(".jsonl") {
+                return false;
+            }
+            let path = Path::new(path_str);
+            let home = crate::parsers::get_home_dir();
+            let base_dir = home.join(".claude/projects");
+            if let Ok(rel_path) = path.strip_prefix(&base_dir) {
+                rel_path.components().count() <= CLAUDE_LOGS_MAX_DEPTH
+            } else {
+                false
+            }
+        })
     }
 
     fn is_app_installed(&self) -> bool {
