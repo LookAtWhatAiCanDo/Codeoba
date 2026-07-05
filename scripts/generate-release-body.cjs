@@ -40,19 +40,19 @@ for (const file of files) {
   const ext = path.extname(file);
   const base = path.basename(file);
   if (ext === '.dmg') {
-    downloads.macos.push({ name: 'macOS DMG (Universal)', file: base });
+    downloads.macos.push({ name: 'macOS DMG (Universal)', file: base, arch: 'Universal' });
   } else if (ext === '.msi') {
     const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.windows.push({ name: `Windows MSI (${arch})`, file: base });
+    downloads.windows.push({ name: `Windows MSI (${arch})`, file: base, arch });
   } else if (ext === '.exe') {
     const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.windows.push({ name: `Windows EXE (${arch})`, file: base });
+    downloads.windows.push({ name: `Windows EXE (${arch})`, file: base, arch });
   } else if (ext === '.deb') {
     const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.linux.push({ name: `Linux DEB (${arch})`, file: base });
+    downloads.linux.push({ name: `Linux DEB (${arch})`, file: base, arch });
   } else if (ext === '.rpm') {
     const arch = base.includes('aarch64') ? 'ARM64' : 'x64';
-    downloads.linux.push({ name: `Linux RPM (${arch})`, file: base });
+    downloads.linux.push({ name: `Linux RPM (${arch})`, file: base, arch });
   }
 }
 
@@ -63,19 +63,19 @@ body += '| --- | --- |\n';
 let hasDownloads = false;
 if (downloads.macos.length > 0) {
   downloads.macos.forEach(d => {
-    body += `| **macOS** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
+    body += `| **macOS (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
     hasDownloads = true;
   });
 }
 if (downloads.windows.length > 0) {
   downloads.windows.forEach(d => {
-    body += `| **Windows** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
+    body += `| **Windows (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
     hasDownloads = true;
   });
 }
 if (downloads.linux.length > 0) {
   downloads.linux.forEach(d => {
-    body += `| **Linux** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
+    body += `| **Linux (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
     hasDownloads = true;
   });
 }
