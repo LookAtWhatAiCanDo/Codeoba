@@ -33,7 +33,7 @@ src-tauri/*.key.pub
 src-tauri/nsis/installer.nsi
 src-tauri/main.wxs
 
-demo_mock/
+mock_demo/
+mock_rich/
 scratch/
-src/i18n/locales.bak/
 *.code-workspace

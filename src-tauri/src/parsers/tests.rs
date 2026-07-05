@@ -1365,6 +1365,158 @@ fn test_hybrid_tokenizer_calibration() {
     }
 }
 
+#[test]
+fn test_search_effectiveness() {
+    // 1. Set up mock sessions in memory
+    let session_db = crate::models::Session {
+        id: "session-db".to_string(),
+        source_id: "cursor".to_string(),
+        file_path: "/path/to/cursor.vscdb".to_string(),
+        timestamp: 1000,
+        updated_at: 1000,
+        cwd: Some("/workspace/db".to_string()),
+        thread_name: Some("SQLite WAL Mode Configuration".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "db-1".to_string(),
+                user_message: "Hey Cursor, how do we enable WAL mode on our SQLite database connections to prevent lock conflicts?".to_string(),
+                assistant_message: "Understood. You can execute PRAGMA journal_mode=WAL; on the connection to enable Write-Ahead Logging. This allows multiple readers to read concurrently without database locked errors.".to_string(),
+                timestamp: 1000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+        snippet: None,
+        workspace_name: Some("db-workspace".to_string()),
+        status: None,
+    };
+
+    let session_tailwind = crate::models::Session {
+        id: "session-tailwind".to_string(),
+        source_id: "copilot".to_string(),
+        file_path: "/path/to/copilot.yaml".to_string(),
+        timestamp: 2000,
+        updated_at: 2000,
+        cwd: Some("/workspace/ui".to_string()),
+        thread_name: Some("Theme Variable Styling with Tailwind".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "ui-1".to_string(),
+                user_message: "How do we style the sidebar using CSS variables and Tailwind?".to_string(),
+                assistant_message: "Define theme colors in index.css (e.g. data-theme=\"nordic-frost\") using CSS custom properties. Then reference them in tailwind.config.js to allow utility classes like bg-background and text-accent to adjust automatically.".to_string(),
+                timestamp: 2000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+        snippet: None,
+        workspace_name: Some("ui-workspace".to_string()),
+        status: None,
+    };
+
+    let session_ml = crate::models::Session {
+        id: "session-ml".to_string(),
+        source_id: "claude".to_string(),
+        file_path: "/path/to/claude.jsonl".to_string(),
+        timestamp: 3000,
+        updated_at: 3000,
+        cwd: Some("/workspace/ml".to_string()),
+        thread_name: Some("Neural Net Inference Model".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "ml-1".to_string(),
+                user_message: "What model are we using for embeddings in Codeoba?".to_string(),
+                assistant_message: "We are using the all-MiniLM-L6-v2 transformer model running locally on the ONNX runtime engine to generate text embeddings.".to_string(),
+                timestamp: 3000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+        snippet: None,
+        workspace_name: Some("ml-workspace".to_string()),
+        status: None,
+    };
+
+    let sessions = vec![session_db, session_tailwind, session_ml];
+
+    // 2. Lexical Search Testing
+    let filter = crate::search::SearchFilter::default();
+
+    // Query A: "WAL" should match session-db
+    let results_wal = crate::search::lexical::lexical_search(&sessions, "WAL", &filter);
+    assert!(!results_wal.is_empty(), "Lexical search for 'WAL' returned no results");
+    assert_eq!(results_wal[0].session.id, "session-db");
+
+    // Query B: "Tailwind" should match session-tailwind
+    let results_tailwind = crate::search::lexical::lexical_search(&sessions, "Tailwind", &filter);
+    assert!(!results_tailwind.is_empty(), "Lexical search for 'Tailwind' returned no results");
+    assert_eq!(results_tailwind[0].session.id, "session-tailwind");
+
+    // Query C: "ONNX" should match session-ml
+    let results_onnx = crate::search::lexical::lexical_search(&sessions, "ONNX", &filter);
+    assert!(!results_onnx.is_empty(), "Lexical search for 'ONNX' returned no results");
+    assert_eq!(results_onnx[0].session.id, "session-ml");
+
+    // 3. Semantic Search Testing (using actual OnnxSemanticEmbedder conditionally)
+    if crate::search::downloader::is_model_downloaded() {
+        let model_path = crate::search::downloader::get_model_file();
+        let vocab_path = crate::search::downloader::get_vocab_file();
+        let embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)
+            .expect("Failed to initialize OnnxSemanticEmbedder");
+
+        // Build session vector index map
+        let mut embeddings = std::collections::HashMap::new();
+        for session in &sessions {
+            let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
+            let thread_emb = embedder.get_embeddings(thread_name).unwrap();
+            let mut turn_embeddings = Vec::new();
+            for turn in &session.turns {
+                let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
+                turn_embeddings.push(embedder.get_embeddings(&text).unwrap());
+            }
+            embeddings.insert(
+                session.id.clone(),
+                crate::search::SessionVectorIndex {
+                    thread_name_embedding: thread_emb,
+                    turn_embeddings,
+                },
+            );
+        }
+
+        // Semantic Query A: "database concurrency performance" -> should rank SQLite session first
+        let query_vec_db = embedder.get_embeddings("database concurrency performance").unwrap();
+        let results_sem_db = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_db, 0.2, &filter);
+        assert!(!results_sem_db.is_empty(), "Semantic search for 'database concurrency' returned no results");
+        assert_eq!(results_sem_db[0].session.id, "session-db", "Semantic query 'database concurrency performance' did not rank DB session first: {:?}", results_sem_db);
+
+        // Semantic Query B: "button visual theme design" -> should rank Tailwind session first
+        let query_vec_ui = embedder.get_embeddings("button visual theme design").unwrap();
+        let results_sem_ui = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_ui, 0.2, &filter);
+        assert!(!results_sem_ui.is_empty(), "Semantic search for 'button visual theme' returned no results");
+        assert_eq!(results_sem_ui[0].session.id, "session-tailwind", "Semantic query 'button visual theme design' did not rank Tailwind session first");
+
+        // Semantic Query C: "deep learning model runtimes" -> should rank ML/Claude session first
+        let query_vec_ml = embedder.get_embeddings("deep learning model runtimes").unwrap();
+        let results_sem_ml = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_ml, 0.2, &filter);
+        assert!(!results_sem_ml.is_empty(), "Semantic search for 'deep learning model runtimes' returned no results");
+        assert_eq!(results_sem_ml[0].session.id, "session-ml", "Semantic query 'deep learning model runtimes' did not rank ML session first");
+    } else {
+        println!("Skipping neural semantic search rankings validation since ONNX model files are not downloaded.");
+    }
+}
+
 
 
 

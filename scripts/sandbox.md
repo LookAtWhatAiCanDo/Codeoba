@@ -7,16 +7,18 @@ This sandbox allows you to visually verify Codeoba's real-time features—includ
 ## 1. Quick Start
 
 ### Step 1: Initialize the Empty Sandbox
-Run the generator script with the `--init` flag to clear the mock environment and set up empty target subdirectories:
+Run the generator script with the `--init` flag to clear the mock environment and set up empty target subdirectories. By default, it targets the `demo_mock` directory:
 ```bash
 python3 scripts/sandbox.py --init
 ```
+*Note: You can specify a custom directory name using the `--dir` option, e.g., `python3 scripts/sandbox.py --init --dir my_custom_sandbox`.*
 
 ### Step 2: Launch the App in Sandbox Mode
-Start the Tauri application with the `CODEOBA_MOCK_HOME` environment variable pointing to the `demo_mock` directory:
+Start the Tauri application with the `CODEOBA_MOCK_HOME` environment variable pointing to the mock directory:
 ```bash
 CODEOBA_MOCK_HOME=$PWD/demo_mock npm run tauri dev
 ```
+*(Use the corresponding folder path if you supplied a custom `--dir`)*.
 *The application will boot successfully with an empty left sidebar (0 sessions).*
 
 ---
@@ -26,13 +28,14 @@ CODEOBA_MOCK_HOME=$PWD/demo_mock npm run tauri dev
 While the app is running in the background, open a separate terminal window and use the following arguments to inject, modify, or delete sessions.
 
 ### Session Injection
-Generate mock log profiles individually or all at once:
+Generate mock log profiles individually, all at once, or as a rich search-effectiveness dataset:
 * **All 5 Providers (Simple Mock):** `python3 scripts/sandbox.py --all`
 * **Antigravity (Protobuf):** `python3 scripts/sandbox.py --antigravity`
 * **Claude Code (JSONL):** `python3 scripts/sandbox.py --claude`
 * **Cursor (SQLite):** `python3 scripts/sandbox.py --cursor`
 * **GitHub Copilot (YAML):** `python3 scripts/sandbox.py --copilot`
 * **OpenAI Codex (JSONL):** `python3 scripts/sandbox.py --codex`
+* **All 5 Providers (Rich Search Mock):** `python3 scripts/sandbox.py --rich`
 
 *Watch the app: Within 500ms of running any of these, the session card will slide into the left sidebar list.*
 
