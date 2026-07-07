@@ -5,7 +5,7 @@ use tract_onnx::prelude::*;
 use std::path::Path;
 
 pub struct OnnxSemanticEmbedder {
-    runnable: SimplePlan<TypedFact, Box<dyn TypedOp>, TypedModel>,
+    runnable: Arc<TypedRunnableModel>,
     tokenizer: super::tokenizer::WordPieceTokenizer,
 }
 
