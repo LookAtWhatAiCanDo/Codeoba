@@ -257,7 +257,7 @@ A release pipeline is configured in [.github/workflows/build-desktop.yml](.githu
        git tag v0.1.3
        git push origin v0.1.3
        ```
-       *The pipeline compiles the stable binary using the tag name as the compiled version (e.g., `0.1.3`), and uploads the production `latest.json` manifest directly to the release page.*
+       *The pipeline compiles the stable binary using the tag name as the compiled version (e.g., `0.1.3`), uploads the production `latest.json` manifest directly to the release page, and prunes any leftover development pre-releases to keep the release history clean.*
 
        > [!IMPORTANT]
        > **Version Match Guard:** The CI release pipeline validates that the pushed tag version (e.g. `v0.1.3`) matches the static version in `package.json`. If they do not match, the CI job will fail immediately to prevent out-of-sync builds.
