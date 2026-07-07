@@ -1,5 +1,6 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
+use std::sync::Arc;
 use tract_onnx::prelude::tract_ndarray::Array2;
 use tract_onnx::prelude::*;
 use std::path::Path;
