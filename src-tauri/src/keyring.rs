@@ -67,11 +67,14 @@ pub fn is_keyring_disabled() -> bool {
         }
     }
 
-    if cfg!(debug_assertions) {
-        // In debug mode, keyring is disabled by default to prevent repeated keyring prompts on unsigned builds
+    let is_dev_mode = cfg!(debug_assertions) || 
+        std::env::var("CODEOBA_APP_SIGNATURE_HASH").unwrap_or_else(|_| "DEVELOPMENT_ONLY".to_string()) == "DEVELOPMENT_ONLY";
+
+    if is_dev_mode {
+        // In development mode, keyring is disabled by default to prevent repeated keyring prompts on unsigned builds
         std::env::var("CODEOBA_NO_KEYRING").as_deref() != Ok("false")
     } else {
-        // In release builds, keyring is enabled by default unless explicitly disabled
+        // In signed production builds, keyring is enabled by default unless explicitly disabled
         false
     }
 }
@@ -106,6 +109,10 @@ pub fn set_keyring_disabled(disabled: bool) {
     }
 
     save_fallback_config(&config);
+
+    if let Ok(mut guard) = CACHED_CACHE_KEY.lock() {
+        *guard = None;
+    }
 }
 
 /// Retrieves a secret value associated with the specified key.
@@ -160,25 +167,49 @@ pub fn delete_secret(key: &str) {
     }
 }
 
+lazy_static::lazy_static! {
+    static ref CACHED_CACHE_KEY: std::sync::Mutex<Option<[u8; 32]>> = std::sync::Mutex::new(None);
+}
+
 /// Thread-safe initialization of the encryption key to prevent keyring race conditions.
 pub fn get_or_create_cache_key() -> [u8; 32] {
-    let key_name = "cache_encryption_key";
-    if let Some(key_hex) = get_secret(key_name) {
-        if let Ok(bytes) = hex::decode(key_hex) {
-            if bytes.len() == 32 {
-                let mut key = [0u8; 32];
-                key.copy_from_slice(&bytes);
-                return key;
-            }
+    if let Ok(guard) = CACHED_CACHE_KEY.lock() {
+        if let Some(key) = *guard {
+            return key;
         }
     }
-    
-    // Generate new key
+
+    let key = {
+        let key_name = "cache_encryption_key";
+        if let Some(key_hex) = get_secret(key_name) {
+            if let Ok(bytes) = hex::decode(key_hex) {
+                if bytes.len() == 32 {
+                    let mut key = [0u8; 32];
+                    key.copy_from_slice(&bytes);
+                    key
+                } else {
+                    generate_and_save_cache_key()
+                }
+            } else {
+                generate_and_save_cache_key()
+            }
+        } else {
+            generate_and_save_cache_key()
+        }
+    };
+
+    if let Ok(mut guard) = CACHED_CACHE_KEY.lock() {
+        *guard = Some(key);
+    }
+    key
+}
+
+fn generate_and_save_cache_key() -> [u8; 32] {
     use aes_gcm::aead::{KeyInit, OsRng};
     let key = aes_gcm::Aes256Gcm::generate_key(&mut OsRng);
     let key_bytes: [u8; 32] = key.into();
     let key_hex = hex::encode(key_bytes);
-    put_secret(key_name, Some(&key_hex));
+    put_secret("cache_encryption_key", Some(&key_hex));
     key_bytes
 }
 
