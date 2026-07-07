@@ -10,7 +10,7 @@ if (!artifactsDir || !changelogFile || !outputFile) {
   process.exit(1);
 }
 
-const releaseTag = process.env.GITHUB_REF_NAME || 'dev-release';
+const releaseTag = process.argv[5] || process.env.GITHUB_REF_NAME || 'dev-release';
 const changelog = fs.existsSync(changelogFile) ? fs.readFileSync(changelogFile, 'utf8') : '';
 
 function getAllFiles(dir) {
@@ -30,54 +30,101 @@ function getAllFiles(dir) {
 }
 
 const files = getAllFiles(artifactsDir);
-const downloads = {
-  macos: [],
-  windows: [],
-  linux: []
+const groups = {
+  macos: {},
+  windows: {},
+  linux: {}
 };
 
 for (const file of files) {
   const ext = path.extname(file);
   const base = path.basename(file);
+  let sizeMB = '0.0 MB';
+  try {
+    const stat = fs.statSync(file);
+    sizeMB = (stat.size / (1024 * 1024)).toFixed(1) + ' MB';
+  } catch (err) {
+    // Ignore
+  }
+
   if (ext === '.dmg') {
-    downloads.macos.push({ name: 'macOS DMG (Universal)', file: base, arch: 'Universal' });
+    const arch = 'Universal';
+    groups.macos[arch] = groups.macos[arch] || {};
+    groups.macos[arch].dmg = { file: base, size: sizeMB };
   } else if (ext === '.msi') {
-    const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.windows.push({ name: `Windows MSI (${arch})`, file: base, arch });
+    const arch = base.toLowerCase().includes('arm64') ? 'ARM64' : 'x64';
+    groups.windows[arch] = groups.windows[arch] || {};
+    groups.windows[arch].msi = { file: base, size: sizeMB };
   } else if (ext === '.exe') {
-    const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.windows.push({ name: `Windows EXE (${arch})`, file: base, arch });
+    const arch = base.toLowerCase().includes('arm64') ? 'ARM64' : 'x64';
+    groups.windows[arch] = groups.windows[arch] || {};
+    groups.windows[arch].exe = { file: base, size: sizeMB };
   } else if (ext === '.deb') {
-    const arch = base.includes('arm64') ? 'ARM64' : 'x64';
-    downloads.linux.push({ name: `Linux DEB (${arch})`, file: base, arch });
+    const arch = base.toLowerCase().includes('arm64') ? 'ARM64' : 'x64';
+    groups.linux[arch] = groups.linux[arch] || {};
+    groups.linux[arch].deb = { file: base, size: sizeMB };
   } else if (ext === '.rpm') {
-    const arch = base.includes('aarch64') ? 'ARM64' : 'x64';
-    downloads.linux.push({ name: `Linux RPM (${arch})`, file: base, arch });
+    const arch = base.toLowerCase().includes('aarch64') || base.toLowerCase().includes('arm64') ? 'ARM64' : 'x64';
+    groups.linux[arch] = groups.linux[arch] || {};
+    groups.linux[arch].rpm = { file: base, size: sizeMB };
   }
 }
 
 let body = '## 📥 Downloads\n\n';
-body += '| Platform | Installer |\n';
-body += '| --- | --- |\n';
+body += '| Platform | Architecture | Recommended (Standard) | Alternative / System |\n';
+body += '| :--- | :--- | :--- | :--- |\n';
 
 let hasDownloads = false;
-if (downloads.macos.length > 0) {
-  downloads.macos.forEach(d => {
-    body += `| **macOS (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
-    hasDownloads = true;
-  });
+
+// macOS
+if (Object.keys(groups.macos).length > 0) {
+  for (const arch of ['Universal']) {
+    const item = groups.macos[arch];
+    if (item && item.dmg) {
+      body += `| 🍎 **macOS** | Universal *(Intel + Apple Silicon)* | [Download DMG (${item.dmg.size})](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${item.dmg.file}) | — |\n`;
+      hasDownloads = true;
+    }
+  }
 }
-if (downloads.windows.length > 0) {
-  downloads.windows.forEach(d => {
-    body += `| **Windows (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
-    hasDownloads = true;
-  });
+
+// Windows
+if (Object.keys(groups.windows).length > 0) {
+  for (const arch of ['x64', 'ARM64']) {
+    const item = groups.windows[arch];
+    if (item) {
+      const archLabel = arch === 'x64' ? 'x64 *(Standard 64-bit)*' : 'ARM64 *(Copilot+ PCs)*';
+      let exeCol = '—';
+      let msiCol = '—';
+      if (item.exe) {
+        exeCol = `[Standard Installer EXE (${item.exe.size})](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${item.exe.file})`;
+      }
+      if (item.msi) {
+        msiCol = `[Enterprise MSI (${item.msi.size})](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${item.msi.file}) *(for SysAdmins)*`;
+      }
+      body += `| 🪟 **Windows** | ${archLabel} | ${exeCol} | ${msiCol} |\n`;
+      hasDownloads = true;
+    }
+  }
 }
-if (downloads.linux.length > 0) {
-  downloads.linux.forEach(d => {
-    body += `| **Linux (${d.arch})** | [${d.file}](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${d.file}) |\n`;
-    hasDownloads = true;
-  });
+
+// Linux
+if (Object.keys(groups.linux).length > 0) {
+  for (const arch of ['x64', 'ARM64']) {
+    const item = groups.linux[arch];
+    if (item) {
+      const archLabel = arch === 'x64' ? 'x64 *(Standard 64-bit)*' : 'ARM64 *(Pi / ARM servers)*';
+      let debCol = '—';
+      let rpmCol = '—';
+      if (item.deb) {
+        debCol = `[DEB for Ubuntu / Debian (${item.deb.size})](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${item.deb.file})`;
+      }
+      if (item.rpm) {
+        rpmCol = `[RPM for Fedora / RHEL (${item.rpm.size})](https://github.com/LookAtWhatAiCanDo/Codeoba/releases/download/${releaseTag}/${item.rpm.file})`;
+      }
+      body += `| 🐧 **Linux** | ${archLabel} | ${debCol} | ${rpmCol} |\n`;
+      hasDownloads = true;
+    }
+  }
 }
 
 if (!hasDownloads) {

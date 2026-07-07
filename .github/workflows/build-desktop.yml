@@ -477,7 +477,7 @@ jobs:
           cat << 'EOF' > changelog.txt
           ${{ steps.build_changelog.outputs.changelog }}
           EOF
-          node scripts/generate-release-body.cjs artifacts changelog.txt release_body.md
+          node scripts/generate-release-body.cjs artifacts changelog.txt release_body.md v${{ needs.build.outputs.version }}
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v3
