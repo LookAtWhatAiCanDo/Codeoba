@@ -29,22 +29,14 @@ try {
   }
   const pubKey = fs.readFileSync(pubKeyPath, 'utf8').trim();
 
-  // Update tauri.conf.json
-  if (!fs.existsSync(configPath)) {
-    throw new Error(`tauri.conf.json was not found at ${configPath}`);
-  }
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  config.plugins = config.plugins || {};
-  config.plugins.updater = config.plugins.updater || {};
-  config.plugins.updater.pubkey = pubKey;
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
-
   console.log('\n==================================================');
-  console.log('✅ KEY GENERATION AND AUTO-CONFIG SUCCESSFUL!');
+  console.log('✅ KEY GENERATION SUCCESSFUL!');
   console.log('==================================================\n');
-  console.log(`1. public key auto-written to: src-tauri/tauri.conf.json`);
-  console.log(`2. private key saved to: secrets/codeoba-updater.key (DO NOT COMMIT)`);
-  console.log(`3. public key file: secrets/codeoba-updater.key.pub`);
+  console.log(`🔑 GENERATED PUBLIC KEY:`);
+  console.log(`   -->  ${pubKey}  <--`);
+  console.log(`\n📂 FILE LOCATIONS:`);
+  console.log(`   * Private Key saved to: secrets/codeoba-updater.key (DO NOT COMMIT)`);
+  console.log(`   * Public Key file: secrets/codeoba-updater.key.pub`);
   console.log(`\n🔑 YOUR PRIVATE KEY PASSWORD:`);
   console.log(`   -->  ${password}  <--`);
   if (isGenerated) {
