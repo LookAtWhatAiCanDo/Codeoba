@@ -396,19 +396,19 @@ impl SearchIndexState {
 
                 // Prune and save cache synchronously inside the blocking task
                 if run_embeddings_val {
-                    let mut active_texts = std::collections::HashSet::new();
+                    let mut active_hashes = std::collections::HashSet::new();
                     for session in s_map.values() {
                         let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
-                        active_texts.insert(thread_name.to_string());
+                        active_hashes.insert(crate::search::cache::calculate_string_md5(thread_name));
                         for turn in &session.turns {
                             let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
-                            active_texts.insert(text);
+                            active_hashes.insert(crate::search::cache::calculate_string_md5(&text));
                         }
                     }
 
                     let cache_save_start = std::time::Instant::now();
                     if let Some(ref cache) = cache_ref {
-                        cache.prune_orphans(&active_texts);
+                        cache.prune_orphans(&active_hashes);
                         cache.save_cache();
                     }
                     crate::log_info!("[rebuild] Synchronous cache save time: {:?}", cache_save_start.elapsed());

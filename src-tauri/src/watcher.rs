@@ -355,22 +355,29 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
     crate::log_info!("[watcher_event] handle_file_change: {}", path_str);
 
     for source in sources {
-        let matches_filter = match source.get_watch_file_filter() {
-            Some(filter_fn) => filter_fn(&path_str),
-            None => {
-                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                if source.id() == "cursor" && (ext == "vscdb" || path_str.contains("state.vscdb")) {
-                    true
-                } else if ext == "jsonl" {
-                    true
-                } else {
-                    false
+        let watch_paths = source.get_watch_paths();
+        let in_watched_path = watch_paths.iter().any(|p| path_str.starts_with(p));
+
+        let matches_filter = if in_watched_path {
+            match source.get_watch_file_filter() {
+                Some(filter_fn) => filter_fn(&path_str),
+                None => {
+                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    if source.id() == "cursor" && (ext == "vscdb" || path_str.contains("state.vscdb")) {
+                        true
+                    } else if ext == "jsonl" {
+                        true
+                    } else {
+                        false
+                    }
                 }
             }
+        } else {
+            false
         };
 
         // Also detect directory modifications/creations inside source's watched paths
-        let is_dir_change = path.is_dir() && source.get_watch_paths().iter().any(|p| path_str.starts_with(p));
+        let is_dir_change = path.is_dir() && in_watched_path;
 
         crate::log_info!(
             "[watcher_event] Source '{}': matches_filter={}, is_dir_change={}",

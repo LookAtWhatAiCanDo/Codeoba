@@ -187,11 +187,7 @@ impl EmbeddingCacheManager {
         }
     }
 
-    pub fn prune_orphans(&self, active_texts: &std::collections::HashSet<String>) {
-        let mut active_hashes = std::collections::HashSet::with_capacity(active_texts.len());
-        for text in active_texts {
-            active_hashes.insert(calculate_string_md5(text));
-        }
+    pub fn prune_orphans(&self, active_hashes: &std::collections::HashSet<String>) {
         if let Ok(mut guard) = self.cache_map.lock() {
             let initial_len = guard.len();
             guard.retain(|k, _| active_hashes.contains(k));
@@ -204,7 +200,7 @@ impl EmbeddingCacheManager {
     }
 }
 
-fn calculate_string_md5(value: &str) -> String {
+pub fn calculate_string_md5(value: &str) -> String {
     let digest = md5::compute(value.as_bytes());
     format!("{:x}", digest)
 }

@@ -212,13 +212,17 @@ impl SessionCacheManager {
         size: i64,
     ) -> Option<Session> {
         let entry = {
-            let active_guard = self.active_caches.lock().ok()?;
-            if let Some(map) = active_guard.get(source_id) {
-                map.get(file_path).cloned()
-            } else {
-                let cache_map = self.load_cache(source_id);
-                cache_map.get(file_path).cloned()
+            let mut cache_loaded = None;
+            if let Ok(guard) = self.active_caches.lock() {
+                if let Some(map) = guard.get(source_id) {
+                    cache_loaded = map.get(file_path).cloned();
+                }
             }
+            if cache_loaded.is_none() {
+                let cache_map = self.load_cache(source_id);
+                cache_loaded = cache_map.get(file_path).cloned();
+            }
+            cache_loaded
         }?;
 
         if entry.last_modified == last_modified && entry.size == size {
@@ -246,13 +250,17 @@ impl SessionCacheManager {
         size: i64,
     ) -> Option<Session> {
         let entry = {
-            let active_guard = self.active_caches.lock().ok()?;
-            if let Some(map) = active_guard.get(source_id) {
-                map.get(file_path).cloned()
-            } else {
-                let cache_map = self.load_cache(source_id);
-                cache_map.get(file_path).cloned()
+            let mut cache_loaded = None;
+            if let Ok(guard) = self.active_caches.lock() {
+                if let Some(map) = guard.get(source_id) {
+                    cache_loaded = map.get(file_path).cloned();
+                }
             }
+            if cache_loaded.is_none() {
+                let cache_map = self.load_cache(source_id);
+                cache_loaded = cache_map.get(file_path).cloned();
+            }
+            cache_loaded
         }?;
 
         if entry.hash == hash && entry.size == size {
