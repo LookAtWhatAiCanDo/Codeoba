@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use futures_util::StreamExt;
@@ -8,8 +8,17 @@ use sha2::{Digest, Sha256};
 fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
     let mut file = File::open(path).map_err(|e| format!("Failed to open file for hash check: {}", e))?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file for hash check: {}", e))?;
-    let hash = format!("{:x}", hasher.finalize());
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|e| format!("Failed to read file for hash check: {}", e))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    let hash = hex::encode(hasher.finalize());
     if hash == expected_hash {
         Ok(())
     } else {
