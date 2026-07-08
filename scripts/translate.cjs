@@ -29,12 +29,18 @@ function setNestedValue(obj, pathStr, value) {
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+    if (part === '__proto__' || part === 'constructor' || part === 'prototype') {
+      return;
+    }
+    if (!Object.hasOwn(current, part) || typeof current[part] !== 'object' || current[part] === null) {
       current[part] = {};
     }
     current = current[part];
   }
-  current[parts[parts.length - 1]] = value;
+  const lastPart = parts[parts.length - 1];
+  if (lastPart !== '__proto__' && lastPart !== 'constructor' && lastPart !== 'prototype') {
+    current[lastPart] = value;
+  }
 }
 
 // Ask Gemini to reconcile a batch of differences
