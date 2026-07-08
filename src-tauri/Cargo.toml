@@ -32,7 +32,7 @@ notify = "8"
 keyring = "2"
 tract-onnx = "0.23.3"
 tokenizers = "0.19"
-wasmtime = "24"
+wasmtime = "46"
 ed25519-dalek = "3"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "6"
