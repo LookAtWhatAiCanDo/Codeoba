@@ -1,11 +1,12 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
+use std::sync::Arc;
 use tract_onnx::prelude::tract_ndarray::Array2;
 use tract_onnx::prelude::*;
 use std::path::Path;
 
 pub struct OnnxSemanticEmbedder {
-    runnable: SimplePlan<TypedFact, Box<dyn TypedOp>, TypedModel>,
+    runnable: Arc<TypedRunnableModel>,
     tokenizer: super::tokenizer::WordPieceTokenizer,
 }
 
@@ -39,17 +40,18 @@ impl OnnxSemanticEmbedder {
         let attention_mask_val = Tensor::from(attention_mask_array);
         let token_type_ids_val = Tensor::from(token_type_ids_array);
 
-        let outputs = self.runnable.run(tvec![
+        let mut outputs = self.runnable.run(tvec![
             input_ids_val.into(),
             attention_mask_val.into(),
             token_type_ids_val.into(),
         ]).map_err(|e| e.to_string())?;
         
-        let output_value = &outputs[0];
+        let output_value = outputs.remove(0).into_tensor();
 
         let shape = output_value.shape();
         let dim = shape[2] as usize;
-        let slice = output_value.as_slice::<f32>().map_err(|e| e.to_string())?;
+        let array_view = output_value.to_plain_array_view::<f32>().map_err(|e| e.to_string())?;
+        let slice = array_view.as_slice().ok_or_else(|| "Tensor is not contiguous".to_string())?;
 
         // Mean Pooling
         let mut sentence_embedding = vec![0.0f32; dim];
