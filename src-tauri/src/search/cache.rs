@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng, AeadCore},
+    aead::{Aead, Generate, KeyInit},
     Aes256Gcm, Nonce,
 };
 
@@ -77,9 +77,12 @@ impl EmbeddingCacheManager {
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
         let key_bytes = get_or_create_cache_key();
         let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce = match Nonce::try_from(nonce_bytes) {
+            Ok(nonce) => nonce,
+            Err(_) => return,
+        };
 
-        let plaintext = match cipher.decrypt(nonce, ciphertext) {
+        let plaintext = match cipher.decrypt(&nonce, ciphertext) {
             Ok(p) => p,
             Err(_) => {
                 crate::log_warn!("Warning: Failed to decrypt embedding cache. Discarding cache.");
@@ -146,7 +149,7 @@ impl EmbeddingCacheManager {
         } else {
             let key_bytes = get_or_create_cache_key();
             let cipher = Aes256Gcm::new(&key_bytes.into());
-            let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
+            let nonce_bytes = Nonce::generate();
 
             let ciphertext = match cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
                 Ok(c) => c,

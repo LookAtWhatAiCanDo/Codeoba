@@ -205,9 +205,8 @@ pub fn get_or_create_cache_key() -> [u8; 32] {
 }
 
 fn generate_and_save_cache_key() -> [u8; 32] {
-    use aes_gcm::aead::{KeyInit, OsRng};
-    let key = aes_gcm::Aes256Gcm::generate_key(&mut OsRng);
-    let key_bytes: [u8; 32] = key.into();
+    use aes_gcm::aead::Generate;
+    let key_bytes = <[u8; 32] as Generate>::generate();
     let key_hex = hex::encode(key_bytes);
     put_secret("cache_encryption_key", Some(&key_hex));
     key_bytes
@@ -246,4 +245,3 @@ pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
     config.insert(format!("custom_{}_bg_l", mode), l.to_string());
     save_fallback_config(&config);
 }
-
