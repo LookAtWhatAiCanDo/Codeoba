@@ -48,6 +48,11 @@ interface TitleBarProps {
   isLoading: boolean;
   onShowSettings: () => void;
   appVersion: string;
+  indexingProgress?: {
+    step: string;
+    progress: number;
+    currentSource: string;
+  } | null;
 }
 
 export const TitleBar = (props: TitleBarProps) => {
@@ -145,23 +150,33 @@ export const TitleBar = (props: TitleBarProps) => {
         <Home class="w-4 h-4" />
       </button>
 
-      <button
-        onClick={props.onRebuildIndex}
-        disabled={props.isRebuilding || props.isLoading}
-        title={t("sidebar.forceRebuild")}
-        class={`w-[30px] h-[30px] inline-flex items-center justify-center border border-transparent rounded-lg transition-all ${
-          (props.isRebuilding || props.isLoading) 
-            ? "cursor-not-allowed text-accent bg-accent/5 border-accent/15" 
-            : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
-        }`}
-      >
-        <Show 
-          when={props.isRebuilding || props.isLoading} 
-          fallback={<RotateCwClean class="w-4 h-4" />}
+      <div class={`inline-flex items-center gap-1.5 transition-all ${props.isRebuilding ? "px-1.5" : ""}`}>
+        <button
+          onClick={props.onRebuildIndex}
+          disabled={props.isRebuilding || props.isLoading}
+          title={props.isRebuilding && props.indexingProgress 
+            ? `${props.indexingProgress.step === "complete" ? "Finished" : "Rebuilding"}: ${props.indexingProgress.currentSource} (${Math.round(props.indexingProgress.progress * 100)}%)`
+            : t("sidebar.forceRebuild")
+          }
+          class={`w-[30px] h-[30px] inline-flex items-center justify-center border border-transparent rounded-lg transition-all ${
+            (props.isRebuilding || props.isLoading) 
+              ? "cursor-not-allowed text-accent bg-accent/5 border-accent/15" 
+              : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
+          }`}
         >
-          <RotateCwClean class="w-4 h-4 animate-spin origin-center" />
+          <Show 
+            when={props.isRebuilding || props.isLoading} 
+            fallback={<RotateCwClean class="w-4 h-4" />}
+          >
+            <RotateCwClean class="w-4 h-4 animate-spin origin-center" />
+          </Show>
+        </button>
+        <Show when={props.isRebuilding && props.indexingProgress}>
+          <span class="text-[10px] font-mono text-accent font-semibold select-none animate-pulse pr-1">
+            {Math.round(props.indexingProgress!.progress * 100)}%
+          </span>
         </Show>
-      </button>
+      </div>
 
       <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
 

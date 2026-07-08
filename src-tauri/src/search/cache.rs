@@ -200,6 +200,19 @@ impl EmbeddingCacheManager {
             }
         }
     }
+
+    pub fn delete_cache_file(&self) {
+        let file_path = self.get_cache_file();
+        if file_path.exists() {
+            let _ = fs::remove_file(file_path);
+        }
+        if let Ok(mut guard) = self.cache_map.lock() {
+            guard.clear();
+        }
+        if let Ok(mut mod_guard) = self.is_modified.lock() {
+            *mod_guard = false;
+        }
+    }
 }
 
 pub fn calculate_string_md5(value: &str) -> String {

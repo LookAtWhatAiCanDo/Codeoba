@@ -215,6 +215,16 @@ pub async fn rebuild_index<R: tauri::Runtime>(
     if bypass_cache == Some(true) {
         crate::log_info!("[IPC] rebuild_index: Bypassing and clearing cache!");
         crate::parsers::cache::get_cache_manager().clear_all_caches();
+
+        // Also clear embedding cache
+        let cache_mgr = crate::search::cache::EmbeddingCacheManager::new("all-MiniLM-L6-v2");
+        cache_mgr.delete_cache_file();
+
+        let state = app_handle.state::<SearchIndexState>();
+        let mut embs_guard = state.embeddings.write();
+        if let Ok(ref mut guard) = embs_guard {
+            guard.clear();
+        }
     }
     let state = app_handle.state::<SearchIndexState>();
     state.rebuild(true, Some(app_handle.clone())).await

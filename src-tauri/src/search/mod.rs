@@ -242,6 +242,15 @@ impl SearchIndexState {
         }
         crate::log_info!("[rebuild] Total parsing time: {:?}", parse_start.elapsed());
 
+        // Immediately update state.sessions with parsed sessions so they are visible and lexical search works!
+        if let Ok(mut sessions_guard) = self.sessions.write() {
+            let mut session_map = HashMap::new();
+            for session in &all_sessions {
+                session_map.insert(session.id.clone(), session.clone());
+            }
+            *sessions_guard = session_map;
+        }
+
         emit_progress("embedding", 0.80, "Calculating semantic embeddings...");
 
         let embed_start = std::time::Instant::now();

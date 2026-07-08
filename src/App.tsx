@@ -532,6 +532,7 @@ function App() {
         }
       });
 
+      let lastFetchedStep = "";
       unlistenProgress = await listen<{
         step: string;
         progress: number;
@@ -540,11 +541,21 @@ function App() {
         const payload = event.payload;
         setIndexingProgress(payload);
 
+        if (payload.step === "start") {
+          lastFetchedStep = "";
+        }
+
+        if (payload.step === "complete" || payload.step === "embedding") {
+          if (payload.step !== lastFetchedStep) {
+            lastFetchedStep = payload.step;
+            // Re-fetch sessions from backend once rebuild parsing is done or completed
+            invoke<Session[]>("get_all_sessions").then((list) => {
+              setSessions(enrichedSessions(list));
+            });
+          }
+        }
         if (payload.step === "complete") {
-          // Re-fetch sessions from backend once rebuild is complete
-          invoke<Session[]>("get_all_sessions").then((list) => {
-            setSessions(enrichedSessions(list));
-          });
+          setIsRebuilding(false);
           // Hide progress indicator after a short delay
           setTimeout(() => {
             setIndexingProgress(null);
@@ -779,26 +790,30 @@ function App() {
     setSelectedSources(next);
   };
 
-  const handleRebuildIndex = async (bypassCache: boolean = false) => {
+  const handleRebuildIndex = async (bypassCache: boolean | any = false) => {
+    const shouldBypass = bypassCache === true;
     try {
       setIsRebuilding(true);
       setErrorMsg(null);
-      await invoke("rebuild_index", { bypassCache });
-      
-      // Refresh session list
-      const list = await invoke<Session[]>("get_all_sessions");
-      setSessions(enrichedSessions(list));
-      
-      // Re-trigger search if query exists
-      const query = searchQuery();
-      if (query.trim() !== "") {
-        performSearch(query, isSemantic(), similarityThreshold());
-      }
+      await invoke("rebuild_index", { bypassCache: shouldBypass });
     } catch (err: any) {
       logFE("error", `Rebuild error: ${err}`);
       setErrorMsg(String(err));
     } finally {
       setIsRebuilding(false);
+    }
+
+    // Refresh sessions and search state after releasing the rebuild lock
+    try {
+      const list = await invoke<Session[]>("get_all_sessions");
+      setSessions(enrichedSessions(list));
+      
+      const query = searchQuery();
+      if (query.trim() !== "") {
+        performSearch(query, isSemantic(), similarityThreshold());
+      }
+    } catch (err: any) {
+      logFE("error", `Post-rebuild refresh error: ${err}`);
     }
   };
 
@@ -1016,6 +1031,7 @@ function App() {
         isLoading={isLoading()}
         onShowSettings={() => setShowSettings(true)}
         appVersion={appVersion()}
+        indexingProgress={indexingProgress()}
       />
 
       {/* Main Grid: Sidebar + Detail Pane */}
