@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::OnceLock;
 use aes_gcm::{
-    aead::{Aead, KeyInit, AeadCore},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 
@@ -124,7 +124,7 @@ impl SessionCacheManager {
         let (nonce_bytes, ciphertext) = raw_data.split_at(12);
         let key_bytes = get_or_create_cache_key();
         let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce = nonce_bytes.try_into().unwrap();
 
         let plaintext = match cipher.decrypt(nonce, ciphertext) {
             Ok(p) => p,
@@ -182,10 +182,11 @@ impl SessionCacheManager {
         } else {
             let key_bytes = get_or_create_cache_key();
             let cipher = Aes256Gcm::new(&key_bytes.into());
-            use aes_gcm::aead::OsRng;
-            let nonce_bytes = Aes256Gcm::generate_nonce(&mut OsRng);
+            let mut nonce_bytes = [0u8; 12];
+            getrandom::fill(&mut nonce_bytes).expect("Failed to generate random nonce");
+            let nonce = Nonce::from(nonce_bytes);
 
-            if let Ok(ciphertext) = cipher.encrypt(&nonce_bytes, plaintext_json.as_ref()) {
+            if let Ok(ciphertext) = cipher.encrypt(&nonce, plaintext_json.as_ref()) {
                 let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
                 combined.extend_from_slice(&nonce_bytes);
                 combined.extend_from_slice(&ciphertext);

@@ -8,8 +8,16 @@ use sha2::{Digest, Sha256};
 fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
     let mut file = File::open(path).map_err(|e| format!("Failed to open file for hash check: {}", e))?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher).map_err(|e| format!("Failed to read file for hash check: {}", e))?;
-    let hash = format!("{:x}", hasher.finalize());
+    let mut buffer = [0u8; 8192];
+    loop {
+        use std::io::Read;
+        let count = file.read(&mut buffer).map_err(|e| format!("Failed to read file for hash check: {}", e))?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+    let hash = hex::encode(hasher.finalize());
     if hash == expected_hash {
         Ok(())
     } else {
