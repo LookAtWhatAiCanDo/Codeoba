@@ -94,7 +94,7 @@ pub fn set_keyring_disabled(disabled: bool) {
         if let Ok(entry) = Entry::new(SERVICE_NAME, key_name) {
             if let Ok(secret) = entry.get_password() {
                 config.insert(key_name.to_string(), secret);
-                let _ = entry.delete_password();
+                let _ = entry.delete_credential();
             }
         }
         config.insert("disable_keyring".to_string(), "true".to_string());
@@ -157,7 +157,7 @@ pub fn put_secret(key: &str, value: Option<&str>) {
 pub fn delete_secret(key: &str) {
     if !is_keyring_disabled() {
         if let Ok(entry) = Entry::new(SERVICE_NAME, key) {
-            let _ = entry.delete_password();
+            let _ = entry.delete_credential();
         }
     }
     // Delete from fallback
@@ -205,8 +205,8 @@ pub fn get_or_create_cache_key() -> [u8; 32] {
 }
 
 fn generate_and_save_cache_key() -> [u8; 32] {
-    use aes_gcm::aead::Generate;
-    let key_bytes = <[u8; 32] as Generate>::generate();
+    let mut key_bytes = [0u8; 32];
+    getrandom::fill(&mut key_bytes).expect("Failed to generate random key");
     let key_hex = hex::encode(key_bytes);
     put_secret("cache_encryption_key", Some(&key_hex));
     key_bytes
