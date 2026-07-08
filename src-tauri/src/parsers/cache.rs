@@ -126,7 +126,10 @@ impl SessionCacheManager {
         let cipher = Aes256Gcm::new(&key_bytes.into());
         let nonce = match Nonce::try_from(nonce_bytes) {
             Ok(nonce) => nonce,
-            Err(_) => return HashMap::new(),
+            Err(_) => {
+                crate::log_warn!("Warning: Invalid nonce in session cache for '{}'. Discarding cache.", source_id);
+                return HashMap::new();
+            }
         };
 
         let plaintext = match cipher.decrypt(&nonce, ciphertext) {

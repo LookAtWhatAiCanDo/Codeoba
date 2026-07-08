@@ -79,7 +79,10 @@ impl EmbeddingCacheManager {
         let cipher = Aes256Gcm::new(&key_bytes.into());
         let nonce = match Nonce::try_from(nonce_bytes) {
             Ok(nonce) => nonce,
-            Err(_) => return,
+            Err(_) => {
+                crate::log_warn!("Warning: Invalid nonce in embedding cache. Discarding cache.");
+                return;
+            }
         };
 
         let plaintext = match cipher.decrypt(&nonce, ciphertext) {
