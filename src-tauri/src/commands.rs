@@ -615,3 +615,49 @@ pub fn save_theme_settings(appearance: String, dark_theme: String, light_theme: 
 pub fn save_custom_theme_bg(mode: String, h: i32, s: i32, l: i32) {
     crate::keyring::save_custom_theme_bg(&mode, h, s, l);
 }
+
+
+#[tauri::command]
+pub fn get_backend_base_url<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> String {
+    get_backend_base_url_internal(&app_handle)
+}
+
+pub(crate) fn get_backend_base_url_internal<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) -> String {
+    let url_opt = app_handle.config().plugins.0.get("updater")
+        .and_then(|u| u.get("endpoints"))
+        .and_then(|e| e.as_array())
+        .and_then(|a| a.first())
+        .and_then(|v| v.as_str())
+        .and_then(|s| url::Url::parse(s).ok());
+
+    if let Some(parsed) = url_opt {
+        if let Some(host) = parsed.host_str() {
+            let scheme = parsed.scheme();
+            return match parsed.port() {
+                Some(port) => format!("{}://{}:{}", scheme, host, port),
+                None => format!("{}://{}", scheme, host),
+            };
+        }
+    }
+    "https://codeoba.com".to_string()
+}
+
+#[tauri::command]
+pub fn save_language_setting<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>, lang: String) -> Result<(), String> {
+    let mut config = crate::keyring::load_fallback_config();
+    config.insert("language".to_string(), lang.clone());
+    crate::keyring::save_fallback_config(&config);
+
+    // Rebuild the menu bar in real-time
+    if let Err(e) = crate::menu::setup_menu_internal(&app_handle, &lang) {
+        return Err(format!("Failed to rebuild menu: {}", e));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_language_override() -> Option<String> {
+    let args: Vec<String> = std::env::args().collect();
+    args.iter().position(|r| r == "--lang")
+        .and_then(|idx| args.get(idx + 1).cloned())
+}

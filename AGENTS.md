@@ -22,24 +22,27 @@ To ensure the project context remains accurate:
 
 ## 🏗️ Codebase Directory Map
 
-- **`src/` (Frontend React UI)**
-  - `main.tsx`: App rendering and React root element bootstrap.
+- **`index.html` (Application Root Entry Point)**
+  - Bootstraps the application window and pre-renders an inline CSS/HTML loading skeleton.
+  - Contains synchronous inline scripts to immediately resolve the theme, direction (RTL/LTR), custom scrollbar styles, and window control paddings (to prevent visual shifts/flashes on boot).
+
+- **`src/` (Frontend SolidJS UI)**
+  - `main.tsx`: App rendering and SolidJS root element bootstrap.
   - `App.tsx`: App layout coordinator (managing navigation and pane displays).
   - `types.ts`: Central declaration of common type interfaces (Turn, Session, SearchResult, SourceMetadata).
-  - `index.css`: Tailwind CSS entry stylesheet introducing variables.
-  - `components/`: Reusable UI elements (dialog box widgets, buttons, status indicators, and modal popups).
-  - `panels/`: Complex panels:
+  - `App.css`: Tailwind CSS entry stylesheet introducing variables.
+  - `components/`: Reusable UI elements and panels:
     * `Sidebar.tsx`: Search inputs, source selectors, sorting dropdowns, and index thread lists.
-    * `DetailPane.tsx`: Conversation dialogue display, Markdown parsing, metadata tags, and copy buttons.
+    * `DetailPane.tsx`: Conversation dialogue display, Markdown parsing, metadata tags, local find-in-page search, and copy buttons.
     * `SettingsDialog.tsx`: General settings, source path managers, permissions console, and app updates.
-  - `hooks/`: React state and lifecycle hooks (`useSearch`, `useWatcher`, `useAuth`).
   - `services/`: Bridges to call Tauri commands via TS functions (`tauriBridge.ts`).
 
 - **`src-tauri/` (Backend Rust Core)**
   - `Cargo.toml`: Package dependencies (tauri, serde, rusqlite, notify, keyring, ort, wasmtime).
   - `src/main.rs`: Minimal entry point that boots the library runner.
   - `src/lib.rs`: Tauri builder, setup hooks, and deep link integrations.
-  - `src/commands.rs`: Rust command handlers exposed via IPC to the React frontend.
+  - `src/menu.rs`: Native system menu builders, event handlers, and label updaters.
+  - `src/commands.rs`: Rust command handlers exposed via IPC to the SolidJS frontend.
   - `src/models.rs`: Rust structs mapping unified types (`Session`, `Turn`, `SessionSummary`).
   - `src/parsers/`: Log adapters parsing files to models:
     * `claude.rs`: JSONL stream parser.
@@ -57,13 +60,13 @@ To ensure the project context remains accurate:
 
 ---
 
-## 🎨 UI Style Guidelines & Constraints (React + Tailwind CSS)
+## 🎨 UI Style Guidelines & Constraints (SolidJS + Tailwind CSS)
 
 When modifying the frontend web components, adhere to these styling guidelines:
 
 1. **Dynamic Color Theme Styling**:
-   - Theme variables (e.g. background, surface, borders, highlight accents, text) are defined as CSS Custom Properties (variables) in `src/index.css`.
-   - The React app loads the theme selection from the backend on startup and injects it as a CSS class or data attribute on the `<html>` or `<body>` element (e.g. `data-theme="nordic-frost"`).
+   - Theme variables (e.g. background, surface, borders, highlight accents, text) are defined as CSS Custom Properties (variables) in `src/App.css`.
+   - The SolidJS app loads the theme selection from the backend on startup and injects it as a CSS class or data attribute on the `<html>` or `<body>` element (e.g. `data-theme="nordic-frost"`).
    - Tailwind styles must use these semantic variable names (e.g., `bg-background`, `border-border`, `text-primary`, `text-accent-cyan`).
    - The 8 custom themes are: Obsidian, Nordic Frost, Emerald Forest, Sunset Copper, Royal Amethyst, Dracula, Cyberpunk Neon, and Monochrome Slate.
 
@@ -77,7 +80,7 @@ When modifying the frontend web components, adhere to these styling guidelines:
 
 4. **Markdown Rendering & Code Highlighting**:
    - Use `marked` on the frontend for rendering transcripts.
-   - Syntactically highlight code snippets using `prismjs` or `shiki` within React code block layouts.
+   - Syntactically highlight code snippets using `prismjs` or `shiki` within SolidJS code block layouts.
    - Handle markdown links inside chat bubbles by attaching clickable callback events that securely verify target paths with the backend before opening them.
 
 ---
@@ -91,6 +94,7 @@ When modifying the frontend web components, adhere to these styling guidelines:
 2. **Directory Watcher (notify crate)**:
    - Use Rust's `notify` crate to receive native OS file events.
    - Keep event-driven file monitoring filtered to specific target log extensions (`.jsonl`, `.md`, `.vscdb`) to prevent index-write loops on source codes or builds.
+   - To avoid redundant rescans when editing files in Cursor, modifications under `workspaceStorage` are filtered by checking if the active composer list has actually changed.
 
 3. **Local ONNX-based Semantic Search**:
    - The `all-MiniLM-L6-v2` transformer model is bundled/cached locally in `~/.codeoba/models/`.
@@ -129,6 +133,12 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - Limit the folder scanning depth for Claude Code (`~/.claude/projects`) strictly to a maximum depth of `3` (`max_depth = 3`).
    - This prevents the directory scanner from traversing into massive project workspace folders or following cyclic symlinks under user projects, avoiding thread lockup and extreme performance degradation.
    - It also ensures search index correctness by preventing the scan from picking up subagent transcripts (located at depth 4). Because subagent logs share their parent's `sessionId`, parsing them would cause duplicate IDs and overwrite the parent session in the search index with incomplete subagent data.
+
+10. **Tauri System Menu & Scroll Target Focus**:
+   - Custom menu events are captured globally on the `tauri::Builder` instance (via `.on_menu_event`) instead of the app setup hook, ensuring compatibility with macOS's thread loop initialization.
+   - Click events are dispatched both globally and window-specifically to guarantee all frontend listener types receive the signal.
+   - To prevent WKWebView scroll layout suppression when clicking the native OS menu bar (where the webview window loses focus), the frontend listeners run an explicit `window.focus()`.
+   - It then resolves the target container element (e.g., `#detail-pane-scroll-container` or `#sidebar-scroll-container`) within a deferred `setTimeout(..., 50)` block, programmatically focuses it (enabled via `tabindex="-1"` and `outline-none`), and mutates its `scrollTop` property. This focuses the target pane and initiates subsequent native keyboard navigation.
 
 ---
 

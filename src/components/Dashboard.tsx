@@ -216,8 +216,26 @@ export const Dashboard = (props: DashboardProps) => {
     return formatNumberWithSetting(num, props.numberFormat || "system", locale());
   };
 
+  const handleDashboardClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest("input, textarea, button, select, a, [role='button']")) {
+      const container = document.getElementById("dashboard-scroll-container");
+      if (container) {
+        container.focus();
+      }
+    }
+  };
+
   return (
-    <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 overflow-y-auto px-8 pt-6 pb-6 space-y-6">
+    <div 
+      id="dashboard-scroll-container"
+      tabindex="-1"
+      onClick={handleDashboardClick}
+      class="flex-grow h-full flex flex-col bg-background/95 min-w-0 overflow-y-auto px-8 pt-6 pb-6 space-y-6 outline-none transition-all duration-200 relative focus-within:z-[51] group"
+    >
+      {/* Focus Highlight Border Overlay */}
+      <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
+
       {/* Overview Tabs Navigation */}
       <div class="flex bg-surface p-1 rounded-xl border border-border/60 max-w-sm flex-shrink-0">
         <button

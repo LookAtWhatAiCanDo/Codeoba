@@ -305,5 +305,58 @@
     "unpinGroup": "Gruppe loslösen",
     "renameGroup": "Gruppe umbenennen",
     "deleteGroup": "Gruppe löschen"
+  },
+  "feedback": {
+    "title": "Feedback senden",
+    "desc": "Haben Sie einen Vorschlag, einen Fehler gefunden oder möchten Sie ein Feature anfordern? Teilen Sie es uns unten mit.",
+    "emailLabel": "E-Mail-Adresse (Optional)",
+    "emailPlaceholder": "Geben Sie Ihre E-Mail ein, wenn Sie eine Rückmeldung wünschen",
+    "messageLabel": "Nachricht",
+    "messagePlaceholder": "Was liegt Ihnen auf dem Herzen? Vorschläge, Fragen oder Fehlerberichte sind willkommen...",
+    "attachDiagnostics": "System-Metadaten anhängen (App-Version, Betriebssystem)",
+    "cancel": "Abbrechen",
+    "submit": "Feedback senden",
+    "submitting": "Wird gesendet...",
+    "thankYou": "Vielen Dank!",
+    "success": "Ihr Feedback wurde erfolgreich an die Entwickler übermittelt.",
+    "errorMsg": "Fehler beim Senden des Feedbacks: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "Suchen",
+      "findDetail": "Im Transkript suchen...",
+      "findSidebar": "Unterhaltungen durchsuchen..."
+    },
+    "file": {
+      "title": "Ablage",
+      "rebuild": "Index neu aufbauen",
+      "rebuildBypass": "Index neu aufbauen (Cache umgehen)",
+      "settings": "Einstellungen",
+      "preferences": "Einstellungen..."
+    },
+    "go": {
+      "title": "Gehe zu",
+      "back": "Zurück navigieren",
+      "forward": "Vorwärts navigieren",
+      "dashboard": "Dashboard",
+      "sidebar": "Seitenleiste",
+      "detail": "Detailbereich",
+      "nextSession": "Seitenleiste: Nächste auswählen",
+      "prevSession": "Seitenleiste: Vorherige auswählen",
+      "highlightNext": "Seitenleiste: Nächste markieren",
+      "highlightPrev": "Seitenleiste: Vorherige markieren",
+      "selectHighlighted": "Seitenleiste: Markierte auswählen",
+      "home": "Anfang",
+      "end": "Ende",
+      "pageUp": "Bild auf",
+      "pageDown": "Bild ab"
+    },
+    "view": {
+      "title": "Ansicht"
+    },
+    "help": {
+      "title": "Hilfe",
+      "feedback": "Feedback an das Codeoba-Team senden..."
+    }
   }
 }

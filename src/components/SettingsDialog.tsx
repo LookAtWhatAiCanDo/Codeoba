@@ -478,7 +478,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     <Show when={props.isOpen}>
       {/* Modal scrim background */}
       <div 
-        class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
+        class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
         onClick={props.onClose}
       >
         {/* Settings Dialog box */}

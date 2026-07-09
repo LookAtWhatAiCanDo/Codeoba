@@ -307,5 +307,58 @@
     "unpinGroup": "Unpin Group",
     "renameGroup": "Rename Group",
     "deleteGroup": "Delete Group"
+  },
+  "feedback": {
+    "title": "Send Feedback",
+    "desc": "Have a suggestion, found a bug, or want to request a feature? Let us know directly below.",
+    "emailLabel": "Email Address (Optional)",
+    "emailPlaceholder": "Enter your email if you'd like us to follow up",
+    "messageLabel": "Message",
+    "messagePlaceholder": "What's on your mind? Suggestions, questions, or bugs are all welcome...",
+    "attachDiagnostics": "Attach system environment metadata (App version, OS)",
+    "cancel": "Cancel",
+    "submit": "Submit Feedback",
+    "submitting": "Sending...",
+    "thankYou": "Thank you!",
+    "success": "Your feedback has been submitted successfully to the developers.",
+    "errorMsg": "Failed to send feedback: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "Find",
+      "findDetail": "Find in Transcript...",
+      "findSidebar": "Search Conversations..."
+    },
+    "file": {
+      "title": "File",
+      "rebuild": "Rebuild Index",
+      "rebuildBypass": "Rebuild Index (Bypass Cache)",
+      "settings": "Settings",
+      "preferences": "Preferences..."
+    },
+    "go": {
+      "title": "Go",
+      "back": "Navigate Back",
+      "forward": "Navigate Forward",
+      "dashboard": "Dashboard",
+      "sidebar": "Sidebar",
+      "detail": "Detail Pane",
+      "nextSession": "Sidebar: Select Next",
+      "prevSession": "Sidebar: Select Previous",
+      "highlightNext": "Sidebar: Highlight Next",
+      "highlightPrev": "Sidebar: Highlight Previous",
+      "selectHighlighted": "Sidebar: Select Highlighted",
+      "home": "Home",
+      "end": "End",
+      "pageUp": "Page Up",
+      "pageDown": "Page Down"
+    },
+    "view": {
+      "title": "View"
+    },
+    "help": {
+      "title": "Help",
+      "feedback": "Send Feedback to Codeoba Team..."
+    }
   }
 }

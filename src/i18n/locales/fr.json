@@ -305,5 +305,58 @@
     "unpinGroup": "Désépincler le groupe",
     "renameGroup": "Renommer le groupe",
     "deleteGroup": "Supprimer le groupe"
+  },
+  "feedback": {
+    "title": "Envoyer des commentaires",
+    "desc": "Une suggestion, un bug ou une demande de fonctionnalité ? Faites-le nous savoir directement ci-dessous.",
+    "emailLabel": "Adresse e-mail (Facultatif)",
+    "emailPlaceholder": "Saisissez votre e-mail si vous souhaitez que nous vous recontactions",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Qu'avez-vous en tête ? Vos suggestions, questions ou rapports de bugs sont les bienvenus...",
+    "attachDiagnostics": "Joindre les métadonnées système (Version de l'application, OS)",
+    "cancel": "Annuler",
+    "submit": "Envoyer les commentaires",
+    "submitting": "Envoi...",
+    "thankYou": "Merci !",
+    "success": "Vos commentaires ont été envoyés avec succès aux développeurs.",
+    "errorMsg": "Échec de l'envoi des commentaires : {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "Rechercher",
+      "findDetail": "Rechercher dans la transcription...",
+      "findSidebar": "Rechercher dans les conversations..."
+    },
+    "file": {
+      "title": "Fichier",
+      "rebuild": "Reconstruire l'index",
+      "rebuildBypass": "Reconstruire l'index (ignorer le cache)",
+      "settings": "Paramètres",
+      "preferences": "Préférences..."
+    },
+    "go": {
+      "title": "Aller",
+      "back": "Retourner en arrière",
+      "forward": "Aller de l'avant",
+      "dashboard": "Tableau de bord",
+      "sidebar": "Barre latérale",
+      "detail": "Volet de détails",
+      "nextSession": "Barre latérale : Sélectionner le suivant",
+      "prevSession": "Barre latérale : Sélectionner le précédent",
+      "highlightNext": "Barre latérale : Mettre en surbrillance le suivant",
+      "highlightPrev": "Barre latérale : Mettre en surbrillance le précédent",
+      "selectHighlighted": "Sélectionner l'élément surligné",
+      "home": "Début",
+      "end": "Fin",
+      "pageUp": "Page précédente",
+      "pageDown": "Page suivante"
+    },
+    "view": {
+      "title": "Présentation"
+    },
+    "help": {
+      "title": "Aide",
+      "feedback": "Envoyer des commentaires à l'équipe de Codeoba..."
+    }
   }
 }

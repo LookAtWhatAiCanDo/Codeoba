@@ -305,5 +305,58 @@
     "unpinGroup": "取消置頂分組",
     "renameGroup": "重新命名分組",
     "deleteGroup": "刪除分組"
+  },
+  "feedback": {
+    "title": "傳送意見回饋",
+    "desc": "有任何建議、發現 Bug 或想請求新功能？請在下方直接告訴我們。",
+    "emailLabel": "電子郵件地址（選填）",
+    "emailPlaceholder": "如果您希望我們跟進，請輸入您的電子郵件",
+    "messageLabel": "意見回饋內容",
+    "messagePlaceholder": "您想說些什麼？歡迎提出建議、問題或回報 Bug...",
+    "attachDiagnostics": "附帶系統環境元數據（應用程式版本、作業系統）",
+    "cancel": "取消",
+    "submit": "提交意見回饋",
+    "submitting": "正在傳送...",
+    "thankYou": "非常感謝！",
+    "success": "您的意見回饋已成功提交給開發團隊。",
+    "errorMsg": "傳送意見回饋失敗: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "尋找",
+      "findDetail": "在對話歷史中尋找...",
+      "findSidebar": "搜尋對話..."
+    },
+    "file": {
+      "title": "檔案",
+      "rebuild": "重新構建索引",
+      "rebuildBypass": "重新構建索引（跳過快取）",
+      "settings": "設定",
+      "preferences": "偏好設定..."
+    },
+    "go": {
+      "title": "前往",
+      "back": "後退",
+      "forward": "前進",
+      "dashboard": "儀表板",
+      "sidebar": "側邊欄",
+      "detail": "詳細面板",
+      "nextSession": "側邊欄: 選擇下一個",
+      "prevSession": "側邊欄: 選擇上一個",
+      "highlightNext": "側邊欄: 高亮下一個",
+      "highlightPrev": "側邊欄: 高亮上一個",
+      "selectHighlighted": "側邊欄: 選擇高亮項",
+      "home": "開頭",
+      "end": "結尾",
+      "pageUp": "向上翻頁",
+      "pageDown": "向下翻頁"
+    },
+    "view": {
+      "title": "檢視"
+    },
+    "help": {
+      "title": "說明",
+      "feedback": "向 Codeoba 團隊傳送意見回饋..."
+    }
   }
 }

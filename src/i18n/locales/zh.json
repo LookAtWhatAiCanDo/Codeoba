@@ -305,5 +305,58 @@
     "unpinGroup": "取消置顶分组",
     "renameGroup": "重命名分组",
     "deleteGroup": "删除分组"
+  },
+  "feedback": {
+    "title": "发送反馈",
+    "desc": "有任何建议、发现 Bug 或想请求新功能？请在下方直接告诉我们。",
+    "emailLabel": "电子邮箱地址（可选）",
+    "emailPlaceholder": "如果您希望我们跟进，请输入您的邮箱",
+    "messageLabel": "反馈内容",
+    "messagePlaceholder": "您想说点什么？欢迎提出建议、问题或反馈 Bug...",
+    "attachDiagnostics": "附带系统环境元数据（应用版本、操作系统）",
+    "cancel": "取消",
+    "submit": "提交反馈",
+    "submitting": "正在发送...",
+    "thankYou": "非常感谢！",
+    "success": "您的反馈已成功提交给开发团队。",
+    "errorMsg": "发送反馈失败: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "寻找",
+      "findDetail": "在对话历史中查找...",
+      "findSidebar": "搜索对话..."
+    },
+    "file": {
+      "title": "文件",
+      "rebuild": "重新构建索引",
+      "rebuildBypass": "重新构建索引（跳过缓存）",
+      "settings": "设置",
+      "preferences": "偏好设置..."
+    },
+    "go": {
+      "title": "前往",
+      "back": "后退",
+      "forward": "前进",
+      "dashboard": "仪表板",
+      "sidebar": "侧边栏",
+      "detail": "详细面板",
+      "nextSession": "侧边栏: 选择下一个",
+      "prevSession": "侧边栏: 选择上一个",
+      "highlightNext": "侧边栏: 高亮下一个",
+      "highlightPrev": "侧边栏: 高亮上一个",
+      "selectHighlighted": "侧边栏: 选择高亮项",
+      "home": "开头",
+      "end": "结尾",
+      "pageUp": "向上翻页",
+      "pageDown": "向下翻页"
+    },
+    "view": {
+      "title": "视图"
+    },
+    "help": {
+      "title": "帮助",
+      "feedback": "向 Codeoba 团队发送反馈..."
+    }
   }
 }

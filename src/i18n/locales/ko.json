@@ -305,5 +305,58 @@
     "unpinGroup": "그룹 고정 해제",
     "renameGroup": "그룹 이름 바꾸기",
     "deleteGroup": "그룹 삭제"
+  },
+  "feedback": {
+    "title": "피드백 보내기",
+    "desc": "제안 사항이 있거나 버그를 발견하셨나요? 아니면 새로운 기능을 요청하고 싶으신가요? 아래에 직접 적어주세요.",
+    "emailLabel": "이메일 주소 (선택 사항)",
+    "emailPlaceholder": "답변을 원하시면 이메일 주소를 입력해 주세요",
+    "messageLabel": "메시지",
+    "messagePlaceholder": "어떤 생각이 드시나요? 제안, 질문, 버그 보고 등 모두 환영합니다...",
+    "attachDiagnostics": "시스템 환경 메타데이터 첨부 (앱 버전, OS)",
+    "cancel": "취소",
+    "submit": "피드백 제출",
+    "submitting": "보내는 중...",
+    "thankYou": "감사합니다!",
+    "success": "피드백이 개발자에게 성공적으로 제출되었습니다.",
+    "errorMsg": "피드백 전송 실패: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "찾기",
+      "findDetail": "대화 내용에서 찾기...",
+      "findSidebar": "대화 검색..."
+    },
+    "file": {
+      "title": "파일",
+      "rebuild": "인덱스 재구축",
+      "rebuildBypass": "인덱스 재구축 (캐시 우회)",
+      "settings": "설정",
+      "preferences": "환경설정..."
+    },
+    "go": {
+      "title": "이동",
+      "back": "뒤로 이동",
+      "forward": "앞으로 이동",
+      "dashboard": "대시보드",
+      "sidebar": "사이드바",
+      "detail": "상세 패널",
+      "nextSession": "사이드바: 다음 선택",
+      "prevSession": "사이드바: 이전 선택",
+      "highlightNext": "사이드바: 다음 하이라이트",
+      "highlightPrev": "사이드바: 이전 하이라이트",
+      "selectHighlighted": "사이드바: 하이라이트된 항목 선택",
+      "home": "처음",
+      "end": "끝",
+      "pageUp": "이전 페이지",
+      "pageDown": "다음 페이지"
+    },
+    "view": {
+      "title": "보기"
+    },
+    "help": {
+      "title": "도움말",
+      "feedback": "Codeoba 팀에 피드백 보내기..."
+    }
   }
 }

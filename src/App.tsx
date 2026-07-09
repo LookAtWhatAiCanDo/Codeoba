@@ -15,6 +15,7 @@ import GroupDetailsView from "./components/GroupDetailsView";
 import { ConsentModal } from "./components/ConsentModal";
 import { UpdateModal } from "./components/UpdateModal";
 import { SourceDetectedModal } from "./components/SourceDetectedModal";
+import FeedbackDialog from "./components/FeedbackDialog";
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
 import { Layers, AlertCircle } from "lucide-solid";
@@ -43,6 +44,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
+  const [showFeedback, setShowFeedback] = createSignal(false);
   const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
   const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
   const [similarityThreshold, setSimilarityThreshold] = createSignal(
@@ -491,6 +493,30 @@ function App() {
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
+    let unlistenMenuSettings: (() => void) | undefined;
+    let unlistenMenuRebuild: (() => void) | undefined;
+    let unlistenMenuRebuildBypass: (() => void) | undefined;
+    let unlistenMenuFindDetail: (() => void) | undefined;
+    let unlistenMenuFindSidebar: (() => void) | undefined;
+    let unlistenMenuGoHome: (() => void) | undefined;
+    let unlistenMenuNavBack: (() => void) | undefined;
+    let unlistenMenuNavForward: (() => void) | undefined;
+    let unlistenMenuScrollTop: (() => void) | undefined;
+    let unlistenMenuScrollBottom: (() => void) | undefined;
+    let unlistenMenuScrollPageUp: (() => void) | undefined;
+    let unlistenMenuScrollPageDown: (() => void) | undefined;
+    let unlistenMenuSidebarScrollTop: (() => void) | undefined;
+    let unlistenMenuSidebarScrollBottom: (() => void) | undefined;
+    let unlistenMenuSidebarScrollPageUp: (() => void) | undefined;
+    let unlistenMenuSidebarScrollPageDown: (() => void) | undefined;
+    let unlistenMenuFeedback: (() => void) | undefined;
+    let unlistenMenuFocusSidebar: (() => void) | undefined;
+    let unlistenMenuFocusDetail: (() => void) | undefined;
+    let unlistenMenuGoNextSession: (() => void) | undefined;
+    let unlistenMenuGoPrevSession: (() => void) | undefined;
+    let unlistenMenuGoHighlightNext: (() => void) | undefined;
+    let unlistenMenuGoHighlightPrev: (() => void) | undefined;
+    let unlistenMenuGoSelectHighlighted: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -574,27 +600,453 @@ function App() {
           return { ...prev, [sourceId]: true };
         });
       });
+
+      unlistenMenuSettings = await listen("menu-settings", () => {
+        setShowSettings(true);
+      });
+      unlistenMenuRebuild = await listen("menu-rebuild-index", () => {
+        handleRebuildIndex(false);
+      });
+      unlistenMenuRebuildBypass = await listen("menu-rebuild-index-bypass", () => {
+        handleRebuildIndex(true);
+      });
+      unlistenMenuFindDetail = await listen("menu-find-detail", () => {
+        if (selectedSession()) {
+          window.dispatchEvent(new CustomEvent("trigger-detail-search"));
+        }
+      });
+      unlistenMenuFindSidebar = await listen("menu-find-sidebar", () => {
+        if (sidebarCollapsed()) {
+          setSidebarCollapsed(false);
+        }
+        setTimeout(() => {
+          const searchInput = document.getElementById("sidebar-search-input") || document.getElementById("sidebar-search-textarea");
+          if (searchInput) {
+            (searchInput as HTMLInputElement | HTMLTextAreaElement).focus();
+            (searchInput as HTMLInputElement | HTMLTextAreaElement).select();
+          }
+        }, 0);
+      });
+      unlistenMenuGoHome = await listen("menu-go-home", () => {
+        handleGoHome();
+      });
+      unlistenMenuNavBack = await listen("menu-nav-back", () => {
+        handleNavBack();
+      });
+      unlistenMenuNavForward = await listen("menu-nav-forward", () => {
+        handleNavForward();
+      });
+      unlistenMenuFeedback = await listen("menu-feedback", () => {
+        setShowFeedback(true);
+      });
+      unlistenMenuFocusSidebar = await listen("menu-focus-sidebar", () => {
+        logFE("info", "App.tsx: received menu-focus-sidebar");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("sidebar-scroll-container");
+          if (container) {
+            container.focus();
+          }
+        }, 50);
+      });
+      unlistenMenuFocusDetail = await listen("menu-focus-detail", () => {
+        logFE("info", "App.tsx: received menu-focus-detail");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            container.focus();
+          }
+        }, 50);
+      });
+      unlistenMenuGoNextSession = await listen("menu-go-next-session", () => {
+        logFE("info", "App.tsx: received menu-go-next-session");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length === 0) return;
+        const curSelId = selectedSession()?.id;
+        const curIndex = items.findIndex(s => s.id === curSelId);
+        const nextIndex = Math.min(items.length - 1, curIndex + 1);
+        if (nextIndex >= 0) {
+          handleSelectSession(items[nextIndex]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[nextIndex].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
+      unlistenMenuGoPrevSession = await listen("menu-go-prev-session", () => {
+        logFE("info", "App.tsx: received menu-go-prev-session");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length === 0) return;
+        const curSelId = selectedSession()?.id;
+        const curIndex = items.findIndex(s => s.id === curSelId);
+        const targetIndex = curIndex === -1 ? 0 : curIndex;
+        const prevIndex = Math.max(0, targetIndex - 1);
+        if (prevIndex >= 0) {
+          handleSelectSession(items[prevIndex]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[prevIndex].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
+      unlistenMenuGoHighlightNext = await listen("menu-go-highlight-next", () => {
+        logFE("info", "App.tsx: received menu-go-highlight-next");
+        window.focus();
+        window.dispatchEvent(new CustomEvent("menu-highlight-next"));
+        setTimeout(() => {
+          document.getElementById("sidebar-scroll-container")?.focus();
+        }, 50);
+      });
+      unlistenMenuGoHighlightPrev = await listen("menu-go-highlight-prev", () => {
+        logFE("info", "App.tsx: received menu-go-highlight-prev");
+        window.focus();
+        window.dispatchEvent(new CustomEvent("menu-highlight-prev"));
+        setTimeout(() => {
+          document.getElementById("sidebar-scroll-container")?.focus();
+        }, 50);
+      });
+      unlistenMenuGoSelectHighlighted = await listen("menu-go-select-highlighted", () => {
+        logFE("info", "App.tsx: received menu-go-select-highlighted");
+        window.focus();
+        window.dispatchEvent(new CustomEvent("menu-select-highlighted"));
+        setTimeout(() => {
+          document.getElementById("sidebar-scroll-container")?.focus();
+        }, 50);
+      });
+      unlistenMenuScrollTop = await listen("menu-scroll-top", () => {
+        logFE("info", "App.tsx: received menu-scroll-top");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            logFE("info", `App.tsx: scroll-top container found (${container.id}). Focus & scroll.`);
+            container.focus();
+            container.scrollTop = 0;
+          } else {
+            logFE("warn", "App.tsx: scroll-top container NOT found!");
+          }
+        }, 50);
+      });
+      unlistenMenuScrollBottom = await listen("menu-scroll-bottom", () => {
+        logFE("info", "App.tsx: received menu-scroll-bottom");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            logFE("info", `App.tsx: scroll-bottom container found (${container.id}). Focus & scroll.`);
+            container.focus();
+            container.scrollTop = container.scrollHeight;
+          } else {
+            logFE("warn", "App.tsx: scroll-bottom container NOT found!");
+          }
+        }, 50);
+      });
+      unlistenMenuScrollPageUp = await listen("menu-scroll-page-up", () => {
+        logFE("info", "App.tsx: received menu-scroll-page-up");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            logFE("info", `App.tsx: scroll-page-up container found (${container.id}). Focus & scroll.`);
+            container.focus();
+            container.scrollTop -= container.clientHeight * 0.85;
+          } else {
+            logFE("warn", "App.tsx: scroll-page-up container NOT found!");
+          }
+        }, 50);
+      });
+      unlistenMenuScrollPageDown = await listen("menu-scroll-page-down", () => {
+        logFE("info", "App.tsx: received menu-scroll-page-down");
+        window.focus();
+        setTimeout(() => {
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            logFE("info", `App.tsx: scroll-page-down container found (${container.id}). Focus & scroll.`);
+            container.focus();
+            container.scrollTop += container.clientHeight * 0.85;
+          } else {
+            logFE("warn", "App.tsx: scroll-page-down container NOT found!");
+          }
+        }, 50);
+      });
+      unlistenMenuSidebarScrollTop = await listen("menu-sidebar-scroll-top", () => {
+        logFE("info", "App.tsx: received menu-sidebar-scroll-top");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length > 0) {
+          handleSelectSession(items[0]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[0].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
+      unlistenMenuSidebarScrollBottom = await listen("menu-sidebar-scroll-bottom", () => {
+        logFE("info", "App.tsx: received menu-sidebar-scroll-bottom");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length > 0) {
+          const lastIdx = items.length - 1;
+          handleSelectSession(items[lastIdx]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[lastIdx].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
+      unlistenMenuSidebarScrollPageUp = await listen("menu-sidebar-scroll-page-up", () => {
+        logFE("info", "App.tsx: received menu-sidebar-scroll-page-up");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length > 0) {
+          const curId = selectedSession()?.id;
+          const curIdx = items.findIndex(s => s.id === curId);
+          const startIdx = curIdx === -1 ? 0 : curIdx;
+          const prevIdx = Math.max(0, startIdx - 8);
+          handleSelectSession(items[prevIdx]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[prevIdx].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
+      unlistenMenuSidebarScrollPageDown = await listen("menu-sidebar-scroll-page-down", () => {
+        logFE("info", "App.tsx: received menu-sidebar-scroll-page-down");
+        window.focus();
+        const items = filteredSessions();
+        if (items.length > 0) {
+          const curId = selectedSession()?.id;
+          const curIdx = items.findIndex(s => s.id === curId);
+          const nextIdx = Math.min(items.length - 1, curIdx + 8);
+          handleSelectSession(items[nextIdx]);
+          setTimeout(() => {
+            const cardId = `session-card-${items[nextIdx].id}`;
+            document.getElementById(cardId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      });
     } catch (err) {
       console.error("Failed to register listeners:", err);
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const isMac = navigator.userAgent.includes("Mac");
+      
       if (isCmdOrCtrl && e.key.toLowerCase() === "r") {
         e.preventDefault();
         const bypassCache = e.shiftKey;
         logFE("info", `Shortcut triggered refresh: bypassCache=${bypassCache}`);
         handleRebuildIndex(bypassCache);
       }
+
+      // Ctrl/Cmd-Shift-F -> Focus left sidebar search conversations field
+      if (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        if (sidebarCollapsed()) {
+          setSidebarCollapsed(false);
+        }
+        setTimeout(() => {
+          const searchInput = document.getElementById("sidebar-search-input") || document.getElementById("sidebar-search-textarea");
+          if (searchInput) {
+            (searchInput as HTMLInputElement | HTMLTextAreaElement).focus();
+            (searchInput as HTMLInputElement | HTMLTextAreaElement).select();
+          }
+        }, 0);
+      }
+
+      // Ctrl/Cmd-F -> Load DetailPane search control
+      if (isCmdOrCtrl && !e.shiftKey && e.key.toLowerCase() === "f") {
+        if (selectedSession()) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("trigger-detail-search"));
+        }
+      }
+
+      // Ctrl/Cmd-, -> Open Settings/Preferences
+      if (isCmdOrCtrl && e.key === ",") {
+        e.preventDefault();
+        setShowSettings(true);
+      }
+
+      // Ctrl/Cmd-Shift-H, Ctrl/Cmd-0 or Alt-Home -> Go Home
+      const isGoHomeKey = (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === "h") ||
+                           (isCmdOrCtrl && e.key === "0") ||
+                           (e.altKey && e.key === "Home");
+      if (isGoHomeKey) {
+        e.preventDefault();
+        handleGoHome();
+      }
+
+      // Ctrl/Cmd-[ -> Navigate Back
+      if (isCmdOrCtrl && e.key === "[") {
+        e.preventDefault();
+        handleNavBack();
+      }
+
+      // Ctrl/Cmd-] -> Navigate Forward
+      if (isCmdOrCtrl && e.key === "]") {
+        e.preventDefault();
+        handleNavForward();
+      }
+
+      // Ctrl/Cmd-1 -> Focus Sidebar
+      if (isCmdOrCtrl && e.key === "1") {
+        e.preventDefault();
+        const container = document.getElementById("sidebar-scroll-container");
+        if (container) {
+          logFE("info", "App.tsx: focusing sidebar via CmdOrCtrl+1");
+          container.focus();
+        }
+      }
+
+      // Ctrl/Cmd-2 -> Focus Detail Pane / Dashboard / Group details
+      if (isCmdOrCtrl && e.key === "2") {
+        e.preventDefault();
+        const container = document.getElementById("detail-pane-scroll-container") ||
+                          document.getElementById("dashboard-scroll-container") ||
+                          document.getElementById("group-details-scroll-container");
+        if (container) {
+          logFE("info", `App.tsx: focusing detail/overview pane (${container.id}) via CmdOrCtrl+2`);
+          container.focus();
+        }
+      }
+
+      // ArrowLeft key pressed on detail/overview pane -> Focus Sidebar
+      if (e.key === "ArrowLeft") {
+        const active = document.activeElement;
+        if (active && (
+          active.id === "detail-pane-scroll-container" || 
+          active.id === "dashboard-scroll-container" || 
+          active.id === "group-details-scroll-container"
+        )) {
+          e.preventDefault();
+          const sidebar = document.getElementById("sidebar-scroll-container");
+          if (sidebar) {
+            logFE("info", "App.tsx: ArrowLeft swaps focus to sidebar");
+            sidebar.focus();
+          }
+        }
+      }
+
+      // ArrowRight key pressed on sidebar -> Focus detail/overview pane
+      if (e.key === "ArrowRight") {
+        const active = document.activeElement;
+        if (active && active.id === "sidebar-scroll-container") {
+          e.preventDefault();
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          if (container) {
+            logFE("info", `App.tsx: ArrowRight swaps focus to detail/overview pane (${container.id})`);
+            container.focus();
+          }
+        }
+      }
+
+      // Shift+Ctrl+Up/Down (macOS) or Ctrl+Up/Down (Windows) -> Highlight Prev/Next Session globally
+      const isSidebarFocused = document.activeElement?.id === "sidebar-scroll-container";
+      const isHighlightPrev = (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowUp") ||
+                              (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowUp");
+      const isHighlightNext = (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowDown") ||
+                              (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowDown");
+
+      if (isHighlightPrev && !isSidebarFocused) {
+        const active = document.activeElement;
+        const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.getAttribute("contenteditable") === "true");
+        if (!isInput) {
+          e.preventDefault();
+          logFE("info", "App.tsx: global highlight prev triggered");
+          window.dispatchEvent(new CustomEvent("menu-highlight-prev"));
+          setTimeout(() => {
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      }
+
+      if (isHighlightNext && !isSidebarFocused) {
+        const active = document.activeElement;
+        const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.getAttribute("contenteditable") === "true");
+        if (!isInput) {
+          e.preventDefault();
+          logFE("info", "App.tsx: global highlight next triggered");
+          window.dispatchEvent(new CustomEvent("menu-highlight-next"));
+          setTimeout(() => {
+            document.getElementById("sidebar-scroll-container")?.focus();
+          }, 50);
+        }
+      }
+
+      // Home / End / PageUp / PageDown scroll keys for active session detail pane
     };
     window.addEventListener("keydown", handleKeyDown);
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target) {
+        if (target.id === "sidebar-scroll-container") {
+          localStorage.setItem("codeoba-last-focused-pane", "sidebar");
+        } else if (
+          target.id === "detail-pane-scroll-container" ||
+          target.id === "dashboard-scroll-container" ||
+          target.id === "group-details-scroll-container"
+        ) {
+          localStorage.setItem("codeoba-last-focused-pane", "detailpane");
+        }
+      }
+    };
+    window.addEventListener("focusin", handleFocusIn);
 
     onCleanup(() => {
       if (unlistenSession) unlistenSession();
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
+      if (unlistenMenuSettings) unlistenMenuSettings();
+      if (unlistenMenuRebuild) unlistenMenuRebuild();
+      if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
+      if (unlistenMenuFindDetail) unlistenMenuFindDetail();
+      if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
+      if (unlistenMenuGoHome) unlistenMenuGoHome();
+      if (unlistenMenuNavBack) unlistenMenuNavBack();
+      if (unlistenMenuNavForward) unlistenMenuNavForward();
+      if (unlistenMenuFeedback) unlistenMenuFeedback();
+      if (unlistenMenuScrollTop) unlistenMenuScrollTop();
+      if (unlistenMenuScrollBottom) unlistenMenuScrollBottom();
+      if (unlistenMenuScrollPageUp) unlistenMenuScrollPageUp();
+      if (unlistenMenuScrollPageDown) unlistenMenuScrollPageDown();
+      if (unlistenMenuSidebarScrollTop) unlistenMenuSidebarScrollTop();
+      if (unlistenMenuSidebarScrollBottom) unlistenMenuSidebarScrollBottom();
+      if (unlistenMenuSidebarScrollPageUp) unlistenMenuSidebarScrollPageUp();
+      if (unlistenMenuSidebarScrollPageDown) unlistenMenuSidebarScrollPageDown();
+      if (unlistenMenuFocusSidebar) unlistenMenuFocusSidebar();
+      if (unlistenMenuFocusDetail) unlistenMenuFocusDetail();
+      if (unlistenMenuGoNextSession) unlistenMenuGoNextSession();
+      if (unlistenMenuGoPrevSession) unlistenMenuGoPrevSession();
+      if (unlistenMenuGoHighlightNext) unlistenMenuGoHighlightNext();
+      if (unlistenMenuGoHighlightPrev) unlistenMenuGoHighlightPrev();
+      if (unlistenMenuGoSelectHighlighted) unlistenMenuGoSelectHighlighted();
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("focusin", handleFocusIn);
     });
 
     try {
@@ -623,6 +1075,31 @@ function App() {
       setSessions(enrichedSessions(list));
       
       setErrorMsg(null);
+
+      // Restore last selected session if present
+      const lastSessionId = localStorage.getItem("codeoba-last-selected-session-id");
+      if (lastSessionId) {
+        const found = list.find(s => s.id === lastSessionId);
+        if (found) {
+          logFE("info", `App.tsx: restoring last selected session: ${lastSessionId}`);
+          await handleSelectSession(found);
+        }
+      }
+
+      // Restore last focused pane after a short delay to let layout settle
+      setTimeout(() => {
+        const lastFocusedPane = localStorage.getItem("codeoba-last-focused-pane") || "sidebar";
+        if (lastFocusedPane === "sidebar") {
+          logFE("info", "App.tsx: restoring last focused pane to sidebar");
+          document.getElementById("sidebar-scroll-container")?.focus();
+        } else if (lastFocusedPane === "detailpane") {
+          logFE("info", "App.tsx: restoring last focused pane to detail/overview pane");
+          const container = document.getElementById("detail-pane-scroll-container") ||
+                            document.getElementById("dashboard-scroll-container") ||
+                            document.getElementById("group-details-scroll-container");
+          container?.focus();
+        }
+      }, 150);
 
       // Get initial indexing progress state
       try {
@@ -658,7 +1135,7 @@ function App() {
     const progress = indexingProgress();
     const isAlreadyIndexing = progress && progress.step !== "complete";
     if (!isAlreadyIndexing) {
-      handleRebuildIndex();
+      handleRebuildIndex(false, true);
     }
 
     // Background update check / explicit consent prompt
@@ -679,6 +1156,12 @@ function App() {
         console.error("Failed to check if updater is active:", err);
       }
     }, 1500); // check shortly after startup
+  });
+
+  createEffect(() => {
+    const paneName = selectedSession() ? "Detail Pane" : "Dashboard";
+    invoke("update_scroll_menu_labels", { paneName })
+      .catch(err => console.error("Failed to update scroll menu labels:", err));
   });
 
   const handleStartUpdate = async () => {
@@ -790,12 +1273,12 @@ function App() {
     setSelectedSources(next);
   };
 
-  const handleRebuildIndex = async (bypassCache: boolean | any = false) => {
+  const handleRebuildIndex = async (bypassCache: boolean | any = false, isStartup: boolean = false) => {
     const shouldBypass = bypassCache === true;
     try {
       setIsRebuilding(true);
       setErrorMsg(null);
-      await invoke("rebuild_index", { bypassCache: shouldBypass });
+      await invoke("rebuild_index", { bypassCache: shouldBypass, isStartup });
     } catch (err: any) {
       logFE("error", `Rebuild error: ${err}`);
       setErrorMsg(String(err));
@@ -818,6 +1301,7 @@ function App() {
   };
 
   const handleSelectSession = async (session: Session, skipHistory = false) => {
+    localStorage.setItem("codeoba-last-selected-session-id", session.id);
     if (!skipHistory) {
       const history = [...navHistory().slice(0, historyIndex() + 1)];
       if (history[history.length - 1] !== session.id) {
@@ -865,6 +1349,7 @@ function App() {
   };
 
   const handleGoHome = (skipHistory = false) => {
+    localStorage.removeItem("codeoba-last-selected-session-id");
     if (!skipHistory) {
       const history = [...navHistory().slice(0, historyIndex() + 1)];
       if (history[history.length - 1] !== "dashboard") {
@@ -1218,6 +1703,13 @@ function App() {
         onIgnoreAll={handleIgnoreAllDetectedSources}
         onSave={handleSaveDetectedSources}
         getSourceDisplayNameById={getSourceDisplayNameById}
+      />
+
+      {/* Feedback Modal */}
+      <FeedbackDialog
+        isOpen={showFeedback()}
+        onClose={() => setShowFeedback(false)}
+        appVersion={appVersion()}
       />
     </div>
   );

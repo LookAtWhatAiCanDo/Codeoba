@@ -757,9 +757,220 @@ export const Sidebar = (props: SidebarProps) => {
     return items;
   });
 
+  // Keyboard Navigation States & Listeners
+  const [highlightedIndex, setHighlightedIndex] = createSignal<number>(-1);
+
+  // Sync highlightedIndex with selectedSessionId changes
+  createEffect(() => {
+    const curSelId = props.selectedSessionId;
+    if (curSelId) {
+      const items = listItems();
+      const curIndex = items.findIndex(item => item.session.id === curSelId);
+      if (curIndex >= 0) {
+        setHighlightedIndex(curIndex);
+      }
+    } else {
+      setHighlightedIndex(-1);
+    }
+  });
+
+  const scrollIndexIntoView = (index: number) => {
+    const items = listItems();
+    if (index >= 0 && index < items.length) {
+      const cardId = `session-card-${items[index].session.id}`;
+      const cardEl = document.getElementById(cardId);
+      if (cardEl) {
+        cardEl.scrollIntoView({ block: "nearest", behavior: "auto" });
+      }
+    }
+  };
+
+  const handleSidebarKeyDown = (e: KeyboardEvent) => {
+    const items = listItems();
+    if (items.length === 0) return;
+
+    const isMac = navigator.userAgent.includes("Mac");
+    const hasAlt = e.altKey;
+    const hasCtrl = e.ctrlKey;
+    const hasShift = e.shiftKey;
+
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const isDown = e.key === "ArrowDown";
+      const hasMeta = e.metaKey;
+
+      if (isMac && hasMeta) {
+        // Cmd+Up/Down (with or without Shift) is Home/End on Mac: select first/last item
+        e.preventDefault();
+        const targetIndex = isDown ? items.length - 1 : 0;
+        if (items.length > 0) {
+          props.onSelectSession(items[targetIndex].session);
+          setHighlightedIndex(targetIndex);
+          scrollIndexIntoView(targetIndex);
+        }
+        return;
+      }
+
+      if (isMac && hasAlt) {
+        // Option+Up/Down (with or without Shift) is PageUp/PageDown on Mac: select item offset by 8
+        e.preventDefault();
+        const curSelId = props.selectedSessionId;
+        const curIndex = items.findIndex(item => item.session.id === curSelId);
+        let targetIndex = curIndex;
+        if (isDown) {
+          targetIndex = Math.min(items.length - 1, curIndex + 8);
+        } else {
+          const startIdx = curIndex === -1 ? 0 : curIndex;
+          targetIndex = Math.max(0, startIdx - 8);
+        }
+        if (targetIndex >= 0 && targetIndex < items.length) {
+          props.onSelectSession(items[targetIndex].session);
+          setHighlightedIndex(targetIndex);
+          scrollIndexIntoView(targetIndex);
+        }
+        return;
+      }
+
+      let isSelectAction = false;
+      let isHighlightAction = false;
+
+      if (isMac) {
+        // macOS: Shift+Ctrl+Arrow highlights/outlines next/prev session card
+        if (hasCtrl && hasShift) {
+          isHighlightAction = true;
+        } else if (hasAlt || (!hasCtrl && !hasShift && !hasMeta)) {
+          isSelectAction = true;
+        }
+      } else {
+        // Windows/Linux: Ctrl+Arrow highlights/outlines next/prev session card
+        if (hasCtrl) {
+          isHighlightAction = true;
+        } else if (hasAlt || (!hasCtrl && !hasShift && !hasMeta)) {
+          isSelectAction = true;
+        }
+      }
+
+      e.preventDefault();
+
+      if (isSelectAction) {
+        const curSelId = props.selectedSessionId;
+        const curIndex = items.findIndex(item => item.session.id === curSelId);
+        let targetIndex = curIndex;
+        if (isDown) {
+          targetIndex = Math.min(items.length - 1, curIndex + 1);
+        } else {
+          const startIdx = curIndex === -1 ? 0 : curIndex;
+          targetIndex = Math.max(0, startIdx - 1);
+        }
+        if (targetIndex >= 0 && targetIndex < items.length) {
+          props.onSelectSession(items[targetIndex].session);
+          setHighlightedIndex(targetIndex);
+          scrollIndexIntoView(targetIndex);
+        }
+      } else if (isHighlightAction) {
+        let targetIndex = highlightedIndex();
+        if (isDown) {
+          targetIndex = Math.min(items.length - 1, targetIndex + 1);
+        } else {
+          targetIndex = Math.max(0, targetIndex - 1);
+        }
+        setHighlightedIndex(targetIndex);
+        scrollIndexIntoView(targetIndex);
+      }
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      if (items.length > 0) {
+        props.onSelectSession(items[0].session);
+        setHighlightedIndex(0);
+        scrollIndexIntoView(0);
+      }
+    } else if (e.key === "End") {
+      e.preventDefault();
+      if (items.length > 0) {
+        const lastIdx = items.length - 1;
+        props.onSelectSession(items[lastIdx].session);
+        setHighlightedIndex(lastIdx);
+        scrollIndexIntoView(lastIdx);
+      }
+    } else if (e.key === "PageUp") {
+      e.preventDefault();
+      if (items.length > 0) {
+        const curSelId = props.selectedSessionId;
+        const curIndex = items.findIndex(item => item.session.id === curSelId);
+        const startIdx = curIndex === -1 ? 0 : curIndex;
+        const prevIdx = Math.max(0, startIdx - 8);
+        props.onSelectSession(items[prevIdx].session);
+        setHighlightedIndex(prevIdx);
+        scrollIndexIntoView(prevIdx);
+      }
+    } else if (e.key === "PageDown") {
+      e.preventDefault();
+      if (items.length > 0) {
+        const curSelId = props.selectedSessionId;
+        const curIndex = items.findIndex(item => item.session.id === curSelId);
+        const nextIdx = Math.min(items.length - 1, curIndex + 8);
+        props.onSelectSession(items[nextIdx].session);
+        setHighlightedIndex(nextIdx);
+        scrollIndexIntoView(nextIdx);
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      // Enter or Spacebar selects the highlighted item
+      if (highlightedIndex() >= 0 && highlightedIndex() < items.length) {
+        e.preventDefault();
+        props.onSelectSession(items[highlightedIndex()].session);
+      }
+    }
+  };
+
+  onMount(() => {
+    const handleHighlightNext = () => {
+      const items = listItems();
+      if (items.length === 0) return;
+      const nextIndex = Math.min(items.length - 1, highlightedIndex() + 1);
+      setHighlightedIndex(nextIndex);
+      scrollIndexIntoView(nextIndex);
+    };
+
+    const handleHighlightPrev = () => {
+      const items = listItems();
+      if (items.length === 0) return;
+      const prevIndex = Math.max(0, highlightedIndex() - 1);
+      setHighlightedIndex(prevIndex);
+      scrollIndexIntoView(prevIndex);
+    };
+
+    const handleSelectHighlighted = () => {
+      const items = listItems();
+      if (items.length === 0) return;
+      if (highlightedIndex() >= 0 && highlightedIndex() < items.length) {
+        props.onSelectSession(items[highlightedIndex()].session);
+      }
+    };
+
+    window.addEventListener("menu-highlight-next", handleHighlightNext);
+    window.addEventListener("menu-highlight-prev", handleHighlightPrev);
+    window.addEventListener("menu-select-highlighted", handleSelectHighlighted);
+
+    onCleanup(() => {
+      window.removeEventListener("menu-highlight-next", handleHighlightNext);
+      window.removeEventListener("menu-highlight-prev", handleHighlightPrev);
+      window.removeEventListener("menu-select-highlighted", handleSelectHighlighted);
+    });
+  });
+
+  const handleSidebarClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest("input, textarea, button, select, a, [role='button']")) {
+      const container = document.getElementById("sidebar-scroll-container");
+      if (container) {
+        container.focus();
+      }
+    }
+  };
+
   return (
     <aside 
-      class="border-r border-border h-full flex flex-col overflow-hidden bg-background select-none relative"
+      onClick={handleSidebarClick}
+      class="border-r border-border h-full flex flex-col overflow-hidden bg-background select-none relative transition-all duration-200 focus-within:z-[51] group"
       style={{
         width: props.collapsed ? "0px" : `${props.width}px`,
         "min-width": props.collapsed ? "0px" : `${props.width}px`,
@@ -768,6 +979,9 @@ export const Sidebar = (props: SidebarProps) => {
         "padding-top": "0px"
       }}
     >
+      {/* Focus Highlight Border Overlay */}
+      <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
+
       {/* Drag Handle */}
       <div 
         onMouseDown={handleMouseDown}
@@ -788,6 +1002,7 @@ export const Sidebar = (props: SidebarProps) => {
             when={props.multiline} 
             fallback={
               <input
+                id="sidebar-search-input"
                 type="text"
                 value={props.searchQuery}
                 onInput={(e) => props.onSearchChange(e.currentTarget.value)}
@@ -797,6 +1012,7 @@ export const Sidebar = (props: SidebarProps) => {
             }
           >
             <textarea
+              id="sidebar-search-textarea"
               value={props.searchQuery}
               onInput={(e) => props.onSearchChange(e.currentTarget.value)}
               placeholder={t("sidebar.searchPlaceholder")}
@@ -1240,7 +1456,12 @@ export const Sidebar = (props: SidebarProps) => {
       </div>
 
       {/* Sessions List Area */}
-      <div class="flex-grow overflow-y-auto min-h-0 p-3 flex flex-col gap-2.5">
+      <div 
+        id="sidebar-scroll-container"
+        tabindex="-1"
+        onKeyDown={handleSidebarKeyDown}
+        class="flex-grow overflow-y-auto min-h-0 p-3 flex flex-col gap-2.5 outline-none"
+      >
         <Show 
           when={listItems().length > 0} 
           fallback={
@@ -1250,8 +1471,9 @@ export const Sidebar = (props: SidebarProps) => {
           }
         >
           <For each={listItems()}>
-            {({ session, matchedTurns, score }) => {
+            {({ session, matchedTurns, score }, index) => {
               const isSelected = createMemo(() => props.selectedSessionId === session.id);
+              const isHighlighted = createMemo(() => highlightedIndex() === index());
               const snippet = createMemo(() => getSessionSnippet(session, matchedTurns));
               const sessionTimesText = createMemo(() => formatSessionTimes(session.timestamp, session.updatedAt));
               
@@ -1259,6 +1481,7 @@ export const Sidebar = (props: SidebarProps) => {
                 <SessionCard
                   session={session}
                   isSelected={isSelected()}
+                  isHighlighted={isHighlighted()}
                   isLoading={props.loadingSessionId === session.id}
                   onSelect={props.onSelectSession}
                   snippet={snippet()}
@@ -1480,6 +1703,7 @@ export const Sidebar = (props: SidebarProps) => {
 interface SessionCardProps {
   session: Session;
   isSelected: boolean;
+  isHighlighted?: boolean;
   isLoading: boolean;
   onSelect: (session: Session) => void;
   snippet: string;
@@ -1548,6 +1772,7 @@ const SessionCard = (props: SessionCardProps) => {
 
   return (
     <div
+      id={`session-card-${props.session.id}`}
       onClick={() => props.onSelect(props.session)}
       onContextMenu={(e) => props.onContextMenu(e, props.session)}
       draggable={true}
@@ -1565,8 +1790,10 @@ const SessionCard = (props: SessionCardProps) => {
       } as any}
       class={`p-4 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none transition-all border rounded-xl ${
         props.isSelected 
-          ? "bg-accent-light/15 border-accent shadow-sm shadow-accent/15" 
-          : "bg-surface/50 border-border hover:bg-surface/80 hover:border-border/80"
+          ? "bg-accent-light/20 border-accent ring-2 ring-accent/30 shadow-md shadow-accent/20" 
+          : props.isHighlighted
+            ? "bg-accent-light/10 border-accent/70 ring-2 ring-accent/20 shadow-md shadow-accent/10"
+            : "bg-surface/50 border-border hover:bg-surface/80 hover:border-border/80"
       }`}
     >
       {/* Title & Badge */}

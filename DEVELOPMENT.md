@@ -302,6 +302,44 @@ To support compilation of native dependencies in Rust (such as `esaxx-rs` and `w
 
 ---
 
+## 🧪 Native macOS Menu Features & Alignment Testing
+
+Codeoba uses native operating system menus (drawn by the macOS Window Server or Windows/Linux shell) which exist outside the webview DOM. 
+
+### 1. The Help Menu Developer Feature Flag (`enable-help-menu`)
+By default, on macOS, native help search boxes swallow key events during local development. To prevent local developer debug friction, the **Help** menu is compiled out by default in local debug modes.
+*   To force-enable the Help menu during local development (e.g. to inspect or test it), run the dev command with the `enable-help-menu` feature flag:
+    ```bash
+    npm run tauri dev -- --features enable-help-menu
+    ```
+    Or when using Cargo directly:
+    ```bash
+    cargo run --manifest-path src-tauri/Cargo.toml --features enable-help-menu
+    ```
+
+### 2. macOS Shortcut Alignment & Tab Stops
+On macOS, alternate keyboard shortcuts (like `(fn+◀)`) are right-justified in the native menu dropdowns. Since these menu items are drawn by the OS, their alignment is managed by placing `\t` tab-stops directly in the translation files (e.g. `src/i18n/locales/en.json`) under layout keys like `sidebar_menu` or `home_menu_suffix`.
+*   **Platform Conditional**: These tab suffixes are compiled and loaded **only on macOS** targets (`cfg!(target_os = "macos")`). On Windows and Linux, the application automatically strips tab-stops and alternate indicators to conform with native Windows/Linux keyboard standards.
+
+### 3. Running the Automated Menu Alignment Test
+To ensure that alternate shortcut keys align to the exact same vertical column across all languages and translations, you can run the automated GUI pixel scanner:
+1.  Launch the Codeoba application (e.g. `npm run tauri dev`).
+2.  In a separate terminal window, run:
+    ```bash
+    npm run test:menu
+    ```
+    This script programmatically uses AppleScript to click open the menu, captures a BMP screenshot of the dropdown coordinates, scans the text column bounds right-to-left, and asserts that they align within a 3px tolerance.
+*   **Testing Specific Locales**: To test a specific language locale, pass the locale code as an argument to the test script:
+    ```bash
+    npm run test:menu es
+    ```
+*   **Correction Advisor**: If an item is staggered, the test calculates the offset relative to a standard 24px tab stop width and outputs a clear correction recommendation:
+    ```text
+    ❌ Detail Pane: Page Down       : Staggered (current: 224px, delta: 24px). Needs 1 more \t character(s).
+    ```
+
+---
+
 ## 🌐 Localization & Translation Workflow
 
 For details on how to translate the application interface or run the Gemini-powered automated translation scripts, please see the [Contributing Translations section in CONTRIBUTING.md](./CONTRIBUTING.md#🌐-contributing-translations).

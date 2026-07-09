@@ -305,5 +305,58 @@
     "unpinGroup": "Groep losmaken",
     "renameGroup": "Groep hernoemen",
     "deleteGroup": "Groep verwijderen"
+  },
+  "feedback": {
+    "title": "Feedback verzenden",
+    "desc": "Heb je een suggestie, een bug gevonden of wil je een functie aanvragen? Laat oens dat hieronder direct weten.",
+    "emailLabel": "E-mailadres (Optioneel)",
+    "emailPlaceholder": "Voer je e-mailadres in als je wilt dat we contact opnemen",
+    "messageLabel": "Bericht",
+    "messagePlaceholder": "Wat houdt je bezig? Suggesties, vragen of bugs zijn allemaal welkom...",
+    "attachDiagnostics": "Systeem-omgevingsgegevens bijvoegen (App-versie, OS)",
+    "cancel": "Annuleren",
+    "submit": "Feedback verzenden",
+    "submitting": "Verzenden...",
+    "thankYou": "Dank je wel!",
+    "success": "Je feedback is succesvol verzonden naar de ontwikkelaars.",
+    "errorMsg": "Feedback verzenden mislukt: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "Zoeken",
+      "findDetail": "Zoeken in transcript...",
+      "findSidebar": "Conversaties zoeken..."
+    },
+    "file": {
+      "title": "Archief",
+      "rebuild": "Index opnieuw opbouwen",
+      "rebuildBypass": "Index opnieuw opbouwen (cache omzeilen)",
+      "settings": "Instellingen",
+      "preferences": "Voorkeuren..."
+    },
+    "go": {
+      "title": "Ga naar",
+      "back": "Navigeer terug",
+      "forward": "Navigeer vooruit",
+      "dashboard": "Dashboard",
+      "sidebar": "Zijbalk",
+      "detail": "Detailpaneel",
+      "nextSession": "Zijbalk: Volgende selecteren",
+      "prevSession": "Zijbalk: Vorige selecteren",
+      "highlightNext": "Zijbalk: Volgende markeren",
+      "highlightPrev": "Zijbalk: Vorige markeren",
+      "selectHighlighted": "Zijbalk: Gemarkeerde selecteren",
+      "home": "Begin",
+      "end": "Einde",
+      "pageUp": "Pagina omhoog",
+      "pageDown": "Pagina omlaag"
+    },
+    "view": {
+      "title": "Weergave"
+    },
+    "help": {
+      "title": "Help",
+      "feedback": "Feedback naar het Codeoba-team sturen..."
+    }
   }
 }

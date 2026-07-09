@@ -305,5 +305,58 @@
     "unpinGroup": "Sblocca gruppo",
     "renameGroup": "Rinomina gruppo",
     "deleteGroup": "Elimina gruppo"
+  },
+  "feedback": {
+    "title": "Invia feedback",
+    "desc": "Hai un suggerimento, hai trovato un bug o desideri richiedere una funzionalità? Faccelo sapere qui sotto.",
+    "emailLabel": "Indirizzo e-mail (Opzionale)",
+    "emailPlaceholder": "Inserisci la tua e-mail se desideri essere ricontattato",
+    "messageLabel": "Messaggio",
+    "messagePlaceholder": "Cosa hai in mente? Suggerimenti, domande o segnalazioni di bug sono benvenuti...",
+    "attachDiagnostics": "Allega metadati dell'ambiente di sistema (versione app, SO)",
+    "cancel": "Annulla",
+    "submit": "Invia feedback",
+    "submitting": "Invio in corso...",
+    "thankYou": "Grazie!",
+    "success": "Il tuo feedback è stato inviato con successo agli sviluppatori.",
+    "errorMsg": "Impossibile inviare il feedback: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "Cerca",
+      "findDetail": "Cerca nella trascrizione...",
+      "findSidebar": "Cerca nelle conversazioni..."
+    },
+    "file": {
+      "title": "File",
+      "rebuild": "Ricostruisci indice",
+      "rebuildBypass": "Ricostruisci indice (ignora cache)",
+      "settings": "Impostazioni",
+      "preferences": "Preferenze..."
+    },
+    "go": {
+      "title": "Vai",
+      "back": "Naviga indietro",
+      "forward": "Naviga avanti",
+      "dashboard": "Dashboard",
+      "sidebar": "Barra laterale",
+      "detail": "Riquadro dettagli",
+      "nextSession": "Barra laterale: Seleziona successiva",
+      "prevSession": "Barra laterale: Seleziona precedente",
+      "highlightNext": "Barra laterale: Evidenzia successiva",
+      "highlightPrev": "Barra laterale: Evidenzia precedente",
+      "selectHighlighted": "Seleziona evidenziata",
+      "home": "Inizio",
+      "end": "Fine",
+      "pageUp": "Pagina su",
+      "pageDown": "Pagina giù"
+    },
+    "view": {
+      "title": "Vista"
+    },
+    "help": {
+      "title": "Aiuto",
+      "feedback": "Invia feedback al team di Codeoba..."
+    }
   }
 }

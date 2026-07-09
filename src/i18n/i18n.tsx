@@ -1,4 +1,5 @@
 import { createSignal, createContext, useContext, JSX, onMount, createEffect } from "solid-js";
+import { invoke } from "@tauri-apps/api/core";
 
 // Statically import all translations
 import en from "./locales/en.json";
@@ -15,27 +16,27 @@ import nl from "./locales/nl.json";
 import ar from "./locales/ar.json";
 import ru from "./locales/ru.json";
 
-export const LOCALES = ["en", "es", "fr", "de", "ja", "zh", "zh-TW", "pt", "it", "ko", "nl", "ar", "ru"] as const;
+export const LOCALES = ["en", "ar", "de", "es", "fr", "it", "ja", "ko", "nl", "pt", "ru", "zh", "zh-TW"] as const;
 export type Locale = typeof LOCALES[number];
 
 export const LOCALE_NAMES: Record<Locale, string> = {
   en: "English",
+  ar: "العربية",
+  de: "Deutsch",
   es: "Español",
   fr: "Français",
-  de: "Deutsch",
-  ja: "日本語",
-  zh: "简体中文",
-  "zh-TW": "繁體中文",
-  pt: "Português",
   it: "Italiano",
+  ja: "日本語",
   ko: "한국어",
   nl: "Nederlands",
-  ar: "العربية",
-  ru: "Русский"
+  pt: "Português",
+  ru: "Русский",
+  zh: "简体中文",
+  "zh-TW": "繁體中文"
 };
 
 const DICTIONARIES: Record<Locale, any> = {
-  en, es, fr, de, ja, zh, "zh-TW": zhTW, pt, it, ko, nl, ar, ru
+  en, ar, de, es, fr, it, ja, ko, nl, pt, ru, zh, "zh-TW": zhTW
 };
 
 function detectSystemLanguage(): Locale {
@@ -65,7 +66,18 @@ export function I18nProvider(props: { children: JSX.Element }) {
   const [locale, _setLocale] = createSignal<Locale>("en");
 
   // Read saved locale or auto-detect on startup
-  onMount(() => {
+  onMount(async () => {
+    try {
+      const overridden = await invoke<string | null>("get_language_override");
+      if (overridden && LOCALES.includes(overridden as any)) {
+        _setLocale(overridden as Locale);
+        localStorage.setItem("codeoba-language", overridden);
+        return;
+      }
+    } catch (e) {
+      console.error("Failed to fetch language override:", e);
+    }
+
     const saved = localStorage.getItem("codeoba-language") as Locale;
     if (saved && LOCALES.includes(saved)) {
       _setLocale(saved);
@@ -86,6 +98,11 @@ export function I18nProvider(props: { children: JSX.Element }) {
       document.documentElement.setAttribute("dir", "ltr");
     }
     localStorage.setItem("codeoba-language", current);
+
+    // Save language to backend fallback config and reload menu bar in real-time
+    invoke("save_language_setting", { lang: current }).catch(err => {
+      console.error("Failed to save language setting to backend:", err);
+    });
   });
 
   const setLocale = (l: Locale) => {

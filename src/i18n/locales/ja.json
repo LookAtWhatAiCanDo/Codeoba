@@ -305,5 +305,58 @@
     "unpinGroup": "グループのピン留めを解除",
     "renameGroup": "グループ名を変更",
     "deleteGroup": "グループを削除"
+  },
+  "feedback": {
+    "title": "フィードバックを送信",
+    "desc": "ご提案、バグの報告、機能のご要望など、以下のフォームから直接お知らせください。",
+    "emailLabel": "メールアドレス (任意)",
+    "emailPlaceholder": "返信をご希望の場合はメールアドレスを入力してください",
+    "messageLabel": "メッセージ",
+    "messagePlaceholder": "ご提案、ご質問、バグ報告など、何でもお気軽にご記入ください...",
+    "attachDiagnostics": "システム環境のメタデータを添付（アプリのバージョン、OS）",
+    "cancel": "キャンセル",
+    "submit": "フィードバックを送信",
+    "submitting": "送信中...",
+    "thankYou": "ありがとうございました！",
+    "success": "フィードバックは開発者に正常に送信されました。",
+    "errorMsg": "フィードバックの送信に失敗しました: {error}"
+  },
+  "menu": {
+    "find": {
+      "title": "検索",
+      "findDetail": "トランスクリプト内を検索...",
+      "findSidebar": "会話を検索..."
+    },
+    "file": {
+      "title": "ファイル",
+      "rebuild": "インデックスを再構築",
+      "rebuildBypass": "インデックスを再構築（キャッシュをバイパス）",
+      "settings": "設定",
+      "preferences": "環境設定..."
+    },
+    "go": {
+      "title": "移動",
+      "back": "戻る",
+      "forward": "進む",
+      "dashboard": "ダッシュボード",
+      "sidebar": "サイドバー",
+      "detail": "詳細ペイン",
+      "nextSession": "サイドバー: 次を選択",
+      "prevSession": "サイドバー: 前を選択",
+      "highlightNext": "サイドバー: 次をハイライト",
+      "highlightPrev": "サイドバー: 前をハイライト",
+      "selectHighlighted": "サイドバー: ハイライトを選択",
+      "home": "先頭",
+      "end": "末尾",
+      "pageUp": "前のページ",
+      "pageDown": "次のページ"
+    },
+    "view": {
+      "title": "表示"
+    },
+    "help": {
+      "title": "ヘルプ",
+      "feedback": "Codeobaチームにフィードバックを送信..."
+    }
   }
 }

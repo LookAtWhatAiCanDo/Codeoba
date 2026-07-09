@@ -8,17 +8,12 @@ pub mod watcher;
 pub mod search;
 pub mod premium;
 pub mod groups;
+pub mod menu;
 
 #[cfg(test)]
 pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 use tauri::Manager;
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
@@ -104,7 +99,10 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build());
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .on_menu_event(move |app_handle, event| {
+            menu::handle_menu_event(app_handle, event);
+        });
 
     if updater_active {
         crate::log_info!("Updater is active in configuration and passed verification. Registering updater and process plugins...");
@@ -130,6 +128,9 @@ pub fn run() {
             
             let handle = app.handle().clone();
             let _ = watcher::start_watcher(handle.clone());
+
+            // Set up the custom system menus
+            menu::setup_menu(app)?;
 
             if let Some(window) = app.get_webview_window("main") {
                 // Read configurations
@@ -239,7 +240,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             commands::get_sources,
             commands::get_all_sessions,
             commands::get_session,
@@ -281,7 +281,11 @@ pub fn run() {
             commands::save_custom_theme_bg,
             commands::get_source_decisions,
             commands::save_source_decision,
-            commands::reset_detected_sources
+            commands::reset_detected_sources,
+            commands::get_backend_base_url,
+            commands::save_language_setting,
+            commands::get_language_override,
+            menu::update_scroll_menu_labels
         ])
         .run(context)
         .expect("error while running tauri application");

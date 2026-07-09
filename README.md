@@ -42,14 +42,24 @@ Ready to install? Go to the official [Codeoba Releases page](https://github.com/
   * Download the **`DEB`** package if you are using **Ubuntu, Debian, Linux Mint, or Pop!_OS**.
   * Download the **`RPM`** package if you are using **Fedora, RedHat (RHEL), or openSUSE**.
 
+## 📄 Feedback
+
+You can report bugs, request features, or check out ongoing developments in our [GitHub Issue Tracker](https://github.com/LookAtWhatAiCanDo/Codeoba/issues).
+
 ---
 
 ## 🛠️ For Developers & Contributors
 
 If you want to compile Codeoba from source, run local tests, or contribute code/translations to the project, please refer to the detailed [Developer & Contributor Guide](./DEVELOPMENT.md).
 
-## 📄 License & Feedback
+## 📄 License
 
-Codeoba is proprietary software. Copyright &copy; 2026 What AI Can Do, LLC. All rights reserved. Codeoba™ is a trademark of What AI Can Do, LLC. Any unauthorized copying, modification, or distribution is strictly prohibited. For full license terms, please refer to the [LICENSE](./LICENSE) file.
+Codeoba is proprietary software.
 
-You can report bugs, request features, or check out ongoing developments in our [GitHub Issue Tracker](https://github.com/LookAtWhatAiCanDo/Codeoba/issues).
+Copyright &copy; 2026 What AI Can Do, LLC. All rights reserved.
+
+Codeoba™ is a trademark of What AI Can Do, LLC.
+
+Any unauthorized copying, modification, or distribution is strictly prohibited.
+
+For full license terms, please refer to the [LICENSE](./LICENSE) file, or email [license@codeoba.com](mailto:license@codeoba.com).
