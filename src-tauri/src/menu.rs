@@ -339,6 +339,8 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         {
             help_menu_builder = help_menu_builder
                 .separator()
+                .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?)
+                .separator()
                 .item(&PredefinedMenuItem::about(app_handle, None, None)?);
         }
         help_menu_builder.build()?
@@ -353,6 +355,7 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     {
         let app_menu = SubmenuBuilder::new(app_handle, "Codeoba")
             .item(&PredefinedMenuItem::about(app_handle, None, None)?)
+            .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?)
             .separator()
             .item(&MenuItemBuilder::new(t("menu.file.preferences")).accelerator("CmdOrCtrl+,").id("settings").build(app_handle)?)
             .separator()
@@ -503,6 +506,53 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn set_menu_item_text<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    id: String,
+    text: String,
+) -> Result<(), String> {
+    // Recursive search helper to find a menu item by ID
+    fn find_item_by_id<R: tauri::Runtime>(items: &[MenuItemKind<R>], id: &str) -> Option<MenuItemKind<R>> {
+        for item in items {
+            let item_id = match item {
+                MenuItemKind::MenuItem(i) => i.id().as_ref().to_string(),
+                MenuItemKind::Submenu(s) => s.id().as_ref().to_string(),
+                MenuItemKind::Predefined(p) => p.id().as_ref().to_string(),
+                MenuItemKind::Check(c) => c.id().as_ref().to_string(),
+                MenuItemKind::Icon(i) => i.id().as_ref().to_string(),
+            };
+            if item_id == id {
+                return Some(item.clone());
+            }
+            if let MenuItemKind::Submenu(submenu) = item {
+                if let Ok(sub_items) = submenu.items() {
+                    if let Some(found) = find_item_by_id(&sub_items, id) {
+                        return Some(found);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    let menu = match app_handle.menu() {
+        Some(m) => m,
+        None => return Ok(()),
+    };
+
+    let items = match menu.items() {
+        Ok(it) => it,
+        Err(_) => return Ok(()),
+    };
+
+    if let Some(MenuItemKind::MenuItem(item)) = find_item_by_id(&items, &id) {
+        let _ = item.set_text(text);
+    }
+
+    Ok(())
+}
+
 pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, event: MenuEvent) {
     use tauri::Emitter;
     let id = event.id().as_ref();
@@ -516,6 +566,7 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
 
     match id {
         "settings" => emit_event("menu-settings"),
+        "check-updates" => emit_event("menu-check-updates"),
         "rebuild-index" => emit_event("menu-rebuild-index"),
         "rebuild-index-bypass" => emit_event("menu-rebuild-index-bypass"),
         "find-detail" => emit_event("menu-find-detail"),

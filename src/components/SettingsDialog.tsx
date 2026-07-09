@@ -54,6 +54,7 @@ interface SettingsDialogProps {
     accent2: { h: number; s: number; l: number };
   };
   onCustomThemeChange?: (val: any) => void;
+  onCheckUpdates?: () => void;
 }
 
 type Category = "general" | "regional" | "theme" | "sources" | "exclusions" | "semantic" | "permissions" | "updates";
@@ -375,6 +376,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setCheckingUpdates(true);
     setUpdateCheckResult(null);
     try {
+      // Set checking indicator text on native menu item
+      await invoke("set_menu_item_text", { 
+        id: "check-updates", 
+        text: t("settings.updates.checking") 
+      });
+
       logFE("info", `Settings: Initiating check for updates. Current version: v${appVersion()}`);
       logFE("info", "Settings: Querying the update service...");
       const update = await check({
@@ -419,6 +426,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       } catch (diagErr: any) {
         logFE("error", `Settings: Diagnostic connection failed: ${diagErr.message || diagErr}`);
       }
+    } finally {
+      // Reset text back to standard label on native menu item
+      await invoke("set_menu_item_text", { 
+        id: "check-updates", 
+        text: t("settings.updates.checkUpdate") 
+      });
     }
   };
 
@@ -1245,9 +1258,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
                       <span class="text-text-secondary">{t("settings.updates.version")}: v{appVersion()}</span>
                       <button
-                        onClick={handleCheckUpdates}
+                        onClick={() => props.onCheckUpdates ? props.onCheckUpdates() : handleCheckUpdates()}
                         disabled={checkingUpdates()}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-colors text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 min-w-[120px]"
                       >
                         <Show when={checkingUpdates()} fallback={<span>{t("settings.updates.checkUpdate")}</span>}>
                           <RefreshCw class="w-3.5 h-3.5 animate-spin" />

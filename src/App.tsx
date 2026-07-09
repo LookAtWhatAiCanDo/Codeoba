@@ -14,6 +14,7 @@ import { TitleBar } from "./components/TitleBar";
 import GroupDetailsView from "./components/GroupDetailsView";
 import { ConsentModal } from "./components/ConsentModal";
 import { UpdateModal } from "./components/UpdateModal";
+import { CheckingUpdatesModal } from "./components/CheckingUpdatesModal";
 import { SourceDetectedModal } from "./components/SourceDetectedModal";
 import FeedbackDialog from "./components/FeedbackDialog";
 import { logFE } from "./utils/logger";
@@ -44,6 +45,9 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
+  const [showCheckingModal, setShowCheckingModal] = createSignal(false);
+  const [checkingStatus, setCheckingStatus] = createSignal<"checking" | "upToDate" | "error">("checking");
+  const [checkingErrorMsg, setCheckingErrorMsg] = createSignal<string | null>(null);
   const [showFeedback, setShowFeedback] = createSignal(false);
   const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
   const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
@@ -126,6 +130,48 @@ function App() {
         logFE("error", `Background Updater: Update check failed. Error details: ${err}`);
       }
     }, 2000);
+  };
+
+  const triggerManualUpdateCheck = async () => {
+    // Open the checking progress modal
+    setCheckingStatus("checking");
+    setCheckingErrorMsg(null);
+    setShowCheckingModal(true);
+
+    try {
+      // Set checking indicator text on native menu item
+      await invoke("set_menu_item_text", { 
+        id: "check-updates", 
+        text: t("settings.updates.checking") 
+      });
+
+      logFE("info", "Manual Updater: Initiating check...");
+      const update = await check({
+        headers: {
+          "Accept-Language": locale()
+        }
+      });
+      if (update && update.available) {
+        logFE("info", `Manual Updater: Update found: v${update.version}`);
+        // Close checking progress modal and open the update available modal
+        setShowCheckingModal(false);
+        setUpdateManifest(update);
+        setShowUpdateModal(true);
+      } else {
+        logFE("info", "Manual Updater: Up to date");
+        setCheckingStatus("upToDate");
+      }
+    } catch (err: any) {
+      logFE("error", `Manual Updater: Failed: ${err}`);
+      setCheckingStatus("error");
+      setCheckingErrorMsg(t("settings.updates.error", { error: err.toString() }));
+    } finally {
+      // Reset text back to standard label on native menu item
+      await invoke("set_menu_item_text", { 
+        id: "check-updates", 
+        text: t("settings.updates.checkUpdate") 
+      });
+    }
   };
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
@@ -498,6 +544,7 @@ function App() {
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
     let unlistenMenuSettings: (() => void) | undefined;
+    let unlistenMenuCheckUpdates: (() => void) | undefined;
     let unlistenMenuRebuild: (() => void) | undefined;
     let unlistenMenuRebuildBypass: (() => void) | undefined;
     let unlistenMenuFindDetail: (() => void) | undefined;
@@ -607,6 +654,9 @@ function App() {
 
       unlistenMenuSettings = await listen("menu-settings", () => {
         setShowSettings(true);
+      });
+      unlistenMenuCheckUpdates = await listen("menu-check-updates", () => {
+        triggerManualUpdateCheck();
       });
       unlistenMenuRebuild = await listen("menu-rebuild-index", () => {
         handleRebuildIndex(false);
@@ -1026,6 +1076,7 @@ function App() {
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
       if (unlistenMenuSettings) unlistenMenuSettings();
+      if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
       if (unlistenMenuRebuild) unlistenMenuRebuild();
       if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
       if (unlistenMenuFindDetail) unlistenMenuFindDetail();
@@ -1677,8 +1728,8 @@ function App() {
         onUpdateAvailable={(update) => {
           setUpdateManifest(update);
           setShowUpdateModal(true);
-          setShowSettings(false);
         }}
+        onCheckUpdates={triggerManualUpdateCheck}
       />
       <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
 
@@ -1697,6 +1748,14 @@ function App() {
         updateError={updateError()}
         onClose={() => setShowUpdateModal(false)}
         onStartUpdate={handleStartUpdate}
+      />
+
+      {/* Manual Checking Progress Modal */}
+      <CheckingUpdatesModal
+        isOpen={showCheckingModal()}
+        status={checkingStatus()}
+        errorMsg={checkingErrorMsg()}
+        onClose={() => setShowCheckingModal(false)}
       />
 
       {/* Source Detected Prompt Modal */}

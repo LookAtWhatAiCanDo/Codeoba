@@ -327,13 +327,43 @@ pre[class*="language-"] {
   font-size: 13px !important;
 }
 
-.update-notes-container .markdown-body h1,
-.update-notes-container .markdown-body h2,
-.update-notes-container .markdown-body h3,
-.update-notes-container .markdown-body h4 {
-  font-size: 14px !important;
+.update-notes-container h1 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
   margin-top: 16px !important;
   margin-bottom: 8px !important;
+}
+
+.update-notes-container h2 {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
+}
+
+.update-notes-container h3 {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  margin-top: 14px !important;
+  margin-bottom: 6px !important;
+}
+
+.update-notes-container h4 {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  margin-top: 12px !important;
+  margin-bottom: 4px !important;
+}
+
+.update-notes-container .markdown-body > h1:first-child,
+.update-notes-container .markdown-body > h2:first-child,
+.update-notes-container .markdown-body > h3:first-child,
+.update-notes-container .markdown-body > h4:first-child {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+  color: var(--text-primary) !important;
 }
 
 /* App-region rules for custom title bars (Windows touch/mouse drag support) */

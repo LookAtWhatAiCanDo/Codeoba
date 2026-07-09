@@ -286,7 +286,8 @@ pub fn run() {
             commands::get_backend_base_url,
             commands::save_language_setting,
             commands::get_language_override,
-            menu::update_scroll_menu_labels
+            menu::update_scroll_menu_labels,
+            menu::set_menu_item_text
         ])
         .run(context)
         .expect("error while running tauri application");
