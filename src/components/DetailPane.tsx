@@ -57,8 +57,11 @@ export const DetailPane = (props: DetailPaneProps) => {
   const { t, locale } = useI18n();
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedSession, setCopiedSession] = createSignal(false);
-  const [visibleTurns, setVisibleTurns] = createSignal(10);
+  const [scrollPercent, setScrollPercent] = createSignal(0);
+  const [activeTurnIdx, setActiveTurnIdx] = createSignal(0);
   const [showActionsDropdown, setShowActionsDropdown] = createSignal(false);
+  const [isJumping, setIsJumping] = createSignal(false);
+  const [scrollLock, setScrollLock] = createSignal(true);
 
   const [showDetailSearch, setShowDetailSearch] = createSignal(false);
   const [detailSearchQuery, setDetailSearchQuery] = createSignal("");
@@ -178,18 +181,22 @@ export const DetailPane = (props: DetailPaneProps) => {
 
     const match = matchesList[targetIndex];
     
-    // Ensure the turn is visible/rendered
-    const reqTurns = props.session!.turns.length - match.turnIndex;
-    if (visibleTurns() < reqTurns) {
-      setVisibleTurns(reqTurns);
-    }
+    setIsJumping(true);
 
     setTimeout(() => {
       const el = document.getElementById(match.turnId);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         
+        // Correct offset shifts via direct scrollTop setting to override any browser-level layout expansion limits
         setTimeout(() => {
+          if (scrollContainerRef) {
+            scrollContainerRef.scrollTop = el.offsetTop - (scrollContainerRef.clientHeight / 2) + (el.offsetHeight / 2);
+          }
+        }, 250);
+
+        setTimeout(() => {
+          setIsJumping(false);
           const allMarks = scrollContainerRef?.querySelectorAll("mark");
           if (allMarks) {
             allMarks.forEach(m => {
@@ -213,9 +220,9 @@ export const DetailPane = (props: DetailPaneProps) => {
               }
             }
           }
-        }, 120);
+        }, 800);
       }
-    }, 50);
+    }, 150);
   };
 
   const [contextMenu, setContextMenu] = createSignal<{
@@ -243,10 +250,202 @@ export const DetailPane = (props: DetailPaneProps) => {
     return props.session.turns.filter(t => t.extraData?.isCompaction === "true").length;
   });
 
+  const dateMilestones = createMemo(() => {
+    if (!props.session) return [];
+    const milestones: { label: string; index: number; turnId: string }[] = [];
+    const turns = props.session.turns;
+    if (turns.length === 0) return [];
+    
+    const isDifferentDay = (t1: number, t2: number) => {
+      const d1 = new Date(t1);
+      const d2 = new Date(t2);
+      return d1.getDate() !== d2.getDate() || d1.getMonth() !== d2.getMonth() || d1.getFullYear() !== d2.getFullYear();
+    };
+
+    const formatMilestoneLabel = (timeMs: number, forceDate: boolean) => {
+      const d = new Date(timeMs);
+      if (forceDate) {
+        return d.toLocaleDateString(locale() || "en", { month: "short", day: "numeric" });
+      }
+      return d.toLocaleTimeString(locale() || "en", { hour: "numeric", minute: "2-digit" });
+    };
+
+    let firstTime = turns[0].timestamp;
+    if (firstTime < 20000000000) firstTime *= 1000;
+    let lastTime = turns[turns.length - 1].timestamp;
+    if (lastTime < 20000000000) lastTime *= 1000;
+
+    // Ensure milestones are separated by at least 2 minutes in time to avoid duplicate labels for rapid turns
+    const targetGapMin = 2;
+
+    milestones.push({
+      label: formatMilestoneLabel(firstTime, true),
+      index: 0,
+      turnId: turns[0].turnId
+    });
+
+    let lastMilestoneTime = firstTime;
+    let lastMilestoneIndex = 0;
+
+    for (let i = 1; i < turns.length; i++) {
+      let turnTime = turns[i].timestamp;
+      if (turnTime < 20000000000) turnTime *= 1000;
+
+      const diffMin = (turnTime - lastMilestoneTime) / (1000 * 60);
+      const diffDay = isDifferentDay(turnTime, lastMilestoneTime);
+
+      const pct = (i / (turns.length - 1)) * 100;
+      const lastPct = (lastMilestoneIndex / (turns.length - 1)) * 100;
+      const diffPct = pct - lastPct;
+
+      // Add milestone if day changes, or if >= targetGapMin gap AND at least 5% vertical separation
+      if (diffDay || (diffMin >= targetGapMin && diffPct >= 5)) {
+        milestones.push({
+          label: formatMilestoneLabel(turnTime, diffDay),
+          index: i,
+          turnId: turns[i].turnId
+        });
+        lastMilestoneTime = turnTime;
+        lastMilestoneIndex = i;
+      }
+    }
+
+    // Guarantee the latest turn is represented as the final milestone
+    if (turns.length > 1 && lastMilestoneIndex !== turns.length - 1) {
+      const lastIndex = turns.length - 1;
+      let lastTurnTime = turns[lastIndex].timestamp;
+      if (lastTurnTime < 20000000000) lastTurnTime *= 1000;
+
+      const lastPct = (lastMilestoneIndex / (turns.length - 1)) * 100;
+      const diffPct = 100 - lastPct;
+
+      if (diffPct >= 4) {
+        // Space is sufficient, push it as a new final milestone
+        milestones.push({
+          label: formatMilestoneLabel(lastTurnTime, isDifferentDay(lastTurnTime, lastMilestoneTime)),
+          index: lastIndex,
+          turnId: turns[lastIndex].turnId
+        });
+      } else {
+        // Space is too tight, replace the last milestone to point to the final turn instead of overlapping
+        const lastM = milestones[milestones.length - 1];
+        if (lastM) {
+          lastM.label = formatMilestoneLabel(lastTurnTime, isDifferentDay(lastTurnTime, lastMilestoneTime - 60000));
+          lastM.index = lastIndex;
+          lastM.turnId = turns[lastIndex].turnId;
+        }
+      }
+    }
+
+    return milestones;
+  });
+
+  const activeMilestone = createMemo(() => {
+    const milestones = dateMilestones();
+    const activeIdx = activeTurnIdx();
+    
+    let activeM = milestones[0] || null;
+    for (let i = 0; i < milestones.length; i++) {
+      if (milestones[i].index <= activeIdx) {
+        activeM = milestones[i];
+      } else {
+        break;
+      }
+    }
+    return activeM;
+  });
+
   let scrollContainerRef: HTMLDivElement | undefined;
-  const visibilitySetters = new Map<Element, (v: boolean) => void>();
-  const heightCache = new Map<string, number>();
-  let observer: IntersectionObserver | undefined;
+  let scrollInnerRef: HTMLDivElement | undefined;
+
+  const scrollToBottom = () => {
+    if (scrollContainerRef) {
+      scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
+    }
+  };
+
+  const handleScroll = () => {
+    if (!scrollContainerRef || !props.session) return;
+
+    const scrollTop = scrollContainerRef.scrollTop;
+    const scrollHeight = scrollContainerRef.scrollHeight;
+    const clientHeight = scrollContainerRef.clientHeight;
+
+    const pct = scrollHeight > clientHeight ? (scrollTop / (scrollHeight - clientHeight)) * 100 : 0;
+    const children = scrollInnerRef ? scrollInnerRef.children : scrollContainerRef.children;
+
+    // Scroll Lock detection (only check if not in the middle of a milestone jump)
+    if (!isJumping()) {
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 30;
+      if (isAtBottom) {
+        if (!scrollLock()) {
+          setScrollLock(true);
+          logFE("info", `Scroll Lock: acquired (scrolled to bottom)`);
+        }
+      } else {
+        if (scrollLock()) {
+          setScrollLock(false);
+          logFE("info", `Scroll Lock: released (scrolled up)`);
+        }
+      }
+    }
+    const total = props.session.turns.length - 1;
+    let visualPercent = pct;
+
+    if (total > 0 && children.length > 0) {
+      let activeChildIndex = 0;
+      let activeChildOffset = 0;
+      let activeChildHeight = 1;
+
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        const turnIdAttr = child.getAttribute("data-turn-id");
+        if (turnIdAttr) {
+          const idxAttr = child.getAttribute("data-turn-index");
+          if (idxAttr !== null) {
+            const idx = parseInt(idxAttr, 10);
+            const top = child.offsetTop;
+            const height = child.offsetHeight;
+            
+            if (top + height > scrollTop) {
+              activeChildIndex = idx;
+              activeChildOffset = top;
+              activeChildHeight = height;
+              break;
+            }
+          }
+        }
+      }
+
+      const elapsed = scrollTop - activeChildOffset;
+      const fraction = Math.max(0, Math.min(1, elapsed / activeChildHeight));
+      const visualIndex = Math.min(total, activeChildIndex + fraction);
+      visualPercent = (visualIndex / total) * 100;
+    }
+
+    setScrollPercent(visualPercent);
+
+    let foundIdx = 0;
+    const debugInfo: string[] = [];
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as HTMLElement;
+      const turnIdAttr = child.getAttribute("data-turn-id");
+      if (turnIdAttr) {
+        const offsetTop = child.offsetTop;
+        const offsetHeight = child.offsetHeight;
+        const idxAttr = child.getAttribute("data-turn-index");
+        debugInfo.push(`[${idxAttr}]: id=${turnIdAttr}, offsetTop=${offsetTop}, offsetHeight=${offsetHeight}`);
+        if (offsetTop + offsetHeight > scrollTop + 40) {
+          if (idxAttr !== null) {
+            foundIdx = parseInt(idxAttr, 10);
+            break;
+          }
+        }
+      }
+    }
+    //logFE("info", `handleScroll: scrollTop=${scrollTop}, scrollPercent=${visualPercent.toFixed(1)}, foundIdx=${foundIdx}, details: ${debugInfo.join(" | ")}`);
+    setActiveTurnIdx(foundIdx);
+  };
 
   let handleTriggerSearch: () => void;
   let handleKeyDown: (e: KeyboardEvent) => void;
@@ -290,16 +489,16 @@ export const DetailPane = (props: DetailPaneProps) => {
     };
     window.addEventListener("keydown", handleKeyDown);
 
-    observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const setter = visibilitySetters.get(entry.target);
-        if (setter) {
-          setter(entry.isIntersecting);
+    // Set up ResizeObserver on the inner wrapper to maintain scroll lock during mounts
+    if (scrollInnerRef) {
+      const ro = new ResizeObserver(() => {
+        if (scrollLock()) {
+          scrollToBottom();
         }
       });
-    }, {
-      rootMargin: "500px 0px" // Render turns 500px above/below viewport to prevent flickers
-    });
+      ro.observe(scrollInnerRef);
+      onCleanup(() => ro.disconnect());
+    }
   });
 
   onCleanup(() => {
@@ -311,43 +510,24 @@ export const DetailPane = (props: DetailPaneProps) => {
     if (handleKeyDown) {
       window.removeEventListener("keydown", handleKeyDown);
     }
-    if (observer) {
-      observer.disconnect();
-    }
   });
 
-  const registerElement = (el: HTMLElement, setVisible: (v: boolean) => void, _turnId: string) => {
-    visibilitySetters.set(el, setVisible);
-    if (observer) {
-      observer.observe(el);
-    }
-  };
 
-  const unregisterElement = (el: HTMLElement) => {
-    visibilitySetters.delete(el);
-    if (observer) {
-      observer.unobserve(el);
-    }
-  };
-
-  const getCachedHeight = (turnId: string) => heightCache.get(turnId);
-  const setCachedHeight = (turnId: string, h: number) => heightCache.set(turnId, h);
 
   // Reset pagination, search state, and scroll to bottom when session changes
   createEffect(() => {
     const id = props.session?.id;
     if (id) {
-      setVisibleTurns(10);
+      setScrollPercent(0);
+      setActiveTurnIdx(0);
       setShowDetailSearch(false);
       setDetailSearchQuery("");
       setActiveMatchIndex(0);
+      setScrollLock(true); // Lock scroll to bottom for the new session
       
-      // Auto-scroll to bottom of conversation turns
+      // Perform initial scroll lock scroll
       setTimeout(() => {
-        if (scrollContainerRef) {
-          scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
-          logFE("info", `Auto-scrolled session detail scrollbar to bottom`);
-        }
+        scrollToBottom();
       }, 50);
     }
   });
@@ -430,10 +610,6 @@ export const DetailPane = (props: DetailPaneProps) => {
     return `${dateStr}, ${timeStr}`;
   };
 
-  const slicedTurns = createMemo(() => {
-    if (!props.session) return [];
-    return props.session.turns.slice(-visibleTurns());
-  });
 
   const handlePaneClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -838,90 +1014,146 @@ export const DetailPane = (props: DetailPaneProps) => {
             id="detail-pane-scroll-container"
             tabindex="-1"
             ref={scrollContainerRef}
-            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth outline-none"
+            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth outline-none relative"
+            onScroll={handleScroll}
           >
-            {/* Session Metadata Panel */}
-            <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
-              <div class="flex items-center gap-1.5">
-                <Bookmark class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">{t("settings.sources.tab")}:</span>
-                <span class="capitalize">{props.session!.sourceId}</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <Clock class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">{t("detailPane.startedOn")}:</span>
-                <span>{formatFullDate(props.session!.timestamp)}</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <Cpu class="w-3.5 h-3.5 text-accent" />
-                <span class="font-semibold text-text-primary">{t("dashboard.totalTurns")}:</span>
-                <span>{props.session!.turns.length}</span>
-              </div>
-              <Show when={props.loadTime}>
+            <div ref={scrollInnerRef} class="space-y-6 flex flex-col">
+              {/* Session Metadata Panel */}
+              <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
                 <div class="flex items-center gap-1.5">
-                  <Clock class="w-3.5 h-3.5 text-accent animate-pulse" />
-                  <span class="font-semibold text-text-primary">{t("dashboard.duration")}:</span>
-                  <span class="font-mono text-accent">{props.loadTime}</span>
+                  <Bookmark class="w-3.5 h-3.5 text-accent" />
+                  <span class="font-semibold text-text-primary">{t("settings.sources.tab")}:</span>
+                  <span class="capitalize">{props.session!.sourceId}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <Clock class="w-3.5 h-3.5 text-accent" />
+                  <span class="font-semibold text-text-primary">{t("detailPane.startedOn")}:</span>
+                  <span>{formatFullDate(props.session!.turns[0]?.timestamp || props.session!.timestamp)}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <Cpu class="w-3.5 h-3.5 text-accent" />
+                  <span class="font-semibold text-text-primary">{t("dashboard.totalTurns")}:</span>
+                  <span>{props.session!.turns.length}</span>
+                </div>
+                <Show when={props.loadTime}>
+                  <div class="flex items-center gap-1.5">
+                    <Clock class="w-3.5 h-3.5 text-accent animate-pulse" />
+                    <span class="font-semibold text-text-primary">{t("dashboard.duration")}:</span>
+                    <span class="font-mono text-accent">{props.loadTime}</span>
+                  </div>
+                </Show>
+              </div>
+
+              {/* AI Summary Card (Component 2) */}
+              <Show when={props.session!.summary}>
+                <div class="p-5 bg-accent/5 border border-accent/20 rounded-2xl space-y-2 animate-in fade-in duration-300">
+                  <div class="flex items-center gap-2 text-accent">
+                    <Cpu class="w-4 h-4" />
+                    <h3 class="text-xs font-bold uppercase tracking-wider">{t("detailPane.aiSummaryTitle")}</h3>
+                  </div>
+                  <p class="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
+                    {props.session!.summary}
+                  </p>
                 </div>
               </Show>
+
+              {/* Render Virtualized Conversation Bubbles */}
+              <For each={props.session!.turns}>
+                {(turn, index) => {
+                  return (
+                    <VirtualTurn
+                      turn={turn}
+                      actualIndex={index()}
+                      formatFullDate={formatFullDate}
+                      sourceId={props.session!.sourceId}
+                      searchQuery={activeSearchQuery()}
+                      matchCase={activeMatchCase()}
+                      wholeWord={activeWholeWord()}
+                      useRegex={activeUseRegex()}
+                      numberFormat={props.numberFormat}
+                      onContextMenu={handleContextMenu}
+                    />
+                  );
+                }}
+              </For>
             </div>
-
-            {/* AI Summary Card (Component 2) */}
-            <Show when={props.session!.summary}>
-              <div class="p-5 bg-accent/5 border border-accent/20 rounded-2xl space-y-2 animate-in fade-in duration-300">
-                <div class="flex items-center gap-2 text-accent">
-                  <Cpu class="w-4 h-4" />
-                  <h3 class="text-xs font-bold uppercase tracking-wider">{t("detailPane.aiSummaryTitle")}</h3>
-                </div>
-                <p class="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
-                  {props.session!.summary}
-                </p>
-              </div>
-            </Show>
-
-            {/* Pagination Trigger */}
-            <Show when={props.session!.turns.length > visibleTurns()}>
-              <div class="flex justify-center pb-4 border-b border-border/40 gap-3">
-                <button
-                  onClick={() => setVisibleTurns(prev => Math.min(props.session!.turns.length, prev + 20))}
-                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm"
-                >
-                  Load 20 older messages ({props.session!.turns.length - visibleTurns()} remaining)
-                </button>
-                <button
-                  onClick={() => setVisibleTurns(props.session!.turns.length)}
-                  class="px-4 py-2 bg-surface hover:bg-surface/80 border border-border text-xs font-semibold rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer shadow-sm shadow-accent/5 capitalize"
-                >
-                  {t("sidebar.filterAll")}
-                </button>
-              </div>
-            </Show>
-
-            {/* Render Virtualized Conversation Bubbles */}
-            <For each={slicedTurns()}>
-              {(turn, index) => {
-                const actualIndex = createMemo(() => props.session!.turns.length - visibleTurns() + index());
-                return (
-                  <VirtualTurn
-                    turn={turn}
-                    actualIndex={actualIndex()}
-                    formatFullDate={formatFullDate}
-                    sourceId={props.session!.sourceId}
-                    registerElement={registerElement}
-                    unregisterElement={unregisterElement}
-                    getCachedHeight={getCachedHeight}
-                    setCachedHeight={setCachedHeight}
-                    searchQuery={activeSearchQuery()}
-                    matchCase={activeMatchCase()}
-                    wholeWord={activeWholeWord()}
-                    useRegex={activeUseRegex()}
-                    numberFormat={props.numberFormat}
-                    onContextMenu={handleContextMenu}
-                  />
-                );
-              }}
-            </For>
           </div>
+
+          {/* Vertical Date Timeline Overlay */}
+          <Show when={props.session && props.session.turns.length > 0 && dateMilestones().length > 1}>
+            <div class="absolute right-8 top-24 bottom-10 w-24 flex flex-row items-stretch justify-end z-40 pointer-events-none select-none">
+              <div class="relative w-full h-full">
+                {/* Vertical Track Line */}
+                <div class="absolute right-[3px] top-0 bottom-0 w-[1px] bg-border/20 rounded-full" />
+                {/* Active Track Highlight */}
+                <div 
+                  class="absolute right-[3px] top-0 w-[1px] bg-accent rounded-full transition-all duration-150"
+                  style={{ height: `${scrollPercent()}%` }}
+                />
+                
+                <For each={dateMilestones()}>
+                  {(milestone) => {
+                    const pct = () => {
+                      const total = props.session!.turns.length;
+                      if (total <= 1) return 0;
+                      return (milestone.index / (total - 1)) * 100;
+                    };
+                    const isActive = () => activeMilestone()?.turnId === milestone.turnId;
+                    
+                    return (
+                      <div 
+                        class="absolute right-0 flex items-center gap-2 transform -translate-y-1/2 cursor-pointer group pointer-events-auto py-1.5 px-3 hover:bg-accent/10 hover:border hover:border-accent/20 rounded-md transition-all duration-150"
+                        style={{ top: `${pct()}%` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          logFE("info", `Timeline: clicked milestone index ${milestone.index}`);
+                          const el = document.getElementById(milestone.turnId);
+                          if (el) {
+                            setIsJumping(true);
+                            setTimeout(() => {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              
+                              // Perform direct scrollTop adjustments to correct layout shifts from slow rendering
+                              setTimeout(() => {
+                                if (scrollContainerRef) {
+                                  scrollContainerRef.scrollTop = el.offsetTop;
+                                }
+                              }, 250);
+                              setTimeout(() => {
+                                if (scrollContainerRef) {
+                                  scrollContainerRef.scrollTop = el.offsetTop;
+                                }
+                              }, 500);
+                              setTimeout(() => {
+                                setIsJumping(false);
+                              }, 800);
+                            }, 150); // Give 150ms for SolidJS DOM rendering & height cache updates to settle
+                          }
+                        }}
+                      >
+                        <span 
+                          class={`text-[9px] font-mono font-bold tracking-wider transition-all duration-150 uppercase whitespace-nowrap bg-background/80 px-1 py-0.5 rounded shadow-sm ${
+                            isActive() 
+                              ? "text-accent font-extrabold scale-105 border border-accent/25" 
+                              : "text-text-secondary/60 group-hover:text-accent"
+                          }`}
+                        >
+                          {milestone.label}
+                        </span>
+                        <div 
+                          class={`rounded-full border border-background transition-all duration-150 flex-shrink-0 ${
+                            isActive() 
+                              ? "w-2.5 h-2.5 bg-accent scale-110 shadow-sm shadow-accent/50" 
+                              : "w-1.5 h-1.5 bg-border/40 group-hover:bg-accent group-hover:scale-125"
+                          }`}
+                        />
+                      </div>
+                    );
+                  }}
+                </For>
+              </div>
+            </div>
+          </Show>
         </Show>
       </Show>
 
@@ -981,10 +1213,6 @@ interface VirtualTurnProps {
   actualIndex: number;
   formatFullDate: (timestamp: number) => string;
   sourceId: string;
-  registerElement: (el: HTMLElement, setVisible: (v: boolean) => void, turnId: string) => void;
-  unregisterElement: (el: HTMLElement) => void;
-  getCachedHeight: (turnId: string) => number | undefined;
-  setCachedHeight: (turnId: string, h: number) => void;
   searchQuery?: string;
   matchCase?: boolean;
   wholeWord?: boolean;
@@ -995,69 +1223,16 @@ interface VirtualTurnProps {
 
 const VirtualTurn = (props: VirtualTurnProps) => {
   const { t } = useI18n();
-  let elementRef: HTMLDivElement | undefined;
-  const [isVisible, setIsVisible] = createSignal(false);
   const turnKey = createMemo(() => props.turn.turnId || String(props.actualIndex));
-
-  createEffect(() => {
-    const el = elementRef;
-    if (el) {
-      props.registerElement(el, setIsVisible, turnKey());
-      onCleanup(() => {
-        props.unregisterElement(el);
-      });
-    }
-  });
-
-  // Track height of this turn when it goes offscreen
-  createEffect(() => {
-    const visible = isVisible();
-    const el = elementRef;
-    if (!visible && el) {
-      const cached = props.getCachedHeight(turnKey());
-      if (cached) {
-        el.style.height = `${cached}px`;
-      }
-    } else if (visible && el) {
-      el.style.height = "auto";
-      
-      const ro = new ResizeObserver(entries => {
-        for (const entry of entries) {
-          const h = entry.target.getBoundingClientRect().height;
-          if (h > 0) {
-            props.setCachedHeight(turnKey(), h);
-          }
-        }
-      });
-      ro.observe(el);
-      onCleanup(() => ro.disconnect());
-    }
-  });
 
   return (
     <div 
-      ref={elementRef}
       id={turnKey()}
       data-turn-id={turnKey()}
-      class="space-y-4"
-      style={props.actualIndex >= 2 ? {
-        "content-visibility": "auto",
-        "contain-intrinsic-size": "auto 200px"
-      } : undefined}
+      data-turn-index={props.actualIndex}
+      class="space-y-4 animate-in fade-in duration-200"
     >
-      <Show 
-        when={isVisible()} 
-        fallback={
-          // Empty skeleton shell while virtualized out to minimize memory
-          <div class="w-full py-6 flex items-center justify-center text-text-secondary/20">
-            <div class="flex gap-1.5">
-              <div class="w-2 h-2 rounded-full bg-current animate-pulse" />
-              <div class="w-2 h-2 rounded-full bg-current animate-pulse delay-75" />
-              <div class="w-2 h-2 rounded-full bg-current animate-pulse delay-150" />
-            </div>
-          </div>
-        }
-      >
+
         {/* User message block */}
         <div class="flex flex-col items-start max-w-4xl animate-in fade-in duration-200">
           <div class="flex items-center gap-2 mb-1.5 pl-3">
@@ -1114,7 +1289,6 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             />
           </div>
         </div>
-      </Show>
     </div>
   );
 };
@@ -1126,22 +1300,23 @@ const UserMessageRenderer = (props: {
   wholeWord?: boolean;
   useRegex?: boolean;
 }) => {
-  let ref: HTMLDivElement | undefined;
+  const [element, setElement] = createSignal<HTMLDivElement | null>(null);
 
   createEffect(() => {
+    const el = element();
     const text = props.message;
     const q = props.searchQuery;
     const mc = props.matchCase;
     const ww = props.wholeWord;
     const rx = props.useRegex;
 
-    if (ref) {
-      ref.textContent = text;
-      highlightContainer(ref, q || "", mc || false, ww || false, rx || false);
+    if (el) {
+      el.textContent = text;
+      highlightContainer(el, q || "", mc || false, ww || false, rx || false);
     }
   });
 
-  return <div ref={ref} class="whitespace-pre-wrap select-text" />;
+  return <div ref={setElement} class="whitespace-pre-wrap select-text" />;
 };
 
 const AssistantMessageRenderer = (props: { 
@@ -1362,22 +1537,24 @@ const ToolOutputBlock = (props: {
 
   const meta = createMemo(() => getToolMeta());
 
-  let headerRef: HTMLSpanElement | undefined;
-  let codeRef: HTMLElement | undefined;
+  const [headerRef, setHeaderRef] = createSignal<HTMLSpanElement | null>(null);
+  const [codeRef, setCodeRef] = createSignal<HTMLElement | null>(null);
 
   createEffect(() => {
+    const el = headerRef();
     const q = props.searchQuery;
     const mc = props.matchCase;
     const ww = props.wholeWord;
     const rx = props.useRegex;
 
-    if (headerRef) {
-      headerRef.textContent = props.tool.header;
-      highlightContainer(headerRef, q || "", mc || false, ww || false, rx || false);
+    if (el) {
+      el.textContent = props.tool.header;
+      highlightContainer(el, q || "", mc || false, ww || false, rx || false);
     }
   });
 
   createEffect(() => {
+    const el = codeRef();
     const q = props.searchQuery;
     const mc = props.matchCase;
     const ww = props.wholeWord;
@@ -1385,9 +1562,9 @@ const ToolOutputBlock = (props: {
     const opened = isOpen();
     const text = props.tool.content;
 
-    if (opened && codeRef) {
-      codeRef.textContent = text;
-      highlightContainer(codeRef, q || "", mc || false, ww || false, rx || false);
+    if (opened && el) {
+      el.textContent = text;
+      highlightContainer(el, q || "", mc || false, ww || false, rx || false);
     }
   });
 
@@ -1400,7 +1577,7 @@ const ToolOutputBlock = (props: {
       >
         <span class="opacity-60">{isOpen() ? "▼" : "▶"}</span>
         {meta().icon}
-        <span ref={headerRef} class="hover:underline" />
+        <span ref={setHeaderRef} class="hover:underline" />
       </button>
 
       <Show when={isOpen()}>
@@ -1410,7 +1587,7 @@ const ToolOutputBlock = (props: {
             dir="ltr" 
             class={`border rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono max-h-96 scrollbar shadow-inner text-left ${meta().preBorder}`}
           >
-            <code ref={codeRef} />
+            <code ref={setCodeRef} />
           </pre>
         </div>
       </Show>
