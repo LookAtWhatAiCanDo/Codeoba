@@ -20,7 +20,9 @@ import {
   MoreVertical,
   Pin,
   AlertCircle,
-  Edit
+  Edit,
+  X,
+  ChevronUp
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
@@ -58,6 +60,164 @@ export const DetailPane = (props: DetailPaneProps) => {
   const [visibleTurns, setVisibleTurns] = createSignal(10);
   const [showActionsDropdown, setShowActionsDropdown] = createSignal(false);
 
+  const [showDetailSearch, setShowDetailSearch] = createSignal(false);
+  const [detailSearchQuery, setDetailSearchQuery] = createSignal("");
+  const [detailMatchCase, setDetailMatchCase] = createSignal(false);
+  const [detailWholeWord, setDetailWholeWord] = createSignal(false);
+  const [detailUseRegex, setDetailUseRegex] = createSignal(false);
+  const [activeMatchIndex, setActiveMatchIndex] = createSignal(0);
+
+  let detailSearchInputRef: HTMLInputElement | undefined;
+
+  const activeSearchQuery = createMemo(() => {
+    if (showDetailSearch()) {
+      return detailSearchQuery();
+    }
+    return props.searchQuery || "";
+  });
+
+  const activeMatchCase = createMemo(() => {
+    if (showDetailSearch()) {
+      return detailMatchCase();
+    }
+    return props.matchCase || false;
+  });
+
+  const activeWholeWord = createMemo(() => {
+    if (showDetailSearch()) {
+      return detailWholeWord();
+    }
+    return props.wholeWord || false;
+  });
+
+  const activeUseRegex = createMemo(() => {
+    if (showDetailSearch()) {
+      return detailUseRegex();
+    }
+    return props.useRegex || false;
+  });
+
+  interface SearchMatch {
+    turnIndex: number;
+    turnId: string;
+    text: string;
+  }
+
+  const searchMatches = createMemo(() => {
+    const q = detailSearchQuery();
+    const session = props.session;
+    if (!session || !q || q.trim() === "") return [];
+
+    const mc = detailMatchCase();
+    const ww = detailWholeWord();
+    const rx = detailUseRegex();
+
+    let regex: RegExp;
+    try {
+      const flags = mc ? "g" : "gi";
+      let pattern = q;
+      if (!rx) {
+        pattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+      if (ww) {
+        pattern = `\\b${pattern}\\b`;
+      }
+      regex = new RegExp(pattern, flags);
+    } catch (e) {
+      return [];
+    }
+
+    const matchesList: SearchMatch[] = [];
+    session.turns.forEach((turn, turnIndex) => {
+      const turnId = turn.turnId || String(turnIndex);
+      
+      // Find all matches in userMessage
+      let match;
+      regex.lastIndex = 0;
+      while ((match = regex.exec(turn.userMessage)) !== null) {
+        if (match[0] === "") {
+          regex.lastIndex++;
+          continue;
+        }
+        matchesList.push({
+          turnIndex,
+          turnId,
+          text: match[0]
+        });
+      }
+
+      // Find all matches in assistantMessage
+      regex.lastIndex = 0;
+      while ((match = regex.exec(turn.assistantMessage)) !== null) {
+        if (match[0] === "") {
+          regex.lastIndex++;
+          continue;
+        }
+        matchesList.push({
+          turnIndex,
+          turnId,
+          text: match[0]
+        });
+      }
+    });
+
+    return matchesList;
+  });
+
+  const navigateToMatch = (index: number) => {
+    const matchesList = searchMatches();
+    if (matchesList.length === 0) return;
+
+    let targetIndex = index;
+    if (targetIndex >= matchesList.length) {
+      targetIndex = 0;
+    } else if (targetIndex < 0) {
+      targetIndex = matchesList.length - 1;
+    }
+    setActiveMatchIndex(targetIndex);
+
+    const match = matchesList[targetIndex];
+    
+    // Ensure the turn is visible/rendered
+    const reqTurns = props.session!.turns.length - match.turnIndex;
+    if (visibleTurns() < reqTurns) {
+      setVisibleTurns(reqTurns);
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById(match.turnId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        
+        setTimeout(() => {
+          const allMarks = scrollContainerRef?.querySelectorAll("mark");
+          if (allMarks) {
+            allMarks.forEach(m => {
+              m.className = "bg-yellow-500/30 text-text-primary rounded px-0.5";
+            });
+            
+            const turnEl = document.getElementById(match.turnId);
+            if (turnEl) {
+              const turnMarks = turnEl.querySelectorAll("mark");
+              let matchIndexInTurn = 0;
+              for (let i = 0; i < targetIndex; i++) {
+                if (matchesList[i].turnId === match.turnId) {
+                  matchIndexInTurn++;
+                }
+              }
+              
+              const activeMark = turnMarks[matchIndexInTurn];
+              if (activeMark) {
+                activeMark.className = "bg-accent text-white font-semibold rounded px-0.5 ring-2 ring-accent/50";
+                activeMark.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }
+          }
+        }, 120);
+      }
+    }, 50);
+  };
+
   const [contextMenu, setContextMenu] = createSignal<{
     x: number;
     y: number;
@@ -88,9 +248,48 @@ export const DetailPane = (props: DetailPaneProps) => {
   const heightCache = new Map<string, number>();
   let observer: IntersectionObserver | undefined;
 
+  let handleTriggerSearch: () => void;
+  let handleKeyDown: (e: KeyboardEvent) => void;
+
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
     window.addEventListener("click", () => setShowActionsDropdown(false));
+    
+    handleTriggerSearch = () => {
+      setShowDetailSearch(true);
+      setTimeout(() => {
+        detailSearchInputRef?.focus();
+        detailSearchInputRef?.select();
+      }, 50);
+    };
+    window.addEventListener("trigger-detail-search", handleTriggerSearch);
+
+    handleKeyDown = (e: KeyboardEvent) => {
+      const isScrollKey = (e.key === "Home" || e.key === "End" || e.key === "PageUp" || e.key === "PageDown") && !e.shiftKey;
+      if (isScrollKey) {
+        const activeTag = document.activeElement?.tagName.toLowerCase();
+        const isTyping = activeTag === "input" || activeTag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
+        
+        if (!isTyping && scrollContainerRef) {
+          e.preventDefault();
+          if (e.key === "Home") {
+            scrollContainerRef.scrollTop = 0;
+            logFE("info", "DetailPane: scrolled to top via key");
+          } else if (e.key === "End") {
+            scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
+            logFE("info", "DetailPane: scrolled to bottom via key");
+          } else if (e.key === "PageUp") {
+            scrollContainerRef.scrollTop -= scrollContainerRef.clientHeight * 0.85;
+            logFE("info", "DetailPane: scrolled page up via key");
+          } else if (e.key === "PageDown") {
+            scrollContainerRef.scrollTop += scrollContainerRef.clientHeight * 0.85;
+            logFE("info", "DetailPane: scrolled page down via key");
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
     observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const setter = visibilitySetters.get(entry.target);
@@ -106,6 +305,12 @@ export const DetailPane = (props: DetailPaneProps) => {
   onCleanup(() => {
     window.removeEventListener("click", closeContextMenu);
     window.removeEventListener("click", () => setShowActionsDropdown(false));
+    if (handleTriggerSearch) {
+      window.removeEventListener("trigger-detail-search", handleTriggerSearch);
+    }
+    if (handleKeyDown) {
+      window.removeEventListener("keydown", handleKeyDown);
+    }
     if (observer) {
       observer.disconnect();
     }
@@ -128,11 +333,14 @@ export const DetailPane = (props: DetailPaneProps) => {
   const getCachedHeight = (turnId: string) => heightCache.get(turnId);
   const setCachedHeight = (turnId: string, h: number) => heightCache.set(turnId, h);
 
-  // Reset pagination and scroll to bottom when session changes
+  // Reset pagination, search state, and scroll to bottom when session changes
   createEffect(() => {
     const id = props.session?.id;
     if (id) {
       setVisibleTurns(10);
+      setShowDetailSearch(false);
+      setDetailSearchQuery("");
+      setActiveMatchIndex(0);
       
       // Auto-scroll to bottom of conversation turns
       setTimeout(() => {
@@ -227,8 +435,23 @@ export const DetailPane = (props: DetailPaneProps) => {
     return props.session.turns.slice(-visibleTurns());
   });
 
+  const handlePaneClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest("input, textarea, button, select, a, [role='button']")) {
+      const container = document.getElementById("detail-pane-scroll-container");
+      if (container) {
+        container.focus();
+      }
+    }
+  };
+
   return (
-    <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0">
+    <div 
+      onClick={handlePaneClick}
+      class="flex-grow h-full flex flex-col bg-background/95 min-w-0 relative transition-all duration-200 focus-within:z-[51] group"
+    >
+      {/* Focus Highlight Border Overlay */}
+      <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
       <Show 
         when={!props.isLoading} 
         fallback={
@@ -471,10 +694,151 @@ export const DetailPane = (props: DetailPaneProps) => {
             </div>
           </div>
 
+          {/* Floating Search Bar */}
+          <Show when={showDetailSearch()}>
+            <div 
+              id="detail-search-bar"
+              class="absolute right-8 z-30 flex items-center gap-2 p-1.5 bg-surface/95 border border-border hover:border-border/80 rounded-xl shadow-xl glass animate-in slide-in-from-top-2 duration-150"
+              style={{
+                top: "calc(var(--sk-header-height, 76px) + 8px)"
+              }}
+            >
+              <div class="relative flex items-center">
+                <Search class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-text-secondary/60 pointer-events-none" />
+                <input
+                  id="detail-search-input"
+                  ref={detailSearchInputRef}
+                  type="text"
+                  value={detailSearchQuery()}
+                  onInput={(e) => {
+                    setDetailSearchQuery(e.currentTarget.value);
+                    setActiveMatchIndex(0);
+                    navigateToMatch(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        navigateToMatch(activeMatchIndex() - 1);
+                      } else {
+                        navigateToMatch(activeMatchIndex() + 1);
+                      }
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setShowDetailSearch(false);
+                    }
+                  }}
+                  placeholder="Find in session..."
+                  class="w-[200px] bg-background/50 border border-border/60 focus:border-accent text-text-primary pl-8 pr-16 py-1.5 text-xs rounded-lg outline-none transition-all placeholder:text-text-secondary/40 h-[30px]"
+                />
+                
+                {/* Match count and clear button */}
+                <div class="absolute right-2 flex items-center gap-1.5 text-[10px] text-text-secondary/60 select-none">
+                  <span>
+                    {searchMatches().length > 0 ? `${activeMatchIndex() + 1}/${searchMatches().length}` : "0/0"}
+                  </span>
+                  <Show when={detailSearchQuery().length > 0}>
+                    <button
+                      onClick={() => {
+                        setDetailSearchQuery("");
+                        setActiveMatchIndex(0);
+                      }}
+                      class="p-0.5 hover:text-text-primary transition-colors cursor-pointer"
+                    >
+                      <X class="w-3 h-3" />
+                    </button>
+                  </Show>
+                </div>
+              </div>
+
+              {/* Navigation arrows */}
+              <div class="flex items-center gap-0.5 border-l border-border/60 pl-1">
+                <button
+                  onClick={() => navigateToMatch(activeMatchIndex() - 1)}
+                  title="Previous Match (Shift+Enter)"
+                  class="p-1 hover:bg-surface/80 hover:text-text-primary text-text-secondary/70 rounded transition-all cursor-pointer disabled:opacity-40"
+                  disabled={searchMatches().length === 0}
+                >
+                  <ChevronUp class="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => navigateToMatch(activeMatchIndex() + 1)}
+                  title="Next Match (Enter)"
+                  class="p-1 hover:bg-surface/80 hover:text-text-primary text-text-secondary/70 rounded transition-all cursor-pointer disabled:opacity-40"
+                  disabled={searchMatches().length === 0}
+                >
+                  <ChevronDown class="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Search Modifiers */}
+              <div class="flex items-center gap-1 border-l border-border/60 pl-1 select-none">
+                {/* Case Sensitivity */}
+                <button
+                  onClick={() => {
+                    setDetailMatchCase(!detailMatchCase());
+                    navigateToMatch(0);
+                  }}
+                  title={t("sidebar.matchCase")}
+                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                    detailMatchCase() 
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                      : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+                  }`}
+                >
+                  Aa
+                </button>
+
+                {/* Whole Word */}
+                <button
+                  onClick={() => {
+                    setDetailWholeWord(!detailWholeWord());
+                    navigateToMatch(0);
+                  }}
+                  title={t("sidebar.wholeWord")}
+                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                    detailWholeWord() 
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                      : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+                  }`}
+                >
+                  \b
+                </button>
+
+                {/* Regex */}
+                <button
+                  onClick={() => {
+                    setDetailUseRegex(!detailUseRegex());
+                    navigateToMatch(0);
+                  }}
+                  title={t("sidebar.useRegex")}
+                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                    detailUseRegex() 
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                      : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
+                  }`}
+                >
+                  .*
+                </button>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowDetailSearch(false)}
+                title="Close (Esc)"
+                class="p-1 hover:bg-surface/80 hover:text-red-400 text-text-secondary/60 rounded transition-all border-l border-border/60 pl-1.5 cursor-pointer"
+              >
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </Show>
+
           {/* Main Conversation Turns Scrollable Area */}
           <div 
+            id="detail-pane-scroll-container"
+            tabindex="-1"
             ref={scrollContainerRef}
-            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth"
+            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth outline-none"
           >
             {/* Session Metadata Panel */}
             <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
@@ -547,10 +911,10 @@ export const DetailPane = (props: DetailPaneProps) => {
                     unregisterElement={unregisterElement}
                     getCachedHeight={getCachedHeight}
                     setCachedHeight={setCachedHeight}
-                    searchQuery={props.searchQuery}
-                    matchCase={props.matchCase}
-                    wholeWord={props.wholeWord}
-                    useRegex={props.useRegex}
+                    searchQuery={activeSearchQuery()}
+                    matchCase={activeMatchCase()}
+                    wholeWord={activeWholeWord()}
+                    useRegex={activeUseRegex()}
                     numberFormat={props.numberFormat}
                     onContextMenu={handleContextMenu}
                   />
@@ -673,6 +1037,7 @@ const VirtualTurn = (props: VirtualTurnProps) => {
   return (
     <div 
       ref={elementRef}
+      id={turnKey()}
       data-turn-id={turnKey()}
       class="space-y-4"
       style={props.actualIndex >= 2 ? {

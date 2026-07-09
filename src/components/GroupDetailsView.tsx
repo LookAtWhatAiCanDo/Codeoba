@@ -39,6 +39,15 @@ interface GroupDetailsViewProps {
 
 export default function GroupDetailsView(props: GroupDetailsViewProps) {
   const { t } = useI18n();
+  const handleGroupDetailsClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest("input, textarea, button, select, a, [role='button']")) {
+      const container = document.getElementById("group-details-scroll-container");
+      if (container) {
+        container.focus();
+      }
+    }
+  };
   const [description, setDescription] = createSignal("");
   const [status, setStatus] = createSignal("Active");
   const [pastWorkSummary, setPastWorkSummary] = createSignal("");
@@ -208,7 +217,15 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
           </div>
         }
       >
-        <div class="flex-grow h-full overflow-y-auto p-6 flex flex-col gap-6 min-w-0">
+        <div 
+          id="group-details-scroll-container"
+          tabindex="-1"
+          onClick={handleGroupDetailsClick}
+          class="flex-grow h-full overflow-y-auto p-6 flex flex-col gap-6 min-w-0 outline-none transition-all duration-200 relative focus-within:z-[51] group"
+        >
+          {/* Focus Highlight Border Overlay */}
+          <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
+
           {/* Header row */}
           <div class="flex items-center justify-between border-b border-border pb-4 gap-4">
             <div class="min-w-0">
