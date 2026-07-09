@@ -282,7 +282,7 @@
       "descQualityTitle": "Avis Temporaire de Qualité pour Version Préliminaire",
       "descQualityReport": "N'hésitez pas à signaler tout problème ou à suggérer des améliorations en utilisant l'icône de bogue {bugIcon} dans le coin supérieur droit de l'application.",
       "question": "Souhaitez-vous activer les vérifications automatiques des mises à jour pour vous assurer que la dernière version est installée ?",
-      "desc1": "Les vérifications de mise à jour transmettent la version actuelle de l'application, la préférence de langue et la version du système d'exploitation à {domain}.",
+      "desc1": "Les vérifications de mise à jour transmettent la version actuelle de l'application et la préférence de langue, ainsi que la version du système d'exploitation et l'architecture du processeur (CPU) de votre système, à {domain}.",
       "complianceSubtext": "Cette demande est présentée conformément aux réglementations mondiales sur la protection de la vie privée afin de garantir votre consentement explécit avant toute connexion au serveur.",
       "noThanks": "Non merci",
       "enable": "Activer les Mises à Jour Automatiques"

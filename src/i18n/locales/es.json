@@ -282,7 +282,7 @@
       "descQualityTitle": "Aviso Temporal de Calidad de Versión Preliminar",
       "descQualityReport": "No dude en informar cualquier problema o sugerir mejoras utilizando el icono del escarabajo {bugIcon} en la esquina superior derecha de la aplicación.",
       "question": "¿Le gustaría activar las comprobaciones de actualizaciones automáticas para asegurarse de que se está ejecutando la última versión?",
-      "desc1": "Las comprobaciones de actualización transmiten la versión actual de la aplicación, la preferencia de idioma y la versión del sistema operativo a {domain}.",
+      "desc1": "Las comprobaciones de actualización transmiten la versión actual de la aplicación y la preferencia de idioma, junto con la versión del sistema operativo y la arquitectura de la CPU de su sistema, a {domain}.",
       "complianceSubtext": "Esta solicitud se presenta de conformidad con las normativas globales de privacidad para garantizar que se obtenga su consentimiento explícito antes de realizar cualquier conexión con el servidor.",
       "noThanks": "No, gracias",
       "enable": "Activar Actualizaciones Automáticas"

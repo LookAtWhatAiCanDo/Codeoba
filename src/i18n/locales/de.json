@@ -282,7 +282,7 @@
       "descQualityTitle": "Vorübergehender Vorabversions-Qualitätshinweis",
       "descQualityReport": "Bitte zögern Sie nicht, Probleme zu melden oder Verbesserungen über das {bugIcon} Käfer-Symbol in der oberen rechten Ecke der Anwendung vorzuschlagen.",
       "question": "Möchten Sie automatische Update-Überprüfungen aktivieren, um sicherzustellen, dass die neueste Version ausgeführt wird?",
-      "desc1": "Bei Update-Prüfungen werden die aktuelle App-Version, die Spracheinstellung und die Betriebssystemversion an {domain} übermittelt.",
+      "desc1": "Bei Update-Prüfungen werden die aktuelle Anwendungsversion und Spracheinstellung zusammen mit Ihrer Betriebssystemversion und Ihrer CPU-Architektur an {domain} übermittelt.",
       "complianceSubtext": "Diese Anfrage erfolgt in Übereinstimmung mit globalen Datenschutzbestimmungen, um Ihre ausdrückliche Zustimmung einzuholen, bevor eine Verbindung zum Server hergestellt wird.",
       "noThanks": "Nein danke",
       "enable": "Automatische Updates aktivieren"
