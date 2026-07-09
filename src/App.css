@@ -239,6 +239,39 @@ body {
   line-height: 1.6;
 }
 
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.markdown-body h1 {
+  font-size: 1.45em;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.markdown-body h2 {
+  font-size: 1.25em;
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+
+.markdown-body h3 {
+  font-size: 1.10em;
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.markdown-body h4 {
+  font-size: 1em;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
 .markdown-body pre {
   background-color: rgba(0, 0, 0, 0.3) !important;
   border: 1px solid var(--border);
@@ -292,6 +325,15 @@ pre[class*="language-"] {
 
 .update-notes-container .markdown-body {
   font-size: 13px !important;
+}
+
+.update-notes-container .markdown-body h1,
+.update-notes-container .markdown-body h2,
+.update-notes-container .markdown-body h3,
+.update-notes-container .markdown-body h4 {
+  font-size: 14px !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
 }
 
 /* App-region rules for custom title bars (Windows touch/mouse drag support) */

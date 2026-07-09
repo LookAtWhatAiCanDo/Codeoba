@@ -41,8 +41,8 @@ export const UpdateModal = (props: UpdateModalProps) => {
 
   return (
     <Show when={props.isOpen && props.updateManifest}>
-      <div class="fixed inset-0 bg-black/75 z-[60] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
-        <div class="w-[460px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
+      <div class="fixed inset-0 bg-black/75 z-[1000] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
+        <div class="w-[600px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
           
           {/* Close button - only show if NOT currently installing an update */}
           <Show when={!props.isUpdating}>
@@ -68,15 +68,15 @@ export const UpdateModal = (props: UpdateModalProps) => {
               <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
                 {t("updater.title")}
               </h3>
-              <p class="text-[10px] text-text-secondary/70">{t("updater.description", { version: props.updateManifest.version })}</p>
+              <p class="text-sm text-text-secondary/90">{t("updater.description", { version: props.updateManifest.version })}</p>
             </div>
           </div>
 
           {/* Version Details */}
-          <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-2 text-xs">
+          <div class="bg-background/50 border border-border/40 rounded-xl p-4 space-y-2 text-sm">
             <div class="flex items-center justify-between font-semibold">
               <span class="text-text-secondary">Version:</span>
-              <span class="text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full text-[10px]">
+              <span class="text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded-full text-xs">
                 v{props.updateManifest.version}
               </span>
             </div>
@@ -84,7 +84,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
             <Show when={releaseNotes()}>
               <div class="border-t border-border/30 pt-3 space-y-2">
                 <span class="text-text-secondary font-semibold">Release Notes:</span>
-                <div class="max-h-48 overflow-y-auto bg-background/30 p-3 rounded-xl border border-border/20 text-left update-notes-container">
+                <div class="max-h-64 overflow-y-auto bg-background/30 p-3 rounded-xl border border-border/20 text-left update-notes-container">
                   <MarkdownRenderer content={releaseNotes()} />
                 </div>
               </div>
