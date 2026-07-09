@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use tauri::Emitter;
 use futures_util::StreamExt;
@@ -10,7 +10,6 @@ fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 8192];
     loop {
-        use std::io::Read;
         let count = file.read(&mut buffer).map_err(|e| format!("Failed to read file for hash check: {}", e))?;
         if count == 0 {
             break;
