@@ -353,6 +353,7 @@ impl SourceAdapter for AntigravitySource {
             let path = std::path::Path::new(path_str);
             let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
             filename == "transcript.jsonl"
+                || filename == "transcript_full.jsonl"
                 || filename == "agyhub_summaries_proto.pb"
                 || (path_str.contains("annotations") && filename.ends_with(".pbtxt"))
         })
@@ -368,7 +369,17 @@ impl SourceAdapter for AntigravitySource {
     }
 
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
-        let path = Path::new(file_path);
+        let mut path_buf = PathBuf::from(file_path);
+        let filename = path_buf.file_name().and_then(|s| s.to_str()).unwrap_or("");
+        if filename == "transcript.jsonl" {
+            let full_path = path_buf.parent().unwrap().join("transcript_full.jsonl");
+            if full_path.exists() && full_path.is_file() {
+                path_buf = full_path;
+            }
+        }
+        let path = path_buf.as_path();
+        let target_file_path = path.to_string_lossy().to_string();
+
         let session_id = path.parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
@@ -402,7 +413,7 @@ impl SourceAdapter for AntigravitySource {
 
         if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
             self.id(),
-            file_path,
+            &target_file_path,
             cache_modified,
             cache_size,
         ) {
@@ -427,7 +438,7 @@ impl SourceAdapter for AntigravitySource {
                 cached.is_archived = current_archived;
                 crate::parsers::cache::get_cache_manager().put_cached_session(
                     self.id(),
-                    file_path,
+                    &target_file_path,
                     cache_modified,
                     cache_size,
                     "",
@@ -723,7 +734,7 @@ impl SourceAdapter for AntigravitySource {
         let session = Session {
             id: session_id.clone(),
             source_id: self.id().to_string(),
-            file_path: file_path.to_string(),
+            file_path: target_file_path.clone(),
             timestamp: first_time,
             updated_at: last_time,
             cwd,
@@ -739,7 +750,7 @@ impl SourceAdapter for AntigravitySource {
 
         crate::parsers::cache::get_cache_manager().put_cached_session(
             self.id(),
-            file_path,
+            &target_file_path,
             cache_modified,
             cache_size,
             "",
