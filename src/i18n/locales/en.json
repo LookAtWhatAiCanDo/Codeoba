@@ -283,7 +283,7 @@
       "descQualityTitle": "Temporary Pre-Release Quality Notice",
       "descQualityReport": "Please report any issues or suggest improvements using the {bugIcon} bug icon in the upper-right corner of the application.",
       "question": "Would you like to enable automatic update checks to ensure that Codeoba is running the latest version?",
-      "desc1": "Update checks transmit only the current app and operating system versions to {domain}.",
+      "desc1": "Update checks transmit the current app version, language preference, and operating system version to {domain}.",
       "complianceSubtext": "This request is presented in compliance with global privacy regulations to ensure your explicit consent is obtained before making any server connections.",
       "noThanks": "No Thanks",
       "enable": "Enable Auto-Updates"

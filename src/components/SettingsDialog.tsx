@@ -377,7 +377,11 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     try {
       logFE("info", `Settings: Initiating check for updates. Current version: v${appVersion()}`);
       logFE("info", "Settings: Querying the update service...");
-      const update = await check();
+      const update = await check({
+        headers: {
+          "Accept-Language": locale()
+        }
+      });
       setCheckingUpdates(false);
       if (update && update.available) {
         logFE("info", `Settings: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);

@@ -282,7 +282,7 @@
       "descQualityTitle": "Aviso Provisório de Qualidade da Versão de Pré-lançamento",
       "descQualityReport": "Sinta-se à vontade para relatar quaisquer problemas ou sugerir melhorias usando o ícone do bug {bugIcon} no canto superior direito da aplicação.",
       "question": "Gostaria de ativar as verificações automáticas de atualização para garantir que está a executar a versão mais recente?",
-      "desc1": "As verificações de atualização requerem a transmissão da versão atual da aplicação e do sistema operativo apenas para {domain}. Nenhum outro dado é transmitido.",
+      "desc1": "As verificações de atualização transmitem a versão atual do aplicativo, a preferência de idioma e a versão do sistema operacional para {domain}.",
       "complianceSubtext": "Este pedido é apresentado em conformidade com os regulamentos globais de privacidade para garantir que o seu consentimento explícito é obtido antes de efetuar quaisquer ligações ao servidor.",
       "noThanks": "Não, obrigado",
       "enable": "Ativar Atualizações Automáticas"

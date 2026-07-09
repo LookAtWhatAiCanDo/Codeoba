@@ -282,7 +282,7 @@
       "descQualityTitle": "Tijdelijke Kennisgeving over Pre-release Kwaliteit",
       "descQualityReport": "Meld eventuele problemen of suggereer verbeteringen via het {bugIcon} insecten-icoon in de rechterbovenhoek van de applicatie.",
       "question": "Wilt u automatische updatecontroles inschakelen om er zeker van te zijn dat u de nieuwste versie gebruikt?",
-      "desc1": "Updatecontroles vereisen het verzenden van de huidige app-versie en het besturingssysteem uitsluitend naar {domain}. Er worden geen andere gegevens verzonden.",
+      "desc1": "Update-controles verzenden de huidige app-versie, taalvoorkeur en versie van het besturingssysteem naar {domain}.",
       "complianceSubtext": "Dit verzoek wordt gepresenteerd in overeenstemming met wereldwijde privacyregelgeving om uw uitdrukkelijke toestemming te verkrijgen voordat er serververbindingen worden gemaakt.",
       "noThanks": "Nee bedankt",
       "enable": "Automatische Updates Inschakelen"

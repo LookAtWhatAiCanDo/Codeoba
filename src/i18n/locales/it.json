@@ -282,7 +282,7 @@
       "descQualityTitle": "Avviso Temporaneo sulla Qualità della Versione Preliminare",
       "descQualityReport": "Non esitare a segnalare eventuali problemi o suggerire miglioramenti utilizzando l'icona del bug {bugIcon} nell'angolo in alto a destra dell'applicazione.",
       "question": "Desideri abilitare i controlli automatici degli aggiornamenti per assicurarti che sia in esecuzione l'ultima versione?",
-      "desc1": "I controlli degli aggiornamenti richiedono la trasmissione della versione corrente dell'app e del sistema operativo solo a {domain}. Non vengono trasmessi altri dati.",
+      "desc1": "I controlli degli aggiornamenti trasmettono la versione corrente dell'applicazione, la preferenza della lingua e la versione del sistema operativo a {domain}.",
       "complianceSubtext": "Questa richiesta viene presentata in conformità con le normative globali sulla privacy per garantire il tuo consenso esplicito prima di effettuare qualsiasi connessione al server.",
       "noThanks": "No grazie",
       "enable": "Abilita Aggiornamenti Automatici"

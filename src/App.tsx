@@ -23,7 +23,7 @@ import { Session, SearchResult, SourceMetadata } from "./types";
 import "./App.css";
 
 function App() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [appearance, setAppearance] = createSignal(localStorage.getItem("codeoba-appearance") || "dark");
   const [darkTheme, setDarkTheme] = createSignal(localStorage.getItem("codeoba-dark-theme") || "obsidian");
   const [lightTheme, setLightTheme] = createSignal(localStorage.getItem("codeoba-light-theme") || "obsidian-light");
@@ -110,7 +110,11 @@ function App() {
         const currentVersion = await getVersion();
         logFE("info", `Background Updater: Initiating background check. Current version: v${currentVersion}`);
         logFE("info", "Background Updater: Querying the update service...");
-        const update = await check();
+        const update = await check({
+          headers: {
+            "Accept-Language": locale()
+          }
+        });
         if (update && update.available) {
           logFE("info", `Background Updater: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);
           setUpdateManifest(update);
