@@ -58,6 +58,9 @@ To ensure the project context remains accurate:
 - **`docs/` (Architectural Documentation)**
   - `tokenization_calibration.md`: Hybrid Offline/Online tokenization calibration & simulation system design.
 
+- **`scripts/` (Developer & Build Utilities)**
+  - `tauri.cjs`: Compile-time Node.js configuration wrapper. Dynamically overrides CSP (`connect-src`) and updater settings to allow connection to a custom `--base-url` at compile-time, keeping raw configuration files clean and avoiding runtime environment variable leakage.
+
 ---
 
 ## 🎨 UI Style Guidelines & Constraints (SolidJS + Tailwind CSS)
@@ -150,6 +153,6 @@ When modifying the frontend web components, adhere to these styling guidelines:
 ## 🛠️ Common Cargo & NPM Development Commands
 
 - Install frontend packages: `npm install`
-- Launch Tauri application in hot-reloading dev environment: `npm run dev` or `npm run tauri dev`
+- Launch Tauri application in hot-reloading dev environment: `npm run tauri dev` (or with local override: `npm run tauri dev -- --base-url=http://localhost:5000`)
 - Run Rust backend unit tests: `cargo test --manifest-path src-tauri/Cargo.toml`
 - Compile production packages/installers locally (without updater signing): `npm run build:local`

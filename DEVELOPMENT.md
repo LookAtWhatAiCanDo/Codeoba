@@ -70,11 +70,16 @@ npm install
 ### 2. Run the Development Client
 Launch the hot-reloading development server and compile/run the native desktop shell wrapper:
 ```bash
+# Standard dev launch
 npm run tauri dev
-# or
+
+# Dev launch with a custom local updater and CSP base URL
+npm run tauri dev -- --base-url=http://localhost:5000
+
+# Dev launch in release mode
 npm run tauri dev -- --release
 ```
-*This command starts the Vite local server on port `1420` and loads the SolidJS UI into the native operating system webview. Changes to frontend views will hot-reload instantly. Changes to the Rust backend will trigger an automatic recompilation and restart.*
+*This command invokes our Node.js configuration wrapper (`scripts/tauri.cjs`), which spawns Vite on port `1420` and loads the SolidJS UI. If `--base-url` is passed, the wrapper dynamically appends the URL to the frontend's CSP (`connect-src`) and sets the active update check endpoint at compile time without modifying git-tracked files.*
 
 ---
 
@@ -202,20 +207,29 @@ npm run tauri build
 Codeoba features secure, cryptographically-signed auto-updates hosted on GitHub Releases, powered by the Tauri v2 Updater.
 
 ### 1. Cryptographic Update Signing
-By default, the repository's [tauri.conf.json](src-tauri/tauri.conf.json) points to the development/staging proxy at:
-`https://dev.codeoba.com/api/update`
+By default, the repository's [tauri.conf.json](src-tauri/tauri.conf.json) is security-hardened for local development. The updater is disabled (`"active": false`), the public key is cleared (`"pubkey": ""`), and the updater endpoints list is completely empty (`"endpoints": []`).
 
-During tagged production builds, the CI pipeline automatically rewrites this configuration to target the production update proxy at:
-`https://codeoba.com/api/update`
+During tagged production or staging builds, the CI pipeline automatically calls `sync-version.cjs` to rewrite this configuration, enabling the updater and pointing it to:
+* **Staging:** `https://dev.codeoba.com/api/update`
+* **Production:** `https://codeoba.com/api/update`
 
 This proxy handles client telemetry logging and retrieves the signed `latest.json` bundle configuration directly from GitHub Releases. Update packages must be signed using a **Minisign** keypair:
 *   The public key is configured inside [tauri.conf.json](src-tauri/tauri.conf.json) under `plugins.updater.pubkey`.
 *   The private key is stored locally (ignored by Git) and must be provided as an environment variable (`TAURI_SIGNING_PRIVATE_KEY`) to compile updates.
 
 #### Local/Staging Testing
-By default, the updater is disabled in the repository configuration (`"active": false` under `"updater"` in `tauri.conf.json`) to prevent unwanted network checks during development. Furthermore, the public key is cleared in the repo by default (`"pubkey": ""`).
+To test update checking and download progress triggers locally (against either `dev.codeoba.com` or a local mock server on `localhost`), you can run the app with the compile-time `--base-url` flag:
 
-To test update checking and download progress triggers locally (against either `dev.codeoba.com` or a local mock server on `localhost`), you must follow the verification and key registration steps documented in the [Local & Staging Update Testing Guide](docs/APP_SIGNING.md#🧪-local--staging-update-testing-guide).
+```bash
+# Directs the updater to localhost:5000 and expands the CSP to allow connection
+npm run tauri dev -- --base-url=http://localhost:5000
+```
+```bash
+# Directs the updater to dev.codeoba.com and expands the CSP to allow connection
+npm run tauri dev -- --base-url=https://dev.codeoba.com
+```
+
+You must also follow the verification and key registration steps documented in the [Local & Staging Update Testing Guide](docs/APP_SIGNING.md#🧪-local--staging-update-testing-guide).
 
 To sign updates locally during a build, run:
 ```bash
