@@ -10,6 +10,7 @@ pub struct WatcherState {
     pub last_generations: Mutex<HashMap<String, u64>>,
     pub watched_inodes: Mutex<HashMap<PathBuf, u64>>,
     pub detected_sources: Mutex<HashSet<String>>,
+    pub last_file_hashes: Mutex<HashMap<String, u64>>,
 }
 
 fn is_directory_not_empty(path: &Path) -> bool {
@@ -267,12 +268,9 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
         match res {
             Ok(event) => {
-                crate::log_info!("[watcher_event] Event: {:?}", event);
-
                 // Filter for file writes, creations, or deletions
                 if is_relevant_event(&event.kind) {
                     for path in event.paths {
-                        crate::log_info!("[watcher_event] Processing relevant path: {:?}", path);
                         handle_file_change(&handle_clone, &path);
                     }
                 }
@@ -348,43 +346,33 @@ fn is_relevant_event(kind: &EventKind) -> bool {
     )
 }
 
+fn compute_file_hash(path: &Path) -> Option<u64> {
+    use std::hash::Hasher;
+    if let Ok(bytes) = std::fs::read(path) {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        hasher.write(&bytes);
+        Some(hasher.finish())
+    } else {
+        None
+    }
+}
+
 fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path: &Path) {
     let path_str = path.to_string_lossy();
     let sources = get_sources_list();
-
-    crate::log_info!("[watcher_event] handle_file_change: {}", path_str);
 
     for source in sources {
         let watch_paths = source.get_watch_paths();
         let in_watched_path = watch_paths.iter().any(|p| path_str.starts_with(p));
 
         let matches_filter = if in_watched_path {
-            match source.get_watch_file_filter() {
-                Some(filter_fn) => filter_fn(&path_str),
-                None => {
-                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                    if source.id() == "cursor" && (ext == "vscdb" || path_str.contains("state.vscdb")) {
-                        true
-                    } else if ext == "jsonl" {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
+            source.is_file_change_relevant(&path_str)
         } else {
             false
         };
 
         // Also detect directory modifications/creations inside source's watched paths
         let is_dir_change = path.is_dir() && in_watched_path;
-
-        crate::log_info!(
-            "[watcher_event] Source '{}': matches_filter={}, is_dir_change={}",
-            source.id(),
-            matches_filter,
-            is_dir_change
-        );
 
         if matches_filter || is_dir_change {
             let file_path = path_str.to_string();
@@ -438,6 +426,28 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                         let is_dir = path_obj.is_dir();
 
                         if is_db || is_dir {
+                            let path_obj = Path::new(&file_path);
+                            if path_obj.is_file() {
+                                if let Some(hash) = compute_file_hash(path_obj) {
+                                    let state = app_handle_clone.state::<WatcherState>();
+                                    let is_dup = {
+                                        if let Ok(mut hashes_guard) = state.last_file_hashes.lock() {
+                                            if hashes_guard.get(&file_path) == Some(&hash) {
+                                                true
+                                            } else {
+                                                hashes_guard.insert(file_path.clone(), hash);
+                                                false
+                                            }
+                                        } else {
+                                            false
+                                        }
+                                    };
+                                    if is_dup {
+                                        return;
+                                    }
+                                }
+                            }
+
                             crate::log_info!("Database file changed ({}). Reloading all sessions for {}...", file_path, src.display_name());
                             let sessions = src.parse_all_sessions().await;
                             let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
@@ -476,9 +486,6 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             if let Ok(guard) = idx_state.sessions.read() {
                                 for sess in &sessions {
                                     if let Some(existing) = guard.get(&sess.id) {
-                                        if source_id == "antigravity" {
-                                            crate::log_info!("Checking antigravity session {}: existing.thread_name={:?}, sess.thread_name={:?}, existing.updated_at={}, sess.updated_at={}", sess.id, existing.thread_name, sess.thread_name, existing.updated_at, sess.updated_at);
-                                        }
                                         if existing.updated_at != sess.updated_at
                                             || existing.turns.len() != sess.turns.len()
                                             || existing.thread_name != sess.thread_name
@@ -573,6 +580,7 @@ mod watcher_tests {
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(std::collections::HashMap::new()),
             detected_sources: Mutex::new(std::collections::HashSet::new()),
+            last_file_hashes: Mutex::new(std::collections::HashMap::new()),
         });
 
         let idx_state = SearchIndexState::new();
@@ -681,6 +689,7 @@ mod watcher_tests {
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(watched_inodes),
             detected_sources: Mutex::new(std::collections::HashSet::new()),
+            last_file_hashes: Mutex::new(std::collections::HashMap::new()),
         });
 
         let idx_state = SearchIndexState::new();
@@ -791,6 +800,7 @@ mod watcher_tests {
             last_generations: Mutex::new(std::collections::HashMap::new()),
             watched_inodes: Mutex::new(std::collections::HashMap::new()),
             detected_sources: Mutex::new(std::collections::HashSet::new()),
+            last_file_hashes: Mutex::new(std::collections::HashMap::new()),
         });
 
         let idx_state = SearchIndexState::new();

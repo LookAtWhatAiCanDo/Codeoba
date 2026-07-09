@@ -119,6 +119,7 @@ pub fn run() {
             last_generations: std::sync::Mutex::new(std::collections::HashMap::new()),
             watched_inodes: std::sync::Mutex::new(std::collections::HashMap::new()),
             detected_sources: std::sync::Mutex::new(std::collections::HashSet::new()),
+            last_file_hashes: std::sync::Mutex::new(std::collections::HashMap::new()),
         })
         .manage(search::SearchIndexState::new())
         .manage(groups::GroupState::new())

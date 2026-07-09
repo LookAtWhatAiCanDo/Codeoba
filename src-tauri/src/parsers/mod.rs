@@ -27,6 +27,19 @@ pub trait SourceAdapter: Send + Sync {
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
         None
     }
+    fn is_file_change_relevant(&self, file_path: &str) -> bool {
+        if let Some(filter_fn) = self.get_watch_file_filter() {
+            filter_fn(file_path)
+        } else {
+            let path = std::path::Path::new(file_path);
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            if self.id() == "cursor" && (ext == "vscdb" || file_path.contains("state.vscdb")) {
+                true
+            } else {
+                ext == "jsonl"
+            }
+        }
+    }
     async fn parse_session(&self, file_path: &str) -> Option<Session>;
     async fn parse_all_sessions(&self) -> Vec<Session>;
     fn is_app_installed(&self) -> bool {
@@ -174,6 +187,16 @@ impl Source {
             Source::Antigravity(s) => s.get_watch_file_filter(),
             Source::Copilot(s) => s.get_watch_file_filter(),
             Source::Codex(s) => s.get_watch_file_filter(),
+        }
+    }
+
+    pub fn is_file_change_relevant(&self, file_path: &str) -> bool {
+        match self {
+            Source::Claude(s) => s.is_file_change_relevant(file_path),
+            Source::Cursor(s) => s.is_file_change_relevant(file_path),
+            Source::Antigravity(s) => s.is_file_change_relevant(file_path),
+            Source::Copilot(s) => s.is_file_change_relevant(file_path),
+            Source::Codex(s) => s.is_file_change_relevant(file_path),
         }
     }
 

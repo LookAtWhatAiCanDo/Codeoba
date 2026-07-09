@@ -95,6 +95,7 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - Use Rust's `notify` crate to receive native OS file events.
    - Keep event-driven file monitoring filtered to specific target log extensions (`.jsonl`, `.md`, `.vscdb`) to prevent index-write loops on source codes or builds.
    - To avoid redundant rescans when editing files in Cursor, modifications under `workspaceStorage` are filtered by checking if the active composer list has actually changed.
+   - To avoid duplicate reloads on database writes, database change events compute a file content hash. If the hash matches the previous state, the reload is skipped.
 
 3. **Local ONNX-based Semantic Search**:
    - The `all-MiniLM-L6-v2` transformer model is bundled/cached locally in `~/.codeoba/models/`.
@@ -139,6 +140,10 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - Click events are dispatched both globally and window-specifically to guarantee all frontend listener types receive the signal.
    - To prevent WKWebView scroll layout suppression when clicking the native OS menu bar (where the webview window loses focus), the frontend listeners run an explicit `window.focus()`.
    - It then resolves the target container element (e.g., `#detail-pane-scroll-container` or `#sidebar-scroll-container`) within a deferred `setTimeout(..., 50)` block, programmatically focuses it (enabled via `tabindex="-1"` and `outline-none`), and mutates its `scrollTop` property. This focuses the target pane and initiates subsequent native keyboard navigation.
+
+11. **Vite Hot-Reload Startup Rebuild Bypass**:
+   - In development environments, saving workspace source files causes the Vite server to refresh the webview, mounting the root SolidJS application again and calling `rebuild_index`.
+   - The backend tracks whether it has completed its initial index rebuild run via `has_rebuilt`. Any subsequent automatic rebuild requests originating from startup mounts short-circuit immediately, avoiding the 700ms index reload lag.
 
 ---
 

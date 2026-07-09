@@ -211,7 +211,15 @@ pub async fn search_sessions<R: tauri::Runtime>(
 pub async fn rebuild_index<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     bypass_cache: Option<bool>,
+    is_startup: Option<bool>,
 ) -> Result<(), String> {
+    let state = app_handle.state::<SearchIndexState>();
+
+    if is_startup == Some(true) && state.has_rebuilt.load(std::sync::atomic::Ordering::SeqCst) {
+        crate::log_info!("[IPC] rebuild_index: Startup rebuild skipped since we already rebuilt.");
+        return Ok(());
+    }
+
     if bypass_cache == Some(true) {
         crate::log_info!("[IPC] rebuild_index: Bypassing and clearing cache!");
         crate::parsers::cache::get_cache_manager().clear_all_caches();
@@ -220,13 +228,11 @@ pub async fn rebuild_index<R: tauri::Runtime>(
         let cache_mgr = crate::search::cache::EmbeddingCacheManager::new("all-MiniLM-L6-v2");
         cache_mgr.delete_cache_file();
 
-        let state = app_handle.state::<SearchIndexState>();
         let mut embs_guard = state.embeddings.write();
         if let Ok(ref mut guard) = embs_guard {
             guard.clear();
         }
     }
-    let state = app_handle.state::<SearchIndexState>();
     state.rebuild(true, Some(app_handle.clone())).await
 }
 
@@ -237,6 +243,10 @@ pub fn log_from_frontend(level: String, message: String) {
         crate::log_error!("{}", formatted);
     } else if level == "warn" {
         crate::log_warn!("{}", formatted);
+    } else if level == "debug" {
+        crate::log_debug!("{}", formatted);
+    } else if level == "trace" {
+        crate::log_trace!("{}", formatted);
     } else {
         crate::log_info!("{}", formatted);
     }

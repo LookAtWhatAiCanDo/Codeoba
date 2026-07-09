@@ -325,6 +325,32 @@ impl SourceAdapter for CursorSource {
         })
     }
 
+    fn is_file_change_relevant(&self, file_path: &str) -> bool {
+        let matches_base = file_path.ends_with("state.vscdb")
+            || file_path.ends_with("workspace.json")
+            || file_path.ends_with("-wal")
+            || file_path.ends_with("-shm");
+
+        if !matches_base {
+            return false;
+        }
+
+        // If it's a change inside workspaceStorage, check if composerData actually changed
+        if file_path.contains("workspaceStorage") {
+            let (new_ws_map, new_active_ids) = self.build_workspace_map();
+            let changed = {
+                let old_ws_map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+                let old_active_ids = self.active_composer_ids.read().expect("Failed to lock active_composer_ids read lock");
+                *old_ws_map != new_ws_map || *old_active_ids != new_active_ids
+            };
+            if !changed {
+                return false;
+            }
+        }
+
+        true
+    }
+
     fn is_app_installed(&self) -> bool {
         if cfg!(target_os = "macos") {
             Path::new("/Applications/Cursor.app").exists()

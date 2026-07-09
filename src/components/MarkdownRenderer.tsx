@@ -83,17 +83,15 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     const codeBlocks = containerRef.querySelectorAll("pre code");
 
     if (codeBlocks.length === 0) {
-      // If there are no code blocks, we are done rendering this content.
-      // Check if we should log the total session load time
       if ((window as any).sessionSelectionStart) {
         const totalElapsed = performance.now() - (window as any).sessionSelectionStart;
-        logFE("info", `TOTAL SESSION LOAD TIME: ${totalElapsed.toFixed(1)}ms`);
+        logFE("debug", `TOTAL SESSION LOAD TIME: ${totalElapsed.toFixed(1)}ms`);
         (window as any).sessionSelectionStart = null;
       }
       return;
     }
 
-    logFE("info", `Found ${codeBlocks.length} code blocks to highlight (content length: ${displayContent().length})`);
+    logFE("debug", `Found ${codeBlocks.length} code blocks to highlight (content length: ${displayContent().length})`);
 
     let processed = 0;
     codeBlocks.forEach((block, idx) => {
@@ -106,20 +104,18 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         }
         processed++;
 
-        // Log completion metrics once all blocks are finished
         if (processed === codeBlocks.length) {
           const highlightElapsed = performance.now() - highlightStart;
-          
           if ((window as any).sessionSelectionStart) {
             const totalElapsed = performance.now() - (window as any).sessionSelectionStart;
             logFE(
-              "info",
+              "debug",
               `TOTAL SESSION LOAD TIME: ${totalElapsed.toFixed(0)}ms (click to highlight finished, highlighted ${codeBlocks.length} blocks in ${highlightElapsed.toFixed(0)}ms)`
             );
             (window as any).sessionSelectionStart = null;
           } else {
             logFE(
-              "info",
+              "debug",
               `Asynchronously finished highlighting ${codeBlocks.length} code blocks in ${highlightElapsed.toFixed(0)}ms`
             );
           }

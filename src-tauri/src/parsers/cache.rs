@@ -88,7 +88,7 @@ impl SessionCacheManager {
     }
 
     pub fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
-        let start = std::time::Instant::now();
+        let _start = std::time::Instant::now();
         let path = self.get_cache_file(source_id);
         if !path.exists() {
             return HashMap::new();
@@ -111,7 +111,7 @@ impl SessionCacheManager {
                     .into_iter()
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
-                crate::log_info!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, start.elapsed());
+                crate::log_debug!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, _start.elapsed());
                 return res;
             }
         }
@@ -140,7 +140,7 @@ impl SessionCacheManager {
                                 .into_iter()
                                 .map(|e| (e.file_path.clone(), e))
                                 .collect();
-                            crate::log_info!("[load_cache] Loaded plaintext fallback cache for '{}' in {:?}", source_id, start.elapsed());
+                            crate::log_debug!("[load_cache] Loaded plaintext fallback cache for '{}' in {:?}", source_id, _start.elapsed());
                             return res;
                         }
                     }
@@ -157,7 +157,7 @@ impl SessionCacheManager {
                     .into_iter()
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
-                crate::log_info!("[load_cache] Decrypted and parsed cache for '{}' in {:?}", source_id, start.elapsed());
+                crate::log_debug!("[load_cache] Decrypted and parsed cache for '{}' in {:?}", source_id, _start.elapsed());
                 return res;
             } else {
                 crate::log_error!("Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.", source_id, CURRENT_CACHE_VERSION, source_cache.version);
@@ -351,17 +351,17 @@ impl SessionCacheManager {
 
         self.save_cache(source_id, entries_to_save);
 
-        let hits = if let Ok(guard) = self.hit_counter.lock() {
+        let _hits = if let Ok(guard) = self.hit_counter.lock() {
             guard.get(source_id).cloned().unwrap_or(0)
         } else {
             0
         };
-        let misses = if let Ok(guard) = self.miss_counter.lock() {
+        let _misses = if let Ok(guard) = self.miss_counter.lock() {
             guard.get(source_id).cloned().unwrap_or(0)
         } else {
             0
         };
-        crate::log_info!("[cache] Source '{}': {} hits, {} misses", source_id, hits, misses);
+        crate::log_debug!("[cache] Source '{}': {} hits, {} misses", source_id, _hits, _misses);
 
         if let Ok(mut guard) = self.hit_counter.lock() {
             guard.insert(source_id.to_string(), 0);

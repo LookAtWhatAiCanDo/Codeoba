@@ -126,6 +126,7 @@ pub struct SearchIndexState {
     pub embeddings: RwLock<HashMap<String, SessionVectorIndex>>,
     pub last_progress: RwLock<Option<IndexingProgress>>,
     pub is_rebuilding: std::sync::atomic::AtomicBool,
+    pub has_rebuilt: std::sync::atomic::AtomicBool,
 }
 
 impl SearchIndexState {
@@ -135,6 +136,7 @@ impl SearchIndexState {
             embeddings: RwLock::new(HashMap::new()),
             last_progress: RwLock::new(None),
             is_rebuilding: std::sync::atomic::AtomicBool::new(false),
+            has_rebuilt: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -442,6 +444,7 @@ impl SearchIndexState {
 
         emit_progress("complete", 1.0, "Index rebuild complete.");
         crate::log_info!("[rebuild] Total rebuild time: {:?}", total_start.elapsed());
+        self.has_rebuilt.store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 

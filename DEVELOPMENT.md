@@ -340,6 +340,27 @@ To ensure that alternate shortcut keys align to the exact same vertical column a
 
 ---
 
+## 📝 Logging Guidelines
+
+Codeoba uses a unified logging system across the Rust backend and the SolidJS frontend. To keep production logs clean of noise while retaining deep troubleshooting info during development, adhere to these guidelines:
+
+### 1. Backend Rust Logging Macros
+Macros are defined in [logging.rs](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba/src-tauri/src/logging.rs):
+- `crate::log_info!`, `crate::log_warn!`, `crate::log_error!`: Log messages to stdout/stderr in all build configurations. Use for critical lifecycles (startup, DB modifications, network updates, and errors).
+- `crate::log_debug!`, `crate::log_trace!`: Conditionally compiled logs wrapper inside `#[cfg(debug_assertions)]`. In production (`--release`) builds, these statements compile out completely (zero overhead). Use for high-frequency logs (file watcher loops, database change delta checks, and timing metrics).
+
+### 2. Frontend Logging (`logFE`)
+Defined in [logger.ts](file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba-All/Codeoba/src/utils/logger.ts):
+```typescript
+import { logFE } from "./utils/logger";
+
+logFE("info" | "warn" | "error" | "debug" | "trace", "your log message");
+```
+- `"info"`, `"warn"`, `"error"`: Output to the browser console and forward to the backend's standard logger macros.
+- `"debug"`, `"trace"`: Output to the browser console as `console.debug`/`console.trace` and forward to backend `log_debug!`/`log_trace!` macros (meaning they compile out in release builds). Use for styling details, rendering metrics, and interface state logs.
+
+---
+
 ## 🌐 Localization & Translation Workflow
 
 For details on how to translate the application interface or run the Gemini-powered automated translation scripts, please see the [Contributing Translations section in CONTRIBUTING.md](./CONTRIBUTING.md#🌐-contributing-translations).

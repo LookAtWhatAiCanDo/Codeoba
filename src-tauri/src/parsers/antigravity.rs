@@ -349,10 +349,12 @@ impl SourceAdapter for AntigravitySource {
     }
 
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
-        Some(|path| {
-            path.ends_with("transcript.jsonl")
-                || path.ends_with("agyhub_summaries_proto.pb")
-                || (path.contains("annotations") && path.ends_with(".pbtxt"))
+        Some(|path_str| {
+            let path = std::path::Path::new(path_str);
+            let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            filename == "transcript.jsonl"
+                || filename == "agyhub_summaries_proto.pb"
+                || (path_str.contains("annotations") && filename.ends_with(".pbtxt"))
         })
     }
 
