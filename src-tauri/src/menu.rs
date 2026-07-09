@@ -345,6 +345,8 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     };
 
     // Main Menu
+    // Suppress `variable does not need to be mutable` warning in non-macos builds
+    #[allow(unused_mut)]
     let mut menu_builder = MenuBuilder::new(app_handle);
     
     #[cfg(target_os = "macos")]
