@@ -127,6 +127,7 @@ pub struct SearchIndexState {
     pub last_progress: RwLock<Option<IndexingProgress>>,
     pub is_rebuilding: std::sync::atomic::AtomicBool,
     pub has_rebuilt: std::sync::atomic::AtomicBool,
+    pub app_handle: RwLock<Option<tauri::AppHandle>>,
 }
 
 impl SearchIndexState {
@@ -137,6 +138,7 @@ impl SearchIndexState {
             last_progress: RwLock::new(None),
             is_rebuilding: std::sync::atomic::AtomicBool::new(false),
             has_rebuilt: std::sync::atomic::AtomicBool::new(false),
+            app_handle: RwLock::new(None),
         }
     }
 
@@ -199,8 +201,7 @@ impl SearchIndexState {
 
         emit_progress("start", 0.0, "Initializing search index...");
 
-        let model_path = downloader::get_model_file();
-        let vocab_path = downloader::get_vocab_file();
+        let (model_path, vocab_path) = resolve_model_paths(app_handle.as_ref());
 
         let run_embeddings = use_semantic && model_path.exists() && vocab_path.exists();
 
@@ -476,8 +477,8 @@ impl SearchIndexState {
             return Ok(());
         }
 
-        let model_path = downloader::get_model_file();
-        let vocab_path = downloader::get_vocab_file();
+        let app_handle_opt = self.app_handle.read().ok().and_then(|g| g.clone());
+        let (model_path, vocab_path) = resolve_model_paths(app_handle_opt.as_ref());
 
         let mut onnx_embedder = if model_path.exists() && vocab_path.exists() {
             semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).ok()
@@ -536,4 +537,121 @@ impl SearchIndexState {
 
         Ok(())
     }
+}
+
+// ONNX Model Path Resolution & State Management
+use std::path::PathBuf;
+
+pub const MODEL_FILENAME: &str = "model.onnx";
+pub const VOCAB_FILENAME: &str = "vocab.txt";
+pub const EXPECTED_MODEL_HASH: &str = "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e";
+pub const EXPECTED_VOCAB_HASH: &str = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3";
+
+pub fn get_home_model_dir() -> PathBuf {
+    let home = crate::parsers::get_home_dir();
+    let dir = home.join(".codeoba/models");
+    let _ = std::fs::create_dir_all(&dir);
+    dir
+}
+
+pub fn get_home_model_file() -> PathBuf {
+    get_home_model_dir().join(MODEL_FILENAME)
+}
+
+pub fn get_home_vocab_file() -> PathBuf {
+    get_home_model_dir().join(VOCAB_FILENAME)
+}
+
+fn check_candidate(model: PathBuf, vocab: PathBuf, verify_size: bool) -> Option<(PathBuf, PathBuf)> {
+    if model.exists() && vocab.exists() {
+        if verify_size {
+            if let (Ok(m_meta), Ok(v_meta)) = (model.metadata(), vocab.metadata()) {
+                if m_meta.len() <= 40_000_000 || v_meta.len() <= 100_000 {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        let abs_model = std::fs::canonicalize(&model).unwrap_or(model);
+        let abs_vocab = std::fs::canonicalize(&vocab).unwrap_or(vocab);
+        Some((abs_model, abs_vocab))
+    } else {
+        None
+    }
+}
+
+fn is_dev_env() -> bool {
+    if let Ok(exe) = std::env::current_exe() {
+        return exe.components().any(|c| c.as_os_str() == "target");
+    }
+    false
+}
+
+pub fn resolve_model_paths<R: tauri::Runtime>(
+    app_handle: Option<&tauri::AppHandle<R>>,
+) -> (PathBuf, PathBuf) {
+    let override_model = get_home_model_file();
+    let override_vocab = get_home_vocab_file();
+
+    // 1. Check user override directory (~/.codeoba/models/) first.
+    if let Some(paths) = check_candidate(override_model.clone(), override_vocab.clone(), true) {
+        return paths;
+    }
+
+    // 2. Fallback to bundled resources inside the app (using Tauri's official API)
+    if let Some(handle) = app_handle {
+        use tauri::Manager;
+        // Try production packaged layout Contents/Resources/resources/onnx (only in packaged mode)
+        if let Ok(bm) = handle.path().resolve("resources/onnx/model.onnx", tauri::path::BaseDirectory::Resource) {
+            if let Ok(bv) = handle.path().resolve("resources/onnx/vocab.txt", tauri::path::BaseDirectory::Resource) {
+                if let Some(paths) = check_candidate(bm, bv, false) {
+                    return paths;
+                }
+            }
+        }
+        if is_dev_env() {
+            // Try local dev mode layout src-tauri/resources/onnx (only during local development)
+            if let Ok(bm) = handle.path().resolve("onnx/model.onnx", tauri::path::BaseDirectory::Resource) {
+                if let Ok(bv) = handle.path().resolve("onnx/vocab.txt", tauri::path::BaseDirectory::Resource) {
+                    if let Some(paths) = check_candidate(bm, bv, false) {
+                        return paths;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Fallback to development paths relative to workspace root (only during local development)
+    if is_dev_env() {
+        let dev_model = PathBuf::from("src-tauri/resources/onnx/model.onnx");
+        let dev_vocab = PathBuf::from("src-tauri/resources/onnx/vocab.txt");
+        if let Some(paths) = check_candidate(dev_model, dev_vocab, false) {
+            return paths;
+        }
+
+        let test_model = PathBuf::from("resources/onnx/model.onnx");
+        let test_vocab = PathBuf::from("resources/onnx/vocab.txt");
+        if let Some(paths) = check_candidate(test_model, test_vocab, false) {
+            return paths;
+        }
+    }
+
+    // 4. Default to standard override paths as fallback
+    (override_model, override_vocab)
+}
+
+pub fn is_model_overridden() -> bool {
+    let override_model = get_home_model_file();
+    let override_vocab = get_home_vocab_file();
+    override_model.exists() && override_vocab.exists()
+        && override_model.metadata().map(|m| m.len()).unwrap_or(0) > 40_000_000
+        && override_vocab.metadata().map(|m| m.len()).unwrap_or(0) > 100_000
+}
+
+pub fn is_model_downloaded<R: tauri::Runtime>(app_handle: Option<&tauri::AppHandle<R>>) -> bool {
+    let (model, vocab) = resolve_model_paths(app_handle);
+    model.exists() && vocab.exists()
+        && model.metadata().map(|m| m.len()).unwrap_or(0) > 40_000_000
+        && vocab.metadata().map(|m| m.len()).unwrap_or(0) > 100_000
 }

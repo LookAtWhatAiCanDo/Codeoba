@@ -1,11 +1,11 @@
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::Emitter;
 use futures_util::StreamExt;
 use sha2::{Digest, Sha256};
 
-fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
+pub fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
     let mut file = File::open(path).map_err(|e| format!("Failed to open file for hash check: {}", e))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 8192];
@@ -28,37 +28,16 @@ fn verify_file_hash(path: &Path, expected_hash: &str) -> Result<(), String> {
 }
 
 
-pub const MODEL_FILENAME: &str = "model.onnx";
-pub const VOCAB_FILENAME: &str = "vocab.txt";
-pub const EXPECTED_MODEL_HASH: &str = "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e";
-pub const EXPECTED_VOCAB_HASH: &str = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3";
+use super::{
+    get_home_model_dir, get_home_model_file, get_home_vocab_file,
+    MODEL_FILENAME, VOCAB_FILENAME, EXPECTED_MODEL_HASH, EXPECTED_VOCAB_HASH,
+};
+
 pub const MODEL_BASE_URL: &str = "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/main/";
 
-pub fn get_model_dir() -> PathBuf {
-    let home = crate::parsers::get_home_dir();
-    let dir = home.join(".codeoba/models");
-    let _ = fs::create_dir_all(&dir);
-    dir
-}
-
-pub fn get_model_file() -> PathBuf {
-    get_model_dir().join(MODEL_FILENAME)
-}
-
-pub fn get_vocab_file() -> PathBuf {
-    get_model_dir().join(VOCAB_FILENAME)
-}
-
-pub fn is_model_downloaded() -> bool {
-    let model = get_model_file();
-    let vocab = get_vocab_file();
-    model.exists() && model.metadata().map(|m| m.len()).unwrap_or(0) > 40_000_000
-        && vocab.exists() && vocab.metadata().map(|m| m.len()).unwrap_or(0) > 100_000
-}
-
 pub fn delete_model_files() {
-    let model = get_model_file();
-    let vocab = get_vocab_file();
+    let model = get_home_model_file();
+    let vocab = get_home_vocab_file();
     if model.exists() {
         let _ = fs::remove_file(model);
     }
@@ -66,14 +45,14 @@ pub fn delete_model_files() {
         let _ = fs::remove_file(vocab);
     }
     // Also clean up any legacy model_quantized.onnx
-    let legacy_model = get_model_dir().join("model_quantized.onnx");
+    let legacy_model = get_home_model_dir().join("model_quantized.onnx");
     if legacy_model.exists() {
         let _ = fs::remove_file(legacy_model);
     }
 }
 
 pub async fn download_model<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
-    let model_dir = get_model_dir();
+    let model_dir = get_home_model_dir();
     let temp_model = model_dir.join(format!("{}.tmp", MODEL_FILENAME));
     let temp_vocab = model_dir.join(format!("{}.tmp", VOCAB_FILENAME));
 
@@ -107,8 +86,8 @@ pub async fn download_model<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) 
     download_file_with_progress(&client, &model_url, &temp_model, 0.02, 1.0, emit_prog.clone()).await?;
 
     // Atomic rename
-    let model_dest = get_model_file();
-    let vocab_dest = get_vocab_file();
+    let model_dest = get_home_model_file();
+    let vocab_dest = get_home_vocab_file();
 
     if temp_vocab.exists() && temp_model.exists() {
         // Verify integrity of downloaded files before final rename

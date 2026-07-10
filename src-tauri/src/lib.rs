@@ -13,6 +13,21 @@ pub mod menu;
 #[cfg(test)]
 pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+/// Returns the user's home directory. Checks the `HOME` (or `USERPROFILE` on Windows) environment
+/// variables first for mocking support, falling back to `dirs::home_dir()`.
+pub fn get_home_dir() -> std::path::PathBuf {
+    if let Ok(mock_home) = std::env::var("CODEOBA_MOCK_HOME") {
+        return std::path::PathBuf::from(mock_home);
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        return std::path::PathBuf::from(home);
+    }
+    if let Ok(userprofile) = std::env::var("USERPROFILE") {
+        return std::path::PathBuf::from(userprofile);
+    }
+    dirs::home_dir().unwrap_or_default()
+}
+
 use tauri::Manager;
 
 pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
@@ -128,6 +143,14 @@ pub fn run() {
             let _ = crate::keyring::get_or_create_cache_key();
             
             let handle = app.handle().clone();
+            
+            // Startup diagnostics
+            let (_dm, _dv) = crate::search::resolve_model_paths(Some(&handle));
+
+            let search_state = app.state::<search::SearchIndexState>();
+            if let Ok(mut guard) = search_state.app_handle.write() {
+                *guard = Some(handle.clone());
+            }
             let _ = watcher::start_watcher(handle.clone());
 
             // Set up the custom system menus
@@ -258,6 +281,8 @@ pub fn run() {
             commands::is_updater_active,
             commands::get_resolved_updater_endpoints,
             commands::get_semantic_model_status,
+            commands::is_semantic_model_overridden,
+            commands::check_semantic_model_update,
             commands::download_semantic_model,
             commands::delete_semantic_model,
             commands::resolve_and_read_file,

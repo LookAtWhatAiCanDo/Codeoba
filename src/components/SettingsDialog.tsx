@@ -189,9 +189,11 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
   // Semantic Settings
   const [modelDownloaded, setModelDownloaded] = createSignal(false);
+  const [modelOverridden, setModelOverridden] = createSignal(false);
   const [downloading, setDownloading] = createSignal(false);
   const [downloadProgress, setDownloadProgress] = createSignal<number | null>(null);
   const [downloadError, setDownloadError] = createSignal<string | null>(null);
+  const [updateState, setUpdateState] = createSignal<"idle" | "checking" | "upToDate" | "available">("idle");
 
   const [localThreshold, setLocalThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
@@ -206,14 +208,53 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
+  interface ModelUpdateCheckResult {
+    needs_update: boolean;
+    model_path: string;
+    vocab_path: string;
+    model_exists: boolean;
+    vocab_exists: boolean;
+    model_hash_ok: boolean;
+    vocab_hash_ok: boolean;
+  }
+
+  const handleCheckUpdate = async () => {
+    setUpdateState("checking");
+    setDownloadError(null);
+    try {
+      console.log("[SettingsDialog] Querying check_semantic_model_update command...");
+      logFE("info", "Checking for semantic model updates");
+      const result = await invoke<ModelUpdateCheckResult>("check_semantic_model_update");
+      console.log("[SettingsDialog] check_semantic_model_update returned result:", result);
+      logFE("info", `Update check result: needs_update = ${result.needs_update}, model_path = ${result.model_path}, model_exists = ${result.model_exists}, model_hash_ok = ${result.model_hash_ok}`);
+      if (result.needs_update) {
+        setUpdateState("available");
+      } else {
+        setUpdateState("upToDate");
+        setTimeout(() => {
+          if (updateState() === "upToDate") {
+            setUpdateState("idle");
+          }
+        }, 3000);
+      }
+    } catch (err: any) {
+      console.error("[SettingsDialog] Checking for model updates failed:", err);
+      logFE("error", `Checking for model updates failed: ${err}`);
+      setDownloadError(err.toString());
+      setUpdateState("idle");
+    }
+  };
+
   const handleDownloadModel = async () => {
     setDownloading(true);
     setDownloadError(null);
     setDownloadProgress(0);
+    setUpdateState("idle");
     try {
       logFE("info", "Starting semantic search model download");
       await invoke("download_semantic_model");
       setModelDownloaded(true);
+      setModelOverridden(true);
     } catch (err: any) {
       logFE("error", `Semantic search model download failed: ${err}`);
       setDownloadError(err.toString());
@@ -224,45 +265,68 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const handleDeleteModel = async () => {
     try {
       await invoke("delete_semantic_model");
-      setModelDownloaded(false);
-      logFE("info", "Deleted semantic search model files.");
+      setModelOverridden(false);
+      const status = await invoke<boolean>("get_semantic_model_status");
+      setModelDownloaded(status);
+      logFE("info", "Deleted semantic search model override files.");
     } catch (err) {
       logFE("error", `Failed to delete model files: ${err}`);
     }
   };
 
   onMount(async () => {
+    // 1. Check model status (high priority)
+    try {
+      const status = await invoke<boolean>("get_semantic_model_status");
+      setModelDownloaded(status);
+      const overridden = await invoke<boolean>("is_semantic_model_overridden");
+      setModelOverridden(overridden);
+    } catch (err) {
+      logFE("error", `Failed to check semantic model status: ${err}`);
+    }
+
+    // 2. Check updater status
     try {
       const active = await invoke<boolean>("is_updater_active");
       setUpdaterActive(active);
+    } catch (err) {
+      logFE("error", `Failed to check updater active status: ${err}`);
+    }
+
+    // 3. Get app version
+    try {
       const v = await getVersion();
       setAppVersion(v);
+    } catch (err) {
+      logFE("error", `Failed to get app version: ${err}`);
+    }
 
-      // Check model status
-      const status = await invoke<boolean>("get_semantic_model_status");
-      setModelDownloaded(status);
-
-      // Load path permissions
+    // 4. Load path permissions
+    try {
       await refreshPermissions();
+    } catch (err) {
+      logFE("error", `Failed to refresh path permissions: ${err}`);
+    }
 
-      // Load source decisions
-      try {
-        const backendDecisions = await invoke<Record<string, "allow" | "deny" | "ask">>("get_source_decisions");
-        if (backendDecisions) {
-          setSourceDecisions(backendDecisions);
-          localStorage.setItem("codeoba-source-decisions", JSON.stringify(backendDecisions));
-        }
-      } catch (errDec) {
-        logFE("error", `Failed to load source decisions from backend: ${errDec}`);
+    // 5. Load source decisions
+    try {
+      const backendDecisions = await invoke<Record<string, "allow" | "deny" | "ask">>("get_source_decisions");
+      if (backendDecisions) {
+        setSourceDecisions(backendDecisions);
+        localStorage.setItem("codeoba-source-decisions", JSON.stringify(backendDecisions));
       }
+    } catch (errDec) {
+      logFE("error", `Failed to load source decisions from backend: ${errDec}`);
+    }
 
-      // Load keyring and premium status
+    // 6. Load keyring and premium status
+    try {
       const disabled = await invoke<boolean>("is_keyring_disabled");
       setKeyringDisabled(disabled);
       const premium = await invoke<boolean>("is_premium_active");
       setPremiumActive(premium);
     } catch (err) {
-      logFE("error", `Failed to query startup settings state: ${err}`);
+      logFE("error", `Failed to query keyring or premium status: ${err}`);
     }
 
     // Listen for model download progress
@@ -272,6 +336,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
         setDownloading(false);
         setDownloadProgress(null);
         setModelDownloaded(true);
+        setModelOverridden(true);
       }
     });
 
@@ -1088,7 +1153,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             disabled={downloading()}
                             class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/40 text-black font-semibold rounded-xl text-xs transition-all cursor-pointer"
                           >
-                            {downloading() ? t("settings.general.checking") : t("settings.semantic.downloadBtn")}
+                            {downloading() ? t("settings.updates.checking") : t("settings.semantic.downloadBtn")}
                           </button>
                         </div>
                         <Show when={downloadProgress() !== null}>
@@ -1113,14 +1178,73 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       </div>
                     }
                   >
-                    <div class="flex items-center justify-between text-xs p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                      <span>{t("settings.semantic.statusInstalled")}</span>
-                      <button
-                        onClick={handleDeleteModel}
-                        class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer"
-                      >
-                        {t("settings.semantic.deleteModel")}
-                      </button>
+                    <div class="space-y-3">
+                      <div class="flex items-center justify-between text-xs p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                        <span>{modelOverridden() ? t("settings.semantic.statusUpdated") : t("settings.semantic.statusInstalled")}</span>
+                        <div class="flex items-center gap-2">
+                          <button
+                            onClick={handleCheckUpdate}
+                            disabled={downloading() || updateState() === "checking"}
+                            class="px-2.5 py-1 bg-background hover:bg-emerald-500/10 border border-border hover:border-emerald-500/20 text-text-secondary hover:text-emerald-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {updateState() === "checking" ? t("settings.semantic.statusChecking") : t("settings.semantic.downloadBtn")}
+                          </button>
+                          <Show when={modelOverridden()}>
+                            <button
+                              onClick={handleDeleteModel}
+                              class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer"
+                            >
+                              {t("settings.semantic.deleteModel")}
+                            </button>
+                          </Show>
+                        </div>
+                      </div>
+                      
+                      <Show when={updateState() === "upToDate"}>
+                        <div class="text-[0.6875rem] text-emerald-400 font-semibold px-1">
+                          ✓ {t("settings.semantic.statusUpToDate")}
+                        </div>
+                      </Show>
+
+                      <Show when={updateState() === "available"}>
+                        <div class="text-xs p-3.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 space-y-2 mt-2">
+                          <p>{t("settings.semantic.confirmUpdateDesc")}</p>
+                          <div class="flex items-center gap-2">
+                            <button
+                              onClick={handleDownloadModel}
+                              class="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-lg text-[0.65625rem] cursor-pointer"
+                            >
+                              {t("settings.semantic.confirmDownloadBtn")}
+                            </button>
+                            <button
+                              onClick={() => setUpdateState("idle")}
+                              class="px-2.5 py-1 bg-background border border-border hover:bg-border/30 text-text-secondary rounded-lg text-[0.65625rem] cursor-pointer"
+                            >
+                              {t("settings.semantic.confirmCancelBtn")}
+                            </button>
+                          </div>
+                        </div>
+                      </Show>
+
+                      <Show when={downloading() && downloadProgress() !== null}>
+                        <div class="space-y-1">
+                          <div class="flex justify-between text-[0.625rem] font-bold text-text-secondary">
+                            <span>{t("settings.semantic.downloading")}</span>
+                            <span>{Math.round(downloadProgress()! * 100)}%</span>
+                          </div>
+                          <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/50">
+                            <div 
+                              class="h-full bg-accent transition-all duration-100" 
+                              style={{ width: `${downloadProgress()! * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </Show>
+                      <Show when={downloadError()}>
+                        <div class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                          {downloadError()}
+                        </div>
+                      </Show>
                     </div>
                   </Show>
                 </div>

@@ -101,7 +101,7 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - To avoid duplicate reloads on database writes, database change events compute a file content hash. If the hash matches the previous state, the reload is skipped.
 
 3. **Local ONNX-based Semantic Search**:
-   - The `all-MiniLM-L6-v2` transformer model is bundled/cached locally in `~/.codeoba/models/`.
+   - The `all-MiniLM-L6-v2` transformer model is pre-packaged within the application resources (`resources/onnx/`) with support for runtime updates/downloads stored under `~/.codeoba/models/`.
    - Execution is run on the Rust backend using the `ort` crate and Hugging Face `tokenizers` crate.
    - Run tokenization and inference asynchronously in a background thread pool (e.g., using `tokio` or `rayon`) to prevent blocking the UI thread.
    - Store computed vectors locally in `~/.codeoba/cache/embeddings_cache.json` using the keyring encryption key.

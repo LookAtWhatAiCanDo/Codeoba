@@ -181,11 +181,10 @@ pub async fn search_sessions<R: tauri::Runtime>(
     };
 
     let mut results = if use_semantic {
-        let model_path = crate::search::downloader::get_model_file();
-        let vocab_path = crate::search::downloader::get_vocab_file();
+        let (model_path, vocab_path) = crate::search::resolve_model_paths(Some(&app_handle));
 
         if !model_path.exists() || !vocab_path.exists() {
-            return Err("Semantic search is unavailable: ONNX model/vocab not found under ~/.codeoba/models/. Please download the model or use lexical search.".to_string());
+            return Err("Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.".to_string());
         }
         let onnx_embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)?;
         let query_vector = onnx_embedder.get_embeddings(&query)?;
@@ -334,8 +333,80 @@ pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppH
 }
 
 #[tauri::command]
-pub fn get_semantic_model_status() -> bool {
-    crate::search::downloader::is_model_downloaded()
+pub fn get_semantic_model_status<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> bool {
+    crate::search::is_model_downloaded(Some(&app_handle))
+}
+
+#[tauri::command]
+pub fn is_semantic_model_overridden() -> bool {
+    crate::search::is_model_overridden()
+}
+
+#[derive(serde::Serialize)]
+pub struct ModelUpdateCheckResult {
+    pub needs_update: bool,
+    pub model_path: String,
+    pub vocab_path: String,
+    pub model_exists: bool,
+    pub vocab_exists: bool,
+    pub model_hash_ok: bool,
+    pub vocab_hash_ok: bool,
+}
+
+#[tauri::command]
+pub fn check_semantic_model_update<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<ModelUpdateCheckResult, String> {
+    println!("[Model Update Check] Starting semantic search model update check...");
+    let (model_path, vocab_path) = crate::search::resolve_model_paths(Some(&app_handle));
+    
+    let model_path_str = model_path.to_string_lossy().into_owned();
+    let vocab_path_str = vocab_path.to_string_lossy().into_owned();
+    println!("[Model Update Check] Resolved model path: {}", model_path_str);
+    println!("[Model Update Check] Resolved vocab path: {}", vocab_path_str);
+
+    let model_exists = model_path.exists();
+    let vocab_exists = vocab_path.exists();
+
+    if !model_exists || !vocab_exists {
+        println!("[Model Update Check] One or more active model files are missing. Update/download is required.");
+        return Ok(ModelUpdateCheckResult {
+            needs_update: true,
+            model_path: model_path_str,
+            vocab_path: vocab_path_str,
+            model_exists,
+            vocab_exists,
+            model_hash_ok: false,
+            vocab_hash_ok: false,
+        });
+    }
+
+    println!("[Model Update Check] Verifying vocab file integrity hash against expected pin...");
+    let vocab_hash_res = crate::search::downloader::verify_file_hash(&vocab_path, crate::search::EXPECTED_VOCAB_HASH);
+    let vocab_ok = vocab_hash_res.is_ok();
+    println!("[Model Update Check] Vocab integrity verify match result: {}", vocab_ok);
+    if let Err(ref e) = vocab_hash_res {
+        println!("[Model Update Check] Vocab verify failed with: {}", e);
+    }
+
+    println!("[Model Update Check] Verifying model file integrity hash against expected pin...");
+    let model_hash_res = crate::search::downloader::verify_file_hash(&model_path, crate::search::EXPECTED_MODEL_HASH);
+    let model_ok = model_hash_res.is_ok();
+    println!("[Model Update Check] Model integrity verify match result: {}", model_ok);
+    if let Err(ref e) = model_hash_res {
+        println!("[Model Update Check] Model verify failed with: {}", e);
+    }
+
+    let needs_update = !vocab_ok || !model_ok;
+    println!("[Model Update Check] Done. Needs update download: {}", needs_update);
+
+    Ok(ModelUpdateCheckResult {
+        needs_update,
+        model_path: model_path_str,
+        vocab_path: vocab_path_str,
+        model_exists,
+        vocab_exists,
+        model_hash_ok: model_ok,
+        vocab_hash_ok: vocab_ok,
+    })
 }
 
 #[tauri::command]
