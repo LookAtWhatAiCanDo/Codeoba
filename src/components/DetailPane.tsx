@@ -32,6 +32,7 @@ import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
 import { Turn, Session } from "../types";
 import { checkTextMatch, highlightContainer } from "../utils/highlighter";
+import { useContextMenuPosition } from "../utils/contextMenu";
 
 interface DetailPaneProps {
   session: Session | null;
@@ -235,6 +236,8 @@ export const DetailPane = (props: DetailPaneProps) => {
     text: string;
     type: "user" | "assistant" | "tool";
   } | null>(null);
+
+  const menuPosition = useContextMenuPosition(contextMenu);
 
   const handleContextMenu = (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => {
     e.preventDefault();
@@ -1251,10 +1254,13 @@ export const DetailPane = (props: DetailPaneProps) => {
 
             return (
               <div
-                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
+                ref={menuPosition.ref}
+                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none transition-opacity duration-75"
                 style={{
-                  top: `${Math.min(window.innerHeight - 80, context().y)}px`,
-                  left: `${Math.min(window.innerWidth - 240, context().x)}px`
+                  top: `${menuPosition.pos().top}px`,
+                  left: `${menuPosition.pos().left}px`,
+                  opacity: menuPosition.pos().visible ? 1 : 0,
+                  "pointer-events": menuPosition.pos().visible ? "auto" : "none"
                 }}
                 onClick={(e) => e.stopPropagation()}
               >

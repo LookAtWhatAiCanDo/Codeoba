@@ -28,6 +28,7 @@ import {
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { Session, SearchResult, SourceMetadata } from "../types";
+import { useContextMenuPosition } from "../utils/contextMenu";
 
 export interface GroupTask {
   id: string;
@@ -532,6 +533,8 @@ export const Sidebar = (props: SidebarProps) => {
     targetSession?: Session;
     targetGroupNode?: GroupTreeNode;
   } | null>(null);
+
+  const menuPosition = useContextMenuPosition(contextMenu);
 
   const handleContextMenu = (e: MouseEvent, type: "session" | "group", targetSession?: Session, targetGroupNode?: GroupTreeNode) => {
     e.preventDefault();
@@ -1508,19 +1511,17 @@ export const Sidebar = (props: SidebarProps) => {
       <Portal>
         <Show when={contextMenu()}>
           {(context) => {
-            const handleOverlayClick = (e: MouseEvent) => {
-              // Keep menu open if clicking inside the input search container
-              e.stopPropagation();
-            };
-
             return (
               <div
-                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
+                ref={menuPosition.ref}
+                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none transition-opacity duration-75"
                 style={{
-                  top: `${Math.min(window.innerHeight - 300, context().y)}px`,
-                  left: `${Math.min(window.innerWidth - 240, context().x)}px`
+                  top: `${menuPosition.pos().top}px`,
+                  left: `${menuPosition.pos().left}px`,
+                  opacity: menuPosition.pos().visible ? 1 : 0,
+                  "pointer-events": menuPosition.pos().visible ? "auto" : "none"
                 }}
-                onClick={handleOverlayClick}
+                onClick={(e) => e.stopPropagation()}
               >
                 <Show when={context().type === "session" && context().targetSession}>
                   {(session) => {
