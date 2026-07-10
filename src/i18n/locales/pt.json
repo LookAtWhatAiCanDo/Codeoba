@@ -88,6 +88,8 @@
     "deleteSession": "Excluir sessão",
     "confirmDelete": "Tem certeza de que deseja excluir esta sessão? Esta ação não pode ser desfeita.",
     "compactedContext": "Contexto compactado",
+    "compactedRequest": "Solicitação compactada",
+    "compactedResponse": "Resposta compactada",
     "compactionTook": "A compactação levou",
     "tokenUsage": "Uso de tokens",
     "computeSpeed": "Velocidade de processamento",

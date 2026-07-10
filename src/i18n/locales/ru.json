@@ -88,6 +88,8 @@
     "deleteSession": "Удалить сеанс",
     "confirmDelete": "Вы уверены, что хотите удалить этот сеанс? Это действие невозможно отменить.",
     "compactedContext": "Сжатый контекст",
+    "compactedRequest": "Сжатый запрос",
+    "compactedResponse": "Сжатый ответ",
     "compactionTook": "Сжатие заняло",
     "tokenUsage": "Использование токенов",
     "computeSpeed": "Скорость вычислений",

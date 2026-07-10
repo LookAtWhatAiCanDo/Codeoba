@@ -88,6 +88,8 @@
     "deleteSession": "Delete Session",
     "confirmDelete": "Are you sure you want to delete this session? This action cannot be undone.",
     "compactedContext": "Compacted context",
+    "compactedRequest": "Compacted request",
+    "compactedResponse": "Compacted response",
     "compactionTook": "Compaction took",
     "tokenUsage": "Token Usage",
     "computeSpeed": "Compute speed",

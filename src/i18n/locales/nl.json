@@ -88,6 +88,8 @@
     "deleteSession": "Sessie verwijderen",
     "confirmDelete": "Weet u zeker dat u deze sessie wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.",
     "compactedContext": "Gecompacteerde context",
+    "compactedRequest": "Gecomprimeerd verzoek",
+    "compactedResponse": "Gecomprimeerd antwoord",
     "compactionTook": "Compactie duurde",
     "tokenUsage": "Tokengebruik",
     "computeSpeed": "Rekensnelheid",

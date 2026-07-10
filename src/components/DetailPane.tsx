@@ -1316,13 +1316,25 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
             class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
           >
-            <MarkdownRenderer 
-              content={props.turn.userMessage} 
-              searchQuery={props.searchQuery} 
-              matchCase={props.matchCase} 
-              wholeWord={props.wholeWord} 
-              useRegex={props.useRegex} 
-            />
+            <Show 
+              when={props.turn.userMessage === "[Compacted Request]"}
+              fallback={
+                <MarkdownRenderer 
+                  content={props.turn.userMessage} 
+                  searchQuery={props.searchQuery} 
+                  matchCase={props.matchCase} 
+                  wholeWord={props.wholeWord} 
+                  useRegex={props.useRegex} 
+                />
+              }
+            >
+              <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
+                <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+                </svg>
+                <span>{t("detailPane.compactedRequest")}</span>
+              </div>
+            </Show>
           </div>
         </div>
 
@@ -1347,14 +1359,26 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             </Show>
           </div>
           <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
-            <AssistantMessageRenderer 
-              message={props.turn.assistantMessage} 
-              searchQuery={props.searchQuery} 
-              matchCase={props.matchCase}
-              wholeWord={props.wholeWord}
-              useRegex={props.useRegex}
-              onContextMenu={props.onContextMenu}
-            />
+            <Show 
+              when={props.turn.assistantMessage === "[Compacted Response]"}
+              fallback={
+                <AssistantMessageRenderer 
+                  message={props.turn.assistantMessage} 
+                  searchQuery={props.searchQuery} 
+                  matchCase={props.matchCase}
+                  wholeWord={props.wholeWord}
+                  useRegex={props.useRegex}
+                  onContextMenu={props.onContextMenu}
+                />
+              }
+            >
+              <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
+                <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                <span>{t("detailPane.compactedResponse")}</span>
+              </div>
+            </Show>
           </div>
         </div>
     </div>

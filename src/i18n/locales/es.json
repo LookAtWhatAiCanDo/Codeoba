@@ -88,6 +88,8 @@
     "deleteSession": "Eliminar sesión",
     "confirmDelete": "¿Está seguro de que desea eliminar esta sesión? Esta acción no se puede deshacer.",
     "compactedContext": "Contexto compactado",
+    "compactedRequest": "Solicitud compactada",
+    "compactedResponse": "Respuesta compactada",
     "compactionTook": "La compactación tardó",
     "tokenUsage": "Uso de tokens",
     "computeSpeed": "Velocidad de cálculo",

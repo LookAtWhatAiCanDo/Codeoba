@@ -88,6 +88,8 @@
     "deleteSession": "Elimina sessione",
     "confirmDelete": "Sei sicuro di voler eliminare questa sessione? Questa azione non può essere annullata.",
     "compactedContext": "Contesto compattato",
+    "compactedRequest": "Richiesta compressa",
+    "compactedResponse": "Risposta compressa",
     "compactionTook": "La compattazione ha richiesto",
     "tokenUsage": "Utilizzo token",
     "computeSpeed": "Velocità di calcolo",

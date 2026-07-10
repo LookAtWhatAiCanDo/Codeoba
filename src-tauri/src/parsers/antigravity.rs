@@ -1,5 +1,6 @@
 use crate::models::{Session, Turn};
 use crate::parsers::SourceAdapter;
+use rusqlite::{Connection, OpenFlags};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -322,6 +323,347 @@ struct Event {
     compaction_time_ms: i64,
 }
 
+struct ProtoDecoder<'a> {
+    data: &'a [u8],
+    offset: usize,
+}
+
+impl<'a> ProtoDecoder<'a> {
+    fn new(data: &'a [u8]) -> Self {
+        Self { data, offset: 0 }
+    }
+
+    fn read_varint(&mut self) -> Option<u64> {
+        let mut result = 0u64;
+        let mut shift = 0;
+        while self.offset < self.data.len() {
+            let b = self.data[self.offset];
+            self.offset += 1;
+            result |= ((b & 0x7f) as u64) << shift;
+            if (b & 0x80) == 0 {
+                return Some(result);
+            }
+            shift += 7;
+            if shift >= 64 {
+                return None;
+            }
+        }
+        None
+    }
+}
+
+fn get_proto_varint_at_path(data: &[u8], path: &[u32]) -> Option<u64> {
+    if path.is_empty() {
+        return None;
+    }
+    let target_field = path[0];
+    let mut decoder = ProtoDecoder::new(data);
+    while let Some(tag) = decoder.read_varint() {
+        let wire_type = (tag & 0x07) as u8;
+        let field_num = (tag >> 3) as u32;
+        match wire_type {
+            0 => {
+                let val = decoder.read_varint()?;
+                if field_num == target_field && path.len() == 1 {
+                    return Some(val);
+                }
+            }
+            1 => {
+                if decoder.offset + 8 > decoder.data.len() { return None; }
+                decoder.offset += 8;
+            }
+            2 => {
+                let len = decoder.read_varint()? as usize;
+                if decoder.offset + len > decoder.data.len() { return None; }
+                let val_bytes = &decoder.data[decoder.offset..decoder.offset + len];
+                decoder.offset += len;
+                if field_num == target_field {
+                    if path.len() == 1 {
+                        // not a varint
+                    } else if let Some(res) = get_proto_varint_at_path(val_bytes, &path[1..]) {
+                        return Some(res);
+                    }
+                }
+            }
+            5 => {
+                if decoder.offset + 4 > decoder.data.len() { return None; }
+                decoder.offset += 4;
+            }
+            _ => return None,
+        }
+    }
+    None
+}
+
+fn get_proto_bytes_at_path<'a>(data: &'a [u8], path: &[u32]) -> Option<&'a [u8]> {
+    if path.is_empty() {
+        return Some(data);
+    }
+    let target_field = path[0];
+    let mut decoder = ProtoDecoder::new(data);
+    while let Some(tag) = decoder.read_varint() {
+        let wire_type = (tag & 0x07) as u8;
+        let field_num = (tag >> 3) as u32;
+        match wire_type {
+            0 => {
+                let _val = decoder.read_varint()?;
+            }
+            1 => {
+                if decoder.offset + 8 > decoder.data.len() { return None; }
+                decoder.offset += 8;
+            }
+            2 => {
+                let len = decoder.read_varint()? as usize;
+                if decoder.offset + len > decoder.data.len() { return None; }
+                let val_bytes = &decoder.data[decoder.offset..decoder.offset + len];
+                decoder.offset += len;
+                if field_num == target_field {
+                    if path.len() == 1 {
+                        return Some(val_bytes);
+                    } else if let Some(res) = get_proto_bytes_at_path(val_bytes, &path[1..]) {
+                        return Some(res);
+                    }
+                }
+            }
+            5 => {
+                if decoder.offset + 4 > decoder.data.len() { return None; }
+                decoder.offset += 4;
+            }
+            _ => return None,
+        }
+    }
+    None
+}
+
+fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
+    let mut map = HashMap::new();
+    let content_str = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return map,
+    };
+
+    static USER_REQ_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let user_req_re = USER_REQ_RE.get_or_init(|| {
+        regex::Regex::new(
+            r"(?i)^\s*<USER_REQUEST>([\s\S]*?)</USER_REQUEST>\s*(?:<ADDITIONAL_METADATA>|<USER_SETTINGS_CHANGE>|$)"
+        ).unwrap()
+    });
+
+    for line in content_str.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(element) = serde_json::from_str::<serde_json::Value>(line) {
+            let obj = match element.as_object() {
+                Some(o) => o,
+                None => continue,
+            };
+            let step_type = match obj.get("type").and_then(|v| v.as_str()) {
+                Some(t) => t,
+                None => continue,
+            };
+            let source = obj.get("source").and_then(|v| v.as_str()).unwrap_or("");
+            let created_at_str = obj.get("created_at").and_then(|v| v.as_str());
+            let timestamp = created_at_str
+                .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
+                .map(|dt| dt.timestamp_millis())
+                .unwrap_or(0);
+
+            let content = obj.get("content").and_then(|v| v.as_str()).unwrap_or("");
+            let timestamp_secs = timestamp / 1000;
+
+            if step_type == "USER_INPUT" && source == "USER_EXPLICIT" {
+                let mut clean_content = content.trim().to_string();
+                if let Some(caps) = user_req_re.captures(content) {
+                    clean_content = caps[1].trim().to_string();
+                }
+                clean_content = clean(&clean_content);
+                if !clean_content.is_empty() && clean_content != "[Compacted Request]" {
+                    map.insert((true, timestamp_secs), clean_content);
+                }
+            } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION") && source == "MODEL" {
+                let clean_content = escape_tool_tags(&clean(content));
+                if !clean_content.is_empty() && clean_content != "[Compacted Response]" {
+                    map.insert((false, timestamp_secs), clean_content);
+                }
+            }
+        }
+    }
+    map
+}
+
+fn parse_sqlite_session_db(
+    db_path: &Path,
+    cwd: &mut Option<String>,
+    uncompacted_map: &HashMap<(bool, i64), String>,
+) -> Result<Vec<Event>, rusqlite::Error> {
+    let path_str = db_path.to_string_lossy();
+    let uri_path = format!("file:{}?mode=ro", path_str);
+    let conn = Connection::open_with_flags(
+        Path::new(&uri_path),
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+
+    let session_id = db_path.file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
+    let main_trajectory_id: Option<String> = match conn.query_row(
+        "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? AND trajectory_type = 4",
+        [session_id],
+        |row| row.get(0)
+    ) {
+        Ok(id) => Some(id),
+        Err(_) => None,
+    };
+
+    let main_trajectory_id = match main_trajectory_id {
+        Some(id) => Some(id),
+        None => {
+            match conn.query_row(
+                "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? LIMIT 1",
+                [session_id],
+                |row| row.get(0)
+            ) {
+                Ok(id) => Some(id),
+                Err(_) => None,
+            }
+        }
+    };
+
+    let mut main_trajectory_ids = std::collections::HashSet::new();
+    if let Some(id) = main_trajectory_id {
+        main_trajectory_ids.insert(id);
+    }
+
+    if let Ok(mut stmt) = conn.prepare("SELECT data FROM parent_references") {
+        if let Ok(mut rows) = stmt.query([]) {
+            while let Ok(Some(row)) = rows.next() {
+                let data_blob: Vec<u8> = row.get(0).unwrap_or_default();
+                if let Some(tb) = get_proto_bytes_at_path(&data_blob, &[1]) {
+                    if let Ok(ts) = std::str::from_utf8(tb) {
+                        main_trajectory_ids.insert(ts.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    let mut stmt = conn.prepare("SELECT idx, step_type, step_payload FROM steps WHERE step_type IN (14, 15, 98) ORDER BY idx")?;
+    let mut rows = stmt.query([])?;
+
+    static CWD_RE: std::sync::OnceLock<regex::bytes::Regex> = std::sync::OnceLock::new();
+    let cwd_re = CWD_RE.get_or_init(|| {
+        regex::bytes::Regex::new(r#""[Cc]wd"\s*:\s*"([^"]+)""#).unwrap()
+    });
+
+    let mut events = Vec::new();
+    while let Some(row) = rows.next()? {
+        let _idx: i64 = row.get(0)?;
+        let step_type: i32 = row.get(1)?;
+        let step_payload: Vec<u8> = row.get(2)?;
+
+        if !main_trajectory_ids.is_empty() {
+            let mut step_traj = None;
+            if let Some(tb) = get_proto_bytes_at_path(&step_payload, &[5, 20, 1]) {
+                if let Ok(ts) = std::str::from_utf8(tb) {
+                    step_traj = Some(ts);
+                }
+            }
+            if step_traj.is_none() {
+                if let Some(tb) = get_proto_bytes_at_path(&step_payload, &[147, 2, 1]) {
+                    if let Ok(ts) = std::str::from_utf8(tb) {
+                        step_traj = Some(ts);
+                    }
+                }
+            }
+            if let Some(traj_str) = step_traj {
+                if !main_trajectory_ids.contains(traj_str) {
+                    continue;
+                }
+            }
+        }
+
+        if let Some(caps) = cwd_re.captures(&step_payload) {
+            if let Ok(c) = std::str::from_utf8(&caps[1]) {
+                *cwd = Some(c.to_string());
+            }
+        }
+
+        let seconds = get_proto_varint_at_path(&step_payload, &[5, 1, 1]).unwrap_or(0);
+        let timestamp = seconds as i64 * 1000;
+
+        if step_type == 14 {
+            let mut text = String::new();
+            if let Some(bytes) = get_proto_bytes_at_path(&step_payload, &[19, 2]) {
+                if let Ok(t) = std::str::from_utf8(bytes) {
+                    text = t.trim().to_string();
+                }
+            }
+            if text.is_empty() {
+                let timestamp_secs = seconds as i64;
+                if let Some(uncompacted) = uncompacted_map.get(&(true, timestamp_secs)) {
+                    text = uncompacted.clone();
+                } else {
+                    text = "[Compacted Request]".to_string();
+                }
+            }
+            events.push(Event {
+                is_user: true,
+                text,
+                timestamp,
+                model: None,
+                is_compaction: false,
+                compaction_time_ms: 0,
+            });
+        } else if step_type == 15 {
+            let mut text = String::new();
+            if let Some(bytes) = get_proto_bytes_at_path(&step_payload, &[20, 1]) {
+                if let Ok(t) = std::str::from_utf8(bytes) {
+                    text = t.trim().to_string();
+                }
+            }
+            if text.is_empty() {
+                let timestamp_secs = seconds as i64;
+                if let Some(uncompacted) = uncompacted_map.get(&(false, timestamp_secs)) {
+                    text = uncompacted.clone();
+                } else {
+                    text = "[Compacted Response]".to_string();
+                }
+            }
+            events.push(Event {
+                is_user: false,
+                text,
+                timestamp,
+                model: None,
+                is_compaction: false,
+                compaction_time_ms: 0,
+            });
+        } else if step_type == 98 {
+            let preceding_event = events.last();
+            let duration = if let Some(pe) = preceding_event {
+                if pe.is_user {
+                    (timestamp - pe.timestamp).max(0)
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
+            events.push(Event {
+                is_user: false,
+                text: String::new(),
+                timestamp,
+                model: None,
+                is_compaction: true,
+                compaction_time_ms: duration,
+            });
+        }
+    }
+
+    Ok(events)
+}
+
 impl SourceAdapter for AntigravitySource {
     fn id(&self) -> &str {
         "antigravity"
@@ -535,28 +877,34 @@ impl SourceAdapter for AntigravitySource {
                         clean_content = caps[1].trim().to_string();
                     }
                     clean_content = clean(&clean_content);
-                    if !clean_content.is_empty() {
-                        events.push(Event {
-                            is_user: true,
-                            text: clean_content,
-                            timestamp,
-                            model: current_model.clone(),
-                            is_compaction: false,
-                            compaction_time_ms: 0,
-                        });
-                    }
+                    let text_to_push = if clean_content.is_empty() {
+                        "[Compacted Request]".to_string()
+                    } else {
+                        clean_content
+                    };
+                    events.push(Event {
+                        is_user: true,
+                        text: text_to_push,
+                        timestamp,
+                        model: current_model.clone(),
+                        is_compaction: false,
+                        compaction_time_ms: 0,
+                    });
                 } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION") && source == "MODEL" {
                     let clean_content = escape_tool_tags(&clean(content));
-                    if !clean_content.is_empty() {
-                        events.push(Event {
-                            is_user: false,
-                            text: clean_content,
-                            timestamp,
-                            model: current_model.clone(),
-                            is_compaction: false,
-                            compaction_time_ms: 0,
-                        });
-                    }
+                    let text_to_push = if clean_content.is_empty() {
+                        "[Compacted Response]".to_string()
+                    } else {
+                        clean_content
+                    };
+                    events.push(Event {
+                        is_user: false,
+                        text: text_to_push,
+                        timestamp,
+                        model: current_model.clone(),
+                        is_compaction: false,
+                        compaction_time_ms: 0,
+                    });
                 } else if matches!(step_type, "VIEW_FILE" | "RUN_COMMAND" | "CODE_ACTION" | "GREP_SEARCH" | "LIST_DIRECTORY" | "SEARCH_WEB" | "GENERIC") && source == "MODEL" {
                     let formatted = format_tool_entry(step_type, content, tool_calls, timestamp);
                     if !formatted.trim().is_empty() {
@@ -625,6 +973,36 @@ impl SourceAdapter for AntigravitySource {
             }
         }
 
+        // Find the timestamp of the earliest user input or planner response in JSONL events
+        let jsonl_start_time = events.iter()
+            .filter(|e| !e.is_compaction)
+            .map(|e| e.timestamp)
+            .min()
+            .unwrap_or(i64::MAX);
+
+        // Attempt to load older events from the SQLite database
+        let mut db_events = Vec::new();
+        let db_path = home.join(format!(".gemini/antigravity/conversations/{}.db", session_id));
+        if db_path.exists() && db_path.is_file() {
+            let uncompacted_map = load_jsonl_uncompacted_map(path);
+            let mut db_cwd = None;
+            if let Ok(parsed_db_events) = parse_sqlite_session_db(&db_path, &mut db_cwd, &uncompacted_map) {
+                // Filter out events that occurred on or after the start of JSONL events
+                db_events = parsed_db_events.into_iter()
+                    .filter(|e| e.timestamp < jsonl_start_time)
+                    .collect();
+                if db_cwd.is_some() && cwd.is_none() {
+                    cwd = db_cwd;
+                }
+            }
+        }
+
+        // Prepend database events to the parsed JSONL events
+        if !db_events.is_empty() {
+            db_events.extend(events);
+            events = db_events;
+        }
+
         if events.is_empty() {
             return None;
         }
@@ -632,6 +1010,79 @@ impl SourceAdapter for AntigravitySource {
         let mut turns = Vec::new();
         let mut turn_count = 0;
         let mut idx = 0;
+
+        // Group any leading non-user events (before the first user event) into a single initial turn
+        if idx < events.len() && !events[idx].is_user {
+            let mut assistant_parts = Vec::new();
+            let mut turn_model: Option<String> = None;
+            let mut active_time_ms = 0i64;
+            let mut current_timestamp = events[idx].timestamp;
+            let mut has_compaction = false;
+            let mut compaction_time_ms = 0i64;
+
+            while idx < events.len() && !events[idx].is_user {
+                let ev = &events[idx];
+                if ev.is_compaction {
+                    has_compaction = true;
+                    compaction_time_ms += ev.compaction_time_ms;
+                } else {
+                    if !ev.text.is_empty() {
+                        assistant_parts.push(ev.text.clone());
+                    }
+                }
+                let gap = (ev.timestamp - current_timestamp).max(0);
+                active_time_ms += if gap > 120_000 { 15_000 } else { gap };
+                current_timestamp = ev.timestamp;
+                if ev.model.is_some() {
+                    turn_model = ev.model.clone();
+                }
+                idx += 1;
+            }
+
+            // Deduplicate consecutive "[Compacted Response]" and filter them out if actual text is present
+            let mut clean_parts = Vec::new();
+            for part in assistant_parts {
+                if part == "[Compacted Response]" {
+                    if clean_parts.last() != Some(&"[Compacted Response]".to_string()) {
+                        clean_parts.push(part);
+                    }
+                } else {
+                    clean_parts.push(part);
+                }
+            }
+
+            let has_actual_text = clean_parts.iter().any(|part| {
+                !part.starts_with("[[[TOOL:") && part != "[Compacted Response]"
+            });
+
+            if has_actual_text {
+                clean_parts.retain(|part| part != "[Compacted Response]");
+            }
+
+            let assistant_message = clean_parts.join("\n\n");
+            let mut extra_data = HashMap::new();
+            extra_data.insert("computeTimeMs".to_string(), active_time_ms.to_string());
+            let final_model = turn_model.unwrap_or_else(|| "Unknown".to_string());
+            extra_data.insert("model".to_string(), final_model.clone());
+            if has_compaction {
+                extra_data.insert("isCompaction".to_string(), "true".to_string());
+                extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
+            }
+
+            let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &final_model);
+
+            turns.push(Turn {
+                turn_id: format!("{}_{}", session_id, turn_count),
+                user_message: String::new(),
+                assistant_message,
+                timestamp: current_timestamp,
+                input_tokens: Some(0),
+                output_tokens: Some(output_toks),
+                extra_data,
+            });
+            turn_count += 1;
+        }
+
         while idx < events.len() {
             let ev = &events[idx];
             if ev.is_user {
@@ -662,7 +1113,27 @@ impl SourceAdapter for AntigravitySource {
                     next_idx += 1;
                 }
 
-                let assistant_message = assistant_parts.join("\n\n");
+                // Deduplicate consecutive "[Compacted Response]" and filter them out if actual text is present
+                let mut clean_parts = Vec::new();
+                for part in assistant_parts {
+                    if part == "[Compacted Response]" {
+                        if clean_parts.last() != Some(&"[Compacted Response]".to_string()) {
+                            clean_parts.push(part);
+                        }
+                    } else {
+                        clean_parts.push(part);
+                    }
+                }
+
+                let has_actual_text = clean_parts.iter().any(|part| {
+                    !part.starts_with("[[[TOOL:") && part != "[Compacted Response]"
+                });
+
+                if has_actual_text {
+                    clean_parts.retain(|part| part != "[Compacted Response]");
+                }
+
+                let assistant_message = clean_parts.join("\n\n");
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), active_time_ms.to_string());
                 let final_model = turn_model.unwrap_or_else(|| "Unknown".to_string());
@@ -687,14 +1158,15 @@ impl SourceAdapter for AntigravitySource {
                 turn_count += 1;
                 idx = next_idx;
             } else {
+                if ev.is_compaction {
+                    idx += 1;
+                    continue;
+                }
+
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
                 let final_model = ev.model.clone().unwrap_or_else(|| "Unknown".to_string());
                 extra_data.insert("model".to_string(), final_model.clone());
-                if ev.is_compaction {
-                    extra_data.insert("isCompaction".to_string(), "true".to_string());
-                    extra_data.insert("compactionTimeMs".to_string(), ev.compaction_time_ms.to_string());
-                }
 
                 let output_toks = crate::tokenizer::estimate_tokens(&ev.text, &final_model);
 

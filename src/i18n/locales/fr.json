@@ -88,6 +88,8 @@
     "deleteSession": "Supprimer la session",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette session ? Cette action est irréversible.",
     "compactedContext": "Contexte compacté",
+    "compactedRequest": "Requête compactée",
+    "compactedResponse": "Réponse compactée",
     "compactionTook": "Compactage effectué en",
     "tokenUsage": "Utilisation des jetons",
     "computeSpeed": "Vitesse de calcul",

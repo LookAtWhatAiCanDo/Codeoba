@@ -88,6 +88,8 @@
     "deleteSession": "세션 삭제",
     "confirmDelete": "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "compactedContext": "압축된 컨텍스트",
+    "compactedRequest": "압축된 요청",
+    "compactedResponse": "압축된 응답",
     "compactionTook": "압축 소요 시간",
     "tokenUsage": "토큰 사용량",
     "computeSpeed": "연산 속도",

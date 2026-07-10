@@ -88,6 +88,8 @@
     "deleteSession": "セッションの削除",
     "confirmDelete": "このセッションを削除してもよろしいですか？この操作は取り消せません。",
     "compactedContext": "コンパクションされたコンテキスト",
+    "compactedRequest": "圧縮されたリクエスト",
+    "compactedResponse": "圧縮されたレスポンス",
     "compactionTook": "コンパクション所要時間",
     "tokenUsage": "トークン使用量",
     "computeSpeed": "処理速度",

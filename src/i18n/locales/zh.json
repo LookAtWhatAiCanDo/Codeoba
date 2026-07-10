@@ -88,6 +88,8 @@
     "deleteSession": "删除会话",
     "confirmDelete": "您确定要删除此会话吗？此操作无法撤销。",
     "compactedContext": "已压缩上下文",
+    "compactedRequest": "已压缩的请求",
+    "compactedResponse": "已压缩的响应",
     "compactionTook": "压缩耗时",
     "tokenUsage": "Tokens 用量",
     "computeSpeed": "计算速度",

@@ -88,6 +88,8 @@
     "deleteSession": "Sitzung löschen",
     "confirmDelete": "Sind Sie sicher, dass Sie diese Sitzung löschen möchten? Dies kann nicht rückgängig gemacht werden.",
     "compactedContext": "Komprimierter Kontext",
+    "compactedRequest": "Komprimierte Anfrage",
+    "compactedResponse": "Komprimierte Antwort",
     "compactionTook": "Komprimierung dauerte",
     "tokenUsage": "Token-Nutzung",
     "computeSpeed": "Rechengeschwindigkeit",

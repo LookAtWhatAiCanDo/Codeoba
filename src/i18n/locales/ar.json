@@ -88,6 +88,8 @@
     "deleteSession": "حذف الجلسة",
     "confirmDelete": "هل أنت متأكد من رغبتك في حذف هذه الجلسة؟ لا يمكن التراجع عن هذا الإجراء.",
     "compactedContext": "السياق المضغوط",
+    "compactedRequest": "الطلب المضغوط",
+    "compactedResponse": "الاستجابة المضغوطة",
     "compactionTook": "استغرق الضغط",
     "tokenUsage": "استخدام الرموز",
     "computeSpeed": "سرعة الحوسبة",
