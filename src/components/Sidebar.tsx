@@ -1407,7 +1407,7 @@ export const Sidebar = (props: SidebarProps) => {
             <span class="text-accent uppercase tracking-wider font-semibold animate-pulse">
               {props.indexingProgress!.step === "complete" ? "Finished" : "Indexing"}
             </span>
-            <span class="text-text-secondary truncate max-w-[180px]">
+            <span class="text-text-secondary truncate min-w-0 flex-1 px-2 text-center">
               {props.indexingProgress!.currentSource}
             </span>
             <span class="font-mono text-accent">
