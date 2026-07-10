@@ -208,6 +208,7 @@ function App() {
   
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isSemantic, setIsSemantic] = createSignal(false);
+
   const [selectedSources, setSelectedSources] = createSignal<Set<string>>((() => {
     try {
       const stored = localStorage.getItem("codeoba-selected-sources");
@@ -1343,6 +1344,10 @@ function App() {
     }
   };
 
+  const handleSemanticToggle = () => {
+    setIsSemantic(!isSemantic());
+  };
+
   const handleToggleSource = (sourceId: string) => {
     const next = new Set(selectedSources());
     if (next.has(sourceId)) {
@@ -1625,7 +1630,7 @@ function App() {
           multiline={multiline()}
           onMultilineToggle={() => setMultiline(!multiline())}
           isSemantic={isSemantic()}
-          onSemanticToggle={() => setIsSemantic(!isSemantic())}
+          onSemanticToggle={handleSemanticToggle}
           selectedSources={selectedSources()}
           onToggleSource={handleToggleSource}
           archivalFilter={archivalFilter()}
@@ -1805,6 +1810,7 @@ function App() {
         onClose={() => setShowFeedback(false)}
         appVersion={appVersion()}
       />
+
     </div>
   );
 }

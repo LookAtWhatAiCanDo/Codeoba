@@ -1,4 +1,4 @@
-import { createSignal, For, Show, onMount, onCleanup } from "solid-js";
+import { createSignal, For, Show, onMount } from "solid-js";
 import { 
   X, 
   Trash2, 
@@ -7,7 +7,6 @@ import {
   Palette,
   Shield,
   Layers,
-  Sliders,
   Settings,
   Shuffle,
   FolderMinus,
@@ -15,7 +14,7 @@ import {
   SlidersHorizontal
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
@@ -59,7 +58,7 @@ interface SettingsDialogProps {
   onFontSizeChange: (val: number) => void;
 }
 
-type Category = "general" | "regional" | "theme" | "sources" | "exclusions" | "semantic" | "permissions" | "updates";
+type Category = "general" | "regional" | "theme" | "sources" | "exclusions" | "permissions" | "updates";
 
 const DARK_THEMES = [
   { id: "obsidian", nameKey: "themeObsidian", color: "bg-[#0d0e12] border-slate-700" },
@@ -187,14 +186,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   };
 
 
-  // Semantic Settings
-  const [modelDownloaded, setModelDownloaded] = createSignal(false);
-  const [modelOverridden, setModelOverridden] = createSignal(false);
-  const [downloading, setDownloading] = createSignal(false);
-  const [downloadProgress, setDownloadProgress] = createSignal<number | null>(null);
-  const [downloadError, setDownloadError] = createSignal<string | null>(null);
-  const [updateState, setUpdateState] = createSignal<"idle" | "checking" | "upToDate" | "available">("idle");
-
   const [localThreshold, setLocalThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
@@ -208,84 +199,8 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
-  interface ModelUpdateCheckResult {
-    needs_update: boolean;
-    model_path: string;
-    vocab_path: string;
-    model_exists: boolean;
-    vocab_exists: boolean;
-    model_hash_ok: boolean;
-    vocab_hash_ok: boolean;
-  }
-
-  const handleCheckUpdate = async () => {
-    setUpdateState("checking");
-    setDownloadError(null);
-    try {
-      console.log("[SettingsDialog] Querying check_semantic_model_update command...");
-      logFE("info", "Checking for semantic model updates");
-      const result = await invoke<ModelUpdateCheckResult>("check_semantic_model_update");
-      console.log("[SettingsDialog] check_semantic_model_update returned result:", result);
-      logFE("info", `Update check result: needs_update = ${result.needs_update}, model_path = ${result.model_path}, model_exists = ${result.model_exists}, model_hash_ok = ${result.model_hash_ok}`);
-      if (result.needs_update) {
-        setUpdateState("available");
-      } else {
-        setUpdateState("upToDate");
-        setTimeout(() => {
-          if (updateState() === "upToDate") {
-            setUpdateState("idle");
-          }
-        }, 3000);
-      }
-    } catch (err: any) {
-      console.error("[SettingsDialog] Checking for model updates failed:", err);
-      logFE("error", `Checking for model updates failed: ${err}`);
-      setDownloadError(err.toString());
-      setUpdateState("idle");
-    }
-  };
-
-  const handleDownloadModel = async () => {
-    setDownloading(true);
-    setDownloadError(null);
-    setDownloadProgress(0);
-    setUpdateState("idle");
-    try {
-      logFE("info", "Starting semantic search model download");
-      await invoke("download_semantic_model");
-      setModelDownloaded(true);
-      setModelOverridden(true);
-    } catch (err: any) {
-      logFE("error", `Semantic search model download failed: ${err}`);
-      setDownloadError(err.toString());
-      setDownloading(false);
-    }
-  };
-
-  const handleDeleteModel = async () => {
-    try {
-      await invoke("delete_semantic_model");
-      setModelOverridden(false);
-      const status = await invoke<boolean>("get_semantic_model_status");
-      setModelDownloaded(status);
-      logFE("info", "Deleted semantic search model override files.");
-    } catch (err) {
-      logFE("error", `Failed to delete model files: ${err}`);
-    }
-  };
-
   onMount(async () => {
-    // 1. Check model status (high priority)
-    try {
-      const status = await invoke<boolean>("get_semantic_model_status");
-      setModelDownloaded(status);
-      const overridden = await invoke<boolean>("is_semantic_model_overridden");
-      setModelOverridden(overridden);
-    } catch (err) {
-      logFE("error", `Failed to check semantic model status: ${err}`);
-    }
-
-    // 2. Check updater status
+    // 1. Check updater status
     try {
       const active = await invoke<boolean>("is_updater_active");
       setUpdaterActive(active);
@@ -293,7 +208,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       logFE("error", `Failed to check updater active status: ${err}`);
     }
 
-    // 3. Get app version
+    // 2. Get app version
     try {
       const v = await getVersion();
       setAppVersion(v);
@@ -301,14 +216,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       logFE("error", `Failed to get app version: ${err}`);
     }
 
-    // 4. Load path permissions
+    // 3. Load path permissions
     try {
       await refreshPermissions();
     } catch (err) {
       logFE("error", `Failed to refresh path permissions: ${err}`);
     }
 
-    // 5. Load source decisions
+    // 4. Load source decisions
     try {
       const backendDecisions = await invoke<Record<string, "allow" | "deny" | "ask">>("get_source_decisions");
       if (backendDecisions) {
@@ -319,7 +234,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       logFE("error", `Failed to load source decisions from backend: ${errDec}`);
     }
 
-    // 6. Load keyring and premium status
+    // 5. Load keyring and premium status
     try {
       const disabled = await invoke<boolean>("is_keyring_disabled");
       setKeyringDisabled(disabled);
@@ -328,22 +243,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     } catch (err) {
       logFE("error", `Failed to query keyring or premium status: ${err}`);
     }
-
-    // Listen for model download progress
-    const unlistenPromise = listen<number>("semantic-model-download-progress", (event) => {
-      setDownloadProgress(event.payload);
-      if (event.payload >= 1.0) {
-        setDownloading(false);
-        setDownloadProgress(null);
-        setModelDownloaded(true);
-        setModelOverridden(true);
-      }
-    });
-
-    onCleanup(async () => {
-      const unlisten = await unlistenPromise;
-      unlisten();
-    });
   });
 
   // General Settings
@@ -641,17 +540,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <FolderMinus class="w-3.5 h-3.5" />
                 <span>{t("settings.exclusions.title")}</span>
               </button>
-              <button
-                onClick={() => setActiveCategory("semantic")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "semantic"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Sliders class="w-3.5 h-3.5" />
-                <span>{t("settings.semantic.title")}</span>
-              </button>
+
               <button
                 onClick={() => setActiveCategory("permissions")}
                 class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
@@ -791,6 +680,40 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       }`}
                     >
                       {t("settings.general.modeCompact")}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Similarity Threshold */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-4">
+                  <div class="space-y-1">
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.threshold")}</h4>
+                    <p class="text-[0.625rem] text-text-secondary/70">
+                      {t("settings.general.thresholdDesc")}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-4">
+                    <input 
+                      type="range"
+                      min="0.0"
+                      max="1.0"
+                      step="0.05"
+                      value={similarityThreshold()}
+                      onInput={(e) => handleThresholdChange(parseFloat(e.currentTarget.value))}
+                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
+                      {similarityThreshold().toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div class="flex justify-end pt-1 border-t border-border/20">
+                    <button
+                      onClick={handleRestoreThresholdDefault}
+                      class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
+                    >
+                      {t("settings.general.restoreDefault")}
                     </button>
                   </div>
                 </div>
@@ -1124,165 +1047,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     }}
                   </For>
                 </div>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "semantic"}>
-              {/* Semantic Settings Tab */}
-              <div class="space-y-5">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.semantic.title")}
-                </h3>
-
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
-                  <div class="space-y-1">
-                    <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.downloadTitle")}</h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.semantic.downloadDesc")}
-                    </p>
-                  </div>
-
-                  <Show 
-                    when={modelDownloaded()} 
-                    fallback={
-                      <div class="space-y-3">
-                        <div class="flex items-center justify-between text-xs p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400">
-                          <span>{t("settings.semantic.statusNotDownloaded")}</span>
-                          <button
-                            onClick={handleDownloadModel}
-                            disabled={downloading()}
-                            class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/40 text-black font-semibold rounded-xl text-xs transition-all cursor-pointer"
-                          >
-                            {downloading() ? t("settings.updates.checking") : t("settings.semantic.downloadBtn")}
-                          </button>
-                        </div>
-                        <Show when={downloadProgress() !== null}>
-                          <div class="space-y-1">
-                            <div class="flex justify-between text-[0.625rem] font-bold text-text-secondary">
-                              <span>{t("settings.semantic.downloading")}</span>
-                              <span>{Math.round(downloadProgress()! * 100)}%</span>
-                            </div>
-                            <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/50">
-                              <div 
-                                class="h-full bg-accent transition-all duration-100" 
-                                style={{ width: `${downloadProgress()! * 100}%` }}
-                              />
-                            </div>
-                          </div>
-                        </Show>
-                        <Show when={downloadError()}>
-                          <div class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                            {downloadError()}
-                          </div>
-                        </Show>
-                      </div>
-                    }
-                  >
-                    <div class="space-y-3">
-                      <div class="flex items-center justify-between text-xs p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                        <span>{modelOverridden() ? t("settings.semantic.statusUpdated") : t("settings.semantic.statusInstalled")}</span>
-                        <div class="flex items-center gap-2">
-                          <button
-                            onClick={handleCheckUpdate}
-                            disabled={downloading() || updateState() === "checking"}
-                            class="px-2.5 py-1 bg-background hover:bg-emerald-500/10 border border-border hover:border-emerald-500/20 text-text-secondary hover:text-emerald-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer disabled:opacity-50"
-                          >
-                            {updateState() === "checking" ? t("settings.semantic.statusChecking") : t("settings.semantic.downloadBtn")}
-                          </button>
-                          <Show when={modelOverridden()}>
-                            <button
-                              onClick={handleDeleteModel}
-                              class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer"
-                            >
-                              {t("settings.semantic.deleteModel")}
-                            </button>
-                          </Show>
-                        </div>
-                      </div>
-                      
-                      <Show when={updateState() === "upToDate"}>
-                        <div class="text-[0.6875rem] text-emerald-400 font-semibold px-1">
-                          ✓ {t("settings.semantic.statusUpToDate")}
-                        </div>
-                      </Show>
-
-                      <Show when={updateState() === "available"}>
-                        <div class="text-xs p-3.5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 space-y-2 mt-2">
-                          <p>{t("settings.semantic.confirmUpdateDesc")}</p>
-                          <div class="flex items-center gap-2">
-                            <button
-                              onClick={handleDownloadModel}
-                              class="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold rounded-lg text-[0.65625rem] cursor-pointer"
-                            >
-                              {t("settings.semantic.confirmDownloadBtn")}
-                            </button>
-                            <button
-                              onClick={() => setUpdateState("idle")}
-                              class="px-2.5 py-1 bg-background border border-border hover:bg-border/30 text-text-secondary rounded-lg text-[0.65625rem] cursor-pointer"
-                            >
-                              {t("settings.semantic.confirmCancelBtn")}
-                            </button>
-                          </div>
-                        </div>
-                      </Show>
-
-                      <Show when={downloading() && downloadProgress() !== null}>
-                        <div class="space-y-1">
-                          <div class="flex justify-between text-[0.625rem] font-bold text-text-secondary">
-                            <span>{t("settings.semantic.downloading")}</span>
-                            <span>{Math.round(downloadProgress()! * 100)}%</span>
-                          </div>
-                          <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/50">
-                            <div 
-                              class="h-full bg-accent transition-all duration-100" 
-                              style={{ width: `${downloadProgress()! * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </Show>
-                      <Show when={downloadError()}>
-                        <div class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                          {downloadError()}
-                        </div>
-                      </Show>
-                    </div>
-                  </Show>
-                </div>
-
-                <Show when={modelDownloaded()}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
-                    <div class="space-y-1">
-                      <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.threshold")}</h4>
-                      <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.semantic.thresholdDesc")}
-                      </p>
-                    </div>
-
-                    <div class="flex items-center gap-4">
-                      <input 
-                        type="range"
-                        min="0.0"
-                        max="1.0"
-                        step="0.05"
-                        value={similarityThreshold()}
-                        onInput={(e) => handleThresholdChange(parseFloat(e.currentTarget.value))}
-                        class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                      />
-                      <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
-                        {similarityThreshold().toFixed(2)}
-                      </div>
-                    </div>
-
-                    <div class="flex justify-end pt-1 border-t border-border/20">
-                      <button
-                        onClick={handleRestoreThresholdDefault}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
-                      >
-                        {t("settings.semantic.restoreDefault")}
-                      </button>
-                    </div>
-                  </div>
-                </Show>
               </div>
             </Show>
 

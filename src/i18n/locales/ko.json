@@ -102,16 +102,16 @@
     "aiSummaryTitle": "AI 세션 요약",
     "copyMessageText": "메시지 텍스트 복사",
     "copyToolOutput": "도구 출력 복사",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "작업 공간 경로 복사",
+    "copyWorkspacePathLabel": "작업 공간 경로",
+    "workspacePathCopied": "작업 공간 경로가 복사되었습니다",
+    "copyTitle": "세션 제목 복사",
+    "clickToCopyTitle": "클릭하여 세션 제목 복사",
+    "titleCopied": "제목이 복사되었습니다",
+    "copySessionPath": "세션 경로 복사",
+    "copySessionPathLabel": "세션 경로",
+    "sessionPathCopied": "세션 경로가 복사되었습니다",
+    "resetFontSize": "더블 클릭하여 기본값으로 복원"
   },
   "fileViewer": {
     "title": "파일 뷰어",
@@ -198,8 +198,11 @@
       "themePaper": "종이",
       "excludedPaths": "제외할 경로",
       "excludedPathsDesc": "제외 항목(쉼표 또는 줄바꿈으로 구분). 일치하는 디렉터리나 파일은 대화 목록에서 무시됩니다.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "글꼴 크기",
+      "fontSizeDesc": "대화 기록의 기본 글꼴 크기를 조정합니다.",
+      "threshold": "유사도 임계값",
+      "thresholdDesc": "매칭 허용도를 구성합니다(높을수록 엄격함).",
+      "restoreDefault": "기본값으로 복원"
     },
     "sources": {
       "tab": "소스",
@@ -223,22 +226,6 @@
       "allow": "허용",
       "deny": "거부",
       "ask": "확인"
-    },
-    "semantic": {
-      "tab": "의미",
-      "title": "의미 검색 설정",
-      "downloadTitle": "로컬 AI 모델 다운로드",
-      "downloadDesc": "로컬 의미/임베딩 매칭을 활성화하려면 작은 ONNX 임베딩 모델(약 15MB)을 다운로드하세요.",
-      "installed": "임베딩 모델 설치됨",
-      "deleteModel": "모델 파일 삭제",
-      "statusInstalled": "모델 상태: 설치됨",
-      "statusNotDownloaded": "모델 상태: 다운로드되지 않음",
-      "downloading": "모델 다운로드 중...",
-      "failedDownload": "모델 다운로드 실패: {error}",
-      "downloadBtn": "임베딩 모델 다운로드",
-      "threshold": "유사도 임계값",
-      "thresholdDesc": "매칭 허용도를 구성합니다(높을수록 엄격함).",
-      "restoreDefault": "기본값으로 복원"
     },
     "permissions": {
       "tab": "권한",

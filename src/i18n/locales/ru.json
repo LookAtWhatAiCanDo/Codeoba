@@ -102,16 +102,16 @@
     "aiSummaryTitle": "Сводка сеанса ИИ",
     "copyMessageText": "Копировать текст сообщения",
     "copyToolOutput": "Копировать вывод инструмента",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "Копировать путь к рабочей области",
+    "copyWorkspacePathLabel": "Путь к рабочей области",
+    "workspacePathCopied": "Путь к рабочей области скопирован",
+    "copyTitle": "Копировать заголовок сеанса",
+    "clickToCopyTitle": "Нажмите, чтобы скопировать заголовок сеанса",
+    "titleCopied": "Заголовок скопирован",
+    "copySessionPath": "Копировать путь к сеансу",
+    "copySessionPathLabel": "Путь к сеансу",
+    "sessionPathCopied": "Путь к сеансу скопирован",
+    "resetFontSize": "Двойной клик для сброса по умолчанию"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",
@@ -198,8 +198,11 @@
       "themePaper": "Бумага",
       "excludedPaths": "Исключенные пути",
       "excludedPathsDesc": "Исключения (разделенные запятыми или переносами строк). Совпадающие папки или файлы будут игнорироваться в списках диалогов.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "Размер шрифта",
+      "fontSizeDesc": "Настройка базового размера шрифта для расшифровки беседы.",
+      "threshold": "Порог сходства",
+      "thresholdDesc": "Настройте допуск совпадения (чем выше, тем строже).",
+      "restoreDefault": "Сбросить по умолчанию"
     },
     "sources": {
       "tab": "Источники",
@@ -223,22 +226,6 @@
       "allow": "Разрешить",
       "deny": "Запретить",
       "ask": "Спрашивать"
-    },
-    "semantic": {
-      "tab": "Семантика",
-      "title": "Настройки семантического поиска",
-      "downloadTitle": "Скачать локальную ИИ-модель",
-      "downloadDesc": "Для локального семантического поиска скачайте небольшую ONNX модель эмбеддингов (около 15 МБ).",
-      "installed": "Модель эмбеддингов установлена",
-      "deleteModel": "Удалить файлы модели",
-      "statusInstalled": "Статус модели: Установлена",
-      "statusNotDownloaded": "Статус модели: Не загружена",
-      "downloading": "Загрузка модели...",
-      "failedDownload": "Не удалось загрузить модель: {error}",
-      "downloadBtn": "Скачать модель эмбеддингов",
-      "threshold": "Порог сходства",
-      "thresholdDesc": "Настройте допуск совпадения (чем выше, тем строже).",
-      "restoreDefault": "Сбросить по умолчанию"
     },
     "permissions": {
       "tab": "Разрешения",

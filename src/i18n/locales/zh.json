@@ -102,16 +102,16 @@
     "aiSummaryTitle": "AI 会话摘要",
     "copyMessageText": "复制消息文本",
     "copyToolOutput": "复制工具输出",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "复制工作区路径",
+    "copyWorkspacePathLabel": "工作区路径",
+    "workspacePathCopied": "工作区路径已复制",
+    "copyTitle": "复制会话标题",
+    "clickToCopyTitle": "点击复制会话标题",
+    "titleCopied": "标题已复制",
+    "copySessionPath": "复制会话路径",
+    "copySessionPathLabel": "会话路径",
+    "sessionPathCopied": "会话路径已复制",
+    "resetFontSize": "双击以重置为默认值"
   },
   "fileViewer": {
     "title": "文件查看器",
@@ -198,8 +198,11 @@
       "themePaper": "纸张",
       "excludedPaths": "排除路径",
       "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "字体大小",
+      "fontSizeDesc": "调整对话记录的基准字体大小。",
+      "threshold": "相似度阈值",
+      "thresholdDesc": "配置匹配容差（值越高，要求越严格）。",
+      "restoreDefault": "恢复默认值"
     },
     "sources": {
       "tab": "数据源",
@@ -223,22 +226,6 @@
       "allow": "允许",
       "deny": "拒绝",
       "ask": "询问"
-    },
-    "semantic": {
-      "tab": "语义",
-      "title": "语义搜索设置",
-      "downloadTitle": "下载本地AI模型",
-      "downloadDesc": "要启用本地语义/嵌入匹配，请下载一个小型ONNX嵌入模型（约15MB）。",
-      "installed": "嵌入模型已安装",
-      "deleteModel": "删除模型文件",
-      "statusInstalled": "模型状态：已安装",
-      "statusNotDownloaded": "模型状态：未下载",
-      "downloading": "正在下载模型...",
-      "failedDownload": "下载模型失败：{error}",
-      "downloadBtn": "下载嵌入模型",
-      "threshold": "相似度阈值",
-      "thresholdDesc": "配置匹配容差（值越高，要求越严格）。",
-      "restoreDefault": "恢复默认值"
     },
     "permissions": {
       "tab": "权限",

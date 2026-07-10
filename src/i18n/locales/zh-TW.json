@@ -102,16 +102,16 @@
     "aiSummaryTitle": "AI 對話摘要",
     "copyMessageText": "複製訊息文字",
     "copyToolOutput": "複製工具輸出",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "複製工作區路徑",
+    "copyWorkspacePathLabel": "工作區路徑",
+    "workspacePathCopied": "工作區路徑已複製",
+    "copyTitle": "複製對話標題",
+    "clickToCopyTitle": "按一下以複製對話標題",
+    "titleCopied": "標題已複製",
+    "copySessionPath": "複製對話路徑",
+    "copySessionPathLabel": "對話路徑",
+    "sessionPathCopied": "對話路徑已複製",
+    "resetFontSize": "連按兩下以重設為預設值"
   },
   "fileViewer": {
     "title": "檔案檢視器",
@@ -198,8 +198,11 @@
       "themePaper": "紙張",
       "excludedPaths": "排除路徑",
       "excludedPathsDesc": "排除項（以逗號或換行符分隔）。匹配的目錄或文件將在對話列表中被忽略。",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "字型大小",
+      "fontSizeDesc": "調整對話記錄的基準字型大小。",
+      "threshold": "相似度閾值",
+      "thresholdDesc": "設定匹配容差（值越高越嚴格）。",
+      "restoreDefault": "恢復預設值"
     },
     "sources": {
       "tab": "來源",
@@ -223,22 +226,6 @@
       "allow": "允許",
       "deny": "拒絕",
       "ask": "詢問"
-    },
-    "semantic": {
-      "tab": "語意",
-      "title": "語意搜尋設定",
-      "downloadTitle": "下載本機 AI 模型",
-      "downloadDesc": "若要啟用本機語意/嵌入式匹配，請下載一個小型 ONNX 嵌入式模型（約 15MB）。",
-      "installed": "嵌入式模型已安裝",
-      "deleteModel": "刪除模型檔案",
-      "statusInstalled": "模型狀態：已安裝",
-      "statusNotDownloaded": "模型狀態：未下載",
-      "downloading": "正在下載模型...",
-      "failedDownload": "下載模型失敗：{error}",
-      "downloadBtn": "下載嵌入式模型",
-      "threshold": "相似度閾值",
-      "thresholdDesc": "設定匹配容差（值越高越嚴格）。",
-      "restoreDefault": "恢復預設值"
     },
     "permissions": {
       "tab": "權限",

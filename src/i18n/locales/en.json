@@ -199,7 +199,10 @@
       "excludedPaths": "Excluded Paths",
       "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists.",
       "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript.",
+      "threshold": "Similarity Threshold",
+      "thresholdDesc": "Configure matching tolerance (higher is stricter).",
+      "restoreDefault": "Restore to Default"
     },
     "sources": {
       "tab": "Sources",
@@ -224,29 +227,6 @@
       "allow": "Allow",
       "deny": "Deny",
       "ask": "Ask"
-    },
-    "semantic": {
-      "tab": "Semantic",
-      "title": "Semantic Search Settings",
-      "downloadTitle": "Offline AI Model",
-      "downloadDesc": "Codeoba includes a built-in offline model (all-MiniLM-L6-v2) for local semantic matching. You can check for newer versions or updates online.",
-      "installed": "Embeddings Model Installed",
-      "deleteModel": "Revert to Built-in Model",
-      "statusInstalled": "Model Status: Pre-packaged (Default)",
-      "statusUpdated": "Model Status: Updated Override",
-      "statusNotDownloaded": "Model Status: Not Downloaded (Fallback)",
-      "statusChecking": "Checking model files...",
-      "statusUpToDate": "Model is up to date!",
-      "statusUpdateAvailable": "Update available (90.3 MB)",
-      "confirmUpdateDesc": "A model update is available (approx. 90.3 MB). Would you like to download and install it now?",
-      "confirmDownloadBtn": "Download Update",
-      "confirmCancelBtn": "Cancel",
-      "downloading": "Downloading model update...",
-      "failedDownload": "Failed to update model: {error}",
-      "downloadBtn": "Check for Model Updates",
-      "threshold": "Similarity Threshold",
-      "thresholdDesc": "Configure matching tolerance (higher is stricter).",
-      "restoreDefault": "Restore to Default"
     },
     "permissions": {
       "tab": "Permissions",

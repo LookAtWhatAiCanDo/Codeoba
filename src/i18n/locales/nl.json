@@ -102,16 +102,16 @@
     "aiSummaryTitle": "AI-sessie samenvatting",
     "copyMessageText": "Berichttekst kopiëren",
     "copyToolOutput": "Tool output kopiëren",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "Werkruimtepad kopiëren",
+    "copyWorkspacePathLabel": "Werkruimtepad",
+    "workspacePathCopied": "Werkruimtepad gekopieerd",
+    "copyTitle": "Sessietitel kopiëren",
+    "clickToCopyTitle": "Klik om sessietitel te kopiëren",
+    "titleCopied": "Titel gekopieerd",
+    "copySessionPath": "Sessiepad kopiëren",
+    "copySessionPathLabel": "Sessiepad",
+    "sessionPathCopied": "Sessiepad gekopieerd",
+    "resetFontSize": "Dubbelklik om terug te zetten naar standaard"
   },
   "fileViewer": {
     "title": "Bestandsviewer",
@@ -198,8 +198,11 @@
       "themePaper": "Papier",
       "excludedPaths": "Uitgesloten paden",
       "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "Lettergrootte",
+      "fontSizeDesc": "Pas de basislettergrootte aan voor de transcriptie van het gesprek.",
+      "threshold": "Gelijkenisdrempel",
+      "thresholdDesc": "Stel de matchtolerantie in (hogere waarden zijn strikter).",
+      "restoreDefault": "Standaardinstellingen herstellen"
     },
     "sources": {
       "tab": "Bronnen",
@@ -223,22 +226,6 @@
       "allow": "Toestaan",
       "deny": "Weigeren",
       "ask": "Vragen"
-    },
-    "semantic": {
-      "tab": "Semantisch",
-      "title": "Semantische zoekinstellingen",
-      "downloadTitle": "Lokaal AI-model downloaden",
-      "downloadDesc": "Om lokale semantische/embeddings-matching mogelijk te maken, downloadt u een klein ONNX embeddings-model (ongeveer 15 MB).",
-      "installed": "Embeddingsmodel geïnstalleerd",
-      "deleteModel": "Modelbestanden verwijderen",
-      "statusInstalled": "Modelstatus: Geïnstalleerd",
-      "statusNotDownloaded": "Modelstatus: Niet gedownload",
-      "downloading": "Model downloaden...",
-      "failedDownload": "Downloaden model mislukt: {error}",
-      "downloadBtn": "Embeddingsmodel downloaden",
-      "threshold": "Gelijkenisdrempel",
-      "thresholdDesc": "Stel de matchtolerantie in (hogere waarden zijn strikter).",
-      "restoreDefault": "Standaardinstellingen herstellen"
     },
     "permissions": {
       "tab": "Machtigingen",

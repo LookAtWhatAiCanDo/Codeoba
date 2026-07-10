@@ -102,16 +102,16 @@
     "aiSummaryTitle": "ملخص جلسة الذكاء الاصطناعي",
     "copyMessageText": "نسخ نص الرسالة",
     "copyToolOutput": "نسخ مخرجات الأداة",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "نسخ مسار مساحة العمل",
+    "copyWorkspacePathLabel": "مسار مساحة العمل",
+    "workspacePathCopied": "تم نسخ مسار مساحة العمل",
+    "copyTitle": "نسخ عنوان الجلسة",
+    "clickToCopyTitle": "انقر لنسخ عنوان الجلسة",
+    "titleCopied": "تم نسخ العنوان",
+    "copySessionPath": "نسخ مسار الجلسة",
+    "copySessionPathLabel": "مسار الجلسة",
+    "sessionPathCopied": "تم نسخ مسار الجلسة",
+    "resetFontSize": "انقر نقرًا مزدوجًا لإعادة الضبط إلى الافتراضي"
   },
   "fileViewer": {
     "title": "عارض الملفات",
@@ -198,8 +198,11 @@
       "themePaper": "ورق",
       "excludedPaths": "المسارات المستبعدة",
       "excludedPathsDesc": "الاستثناءات (مفصولة بفواصل أو سطور جديدة). سيتم تجاهل المجلدات أو الملفات المطابقة في قوائم المحادثة.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "حجم الخط",
+      "fontSizeDesc": "ضبط حجم الخط الأساسي لنسخة المحادثة.",
+      "threshold": "عتبة التشابه",
+      "thresholdDesc": "تكوين تحمل المطابقة (الأعلى يعني أكثر صرامة).",
+      "restoreDefault": "استعادة الافتراضي"
     },
     "sources": {
       "tab": "المصادر",
@@ -223,22 +226,6 @@
       "allow": "السماح",
       "deny": "الرفض",
       "ask": "السؤال"
-    },
-    "semantic": {
-      "tab": "دلالي",
-      "title": "إعدادات البحث الدلالي",
-      "downloadTitle": "تنزيل نموذج الذكاء الاصطناعي المحلي",
-      "downloadDesc": "لتمكين المطابقة الدلالية/التضمينات المحلية، قم بتنزيل نموذج تضمينات ONNX صغير (حوالي 15 ميجابايت).",
-      "installed": "تم تثبيت نموذج التضمينات",
-      "deleteModel": "حذف ملفات النموذج",
-      "statusInstalled": "حالة النموذج: مثبت",
-      "statusNotDownloaded": "حالة النموذج: لم يتم تنزيله",
-      "downloading": "جارٍ تنزيل النموذج...",
-      "failedDownload": "فشل تنزيل النموذج: {error}",
-      "downloadBtn": "تنزيل نموذج التضمينات",
-      "threshold": "عتبة التشابه",
-      "thresholdDesc": "تكوين تحمل المطابقة (الأعلى يعني أكثر صرامة).",
-      "restoreDefault": "استعادة الافتراضي"
     },
     "permissions": {
       "tab": "الأذونات",

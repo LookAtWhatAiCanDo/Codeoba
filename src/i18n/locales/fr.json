@@ -39,7 +39,7 @@
     "sortBy": "Trier par",
     "sortRelevance": "Pertinence",
     "sortUpdated": "Mis à jour",
-    "sortTokens": "Tokens",
+    "sortTokens": "Jetons",
     "sortSpeed": "Vitesse",
     "sortTurns": "Tours",
     "sortDuration": "Durée",
@@ -102,16 +102,16 @@
     "aiSummaryTitle": "Résumé de session IA",
     "copyMessageText": "Copier le texte du message",
     "copyToolOutput": "Copier la sortie de l'outil",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "Copier le chemin de l'espace de travail",
+    "copyWorkspacePathLabel": "Chemin de l'espace de travail",
+    "workspacePathCopied": "Chemin de l'espace de travail copié",
+    "copyTitle": "Copier le titre de la session",
+    "clickToCopyTitle": "Cliquez pour copier le titre de la session",
+    "titleCopied": "Titre copié",
+    "copySessionPath": "Copier le chemin de la session",
+    "copySessionPathLabel": "Chemin de la session",
+    "sessionPathCopied": "Chemin de la session copié",
+    "resetFontSize": "Double-cliquer pour réinitialiser par défaut"
   },
   "fileViewer": {
     "title": "Visionneuse de fichiers",
@@ -198,8 +198,11 @@
       "themePaper": "Papier",
       "excludedPaths": "Chemins exclus",
       "excludedPathsDesc": "Exclusions (séparées par des virgules ou des sauts de ligne). Les répertoires ou fichiers correspondants seront ignorés dans les listes de conversation.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "Taille de la police",
+      "fontSizeDesc": "Ajustez la taille de police de base pour la transcription de la conversation.",
+      "threshold": "Seuil de similitude",
+      "thresholdDesc": "Configurez la tolérance de correspondance (plus la valeur est élevée, plus la correspondance est stricte).",
+      "restoreDefault": "Restaurer par défaut"
     },
     "sources": {
       "tab": "Sources",
@@ -223,22 +226,6 @@
       "allow": "Autoriser",
       "deny": "Refuser",
       "ask": "Demander"
-    },
-    "semantic": {
-      "tab": "Sémantique",
-      "title": "Paramètres de recherche sémantique",
-      "downloadTitle": "Télécharger le modèle d'IA local",
-      "downloadDesc": "Pour activer la correspondance sémantique/d'embeddings locale, téléchargez un petit modèle d'embeddings ONNX (environ 15 Mo).",
-      "installed": "Modèle d'embeddings installé",
-      "deleteModel": "Supprimer les fichiers du modèle",
-      "statusInstalled": "Statut du modèle : Installé",
-      "statusNotDownloaded": "Statut du modèle : Non téléchargé",
-      "downloading": "Téléchargement du modèle...",
-      "failedDownload": "Échec du téléchargement du modèle : {error}",
-      "downloadBtn": "Télécharger le modèle d'embeddings",
-      "threshold": "Seuil de similitude",
-      "thresholdDesc": "Configurez la tolérance de correspondance (plus la valeur est élevée, plus la correspondance est stricte).",
-      "restoreDefault": "Restaurer par défaut"
     },
     "permissions": {
       "tab": "Autorisations",

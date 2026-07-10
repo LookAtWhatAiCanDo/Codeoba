@@ -102,16 +102,16 @@
     "aiSummaryTitle": "AIセッションの概要",
     "copyMessageText": "メッセージテキストをコピー",
     "copyToolOutput": "ツール出力をコピー",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "ワークスペースパスをコピー",
+    "copyWorkspacePathLabel": "ワークスペースパス",
+    "workspacePathCopied": "ワークスペースパスがコピーされました",
+    "copyTitle": "セッションタイトルをコピー",
+    "clickToCopyTitle": "クリックしてセッションタイトルをコピー",
+    "titleCopied": "タイトルがコピーされました",
+    "copySessionPath": "セッションパスをコピー",
+    "copySessionPathLabel": "セッションパス",
+    "sessionPathCopied": "セッションパスがコピーされました",
+    "resetFontSize": "ダブルクリックしてデフォルトに戻す"
   },
   "fileViewer": {
     "title": "ファイルビューア",
@@ -198,8 +198,11 @@
       "themePaper": "ペーパー",
       "excludedPaths": "除外するパス",
       "excludedPathsDesc": "除外設定（カンマまたは改行区切り）。一致するディレクトリやファイルは会話一覧から無視されます。",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "フォントサイズ",
+      "fontSizeDesc": "会話履歴のベースフォントサイズを調整します。",
+      "threshold": "類似度しきい値",
+      "thresholdDesc": "マッチングの許容度を設定します（値が高いほど厳格になります）。",
+      "restoreDefault": "デフォルトに戻す"
     },
     "sources": {
       "tab": "ソース",
@@ -223,22 +226,6 @@
       "allow": "許可",
       "deny": "拒否",
       "ask": "確認"
-    },
-    "semantic": {
-      "tab": "セマンティック",
-      "title": "セマンティック検索設定",
-      "downloadTitle": "ローカルAIモデルのダウンロード",
-      "downloadDesc": "ローカルのセマンティック/埋め込みマッチングを有効にするには、小さなONNX埋め込みモデル（約15MB）をダウンロードしてください。",
-      "installed": "埋め込みモデルインストール済み",
-      "deleteModel": "モデルファイルを削除",
-      "statusInstalled": "モデルステータス：インストール済み",
-      "statusNotDownloaded": "モデルステータス：未ダウンロード",
-      "downloading": "モデルをダウンロード中...",
-      "failedDownload": "モデルのダウンロードに失敗しました: {error}",
-      "downloadBtn": "埋め込みモデルをダウンロード",
-      "threshold": "類似度しきい値",
-      "thresholdDesc": "マッチングの許容度を設定します（値が高いほど厳格になります）。",
-      "restoreDefault": "デフォルトに戻す"
     },
     "permissions": {
       "tab": "権限",

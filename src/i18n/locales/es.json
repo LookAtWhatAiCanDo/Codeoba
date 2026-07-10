@@ -102,16 +102,16 @@
     "aiSummaryTitle": "Resumen de sesión IA",
     "copyMessageText": "Copiar texto del mensaje",
     "copyToolOutput": "Copiar salida de herramienta",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "Copiar ruta del espacio de trabajo",
+    "copyWorkspacePathLabel": "Ruta del espacio de trabajo",
+    "workspacePathCopied": "Ruta del espacio de trabajo copiada",
+    "copyTitle": "Copiar título de sesión",
+    "clickToCopyTitle": "Haga clic para copiar el título de la sesión",
+    "titleCopied": "Título copiado",
+    "copySessionPath": "Copiar ruta de sesión",
+    "copySessionPathLabel": "Ruta de sesión",
+    "sessionPathCopied": "Ruta de sesión copiada",
+    "resetFontSize": "Haga doble clic para restablecer al valor predeterminado"
   },
   "fileViewer": {
     "title": "Visor de archivos",
@@ -167,7 +167,7 @@
       "customThemeSurface": "Superficie",
       "customThemeAccent1": "Acento primario",
       "customThemeAccent2": "Acento secundario",
-      "customThemeHue": "Color",
+      "customThemeHue": "Matiz",
       "customThemeSat": "Vivacidad",
       "customThemeLight": "Brillo",
       "customThemeRollTooltip": "Aleatorizar colores complementarios",
@@ -198,8 +198,11 @@
       "themePaper": "Papel",
       "excludedPaths": "Rutas excluidas",
       "excludedPathsDesc": "Exclusiones (separadas por comas o saltos de línea). Los directorios o archivos coincidentes se ignorarán en las listas de conversación.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "Tamaño de fuente",
+      "fontSizeDesc": "Ajuste el tamaño de fuente base para la transcripción de la conversación.",
+      "threshold": "Umbral de similitud",
+      "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos).",
+      "restoreDefault": "Restaurar valores predeterminados"
     },
     "sources": {
       "tab": "Fuentes",
@@ -223,22 +226,6 @@
       "allow": "Permitir",
       "deny": "Denegar",
       "ask": "Preguntar"
-    },
-    "semantic": {
-      "tab": "Semántica",
-      "title": "Configuración de búsqueda semántica",
-      "downloadTitle": "Descargar modelo de IA local",
-      "downloadDesc": "Para habilitar la búsqueda semántica/coincidencia de embeddings local, descargue un modelo pequeño de embeddings ONNX (aprox. 15 MB).",
-      "installed": "Modelo de embeddings instalado",
-      "deleteModel": "Eliminar archivos del modelo",
-      "statusInstalled": "Estado del modelo: Instalado",
-      "statusNotDownloaded": "Estado del modelo: No descargado",
-      "downloading": "Descargando modelo...",
-      "failedDownload": "Error al descargar el modelo: {error}",
-      "downloadBtn": "Descargar modelo de embeddings",
-      "threshold": "Umbral de similitud",
-      "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos).",
-      "restoreDefault": "Restaurar valores predeterminados"
     },
     "permissions": {
       "tab": "Permisos",

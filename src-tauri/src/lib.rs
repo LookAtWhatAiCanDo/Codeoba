@@ -139,6 +139,12 @@ pub fn run() {
         .manage(search::SearchIndexState::new())
         .manage(groups::GroupState::new())
         .setup(|app| {
+            // Clean up legacy model files from the home directory to free up disk space
+            let model_dir = crate::search::get_home_model_dir();
+            if model_dir.exists() {
+                let _ = std::fs::remove_dir_all(&model_dir);
+            }
+
             // Ensure encryption key is created synchronously on startup to prevent background collisions
             let _ = crate::keyring::get_or_create_cache_key();
             
@@ -280,11 +286,6 @@ pub fn run() {
             commands::get_indexing_progress,
             commands::is_updater_active,
             commands::get_resolved_updater_endpoints,
-            commands::get_semantic_model_status,
-            commands::is_semantic_model_overridden,
-            commands::check_semantic_model_update,
-            commands::download_semantic_model,
-            commands::delete_semantic_model,
             commands::resolve_and_read_file,
             commands::save_file_permission,
             commands::get_all_permissions,

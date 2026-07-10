@@ -1469,8 +1469,8 @@ fn test_search_effectiveness() {
     assert_eq!(results_onnx[0].session.id, "session-ml");
 
     // 3. Semantic Search Testing (using actual OnnxSemanticEmbedder conditionally)
-    if crate::search::is_model_downloaded(None::<&tauri::AppHandle>) {
-        let (model_path, vocab_path) = crate::search::resolve_model_paths(None::<&tauri::AppHandle>);
+    let (model_path, vocab_path) = crate::search::resolve_model_paths(None::<&tauri::AppHandle>);
+    if model_path.exists() && vocab_path.exists() {
         let embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)
             .expect("Failed to initialize OnnxSemanticEmbedder");
 

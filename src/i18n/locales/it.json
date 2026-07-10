@@ -102,16 +102,16 @@
     "aiSummaryTitle": "Riepilogo sessione IA",
     "copyMessageText": "Copia testo del messaggio",
     "copyToolOutput": "Copia output dello strumento",
-    "copyWorkspacePath": "Copy Workspace Path",
-    "copyWorkspacePathLabel": "Workspace Path",
-    "workspacePathCopied": "Workspace Path Copied",
-    "copyTitle": "Copy Session Title",
-    "clickToCopyTitle": "Click to copy session title",
-    "titleCopied": "Title Copied",
-    "copySessionPath": "Copy Session Path",
-    "copySessionPathLabel": "Session Path",
-    "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "copyWorkspacePath": "Copia percorso dell'area di lavoro",
+    "copyWorkspacePathLabel": "Percorso dell'area di lavoro",
+    "workspacePathCopied": "Percorso dell'area di lavoro copiato",
+    "copyTitle": "Copia titolo della sessione",
+    "clickToCopyTitle": "Fai clic per copiare il titolo della sessione",
+    "titleCopied": "Titolo copiato",
+    "copySessionPath": "Copia percorso della sessione",
+    "copySessionPathLabel": "Percorso della sessione",
+    "sessionPathCopied": "Percorso della sessione copiato",
+    "resetFontSize": "Fai doppio clic per ripristinare il valore predefinito"
   },
   "fileViewer": {
     "title": "Visualizzatore file",
@@ -198,8 +198,11 @@
       "themePaper": "Carta",
       "excludedPaths": "Percorsi esclusi",
       "excludedPathsDesc": "Esclusioni (separate da virgola o a capo). I cataloghi o file corrispondenti saranno ignorati nelle liste di conversazione.",
-      "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSize": "Dimensione del carattere",
+      "fontSizeDesc": "Regola la dimensione del carattere di base per la trascrizione della conversazione.",
+      "threshold": "Soglia di similarità",
+      "thresholdDesc": "Configura la tolleranza di corrispondenza (valori più alti sono più restrittivi).",
+      "restoreDefault": "Ripristina predefinito"
     },
     "sources": {
       "tab": "Sorgenti",
@@ -223,22 +226,6 @@
       "allow": "Consenti",
       "deny": "Nega",
       "ask": "Chiedi"
-    },
-    "semantic": {
-      "tab": "Semantica",
-      "title": "Impostazioni di ricerca semantica",
-      "downloadTitle": "Scarica modello IA locale",
-      "downloadDesc": "Per abilitare la corrispondenza semantica/embedding locale, scarica un piccolo modello di embedding ONNX (circa 15 MB).",
-      "installed": "Modello embeddings installato",
-      "deleteModel": "Elimina file modello",
-      "statusInstalled": "Stato modello: Installato",
-      "statusNotDownloaded": "Stato modello: Non scaricato",
-      "downloading": "Download del modello in corso...",
-      "failedDownload": "Impossibile scaricare il modello: {error}",
-      "downloadBtn": "Scarica modello embeddings",
-      "threshold": "Soglia di similarità",
-      "thresholdDesc": "Configura la tolleranza di corrispondenza (valori più alti sono più restrittivi).",
-      "restoreDefault": "Ripristina predefinito"
     },
     "permissions": {
       "tab": "Permessi",
