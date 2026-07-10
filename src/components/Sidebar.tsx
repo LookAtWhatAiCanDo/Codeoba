@@ -1854,7 +1854,7 @@ const SessionCard = (props: SessionCardProps) => {
             <Loader2 class="w-3.5 h-3.5 text-accent animate-spin" />
           </Show>
           <Show when={props.session.isPinned}>
-            <Pin class="w-3.5 h-3.5 text-accent animate-pulse" />
+            <Pin class="w-3.5 h-3.5 text-accent" />
           </Show>
           <Show when={props.session.isArchived}>
             <Archive class="w-3.5 h-3.5 text-text-secondary" />
@@ -2028,7 +2028,7 @@ export const GroupTreeItem = (props: GroupTreeItemProps) => {
             
             <div class="flex items-center gap-1.5 flex-shrink-0 pointer-events-none">
               <Show when={props.node.isPinned}>
-                <Pin class={`w-3 h-3 animate-pulse ${isDragOver() ? "text-white" : "text-accent"}`} />
+                <Pin class={`w-3 h-3 ${isDragOver() ? "text-white" : "text-accent"}`} />
               </Show>
               <Show when={!props.node.isPinned && props.node.containsPinnedSessions}>
                 <div class={`w-1.5 h-1.5 rounded-full ${isDragOver() ? "bg-white" : "bg-accent"}`} />
