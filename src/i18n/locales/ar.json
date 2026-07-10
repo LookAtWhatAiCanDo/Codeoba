@@ -11,7 +11,8 @@
     "assistant": "المساعد",
     "loading": "جاري التحميل...",
     "showFullContent": "عرض المحتوى الكامل",
-    "bugTracker": "فتح متتبع الأخطاء / الإبلاغ عن مشكلة"
+    "bugTracker": "فتح متتبع الأخطاء / الإبلاغ عن مشكلة",
+    "copied": "تم النسخ!"
   },
   "sidebar": {
     "title": "الجلسات",
@@ -86,12 +87,6 @@
     "adapter": "المحول",
     "deleteSession": "حذف الجلسة",
     "confirmDelete": "هل أنت متأكد من رغبتك في حذف هذه الجلسة؟ لا يمكن التراجع عن هذا الإجراء.",
-    "copyCwd": "نسخ مسار العمل (Cwd)",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "تم نسخ مسار العمل",
-    "copyPath": "نسخ المسار",
-    "copyPathLabel": "المسار",
-    "pathCopied": "تم نسخ المسار",
     "compactedContext": "السياق المضغوط",
     "compactionTook": "استغرق الضغط",
     "tokenUsage": "استخدام الرموز",
@@ -104,7 +99,17 @@
     "startedOn": "بدأ في",
     "aiSummaryTitle": "ملخص جلسة الذكاء الاصطناعي",
     "copyMessageText": "نسخ نص الرسالة",
-    "copyToolOutput": "نسخ مخرجات الأداة"
+    "copyToolOutput": "نسخ مخرجات الأداة",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "عارض الملفات",
@@ -190,7 +195,9 @@
       "themeNeon": "نيون",
       "themePaper": "ورق",
       "excludedPaths": "المسارات المستبعدة",
-      "excludedPathsDesc": "الاستثناءات (مفصولة بفواصل أو سطور جديدة). سيتم تجاهل المجلدات أو الملفات المطابقة في قوائم المحادثة."
+      "excludedPathsDesc": "الاستثناءات (مفصولة بفواصل أو سطور جديدة). سيتم تجاهل المجلدات أو الملفات المطابقة في قوائم المحادثة.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "المصادر",

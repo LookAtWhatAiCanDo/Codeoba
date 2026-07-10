@@ -11,7 +11,8 @@
     "assistant": "Assistent",
     "loading": "Laden...",
     "showFullContent": "Volledige inhoud weergeven",
-    "bugTracker": "Open Bug Tracker / Dien een probleem in"
+    "bugTracker": "Open Bug Tracker / Dien een probleem in",
+    "copied": "Gekopieerd!"
   },
   "sidebar": {
     "title": "Sessies",
@@ -86,12 +87,6 @@
     "adapter": "Adapter",
     "deleteSession": "Sessie verwijderen",
     "confirmDelete": "Weet u zeker dat u deze sessie wilt verwijderen? Deze actie kan niet ongedaan gemaakt worden.",
-    "copyCwd": "Cwd kopiëren",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd gekopieerd",
-    "copyPath": "Pad kopiëren",
-    "copyPathLabel": "Pad",
-    "pathCopied": "Pad gekopieerd",
     "compactedContext": "Gecompacteerde context",
     "compactionTook": "Compactie duurde",
     "tokenUsage": "Tokengebruik",
@@ -104,7 +99,17 @@
     "startedOn": "Gestart op",
     "aiSummaryTitle": "AI-sessie samenvatting",
     "copyMessageText": "Berichttekst kopiëren",
-    "copyToolOutput": "Tool output kopiëren"
+    "copyToolOutput": "Tool output kopiëren",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Bestandsviewer",
@@ -190,7 +195,9 @@
       "themeNeon": "Neon",
       "themePaper": "Papier",
       "excludedPaths": "Uitgesloten paden",
-      "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten."
+      "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Bronnen",

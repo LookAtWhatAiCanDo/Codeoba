@@ -150,7 +150,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
               <FileText class="w-5 h-5 text-accent" />
               <div class="flex flex-col">
                 <h3 class="text-sm font-bold text-text-primary tracking-wide">{fileName()}</h3>
-                <span class="text-[10px] text-text-secondary/70 font-mono truncate max-w-2xl">
+                <span class="text-[0.625rem] text-text-secondary/70 font-mono truncate max-w-2xl">
                   {canonicalPath() || filePath()}
                 </span>
               </div>
@@ -214,7 +214,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                   <p class="text-xs text-text-secondary leading-relaxed">
                     {confirmReason() || t("fileViewer.noPermissionDesc")}
                   </p>
-                  <pre dir="ltr" class="bg-surface border border-border rounded-xl p-3 text-[10.5px] font-mono text-left truncate text-text-primary/90 mt-2 select-all">
+                  <pre dir="ltr" class="bg-surface border border-border rounded-xl p-3 text-[0.65625rem] font-mono text-left truncate text-text-primary/90 mt-2 select-all">
                     {canonicalPath()}
                   </pre>
                 </div>

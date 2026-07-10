@@ -28,7 +28,7 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
               <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
                 {t("settings.sources.detectedMultiPromptTitle")}
               </h3>
-              <span class="text-[9px] font-mono bg-accent/15 border border-accent/20 rounded text-accent px-1.5 py-0.5 font-semibold">
+              <span class="text-[0.5625rem] font-mono bg-accent/15 border border-accent/20 rounded text-accent px-1.5 py-0.5 font-semibold">
                 {t("settings.sources.detectedMultiPromptBadge")}
               </span>
             </div>
@@ -64,7 +64,7 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
           </div>
 
           {/* Reassurance Callouts */}
-          <div class="flex flex-col gap-1.5 p-3 rounded-xl bg-background/50 border border-border/40 text-[10px] text-text-secondary leading-relaxed">
+          <div class="flex flex-col gap-1.5 p-3 rounded-xl bg-background/50 border border-border/40 text-[0.625rem] text-text-secondary leading-relaxed">
             <div>{t("settings.sources.detectedMultiPromptFootnotePrivate")}</div>
             <div>{t("settings.sources.detectedMultiPromptFootnoteEmpty")}</div>
           </div>

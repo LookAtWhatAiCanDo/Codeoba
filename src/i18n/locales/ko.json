@@ -11,7 +11,8 @@
     "assistant": "어시스턴트",
     "loading": "로딩 중...",
     "showFullContent": "전체 내용 표시",
-    "bugTracker": "버그 추적기 열기 / 이슈 등록"
+    "bugTracker": "버그 추적기 열기 / 이슈 등록",
+    "copied": "복사됨!"
   },
   "sidebar": {
     "title": "세션",
@@ -86,12 +87,6 @@
     "adapter": "어댑터",
     "deleteSession": "세션 삭제",
     "confirmDelete": "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
-    "copyCwd": "Cwd 복사",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd 복사됨",
-    "copyPath": "경로 복사",
-    "copyPathLabel": "경로",
-    "pathCopied": "경로 복사됨",
     "compactedContext": "압축된 컨텍스트",
     "compactionTook": "압축 소요 시간",
     "tokenUsage": "토큰 사용량",
@@ -104,7 +99,17 @@
     "startedOn": "시작일",
     "aiSummaryTitle": "AI 세션 요약",
     "copyMessageText": "메시지 텍스트 복사",
-    "copyToolOutput": "도구 출력 복사"
+    "copyToolOutput": "도구 출력 복사",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "파일 뷰어",
@@ -190,7 +195,9 @@
       "themeNeon": "네온",
       "themePaper": "종이",
       "excludedPaths": "제외할 경로",
-      "excludedPathsDesc": "제외 항목(쉼표 또는 줄바꿈으로 구분). 일치하는 디렉터리나 파일은 대화 목록에서 무시됩니다."
+      "excludedPathsDesc": "제외 항목(쉼표 또는 줄바꿈으로 구분). 일치하는 디렉터리나 파일은 대화 목록에서 무시됩니다.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "소스",

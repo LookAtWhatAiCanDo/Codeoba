@@ -53,6 +53,8 @@ interface TitleBarProps {
     progress: number;
     currentSource: string;
   } | null;
+  fontSize?: number;
+  onFontSizeChange?: (val: number) => void;
 }
 
 export const TitleBar = (props: TitleBarProps) => {
@@ -115,8 +117,8 @@ export const TitleBar = (props: TitleBarProps) => {
         title={props.sidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
       >
-        <Show when={props.sidebarCollapsed} fallback={<PanelLeftClose class="w-4 h-4" />}>
-          <PanelLeftOpen class="w-4 h-4" />
+        <Show when={props.sidebarCollapsed} fallback={<PanelLeftClose class="w-[16px] h-[16px]" />}>
+          <PanelLeftOpen class="w-[16px] h-[16px]" />
         </Show>
       </button>
 
@@ -128,7 +130,7 @@ export const TitleBar = (props: TitleBarProps) => {
         title="Go Back"
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ArrowLeft class="w-4 h-4" />
+        <ArrowLeft class="w-[16px] h-[16px]" />
       </button>
 
       <button
@@ -137,7 +139,7 @@ export const TitleBar = (props: TitleBarProps) => {
         title="Go Forward"
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ArrowRight class="w-4 h-4" />
+        <ArrowRight class="w-[16px] h-[16px]" />
       </button>
 
       <button
@@ -147,7 +149,7 @@ export const TitleBar = (props: TitleBarProps) => {
           props.selectedSession === null ? "text-accent bg-accent/10 border-accent/20" : "border-transparent text-text-secondary"
         }`}
       >
-        <Home class="w-4 h-4" />
+        <Home class="w-[16px] h-[16px]" />
       </button>
 
       <div class={`inline-flex items-center gap-1.5 transition-all ${props.isRebuilding ? "px-1.5" : ""}`}>
@@ -166,9 +168,9 @@ export const TitleBar = (props: TitleBarProps) => {
         >
           <Show 
             when={props.isRebuilding || props.isLoading} 
-            fallback={<RotateCwClean class="w-4 h-4" />}
+            fallback={<RotateCwClean class="w-[16px] h-[16px]" />}
           >
-            <RotateCwClean class="w-4 h-4 animate-spin origin-center" />
+            <RotateCwClean class="w-[16px] h-[16px] animate-spin origin-center" />
           </Show>
         </button>
         <Show when={props.isRebuilding && props.indexingProgress}>
@@ -185,7 +187,7 @@ export const TitleBar = (props: TitleBarProps) => {
         title={t("settings.title")}
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
       >
-        <Settings class="w-4 h-4" />
+        <Settings class="w-[16px] h-[16px]" />
       </button>
     </div>
   );
@@ -202,44 +204,111 @@ export const TitleBar = (props: TitleBarProps) => {
       <div class="flex items-center pointer-events-none" style={{ gap: "16px" }}>
         <div class="flex items-center pointer-events-auto" style={{ gap: "8px", width: "176px", "flex-shrink": 0 }} data-tauri-drag-region>
           <Terminal class="w-[18px] h-[18px] text-accent animate-pulse" data-tauri-drag-region />
-          <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none" data-tauri-drag-region>
-            CODEOBA
-          </span>
-          <span class="text-[9px] font-mono bg-surface border border-white/10 rounded text-accent font-semibold leading-none w-[46px] h-[18px] inline-flex items-center justify-center" data-tauri-drag-region>
-            v{props.appVersion}
-          </span>
+          <div class="flex items-baseline" style={{ gap: "8px" }} data-tauri-drag-region>
+            <span class="font-bold tracking-widest text-[14px] text-text-primary leading-none" data-tauri-drag-region>
+              CODEOBA
+            </span>
+            <span 
+              class="text-[11px] font-mono bg-surface border border-white/10 text-accent font-semibold leading-none inline-flex items-center justify-center" 
+              style={{
+                padding: "2px 6px",
+                "border-radius": "4px"
+              }}
+              data-tauri-drag-region
+            >
+              v{props.appVersion}
+            </span>
+          </div>
         </div>
         {renderNavigationPill()}
       </div>
 
-      <div class="flex items-center gap-3 pointer-events-none">
+      <div class="flex items-center pointer-events-none" style={{ gap: "12px" }}>
         <div 
-          class="hidden md:flex items-center gap-2 text-[11px] font-medium text-text-secondary bg-surface/30 px-3 py-1 rounded-full border border-border/40 pointer-events-auto"
+          class="hidden md:flex items-center text-text-secondary bg-surface/30 rounded-full border border-border/40 pointer-events-auto"
+          style={{
+            padding: "4px 12px",
+            gap: "8px",
+            "font-size": "14px",
+            "font-weight": "500"
+          }}
           data-tauri-drag-region
         >
           <Show 
             when={props.selectedSession} 
             fallback={
-              <span class="text-accent font-semibold flex items-center gap-1" data-tauri-drag-region>
-                <Layers class="w-3 h-3" data-tauri-drag-region /> {t("dashboard.globalStats")}
+              <span class="text-accent font-semibold flex items-center" style={{ gap: "4px" }} data-tauri-drag-region>
+                <Layers style={{ width: "12px", height: "12px" }} data-tauri-drag-region /> {t("dashboard.globalStats")}
               </span>
             }
           >
-            <span class="text-text-secondary/70 truncate max-w-[120px]" title={props.selectedSession?.cwd || ""} data-tauri-drag-region>
+            <span class="text-text-secondary/70" title={props.selectedSession?.cwd || ""} data-tauri-drag-region>
               {props.selectedSession?.cwd?.split(/[/\\]/).pop() || "Root"}
             </span>
             <span class="text-border" data-tauri-drag-region>/</span>
-            <span class="text-text-primary truncate max-w-[160px]" title={props.selectedSession?.threadName || "Untitled"} data-tauri-drag-region>
+            <span class="text-text-primary" title={props.selectedSession?.threadName || "Untitled"} data-tauri-drag-region>
               {props.selectedSession?.threadName || "Untitled"}
             </span>
           </Show>
         </div>
+        <Show when={props.fontSize && props.onFontSizeChange}>
+          <div 
+            class="flex items-center bg-surface/40 hover:bg-surface/60 border border-border/60 rounded-xl text-text-secondary select-none box-border pointer-events-auto"
+            style={{
+              height: "28px",
+              width: "90px",
+              padding: "2px 6px",
+              gap: "4px",
+              "font-size": "11px"
+            }}
+          >
+            <button 
+              onClick={() => props.onFontSizeChange!(Math.max(10, props.fontSize! - 1))}
+              class="hover:bg-background hover:text-text-primary rounded transition-all cursor-pointer flex items-center justify-center font-bold text-xs"
+              style={{
+                width: "16px",
+                height: "16px",
+                "font-size": "11px"
+              }}
+              title="Decrease Font Size"
+            >
+              -
+            </button>
+            <span 
+              onDblClick={() => props.onFontSizeChange!(15)}
+              class="font-mono text-center cursor-pointer hover:text-text-primary select-none flex-grow"
+              style={{
+                "font-size": "11px"
+              }}
+              title={t("detailPane.resetFontSize") || "Double click to reset to default"}
+            >
+              {props.fontSize}px
+            </span>
+            <button 
+              onClick={() => props.onFontSizeChange!(Math.min(24, props.fontSize! + 1))}
+              class="hover:bg-background hover:text-text-primary rounded transition-all cursor-pointer flex items-center justify-center font-bold text-xs"
+              style={{
+                width: "16px",
+                height: "16px",
+                "font-size": "11px"
+              }}
+              title="Increase Font Size"
+            >
+              +
+            </button>
+          </div>
+        </Show>
         <button
           onClick={handleOpenIssues}
           title={t("common.bugTracker")}
-          class="p-1.5 bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center pointer-events-auto"
+          class="bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center pointer-events-auto"
+          style={{
+            width: "28px",
+            height: "28px",
+            padding: "6px"
+          }}
         >
-          <Bug class="w-4 h-4 text-accent" />
+          <Bug style={{ width: "14px", height: "14px" }} class="text-accent" />
         </button>
       </div>
 
@@ -251,7 +320,7 @@ export const TitleBar = (props: TitleBarProps) => {
             onClick={handleMinimize}
             class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
           >
-            <svg class="w-3.5 h-3.5" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg class="w-[14px] h-[14px]" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5">
               <line x1="0" y1="0.5" x2="10" y2="0.5" />
             </svg>
           </button>
@@ -264,12 +333,12 @@ export const TitleBar = (props: TitleBarProps) => {
             <Show 
               when={isMaximized()} 
               fallback={
-                <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                <svg class="w-[12px] h-[12px]" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="0.5" y="0.5" width="9" height="9" />
                 </svg>
               }
             >
-              <svg class="w-3 h-3" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+              <svg class="w-[12px] h-[12px]" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
                 <rect x="0.5" y="2.5" width="7" height="7" />
                 <path d="M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
               </svg>
@@ -281,7 +350,7 @@ export const TitleBar = (props: TitleBarProps) => {
             onClick={handleClose}
             class="h-full w-11 flex items-center justify-center win-close-btn transition-colors cursor-pointer"
           >
-            <svg class="w-3.5 h-3.5" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg class="w-[14px] h-[14px]" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
             </svg>
           </button>

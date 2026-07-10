@@ -11,7 +11,8 @@
     "assistant": "Assistant",
     "loading": "Loading...",
     "showFullContent": "Show full content",
-    "bugTracker": "Open Bug Tracker / File an Issue"
+    "bugTracker": "Open Bug Tracker / File an Issue",
+    "copied": "Copied!"
   },
   "sidebar": {
     "title": "Sessions",
@@ -86,12 +87,6 @@
     "adapter": "Adapter",
     "deleteSession": "Delete Session",
     "confirmDelete": "Are you sure you want to delete this session? This action cannot be undone.",
-    "copyCwd": "Copy Cwd",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd Copied",
-    "copyPath": "Copy Path",
-    "copyPathLabel": "Path",
-    "pathCopied": "Path Copied",
     "compactedContext": "Compacted context",
     "compactionTook": "Compaction took",
     "tokenUsage": "Token Usage",
@@ -104,7 +99,17 @@
     "startedOn": "Started On",
     "aiSummaryTitle": "AI Session Summary",
     "copyMessageText": "Copy message text",
-    "copyToolOutput": "Copy tool output"
+    "copyToolOutput": "Copy tool output",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "File Viewer",
@@ -190,7 +195,9 @@
       "themeNeon": "Neon",
       "themePaper": "Paper",
       "excludedPaths": "Excluded Paths",
-      "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists."
+      "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Sources",

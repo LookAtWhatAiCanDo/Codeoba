@@ -94,7 +94,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
           {/* Status & Progress Bar */}
           <Show when={props.isUpdating}>
             <div class="space-y-2">
-              <div class="flex justify-between text-[10px] font-semibold text-text-secondary">
+              <div class="flex justify-between text-[0.625rem] font-semibold text-text-secondary">
                 <span>{t("updater.downloading", { progress: props.updateProgress })}</span>
                 <span class="text-accent">{props.updateProgress}%</span>
               </div>
@@ -109,7 +109,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
 
           {/* Error Message */}
           <Show when={props.updateError}>
-            <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[10px] text-red-400">
+            <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[0.625rem] text-red-400">
               <AlertCircle class="w-4 h-4 flex-shrink-0" />
               <span class="truncate flex-1">{t("updater.failed", { error: props.updateError || "" })}</span>
             </div>

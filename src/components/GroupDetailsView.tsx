@@ -198,7 +198,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                 }`}
               >
                 <span class="truncate text-xs">{g.name}</span>
-                <span class={`px-1.5 py-0.5 border text-[9px] font-bold rounded uppercase flex-shrink-0 ${getStatusBadgeClass(g.status || "Active")}`}>
+                <span class={`px-1.5 py-0.5 border text-[0.5625rem] font-bold rounded uppercase flex-shrink-0 ${getStatusBadgeClass(g.status || "Active")}`}>
                   {g.status || "Active"}
                 </span>
               </div>
@@ -230,7 +230,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
           <div class="flex items-center justify-between border-b border-border pb-4 gap-4">
             <div class="min-w-0">
               <h1 class="text-lg font-bold text-text-primary truncate">{activeGroup()?.name}</h1>
-              <p class="text-[10px] text-text-secondary/50 mt-1">
+              <p class="text-[0.625rem] text-text-secondary/50 mt-1">
                 Last updated {activeGroup()?.updatedAt ? new Date(activeGroup()!.updatedAt).toLocaleString() : "Never"}
               </p>
             </div>
@@ -343,7 +343,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                     <select
                       value={task.associatedSessionId || ""}
                       onChange={(e) => handleAssociateSession(task.id, e.currentTarget.value || null)}
-                      class="bg-surface/60 border border-border/50 text-[10px] rounded px-1.5 py-0.5 focus:border-accent outline-none max-w-[130px] truncate text-text-secondary hover:text-text-primary cursor-pointer"
+                      class="bg-surface/60 border border-border/50 text-[0.625rem] rounded px-1.5 py-0.5 focus:border-accent outline-none max-w-[130px] truncate text-text-secondary hover:text-text-primary cursor-pointer"
                     >
                       <option value="">No Session Link</option>
                       <For each={groupSessions()}>
@@ -387,9 +387,9 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                   >
                     <div class="min-w-0 flex-grow mr-4">
                       <span class="font-semibold text-text-primary truncate block">{session.threadName || "Untitled"}</span>
-                      <span class="text-[10px] text-text-secondary/60 mt-0.5 truncate block">{session.snippet || "No snippet text."}</span>
+                      <span class="text-[0.625rem] text-text-secondary/60 mt-0.5 truncate block">{session.snippet || "No snippet text."}</span>
                     </div>
-                    <span class="text-[10px] text-text-secondary/50 flex-shrink-0">
+                    <span class="text-[0.625rem] text-text-secondary/50 flex-shrink-0">
                       {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : "Never"}
                     </span>
                   </div>

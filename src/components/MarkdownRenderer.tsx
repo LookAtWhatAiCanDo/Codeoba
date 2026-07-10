@@ -169,7 +169,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       <div
         ref={containerRef}
         onClick={handleLinkClick}
-        class="markdown-body text-text-primary overflow-x-hidden break-words font-sans text-[15px]"
+        class="markdown-body text-text-primary overflow-x-hidden break-words font-sans"
         innerHTML={htmlContent()}
       />
       {isTooLarge() && !isExpanded() && (

@@ -11,7 +11,8 @@
     "assistant": "Assistente",
     "loading": "Carregando...",
     "showFullContent": "Mostrar conteúdo completo",
-    "bugTracker": "Abrir rastreador de bugs / Registrar um problema"
+    "bugTracker": "Abrir rastreador de bugs / Registrar um problema",
+    "copied": "Copiado!"
   },
   "sidebar": {
     "title": "Sessões",
@@ -86,12 +87,6 @@
     "adapter": "Adaptador",
     "deleteSession": "Excluir sessão",
     "confirmDelete": "Tem certeza de que deseja excluir esta sessão? Esta ação não pode ser desfeita.",
-    "copyCwd": "Copiar Cwd",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd copiado",
-    "copyPath": "Copiar caminho",
-    "copyPathLabel": "Caminho",
-    "pathCopied": "Caminho copiado",
     "compactedContext": "Contexto compactado",
     "compactionTook": "A compactação levou",
     "tokenUsage": "Uso de tokens",
@@ -104,7 +99,17 @@
     "startedOn": "Iniciado em",
     "aiSummaryTitle": "Resumo da sessão IA",
     "copyMessageText": "Copiar texto da mensagem",
-    "copyToolOutput": "Copiar saída da ferramenta"
+    "copyToolOutput": "Copiar saída da ferramenta",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Visualizador de arquivos",
@@ -190,7 +195,9 @@
       "themeNeon": "Neon",
       "themePaper": "Papel",
       "excludedPaths": "Caminhos excluídos",
-      "excludedPathsDesc": "Exclusões (separadas por vírgulas ou quebras de linha). Os diretórios ou arquivos correspondentes serão ignorados nas listas de conversas."
+      "excludedPathsDesc": "Exclusões (separadas por vírgulas ou quebras de linha). Os diretórios ou arquivos correspondentes serão ignorados nas listas de conversas.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Fontes",

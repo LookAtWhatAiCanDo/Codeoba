@@ -11,7 +11,8 @@
     "assistant": "Assistente",
     "loading": "Caricamento...",
     "showFullContent": "Mostra contenuto completo",
-    "bugTracker": "Apri Bug Tracker/Invia un problema"
+    "bugTracker": "Apri Bug Tracker/Invia un problema",
+    "copied": "Copiato!"
   },
   "sidebar": {
     "title": "Sessioni",
@@ -86,12 +87,6 @@
     "adapter": "Adattatore",
     "deleteSession": "Elimina sessione",
     "confirmDelete": "Sei sicuro di voler eliminare questa sessione? Questa azione non può essere annullata.",
-    "copyCwd": "Copia Cwd",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd copiato",
-    "copyPath": "Copia percorso",
-    "copyPathLabel": "Percorso",
-    "pathCopied": "Percorso copiato",
     "compactedContext": "Contesto compattato",
     "compactionTook": "La compattazione ha richiesto",
     "tokenUsage": "Utilizzo token",
@@ -104,7 +99,17 @@
     "startedOn": "Iniziato il",
     "aiSummaryTitle": "Riepilogo sessione IA",
     "copyMessageText": "Copia testo del messaggio",
-    "copyToolOutput": "Copia output dello strumento"
+    "copyToolOutput": "Copia output dello strumento",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Visualizzatore file",
@@ -190,7 +195,9 @@
       "themeNeon": "Neon",
       "themePaper": "Carta",
       "excludedPaths": "Percorsi esclusi",
-      "excludedPathsDesc": "Esclusioni (separate da virgola o a capo). I cataloghi o file corrispondenti saranno ignorati nelle liste di conversazione."
+      "excludedPathsDesc": "Esclusioni (separate da virgola o a capo). I cataloghi o file corrispondenti saranno ignorati nelle liste di conversazione.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Sorgenti",

@@ -11,7 +11,8 @@
     "assistant": "Assistent",
     "loading": "Wird geladen...",
     "showFullContent": "Vollständigen Inhalt anzeigen",
-    "bugTracker": "Bug-Tracker öffnen / Problem melden"
+    "bugTracker": "Bug-Tracker öffnen / Problem melden",
+    "copied": "Kopiert!"
   },
   "sidebar": {
     "title": "Sitzungen",
@@ -86,12 +87,6 @@
     "adapter": "Adapter",
     "deleteSession": "Sitzung löschen",
     "confirmDelete": "Sind Sie sicher, dass Sie diese Sitzung löschen möchten? Dies kann nicht rückgängig gemacht werden.",
-    "copyCwd": "Cwd kopieren",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd kopiert",
-    "copyPath": "Pfad kopieren",
-    "copyPathLabel": "Pfad",
-    "pathCopied": "Pfad kopiert",
     "compactedContext": "Komprimierter Kontext",
     "compactionTook": "Komprimierung dauerte",
     "tokenUsage": "Token-Nutzung",
@@ -104,7 +99,17 @@
     "startedOn": "Gestartet am",
     "aiSummaryTitle": "KI-Sitzungszusammenfassung",
     "copyMessageText": "Nachrichtentext kopieren",
-    "copyToolOutput": "Tool-Ausgabe kopieren"
+    "copyToolOutput": "Tool-Ausgabe kopieren",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Dateibetrachter",
@@ -190,7 +195,9 @@
       "themeNeon": "Neon",
       "themePaper": "Papier",
       "excludedPaths": "Ausgeschlossene Pfade",
-      "excludedPathsDesc": "Ausschlüsse (durch Komma oder Zeilenumbruch getrennt). Übereinstimmende Verzeichnisse oder Dateien werden in Konversationslisten ignoriert."
+      "excludedPathsDesc": "Ausschlüsse (durch Komma oder Zeilenumbruch getrennt). Übereinstimmende Verzeichnisse oder Dateien werden in Konversationslisten ignoriert.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Quellen",

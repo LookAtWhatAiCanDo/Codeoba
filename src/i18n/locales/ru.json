@@ -11,7 +11,8 @@
     "assistant": "Ассистент",
     "loading": "Загрузка...",
     "showFullContent": "Показать полное содержимое",
-    "bugTracker": "Открыть трекер ошибок / Сообщить о проблеме"
+    "bugTracker": "Открыть трекер ошибок / Сообщить о проблеме",
+    "copied": "Скопировано!"
   },
   "sidebar": {
     "title": "Сессии",
@@ -86,12 +87,6 @@
     "adapter": "Адаптер",
     "deleteSession": "Удалить сеанс",
     "confirmDelete": "Вы уверены, что хотите удалить этот сеанс? Это действие невозможно отменить.",
-    "copyCwd": "Скопировать текущий каталог",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Текущий каталог скопирован",
-    "copyPath": "Скопировать путь",
-    "copyPathLabel": "Путь",
-    "pathCopied": "Путь скопирован",
     "compactedContext": "Сжатый контекст",
     "compactionTook": "Сжатие заняло",
     "tokenUsage": "Использование токенов",
@@ -104,7 +99,17 @@
     "startedOn": "Начато",
     "aiSummaryTitle": "Сводка сеанса ИИ",
     "copyMessageText": "Копировать текст сообщения",
-    "copyToolOutput": "Копировать вывод инструмента"
+    "copyToolOutput": "Копировать вывод инструмента",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",
@@ -190,7 +195,9 @@
       "themeNeon": "Неон",
       "themePaper": "Бумага",
       "excludedPaths": "Исключенные пути",
-      "excludedPathsDesc": "Исключения (разделенные запятыми или переносами строк). Совпадающие папки или файлы будут игнорироваться в списках диалогов."
+      "excludedPathsDesc": "Исключения (разделенные запятыми или переносами строк). Совпадающие папки или файлы будут игнорироваться в списках диалогов.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Источники",

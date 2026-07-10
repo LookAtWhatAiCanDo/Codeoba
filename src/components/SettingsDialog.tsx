@@ -55,6 +55,8 @@ interface SettingsDialogProps {
   };
   onCustomThemeChange?: (val: any) => void;
   onCheckUpdates?: () => void;
+  fontSize: number;
+  onFontSizeChange: (val: number) => void;
 }
 
 type Category = "general" | "regional" | "theme" | "sources" | "exclusions" | "semantic" | "permissions" | "updates";
@@ -612,7 +614,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
             </div>
 
             {/* Version Display */}
-            <div class="mt-auto px-3 py-2 bg-background/50 border border-border/40 rounded-xl flex items-center justify-between text-[10px] text-text-secondary font-medium">
+            <div class="mt-auto px-3 py-2 bg-background/50 border border-border/40 rounded-xl flex items-center justify-between text-[0.625rem] text-text-secondary font-medium">
               <span>Codeoba</span>
               <span class="font-mono bg-surface border border-border/60 px-1.5 py-0.5 rounded text-accent">v{appVersion()}</span>
             </div>
@@ -631,7 +633,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.cache")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.cacheDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.cacheDesc")}</p>
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -644,6 +646,35 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   </label>
                 </div>
 
+                {/* Font Size controls */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.fontSize")}</h4>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.fontSizeDesc")}</p>
+                  </div>
+                  <div class="flex items-center gap-2 select-none">
+                    <button 
+                      onClick={() => props.onFontSizeChange(Math.max(10, props.fontSize - 1))}
+                      class="px-2 py-1 bg-background hover:bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span 
+                      onDblClick={() => props.onFontSizeChange(15)}
+                      class="text-xs font-mono min-w-[32px] text-center text-text-secondary cursor-pointer hover:text-text-primary select-none"
+                      title={t("detailPane.resetFontSize") || "Double click to reset to default"}
+                    >
+                      {props.fontSize}px
+                    </span>
+                    <button 
+                      onClick={() => props.onFontSizeChange(Math.min(24, props.fontSize + 1))}
+                      class="px-2 py-1 bg-background hover:bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
                 {/* Secure storage switch */}
                 <Show when={premiumActive()}>
                   <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
@@ -651,7 +682,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       <div class="flex items-center gap-2">
                         <h4 class="text-xs font-bold text-text-primary">{t("settings.general.secureStorage")}</h4>
                       </div>
-                      <p class="text-[10px] text-text-secondary/70 mt-1">
+                      <p class="text-[0.625rem] text-text-secondary/70 mt-1">
                         {t("settings.general.secureStorageDesc")}
                       </p>
                     </div>
@@ -673,7 +704,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.logMode")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.logModeDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.logModeDesc")}</p>
                   </div>
                   <div class="flex bg-background p-1 rounded-lg border border-border/60">
                     <button
@@ -712,7 +743,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.language")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.languageDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.languageDesc")}</p>
                   </div>
                   <select
                     value={locale()}
@@ -733,7 +764,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.dateFormat")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.dateFormatDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.dateFormatDesc")}</p>
                   </div>
                   <select
                     value={props.dateFormat}
@@ -751,7 +782,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.timeFormat")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.timeFormatDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.timeFormatDesc")}</p>
                   </div>
                   <select
                     value={props.timeFormat}
@@ -768,7 +799,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.showSeconds")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.showSecondsDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.showSecondsDesc")}</p>
                   </div>
                   <label class="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -785,7 +816,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.numberFormat")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.numberFormatDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.numberFormatDesc")}</p>
                   </div>
                   <select
                     value={props.numberFormat}
@@ -812,7 +843,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.appearance")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.appearanceDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.appearanceDesc")}</p>
                   </div>
                   <select
                     value={props.appearance}
@@ -830,7 +861,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">{t("settings.general.theme")}</h4>
-                      <p class="text-[10px] text-text-secondary/70">{t("settings.general.themeDesc")}</p>
+                      <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.themeDesc")}</p>
                     </div>
                     <span class="text-xs font-semibold text-accent capitalize">
                       {props.theme === "custom" 
@@ -861,7 +892,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <div class="flex items-center justify-between">
                       <div>
                         <h4 class="text-xs font-bold text-text-primary">{t("settings.general.customThemeTitle")}</h4>
-                        <p class="text-[10px] text-text-secondary/70">{t("settings.general.customThemeDesc")}</p>
+                        <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.customThemeDesc")}</p>
                       </div>
                       <button
                         onClick={handleRollTheme}
@@ -888,7 +919,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                 : "bg-background/40 border-border/30 text-text-secondary hover:text-text-primary hover:border-border/60"
                             }`}
                           >
-                            <span class="text-[8px] uppercase tracking-wider mb-1.5 font-bold truncate max-w-full">{item.label}</span>
+                            <span class="text-[0.5rem] uppercase tracking-wider mb-1.5 font-bold truncate max-w-full">{item.label}</span>
                             <div 
                               class="w-5 h-5 rounded-full border border-border/80"
                               style={{
@@ -902,7 +933,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
                     {/* Sliders for the active HSL setting */}
                     <div class="bg-background/30 border border-border/40 rounded-xl p-3 space-y-3">
-                      <div class="flex items-center justify-between text-[10px] font-semibold text-text-secondary">
+                      <div class="flex items-center justify-between text-[0.625rem] font-semibold text-text-secondary">
                         <span class="capitalize font-bold text-text-primary">
                           {activeColorIndex() === "bg" 
                             ? t("settings.general.customThemeBg") 
@@ -918,7 +949,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       <div class="space-y-2">
                         {/* Hue Slider */}
                         <div class="flex items-center gap-3">
-                          <span class="text-[10px] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeHue")}</span>
+                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeHue")}</span>
                           <input 
                             type="range" 
                             min="0" 
@@ -927,12 +958,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             onInput={(e) => handleSliderChange("h", parseInt(e.currentTarget.value))}
                             class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
                           />
-                          <span class="text-[10px] w-6 font-mono text-right text-text-secondary">{activeColorHsl().h}°</span>
+                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">{activeColorHsl().h}°</span>
                         </div>
 
                         {/* Saturation Slider */}
                         <div class="flex items-center gap-3">
-                          <span class="text-[10px] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeSat")}</span>
+                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeSat")}</span>
                           <input 
                             type="range" 
                             min="0" 
@@ -941,12 +972,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             onInput={(e) => handleSliderChange("s", parseInt(e.currentTarget.value))}
                             class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
                           />
-                          <span class="text-[10px] w-6 font-mono text-right text-text-secondary">{activeColorHsl().s}%</span>
+                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">{activeColorHsl().s}%</span>
                         </div>
 
                         {/* Lightness Slider */}
                         <div class="flex items-center gap-3">
-                          <span class="text-[10px] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeLight")}</span>
+                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">{t("settings.general.customThemeLight")}</span>
                           <input 
                             type="range" 
                             min="0" 
@@ -955,7 +986,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             onInput={(e) => handleSliderChange("l", parseInt(e.currentTarget.value))}
                             class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
                           />
-                          <span class="text-[10px] w-6 font-mono text-right text-text-secondary">{activeColorHsl().l}%</span>
+                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">{activeColorHsl().l}%</span>
                         </div>
                       </div>
                     </div>
@@ -983,21 +1014,21 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                               <Show when={src.productUrl && !src.isAvailable}>
                                 <button
                                   onClick={() => openUrl(src.productUrl!)}
-                                  class="text-[10px] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
+                                  class="text-[0.625rem] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
                                   title={t("settings.sources.getInstaller")}
                                 >
                                   {t("settings.sources.getInstaller")}
                                 </button>
                               </Show>
                             </div>
-                            <p class="text-[10px] text-text-secondary/70 truncate">
+                            <p class="text-[0.625rem] text-text-secondary/70 truncate">
                               {t("settings.sources.status")}: {src.isAvailable ? t("settings.sources.available") : t("settings.sources.notInstalled")}
                             </p>
                           </div>
 
                           <div class="flex items-center gap-2">
                             {/* Segmented controls for allow/deny/ask */}
-                            <div class="flex bg-background p-0.5 rounded-lg border border-border/50 text-[10px] font-semibold text-text-primary">
+                            <div class="flex bg-background p-0.5 rounded-lg border border-border/50 text-[0.625rem] font-semibold text-text-primary">
                               <For each={["allow", "deny", "ask"] as const}>
                                 {(option) => (
                                   <button
@@ -1041,7 +1072,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
                   <div class="space-y-1">
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.downloadTitle")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">
+                    <p class="text-[0.625rem] text-text-secondary/70">
                       {t("settings.semantic.downloadDesc")}
                     </p>
                   </div>
@@ -1062,7 +1093,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         </div>
                         <Show when={downloadProgress() !== null}>
                           <div class="space-y-1">
-                            <div class="flex justify-between text-[10px] font-bold text-text-secondary">
+                            <div class="flex justify-between text-[0.625rem] font-bold text-text-secondary">
                               <span>{t("settings.semantic.downloading")}</span>
                               <span>{Math.round(downloadProgress()! * 100)}%</span>
                             </div>
@@ -1086,7 +1117,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       <span>{t("settings.semantic.statusInstalled")}</span>
                       <button
                         onClick={handleDeleteModel}
-                        class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
+                        class="px-2.5 py-1 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 text-text-secondary hover:text-red-400 rounded-lg text-[0.65625rem] font-semibold transition-all cursor-pointer"
                       >
                         {t("settings.semantic.deleteModel")}
                       </button>
@@ -1098,7 +1129,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   <div class="bg-surface/30 border border-border/50 rounded-2xl p-5 space-y-4">
                     <div class="space-y-1">
                       <h4 class="text-xs font-bold text-text-primary">{t("settings.semantic.threshold")}</h4>
-                      <p class="text-[10px] text-text-secondary/70">
+                      <p class="text-[0.625rem] text-text-secondary/70">
                         {t("settings.semantic.thresholdDesc")}
                       </p>
                     </div>
@@ -1164,13 +1195,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             <div class="text-xs font-mono font-bold text-text-primary truncate" title={p.path}>
                               {p.path}
                             </div>
-                            <div class="flex gap-4 text-[10px] text-text-secondary/70">
+                            <div class="flex gap-4 text-[0.625rem] text-text-secondary/70">
                               <span>{t("fileViewer.title")}: <span class={p.preview === 'allow' ? 'text-accent font-semibold' : ''}>{p.preview}</span></span>
                               <span>{t("settings.permissions.external")}: <span class={p.external === 'allow' ? 'text-accent font-semibold' : ''}>{p.external}</span></span>
                             </div>
                           </div>
 
-                          <div class="flex gap-2 justify-end border-t border-border/20 pt-2.5 text-[10.5px]">
+                          <div class="flex gap-2 justify-end border-t border-border/20 pt-2.5 text-[0.65625rem]">
                             <Show when={p.preview !== 'ask'}>
                               <button
                                 onClick={() => handleResetPermission(p.path, "preview")}
@@ -1214,7 +1245,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex flex-col gap-3">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">{t("settings.general.excludedPaths")}</h4>
-                    <p class="text-[10px] text-text-secondary/70">{t("settings.general.excludedPathsDesc")}</p>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.excludedPathsDesc")}</p>
                   </div>
                   <textarea
                     value={props.excludedPaths}
@@ -1243,7 +1274,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <div class="flex items-center justify-between">
                       <div>
                         <h4 class="text-xs font-bold text-text-primary">{t("settings.updates.autoUpdate")}</h4>
-                        <p class="text-[10px] text-text-secondary/70">{t("settings.updates.autoUpdateDesc")}</p>
+                        <p class="text-[0.625rem] text-text-secondary/70">{t("settings.updates.autoUpdateDesc")}</p>
                       </div>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input 
@@ -1255,7 +1286,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
                       </label>
                     </div>
-                    <div class="flex items-center justify-between pt-1 text-[11px] border-t border-border/30">
+                    <div class="flex items-center justify-between pt-1 text-[0.6875rem] border-t border-border/30">
                       <span class="text-text-secondary">{t("settings.updates.version")}: v{appVersion()}</span>
                       <button
                         onClick={() => props.onCheckUpdates ? props.onCheckUpdates() : handleCheckUpdates()}
@@ -1270,7 +1301,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     </div>
                     <Show when={updateCheckResult()}>
                       <div 
-                        class="text-[11px] font-semibold"
+                        class="text-[0.6875rem] font-semibold"
                         classList={{
                           "text-red-400": updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"),
                           "text-emerald-400": !(updateCheckResult()?.startsWith("Error") || updateCheckResult()?.startsWith("Failed"))

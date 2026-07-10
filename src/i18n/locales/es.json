@@ -11,7 +11,8 @@
     "assistant": "Asistente",
     "loading": "Cargando...",
     "showFullContent": "Mostrar contenido completo",
-    "bugTracker": "Abrir Bug Tracker / Presentar un problema"
+    "bugTracker": "Abrir Bug Tracker / Presentar un problema",
+    "copied": "¡Copiado!"
   },
   "sidebar": {
     "title": "Sesiones",
@@ -86,12 +87,6 @@
     "adapter": "Adaptador",
     "deleteSession": "Eliminar sesión",
     "confirmDelete": "¿Está seguro de que desea eliminar esta sesión? Esta acción no se puede deshacer.",
-    "copyCwd": "Copiar Cwd",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd copiado",
-    "copyPath": "Copiar ruta",
-    "copyPathLabel": "Ruta",
-    "pathCopied": "Ruta copiada",
     "compactedContext": "Contexto compactado",
     "compactionTook": "La compactación tardó",
     "tokenUsage": "Uso de tokens",
@@ -104,7 +99,17 @@
     "startedOn": "Iniciado el",
     "aiSummaryTitle": "Resumen de sesión IA",
     "copyMessageText": "Copiar texto del mensaje",
-    "copyToolOutput": "Copiar salida de herramienta"
+    "copyToolOutput": "Copiar salida de herramienta",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Visor de archivos",
@@ -190,7 +195,9 @@
       "themeNeon": "Neón",
       "themePaper": "Papel",
       "excludedPaths": "Rutas excluidas",
-      "excludedPathsDesc": "Exclusiones (separadas por comas o saltos de línea). Los directorios o archivos coincidentes se ignorarán en las listas de conversación."
+      "excludedPathsDesc": "Exclusiones (separadas por comas o saltos de línea). Los directorios o archivos coincidentes se ignorarán en las listas de conversación.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Fuentes",

@@ -1,4 +1,5 @@
 import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { invoke } from "@tauri-apps/api/core";
 import { 
   Folder, 
@@ -51,12 +52,15 @@ interface DetailPaneProps {
   onTogglePinSession?: (sessionId: string) => void;
   onAssignSessionToGroup?: (sessionId: string, groupName: string) => Promise<void>;
   onRemoveSessionFromGroup?: (sessionId: string, groupName: string) => Promise<void>;
+  fontSize?: number;
+  onFontSizeChange?: (val: number) => void;
 }
 
 export const DetailPane = (props: DetailPaneProps) => {
   const { t, locale } = useI18n();
   const [copiedPath, setCopiedPath] = createSignal(false);
-  const [copiedSession, setCopiedSession] = createSignal(false);
+  const [copiedWorkspace, setCopiedWorkspace] = createSignal(false);
+  const [copiedTitle, setCopiedTitle] = createSignal(false);
   const [scrollPercent, setScrollPercent] = createSignal(0);
   const [activeTurnIdx, setActiveTurnIdx] = createSignal(0);
   const [showActionsDropdown, setShowActionsDropdown] = createSignal(false);
@@ -587,17 +591,23 @@ export const DetailPane = (props: DetailPaneProps) => {
     }
   };
 
-  const handleCopyFullSession = () => {
-    if (props.session) {
-      const formatted = props.session.turns.map(turn => {
-        return `### User\n\n${turn.userMessage}\n\n### Assistant\n\n${turn.assistantMessage}\n`;
-      }).join("\n---\n\n");
-      
-      navigator.clipboard.writeText(formatted);
-      setCopiedSession(true);
-      setTimeout(() => setCopiedSession(false), 2000);
+  const handleCopyWorkspacePath = () => {
+    if (props.session && props.session.cwd) {
+      navigator.clipboard.writeText(props.session.cwd);
+      setCopiedWorkspace(true);
+      setTimeout(() => setCopiedWorkspace(false), 2000);
     }
   };
+
+  const handleCopyTitle = () => {
+    if (props.session) {
+      const titleText = props.session.threadName || t("detailPane.noSelection");
+      navigator.clipboard.writeText(titleText);
+      setCopiedTitle(true);
+      setTimeout(() => setCopiedTitle(false), 2000);
+    }
+  };
+
 
   const formatFullDate = (timestampMs: number) => {
     let time = timestampMs;
@@ -635,7 +645,7 @@ export const DetailPane = (props: DetailPaneProps) => {
             {/* Header Skeleton */}
             <div 
               class="px-6 border-b border-border/60 flex items-center justify-between flex-shrink-0"
-              style={{ height: "var(--sk-header-height, 76px)" }}
+              style={{ height: "4.75rem" }}
             >
               <div class="flex flex-col gap-2">
                 <div class="h-3.5 w-40 bg-surface rounded" />
@@ -672,15 +682,15 @@ export const DetailPane = (props: DetailPaneProps) => {
           fallback={
             <div class="flex-grow h-full flex flex-col items-center justify-center bg-background/95 text-text-secondary select-none">
               <MessageSquare class="w-16 h-16 mb-4 text-border animate-pulse" />
-              <p class="text-[15px] font-medium tracking-wide">{t("detailPane.selectSession")}</p>
+              <p class="text-[0.9375rem] font-medium tracking-wide">{t("detailPane.selectSession")}</p>
             </div>
           }
         >
           {/* Top Header / Action Bar */}
           <div 
-            class="border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 px-6"
+            class="border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 px-6 relative z-50"
             style={{ 
-              height: "var(--sk-header-height, 76px)"
+              height: "4.75rem"
             }}
           >
             <div class="min-w-0 flex flex-col gap-0.5 pt-2">
@@ -689,54 +699,80 @@ export const DetailPane = (props: DetailPaneProps) => {
                   {getWorkspaceName()}
                 </span>
                 <span class="text-border">/</span>
-                <span class="truncate font-medium text-text-primary max-w-[240px] cursor-default">
-                  {props.session!.threadName || t("detailPane.noSelection")}
-                </span>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span 
+                    onClick={handleCopyTitle}
+                    class={`truncate font-medium transition-all cursor-pointer hover:text-accent select-none ${copiedTitle() ? "text-emerald-400 font-semibold" : "text-text-primary"}`}
+                    title={copiedTitle() ? t("detailPane.titleCopied") : t("detailPane.clickToCopyTitle")}
+                  >
+                    {props.session!.threadName || t("detailPane.noSelection")}
+                  </span>
+                  <Show when={copiedTitle()}>
+                    <span class="text-[0.5625rem] font-bold text-emerald-400 bg-emerald-400/10 px-1 py-0.5 rounded border border-emerald-400/20 animate-in fade-in zoom-in-95 duration-150 select-none">
+                      {t("common.copied")}
+                    </span>
+                  </Show>
+                </div>
                 <Show when={props.session!.status}>
-                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[9px] font-bold select-none leading-none ${getStatusStyle(props.session!.status!)}`}>
+                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${getStatusStyle(props.session!.status!)}`}>
                     {getStatusIcon(props.session!.status!)}
                     <span>{getStatusLabel(props.session!.status!)}</span>
                   </div>
                 </Show>
                 <Show when={compactionCount() > 0}>
-                  <span class="px-2 py-0.5 bg-accent/15 border border-accent/30 text-accent rounded-full text-[9px] font-bold select-none leading-none pt-[3px] pb-[3px]">
+                  <span class="px-2 py-0.5 bg-accent/15 border border-accent/30 text-accent rounded-full text-[0.5625rem] font-bold select-none leading-none pt-[3px] pb-[3px]">
                     {t("dashboard.totalCompactions")}: {compactionCount()}
                   </span>
                 </Show>
               </div>
               
               <Show when={props.session!.cwd}>
-                <div dir="ltr" class="flex items-center gap-1.5 text-[11px] text-text-secondary/60 text-left">
-                  <Folder class="w-3.5 h-3.5 flex-shrink-0" />
-                  <span class="truncate hover:text-text-primary transition-colors" title={props.session!.cwd!}>
+                <div dir="ltr" class="flex items-center gap-1.5 text-[0.6875rem] text-left">
+                  <Folder class={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${copiedWorkspace() ? "text-emerald-400" : "text-text-secondary/60"}`} />
+                  <span 
+                    onClick={handleCopyWorkspacePath}
+                    class={`truncate transition-colors cursor-pointer hover:text-accent select-none ${copiedWorkspace() ? "text-emerald-400 font-medium" : "text-text-secondary/60"}`} 
+                    title={copiedWorkspace() ? t("detailPane.workspacePathCopied") : t("detailPane.copyWorkspacePath")}
+                  >
                     {props.session!.cwd}
                   </span>
+                  <Show when={copiedWorkspace()}>
+                    <span class="text-[0.5625rem] font-bold text-emerald-400 bg-emerald-400/10 px-1 py-0.5 rounded border border-emerald-400/20 animate-in fade-in zoom-in-95 duration-150 select-none">
+                      {t("common.copied")}
+                    </span>
+                  </Show>
                 </div>
               </Show>
             </div>
 
             <div class="flex items-center gap-2">
+              <Show when={props.session!.cwd}>
+                <button
+                  onClick={handleCopyWorkspacePath}
+                  title={t("detailPane.copyWorkspacePath")}
+                  class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                >
+                  <Show when={copiedWorkspace()} fallback={<Folder class="w-3.5 h-3.5" />}>
+                    <Check class="w-3.5 h-3.5 text-emerald-400" />
+                  </Show>
+                  <span>{t("detailPane.copyWorkspacePathLabel")}</span>
+                </button>
+              </Show>
+
               <button
                 onClick={handleCopyPath}
-                title={t("detailPane.copyPath")}
+                title={t("detailPane.copySessionPath")}
                 class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
               >
                 <Show when={copiedPath()} fallback={<ExternalLink class="w-3.5 h-3.5" />}>
                   <Check class="w-3.5 h-3.5 text-emerald-400" />
                 </Show>
-                <span>{t("detailPane.copyPathLabel")}</span>
+                <span>{t("detailPane.copySessionPathLabel")}</span>
               </button>
 
-              <button
-                onClick={handleCopyFullSession}
-                title={t("detailPane.copyCwd")}
-                class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
-              >
-                <Show when={copiedSession()} fallback={<Copy class="w-3.5 h-3.5" />}>
-                  <Check class="w-3.5 h-3.5 text-emerald-400" />
-                </Show>
-                <span>{t("detailPane.copyCwdLabel")}</span>
-              </button>
+
+
+
 
               <div class="relative">
                 <button
@@ -773,6 +809,62 @@ export const DetailPane = (props: DetailPaneProps) => {
                       </button>
                     </Show>
 
+                    {/* Copy Session ID */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(props.session!.id);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Copy class="w-3.5 h-3.5" />
+                        <span>{t("groups.copySessionId") || "Copy Session ID"}</span>
+                      </button>
+                    </Show>
+
+                    {/* Copy Session Title */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          handleCopyTitle();
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Copy class="w-3.5 h-3.5" />
+                        <span>{t("detailPane.copyTitle")}</span>
+                      </button>
+                    </Show>
+
+                    {/* Copy Workspace Path */}
+                    <Show when={props.session && props.session.cwd}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(props.session!.cwd!);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <Folder class="w-3.5 h-3.5" />
+                        <span>{t("detailPane.copyWorkspacePath")}</span>
+                      </button>
+                    </Show>
+
+                    {/* Copy Session Path */}
+                    <Show when={props.session}>
+                      <button
+                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(props.session!.filePath);
+                          setShowActionsDropdown(false);
+                        }}
+                      >
+                        <ExternalLink class="w-3.5 h-3.5" />
+                        <span>{t("detailPane.copySessionPath")}</span>
+                      </button>
+                    </Show>
+
                     {/* Open Session File */}
                     <Show when={props.session}>
                       <button
@@ -794,42 +886,16 @@ export const DetailPane = (props: DetailPaneProps) => {
                       </button>
                     </Show>
 
-                    {/* Copy Session ID */}
-                    <Show when={props.session}>
-                      <button
-                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
-                        onClick={() => {
-                          navigator.clipboard.writeText(props.session!.id);
-                          setShowActionsDropdown(false);
-                        }}
-                      >
-                        <Copy class="w-3.5 h-3.5" />
-                        <span>{t("groups.copySessionId") || "Copy Session ID"}</span>
-                      </button>
-                    </Show>
 
-                    {/* Copy File Path */}
-                    <Show when={props.session}>
-                      <button
-                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
-                        onClick={() => {
-                          navigator.clipboard.writeText(props.session!.filePath);
-                          setShowActionsDropdown(false);
-                        }}
-                      >
-                        <Copy class="w-3.5 h-3.5" />
-                        <span>{t("detailPane.copyPathLabel") || "Copy Path"}</span>
-                      </button>
-                    </Show>
 
                     {/* Assign Group Submenu Header */}
                     <Show when={props.groups && props.groups.length > 0 && props.onAssignSessionToGroup && props.session}>
                       <div class="border-t border-border/60 my-1"></div>
-                      <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary/55">
+                      <div class="px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider text-text-secondary/55">
                         {t("groups.filterByGroup") || "Groups"}
                       </div>
                       <div class="max-h-36 overflow-y-auto">
-                        <For each={props.groups}>
+                        <For each={[...(props.groups || [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))}>
                           {(g) => {
                             const isAssigned = () => {
                               const ids = Array.isArray(g.sessionIds) 
@@ -876,7 +942,7 @@ export const DetailPane = (props: DetailPaneProps) => {
               id="detail-search-bar"
               class="absolute right-8 z-30 flex items-center gap-2 p-1.5 bg-surface/95 border border-border hover:border-border/80 rounded-xl shadow-xl glass animate-in slide-in-from-top-2 duration-150"
               style={{
-                top: "calc(var(--sk-header-height, 76px) + 8px)"
+                top: "calc(4.75rem + 8px)"
               }}
             >
               <div class="relative flex items-center">
@@ -909,7 +975,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                 />
                 
                 {/* Match count and clear button */}
-                <div class="absolute right-2 flex items-center gap-1.5 text-[10px] text-text-secondary/60 select-none">
+                <div class="absolute right-2 flex items-center gap-1.5 text-[0.625rem] text-text-secondary/60 select-none">
                   <span>
                     {searchMatches().length > 0 ? `${activeMatchIndex() + 1}/${searchMatches().length}` : "0/0"}
                   </span>
@@ -956,7 +1022,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     navigateToMatch(0);
                   }}
                   title={t("sidebar.matchCase")}
-                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                  class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
                     detailMatchCase() 
                       ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
@@ -972,7 +1038,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     navigateToMatch(0);
                   }}
                   title={t("sidebar.wholeWord")}
-                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                  class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
                     detailWholeWord() 
                       ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
@@ -988,7 +1054,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     navigateToMatch(0);
                   }}
                   title={t("sidebar.useRegex")}
-                  class={`w-5 h-5 text-[9px] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
+                  class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
                     detailUseRegex() 
                       ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
@@ -1014,7 +1080,7 @@ export const DetailPane = (props: DetailPaneProps) => {
             id="detail-pane-scroll-container"
             tabindex="-1"
             ref={scrollContainerRef}
-            class="flex-grow overflow-y-auto px-8 py-6 space-y-6 scroll-smooth outline-none relative"
+            class="flex-grow overflow-y-auto pl-8 pr-36 py-6 space-y-6 scroll-smooth outline-none relative"
             onScroll={handleScroll}
           >
             <div ref={scrollInnerRef} class="space-y-6 flex flex-col">
@@ -1051,7 +1117,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     <Cpu class="w-4 h-4" />
                     <h3 class="text-xs font-bold uppercase tracking-wider">{t("detailPane.aiSummaryTitle")}</h3>
                   </div>
-                  <p class="text-[13px] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
+                  <p class="text-[0.8125rem] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
                     {props.session!.summary}
                   </p>
                 </div>
@@ -1132,7 +1198,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                         }}
                       >
                         <span 
-                          class={`text-[9px] font-mono font-bold tracking-wider transition-all duration-150 uppercase whitespace-nowrap bg-background/80 px-1 py-0.5 rounded shadow-sm ${
+                          class={`text-[0.5625rem] font-mono font-bold tracking-wider transition-all duration-150 uppercase whitespace-nowrap bg-background/80 px-1 py-0.5 rounded shadow-sm ${
                             isActive() 
                               ? "text-accent font-extrabold scale-105 border border-accent/25" 
                               : "text-text-secondary/60 group-hover:text-accent"
@@ -1158,52 +1224,54 @@ export const DetailPane = (props: DetailPaneProps) => {
       </Show>
 
       {/* Context Menu Overlay */}
-      <Show when={contextMenu()}>
-        {(context) => {
-          const [copied, setCopied] = createSignal(false);
-          
-          const handleCopy = async () => {
-            try {
-              await navigator.clipboard.writeText(context().text);
-              setCopied(true);
-              setTimeout(() => {
-                setCopied(false);
-                setContextMenu(null);
-              }, 800);
-            } catch (err) {
-              console.error("Failed to copy context text:", err);
-            }
-          };
+      <Portal>
+        <Show when={contextMenu()}>
+          {(context) => {
+            const [copied, setCopied] = createSignal(false);
+            
+            const handleCopy = async () => {
+              try {
+                await navigator.clipboard.writeText(context().text);
+                setCopied(true);
+                setTimeout(() => {
+                  setCopied(false);
+                  setContextMenu(null);
+                }, 800);
+              } catch (err) {
+                console.error("Failed to copy context text:", err);
+              }
+            };
 
-          const getLabel = () => {
-            if (context().type === "user" || context().type === "assistant") {
-              return t("detailPane.copyMessageText");
-            }
-            return t("detailPane.copyToolOutput");
-          };
+            const getLabel = () => {
+              if (context().type === "user" || context().type === "assistant") {
+                return t("detailPane.copyMessageText");
+              }
+              return t("detailPane.copyToolOutput");
+            };
 
-          return (
-            <div
-              class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
-              style={{
-                top: `${Math.min(window.innerHeight - 80, context().y)}px`,
-                left: `${Math.min(window.innerWidth - 240, context().x)}px`
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                class="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer font-medium"
-                onClick={handleCopy}
+            return (
+              <div
+                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none"
+                style={{
+                  top: `${Math.min(window.innerHeight - 80, context().y)}px`,
+                  left: `${Math.min(window.innerWidth - 240, context().x)}px`
+                }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
-                  <Check class="w-3.5 h-3.5 text-emerald-400" />
-                </Show>
-                <span>{copied() ? "Copied!" : getLabel()}</span>
-              </button>
-            </div>
-          );
-        }}
-      </Show>
+                <button
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer font-medium"
+                  onClick={handleCopy}
+                >
+                  <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                    <Check class="w-3.5 h-3.5 text-emerald-400" />
+                  </Show>
+                  <span>{copied() ? t("common.copied") : getLabel()}</span>
+                </button>
+              </div>
+            );
+          }}
+        </Show>
+      </Portal>
     </div>
   );
 };
@@ -1234,22 +1302,22 @@ const VirtualTurn = (props: VirtualTurnProps) => {
     >
 
         {/* User message block */}
-        <div class="flex flex-col items-start max-w-4xl animate-in fade-in duration-200">
+        <div class="flex flex-col items-start w-full animate-in fade-in duration-200">
           <div class="flex items-center gap-2 mb-1.5 pl-3">
             <div class="w-2 h-2 rounded-full bg-accent" />
-            <span class="text-[12px] font-semibold text-text-primary tracking-wide">
+            <span class="text-[0.75rem] font-semibold text-text-primary tracking-wide">
               {t("common.user")}
             </span>
-            <span class="text-[10px] text-text-secondary/50">
+            <span class="text-[0.625rem] text-text-secondary/50">
               {props.formatFullDate(props.turn.timestamp)}
             </span>
           </div>
           <div 
             onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
-            class="w-full bg-surface border border-border/50 p-4 rounded-2xl text-[14.5px] leading-relaxed text-text-primary/90 font-sans shadow-sm"
+            class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
           >
-            <UserMessageRenderer 
-              message={props.turn.userMessage} 
+            <MarkdownRenderer 
+              content={props.turn.userMessage} 
               searchQuery={props.searchQuery} 
               matchCase={props.matchCase} 
               wholeWord={props.wholeWord} 
@@ -1259,19 +1327,19 @@ const VirtualTurn = (props: VirtualTurnProps) => {
         </div>
 
         {/* Assistant message block */}
-        <div class="flex flex-col items-start max-w-4xl pl-2 md:pl-6 animate-in fade-in duration-200">
+        <div class="flex flex-col items-start w-full pl-2 md:pl-6 animate-in fade-in duration-200">
           <div class="flex items-center justify-between w-full mb-1.5 pl-3 pr-2">
             <div class="flex items-center gap-2">
               <div class="w-2 h-2 rounded-full bg-emerald-400" />
-              <span class="text-[12px] font-semibold text-text-primary tracking-wide">
+              <span class="text-[0.75rem] font-semibold text-text-primary tracking-wide">
                 {t("common.assistant")}
               </span>
-              <span class="text-[10px] text-text-secondary/50">
+              <span class="text-[0.625rem] text-text-secondary/50">
                 {props.formatFullDate(props.turn.timestamp)}
               </span>
             </div>
             <Show when={props.turn.inputTokens || props.turn.outputTokens}>
-              <div class="flex items-center gap-1.5 text-[10px] text-text-secondary/50 font-mono">
+              <div class="flex items-center gap-1.5 text-[0.625rem] text-text-secondary/50 font-mono">
                 {props.turn.inputTokens && <span>in: {formatNumberWithSetting(props.turn.inputTokens, props.numberFormat || "system")}</span>}
                 {props.turn.inputTokens && props.turn.outputTokens && <span>•</span>}
                 {props.turn.outputTokens && <span>out: {formatNumberWithSetting(props.turn.outputTokens, props.numberFormat || "system")}</span>}
@@ -1291,32 +1359,6 @@ const VirtualTurn = (props: VirtualTurnProps) => {
         </div>
     </div>
   );
-};
-
-const UserMessageRenderer = (props: {
-  message: string;
-  searchQuery?: string;
-  matchCase?: boolean;
-  wholeWord?: boolean;
-  useRegex?: boolean;
-}) => {
-  const [element, setElement] = createSignal<HTMLDivElement | null>(null);
-
-  createEffect(() => {
-    const el = element();
-    const text = props.message;
-    const q = props.searchQuery;
-    const mc = props.matchCase;
-    const ww = props.wholeWord;
-    const rx = props.useRegex;
-
-    if (el) {
-      el.textContent = text;
-      highlightContainer(el, q || "", mc || false, ww || false, rx || false);
-    }
-  });
-
-  return <div ref={setElement} class="whitespace-pre-wrap select-text" />;
 };
 
 const AssistantMessageRenderer = (props: { 
@@ -1585,7 +1627,7 @@ const ToolOutputBlock = (props: {
           <pre 
             onContextMenu={(e) => props.onContextMenu(e, "tool", props.tool.content)}
             dir="ltr" 
-            class={`border rounded-xl p-3 text-[11px] leading-relaxed overflow-x-auto font-mono max-h-96 scrollbar shadow-inner text-left ${meta().preBorder}`}
+            class={`border rounded-xl p-3 text-[0.6875rem] leading-relaxed overflow-x-auto font-mono max-h-96 scrollbar shadow-inner text-left ${meta().preBorder}`}
           >
             <code ref={setCodeRef} />
           </pre>

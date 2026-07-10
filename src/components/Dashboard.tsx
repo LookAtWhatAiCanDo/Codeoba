@@ -282,7 +282,7 @@ export const Dashboard = (props: DashboardProps) => {
                       </div>
                     </div>
                     <div class="text-right">
-                      <div class="text-[20px] font-bold text-text-primary">{count}</div>
+                      <div class="text-[1.25rem] font-bold text-text-primary">{count}</div>
                       <span class="text-xs text-text-secondary">{t("sidebar.title").toLowerCase()}</span>
                     </div>
                   </div>
@@ -369,7 +369,7 @@ export const Dashboard = (props: DashboardProps) => {
                   >
                     {t(`dashboard.${dim}`)}
                     <Show when={sortBy() === dim}>
-                      <span class="ml-1 text-[10px]">{sortAscending() ? "▲" : "▼"}</span>
+                      <span class="ml-1 text-[0.625rem]">{sortAscending() ? "▲" : "▼"}</span>
                     </Show>
                   </button>
                 )}
@@ -398,13 +398,13 @@ export const Dashboard = (props: DashboardProps) => {
 
                   <div class="grid grid-cols-3 gap-6 text-xs text-text-secondary">
                     <div>
-                      <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
                         {t("dashboard.tokens")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">{formatNumber(m.totalTokens)}</div>
                     </div>
                     <div>
-                      <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
                         {t("dashboard.turns")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">
@@ -415,7 +415,7 @@ export const Dashboard = (props: DashboardProps) => {
                       </div>
                     </div>
                     <div>
-                      <div class="text-[10px] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
                         {t("dashboard.duration")}
                       </div>
                       <div class="text-sm font-bold text-text-primary">
@@ -453,10 +453,10 @@ const StatCard = (props: StatCardProps) => {
         <div class="text-xs font-semibold text-text-secondary/80 uppercase tracking-wider mb-0.5">
           {props.title}
         </div>
-        <div class="text-[22px] font-extrabold text-text-primary leading-tight mb-1">
+        <div class="text-[1.375rem] font-extrabold text-text-primary leading-tight mb-1">
           {props.value}
         </div>
-        <div class="text-[11.5px] text-text-secondary truncate leading-none">
+        <div class="text-[0.71875rem] text-text-secondary truncate leading-none">
           {props.subtitle}
         </div>
       </div>

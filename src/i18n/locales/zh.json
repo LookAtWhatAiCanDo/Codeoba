@@ -11,7 +11,8 @@
     "assistant": "助手",
     "loading": "加载中...",
     "showFullContent": "显示完整内容",
-    "bugTracker": "打开问题追踪器 / 提交问题"
+    "bugTracker": "打开问题追踪器 / 提交问题",
+    "copied": "已复制！"
   },
   "sidebar": {
     "title": "会话",
@@ -86,12 +87,6 @@
     "adapter": "适配器",
     "deleteSession": "删除会话",
     "confirmDelete": "您确定要删除此会话吗？此操作无法撤销。",
-    "copyCwd": "复制 Cwd",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Cwd 已复制",
-    "copyPath": "复制路径",
-    "copyPathLabel": "路径",
-    "pathCopied": "路径已复制",
     "compactedContext": "已压缩上下文",
     "compactionTook": "压缩耗时",
     "tokenUsage": "Tokens 用量",
@@ -104,7 +99,17 @@
     "startedOn": "开始时间",
     "aiSummaryTitle": "AI 会话摘要",
     "copyMessageText": "复制消息文本",
-    "copyToolOutput": "复制工具输出"
+    "copyToolOutput": "复制工具输出",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "文件查看器",
@@ -190,7 +195,9 @@
       "themeNeon": "霓虹",
       "themePaper": "纸张",
       "excludedPaths": "排除路径",
-      "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。"
+      "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "数据源",

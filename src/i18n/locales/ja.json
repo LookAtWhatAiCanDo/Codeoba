@@ -11,7 +11,8 @@
     "assistant": "アシスタント",
     "loading": "読み込み中...",
     "showFullContent": "全コンテンツを表示",
-    "bugTracker": "バグトラッカーを開く / 問題を報告"
+    "bugTracker": "バグトラッカーを開く / 問題を報告",
+    "copied": "コピーしました！"
   },
   "sidebar": {
     "title": "セッション",
@@ -86,12 +87,6 @@
     "adapter": "アダプター",
     "deleteSession": "セッションの削除",
     "confirmDelete": "このセッションを削除してもよろしいですか？この操作は取り消せません。",
-    "copyCwd": "CWDをコピー",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "CWDをコピーしました",
-    "copyPath": "パスをコピー",
-    "copyPathLabel": "パス",
-    "pathCopied": "パスをコピーしました",
     "compactedContext": "コンパクションされたコンテキスト",
     "compactionTook": "コンパクション所要時間",
     "tokenUsage": "トークン使用量",
@@ -104,7 +99,17 @@
     "startedOn": "開始日時",
     "aiSummaryTitle": "AIセッションの概要",
     "copyMessageText": "メッセージテキストをコピー",
-    "copyToolOutput": "ツール出力をコピー"
+    "copyToolOutput": "ツール出力をコピー",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "ファイルビューア",
@@ -190,7 +195,9 @@
       "themeNeon": "ネオン",
       "themePaper": "ペーパー",
       "excludedPaths": "除外するパス",
-      "excludedPathsDesc": "除外設定（カンマまたは改行区切り）。一致するディレクトリやファイルは会話一覧から無視されます。"
+      "excludedPathsDesc": "除外設定（カンマまたは改行区切り）。一致するディレクトリやファイルは会話一覧から無視されます。",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "ソース",

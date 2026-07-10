@@ -79,6 +79,9 @@
         document.documentElement.setAttribute('data-sidebar-collapsed', collapsed ? 'true' : 'false');
         document.documentElement.style.setProperty('--sk-header-height', '48px');
 
+        const fontSize = localStorage.getItem('codeoba-font-size') || '15';
+        document.documentElement.style.fontSize = fontSize + 'px';
+
         // Platform detection for window padding and spacers
         const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
         document.documentElement.setAttribute('data-platform', isMac ? 'macos' : 'windows');

@@ -11,7 +11,8 @@
     "assistant": "Assistant",
     "loading": "Chargement...",
     "showFullContent": "Afficher le contenu complet",
-    "bugTracker": "Ouvrir le suivi des bugs / Signaler un problème"
+    "bugTracker": "Ouvrir le suivi des bugs / Signaler un problème",
+    "copied": "Copié !"
   },
   "sidebar": {
     "title": "Sessions",
@@ -86,12 +87,6 @@
     "adapter": "Adaptateur",
     "deleteSession": "Supprimer la session",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette session ? Cette action est irréversible.",
-    "copyCwd": "Copier le répertoire de travail",
-    "copyCwdLabel": "Cwd",
-    "cwdCopied": "Répertoire de travail copié",
-    "copyPath": "Copier le chemin",
-    "copyPathLabel": "Chemin",
-    "pathCopied": "Chemin copié",
     "compactedContext": "Contexte compacté",
     "compactionTook": "Compactage effectué en",
     "tokenUsage": "Utilisation des jetons",
@@ -104,7 +99,17 @@
     "startedOn": "Commencé le",
     "aiSummaryTitle": "Résumé de session IA",
     "copyMessageText": "Copier le texte du message",
-    "copyToolOutput": "Copier la sortie de l'outil"
+    "copyToolOutput": "Copier la sortie de l'outil",
+    "copyWorkspacePath": "Copy Workspace Path",
+    "copyWorkspacePathLabel": "Workspace Path",
+    "workspacePathCopied": "Workspace Path Copied",
+    "copyTitle": "Copy Session Title",
+    "clickToCopyTitle": "Click to copy session title",
+    "titleCopied": "Title Copied",
+    "copySessionPath": "Copy Session Path",
+    "copySessionPathLabel": "Session Path",
+    "sessionPathCopied": "Session Path Copied",
+    "resetFontSize": "Double click to reset to default"
   },
   "fileViewer": {
     "title": "Visionneuse de fichiers",
@@ -190,7 +195,9 @@
       "themeNeon": "Néon",
       "themePaper": "Papier",
       "excludedPaths": "Chemins exclus",
-      "excludedPathsDesc": "Exclusions (séparées par des virgules ou des sauts de ligne). Les répertoires ou fichiers correspondants seront ignorés dans les listes de conversation."
+      "excludedPathsDesc": "Exclusions (séparées par des virgules ou des sauts de ligne). Les répertoires ou fichiers correspondants seront ignorés dans les listes de conversation.",
+      "fontSize": "Font Size",
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "sources": {
       "tab": "Sources",

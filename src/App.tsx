@@ -42,7 +42,19 @@ function App() {
     const appMode = appearance();
     return appMode === "system" ? (systemDark() ? "dark" : "light") : appMode;
   };
-  const [sidebarWidth, setSidebarWidth] = createSignal(parseInt(localStorage.getItem("codeoba-sidebar-width") || "380"));
+
+  const initialWidthRem = (() => {
+    const remVal = localStorage.getItem("codeoba-sidebar-width-rem");
+    if (remVal) return parseFloat(remVal);
+    const pxVal = localStorage.getItem("codeoba-sidebar-width");
+    if (pxVal) return parseInt(pxVal, 10) / 15;
+    return 380 / 15;
+  })();
+
+  const [sidebarWidthRem, setSidebarWidthRem] = createSignal(initialWidthRem);
+  const sidebarWidth = () => Math.round(sidebarWidthRem() * fontSize());
+  const setSidebarWidth = (val: number) => setSidebarWidthRem(val / fontSize());
+
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
   const [showCheckingModal, setShowCheckingModal] = createSignal(false);
@@ -59,6 +71,18 @@ function App() {
   const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
   const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
   const [excludedPaths, setExcludedPaths] = createSignal(localStorage.getItem("codeoba-excluded-paths") || "");
+  const [fontSize, setFontSize] = createSignal(
+    parseInt(localStorage.getItem("codeoba-font-size") || "15", 10)
+  );
+
+  const handleFontSizeChange = (val: number) => {
+    setFontSize(val);
+    localStorage.setItem("codeoba-font-size", String(val));
+  };
+
+  createEffect(() => {
+    document.documentElement.style.fontSize = `${fontSize()}px`;
+  });
 
   const handleExcludedPathsChange = (val: string) => {
     setExcludedPaths(val);
@@ -494,6 +518,7 @@ function App() {
 
   // Sync sidebar width selection to localStorage
   createEffect(() => {
+    localStorage.setItem("codeoba-sidebar-width-rem", String(sidebarWidthRem()));
     localStorage.setItem("codeoba-sidebar-width", String(sidebarWidth()));
   });
 
@@ -1572,6 +1597,8 @@ function App() {
         onShowSettings={() => setShowSettings(true)}
         appVersion={appVersion()}
         indexingProgress={indexingProgress()}
+        fontSize={fontSize()}
+        onFontSizeChange={handleFontSizeChange}
       />
 
       {/* Main Grid: Sidebar + Detail Pane */}
@@ -1687,6 +1714,8 @@ function App() {
                 onTogglePinSession={togglePinSession}
                 onAssignSessionToGroup={handleAssignSessionToGroup}
                 onRemoveSessionFromGroup={handleRemoveSessionFromGroup}
+                fontSize={fontSize()}
+                onFontSizeChange={handleFontSizeChange}
               />
             </Show>
           </Show>
@@ -1730,6 +1759,8 @@ function App() {
           setShowUpdateModal(true);
         }}
         onCheckUpdates={triggerManualUpdateCheck}
+        fontSize={fontSize()}
+        onFontSizeChange={handleFontSizeChange}
       />
       <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
 
