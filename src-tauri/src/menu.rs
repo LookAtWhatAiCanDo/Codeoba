@@ -337,9 +337,12 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
 
         #[cfg(not(target_os = "macos"))]
         {
+            if commands::is_updater_active(app_handle.clone()) {
+                help_menu_builder = help_menu_builder
+                    .separator()
+                    .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?);
+            }
             help_menu_builder = help_menu_builder
-                .separator()
-                .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?)
                 .separator()
                 .item(&PredefinedMenuItem::about(app_handle, None, None)?);
         }
@@ -353,9 +356,14 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     
     #[cfg(target_os = "macos")]
     {
-        let app_menu = SubmenuBuilder::new(app_handle, "Codeoba")
-            .item(&PredefinedMenuItem::about(app_handle, None, None)?)
-            .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?)
+        let mut app_menu_builder = SubmenuBuilder::new(app_handle, "Codeoba")
+            .item(&PredefinedMenuItem::about(app_handle, None, None)?);
+            
+        if commands::is_updater_active(app_handle.clone()) {
+            app_menu_builder = app_menu_builder.item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?);
+        }
+
+        let app_menu = app_menu_builder
             .separator()
             .item(&MenuItemBuilder::new(t("menu.file.preferences")).accelerator("CmdOrCtrl+,").id("settings").build(app_handle)?)
             .separator()
