@@ -19,6 +19,7 @@ import { SourceDetectedModal } from "./components/SourceDetectedModal";
 import FeedbackDialog from "./components/FeedbackDialog";
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
+import { getLocalizedAppError } from "./utils/errorHelper";
 import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata } from "./types";
 import "./App.css";
@@ -1340,7 +1341,7 @@ function App() {
       setSearchResults(results);
     } catch (err: any) {
       logFE("error", `Search error: ${err}`);
-      setErrorMsg(String(err));
+      setErrorMsg(getLocalizedAppError(err, t));
     }
   };
 
@@ -1366,7 +1367,7 @@ function App() {
       await invoke("rebuild_index", { bypassCache: shouldBypass, isStartup });
     } catch (err: any) {
       logFE("error", `Rebuild error: ${err}`);
-      setErrorMsg(String(err));
+      setErrorMsg(getLocalizedAppError(err, t));
     } finally {
       setIsRebuilding(false);
     }
@@ -1427,7 +1428,7 @@ function App() {
       }
     } catch (err: any) {
       logFE("error", `Failed to load session details: ${err}`);
-      setErrorMsg(t("common.error"));
+      setErrorMsg(getLocalizedAppError(err, t));
       setLoadTime(null);
       setLoadingSessionId(null);
     }

@@ -12,7 +12,12 @@
     "loading": "جاري التحميل...",
     "showFullContent": "عرض المحتوى الكامل",
     "bugTracker": "فتح متتبع الأخطاء / الإبلاغ عن مشكلة",
-    "copied": "تم النسخ!"
+    "copied": "تم النسخ!",
+    "root": "الجذر",
+    "untitled": "بلا عنوان",
+    "untitledSession": "جلسة بلا عنوان",
+    "localWorkspace": "مساحة العمل المحلية",
+    "noSnippet": "لا يوجد نص مقتطف."
   },
   "sidebar": {
     "title": "الجلسات",
@@ -123,7 +128,10 @@
     "grantPermission": "منح صلاحية القراءة",
     "failedLoad": "فشل تحميل محتويات الملف: {error}",
     "confirmExternalOpen": "هذا الملف خارج مساحة العمل. هل تسمح بفتحه خارجيًا؟",
-    "errorOpeningFile": "خطأ أثناء فتح الملف: {error}"
+    "errorOpeningFile": "خطأ أثناء فتح الملف: {error}",
+    "accessDenied": "تم رفض الوصول.",
+    "failedLoadGeneric": "فشل تحميل الملف.",
+    "permissionDeniedByUser": "تم رفض الإذن من قبل المستخدم."
   },
   "settings": {
     "title": "الإعدادات",
@@ -354,5 +362,24 @@
       "title": "مساعدة",
       "feedback": "إرسال ملاحظات إلى فريق Codeoba..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "لم يتم العثور على محول المصدر '{sourceId}'.",
+    "sessionReadLock": "فشل الحصول على قفل قراءة الجلسة.",
+    "onnxNotFound": "البحث الدلالي غير متاح: لم يتم العثور على نموذج ONNX/المفردات. يرجى التحقق من حزمة التطبيق أو تنزيل النموذج.",
+    "embedderCreation": "فشل تهيئة أداة التضمين الدلالية.",
+    "embeddingsGeneration": "فشل إنشاء التضمينات.",
+    "indexRebuildFailed": "فشل إعادة بناء الفهرس.",
+    "fileTooLarge": "يتجاوز الملف الحد الأقصى للمعاينة البالغ 5 ميجابايت. يرجى فتحه في محرر خارجي.",
+    "binaryFilePreview": "الملفات الثنائية غير مدعومة للمعاينة. يرجى فتحها في محرر خارجي.",
+    "permissionDenied": "تم رفض الإذن بواسطة التفضيلات المحفوظة.",
+    "confirmationRequired": "التأكيد مطلوب: {reason}",
+    "metadataRead": "فشل قراءة البيانات التعريفية: {error}",
+    "fileReadFailed": "فشل قراءة الملف: {error}",
+    "externalOpenFailed": "فشل فتح الملف خارجيًا: {error}",
+    "groupLock": "فشل الحصول على قفل المجموعة.",
+    "groupDbError": "فشلت عملية قاعدة بيانات المجموعة.",
+    "authServerStart": "فشل بدء تشغيل خادم المصادقة المحلي: {error}",
+    "generic": "حدث خطأ غير متوقع."
   }
 }

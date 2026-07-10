@@ -12,7 +12,12 @@
     "loading": "Caricamento...",
     "showFullContent": "Mostra contenuto completo",
     "bugTracker": "Apri Bug Tracker/Invia un problema",
-    "copied": "Copiato!"
+    "copied": "Copiato!",
+    "root": "Radice",
+    "untitled": "Senza titolo",
+    "untitledSession": "Sessione senza titolo",
+    "localWorkspace": "Spazio di lavoro locale",
+    "noSnippet": "Nessun frammento di testo."
   },
   "sidebar": {
     "title": "Sessioni",
@@ -123,7 +128,10 @@
     "grantPermission": "Concedi permesso di lettura",
     "failedLoad": "Impossibile caricare il contenuto del file: {error}",
     "confirmExternalOpen": "Questo file è esterno all'area di lavoro. Consentire l'apertura esterna?",
-    "errorOpeningFile": "Errore durante l'apertura del file: {error}"
+    "errorOpeningFile": "Errore durante l'apertura del file: {error}",
+    "accessDenied": "Accesso negato.",
+    "failedLoadGeneric": "Impossibile caricare il file.",
+    "permissionDeniedByUser": "Permesso negato dall'utente."
   },
   "settings": {
     "title": "Impostazioni",
@@ -354,5 +362,24 @@
       "title": "Aiuto",
       "feedback": "Invia feedback al team di Codeoba..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "Adattatore sorgente '{sourceId}' non trovato.",
+    "sessionReadLock": "Impossibile acquisire il blocco di lettura della sessione.",
+    "onnxNotFound": "La ricerca semantica non è disponibile: modello ONNX/vocabolario non trovato. Verificare il pacchetto dell'applicazione o scaricare il modello.",
+    "embedderCreation": "Impossibile inizializzare l'incorporatore semantico.",
+    "embeddingsGeneration": "Impossibile generare le incorporazioni.",
+    "indexRebuildFailed": "Ricostruzione dell'indice non riuscita.",
+    "fileTooLarge": "Il file supera il limite massimo di anteprima di 5 MB. Aprirlo in un editor esterno.",
+    "binaryFilePreview": "I file binari non sono supportati per l'anteprima. Aprirlo in un editor esterno.",
+    "permissionDenied": "Permesso negato dalle preferenze salvate.",
+    "confirmationRequired": "Conferma richiesta: {reason}",
+    "metadataRead": "Impossibile leggere i metadati: {error}",
+    "fileReadFailed": "Impossibile leggere il file: {error}",
+    "externalOpenFailed": "Impossibile aprire il file esternamente: {error}",
+    "groupLock": "Impossibile acquisire il blocco del gruppo.",
+    "groupDbError": "Operazione sul database del gruppo non riuscita.",
+    "authServerStart": "Impossibile avviare il server di autenticazione locale: {error}",
+    "generic": "Si è verificato un errore imprevisto."
   }
 }

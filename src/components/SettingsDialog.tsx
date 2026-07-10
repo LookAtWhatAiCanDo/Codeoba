@@ -19,6 +19,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
 import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
+import { getLocalizedAppError } from "../utils/errorHelper";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { SourceMetadata } from "../types";
 
@@ -426,7 +427,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
         logFE("error", `Failed to delete data paths for source: ${sourceId}`);
       }
     } catch (err: any) {
-      logFE("error", `Error deleting data paths: ${err}`);
+      logFE("error", `Error deleting data paths: ${getLocalizedAppError(err, t)}`);
     }
   };
 

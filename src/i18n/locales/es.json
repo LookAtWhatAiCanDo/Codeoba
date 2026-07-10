@@ -12,7 +12,12 @@
     "loading": "Cargando...",
     "showFullContent": "Mostrar contenido completo",
     "bugTracker": "Abrir Bug Tracker / Presentar un problema",
-    "copied": "¡Copiado!"
+    "copied": "¡Copiado!",
+    "root": "Raíz",
+    "untitled": "Sin título",
+    "untitledSession": "Sesión sin título",
+    "localWorkspace": "Espacio de trabajo local",
+    "noSnippet": "Sin texto de fragmento."
   },
   "sidebar": {
     "title": "Sesiones",
@@ -123,7 +128,10 @@
     "grantPermission": "Conceder permiso de lectura",
     "failedLoad": "Error al cargar el contenido del archivo: {error}",
     "confirmExternalOpen": "Este archivo está fuera del espacio de trabajo. ¿Permitir abrir externamente?",
-    "errorOpeningFile": "Error al abrir el archivo: {error}"
+    "errorOpeningFile": "Error al abrir el archivo: {error}",
+    "accessDenied": "Acceso denegado.",
+    "failedLoadGeneric": "Error al cargar el archivo.",
+    "permissionDeniedByUser": "Permiso denegado por el usuario."
   },
   "settings": {
     "title": "Configuración",
@@ -354,5 +362,24 @@
       "title": "Ayuda",
       "feedback": "Enviar comentarios al equipo de Codeoba..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "No se encontró el adaptador de origen '{sourceId}'.",
+    "sessionReadLock": "Error al adquirir el bloqueo de lectura de la sesión.",
+    "onnxNotFound": "La búsqueda semántica no está disponible: no se encontró el modelo ONNX/vocabulario. Verifique el empaquetado de la aplicación o descargue el modelo.",
+    "embedderCreation": "Error al inicializar el incorporador semántico.",
+    "embeddingsGeneration": "Error al generar incorporaciones.",
+    "indexRebuildFailed": "Error al reconstruir el índice.",
+    "fileTooLarge": "El archivo excede el límite máximo de vista previa de 5 MB. Ábralo en un editor externo.",
+    "binaryFilePreview": "Los archivos binarios no son compatibles con la vista previa. Ábralo en un editor externo.",
+    "permissionDenied": "Permiso denegado por las preferencias guardadas.",
+    "confirmationRequired": "Confirmación requerida: {reason}",
+    "metadataRead": "Error al leer los metadatos: {error}",
+    "fileReadFailed": "Error al leer el archivo: {error}",
+    "externalOpenFailed": "Error al abrir el archivo externamente: {error}",
+    "groupLock": "Error al adquirir el bloqueo del grupo.",
+    "groupDbError": "Error en la operação de la base de datos del grupo.",
+    "authServerStart": "Error al iniciar el servidor de autenticación local: {error}",
+    "generic": "Ocurrió un error inesperado durante la activación."
   }
 }

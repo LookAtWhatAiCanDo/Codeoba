@@ -12,7 +12,12 @@
     "loading": "加载中...",
     "showFullContent": "显示完整内容",
     "bugTracker": "打开问题追踪器 / 提交问题",
-    "copied": "已复制！"
+    "copied": "已复制！",
+    "root": "根目录",
+    "untitled": "无标题",
+    "untitledSession": "无标题会话",
+    "localWorkspace": "本地工作区",
+    "noSnippet": "无片段文本。"
   },
   "sidebar": {
     "title": "会话",
@@ -123,7 +128,10 @@
     "grantPermission": "授予读取权限",
     "failedLoad": "加载文件内容失败：{error}",
     "confirmExternalOpen": "此文件位于工作区外部。允许使用外部程序打开吗？",
-    "errorOpeningFile": "打开文件时出错：{error}"
+    "errorOpeningFile": "打开文件时出错：{error}",
+    "accessDenied": "拒绝访问。",
+    "failedLoadGeneric": "未能加载文件。",
+    "permissionDeniedByUser": "用户拒绝权限。"
   },
   "settings": {
     "title": "设置",
@@ -354,5 +362,24 @@
       "title": "帮助",
       "feedback": "向 Codeoba 团队发送反馈..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "找不到源适配器 '{sourceId}'。",
+    "sessionReadLock": "未能获取会话读取锁。",
+    "onnxNotFound": "语义搜索不可用：找不到 ONNX 模型/词表。请验证应用打包或下载模型。",
+    "embedderCreation": "未能初始化语义嵌入器。",
+    "embeddingsGeneration": "未能生成嵌入向量。",
+    "indexRebuildFailed": "索引重建失败。",
+    "fileTooLarge": "文件超过了 5MB 的最大预览限制。请在外部编辑器中打开。",
+    "binaryFilePreview": "不支持二进制文件预览。请在外部编辑器中打开。",
+    "permissionDenied": "保存的偏好设置拒绝权限。",
+    "confirmationRequired": "需要确认：{reason}",
+    "metadataRead": "读取元数据失败: {error}",
+    "fileReadFailed": "读取文件失败: {error}",
+    "externalOpenFailed": "在外部打开文件失败: {error}",
+    "groupLock": "未能获取组锁。",
+    "groupDbError": "组数据库操作失败。",
+    "authServerStart": "启动本地认证服务器失败: {error}",
+    "generic": "发生了意外错误。"
   }
 }

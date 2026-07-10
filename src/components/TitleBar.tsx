@@ -243,11 +243,11 @@ export const TitleBar = (props: TitleBarProps) => {
             }
           >
             <span class="text-text-secondary/70" title={props.selectedSession?.cwd || ""} data-tauri-drag-region>
-              {props.selectedSession?.cwd?.split(/[/\\]/).pop() || "Root"}
+              {props.selectedSession?.cwd?.split(/[/\\]/).pop() || t("common.root")}
             </span>
             <span class="text-border" data-tauri-drag-region>/</span>
-            <span class="text-text-primary" title={props.selectedSession?.threadName || "Untitled"} data-tauri-drag-region>
-              {props.selectedSession?.threadName || "Untitled"}
+            <span class="text-text-primary" title={props.selectedSession?.threadName || t("common.untitledSession")} data-tauri-drag-region>
+              {props.selectedSession?.threadName || t("common.untitledSession")}
             </span>
           </Show>
         </div>

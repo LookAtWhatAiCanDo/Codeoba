@@ -12,7 +12,12 @@
     "loading": "Chargement...",
     "showFullContent": "Afficher le contenu complet",
     "bugTracker": "Ouvrir le suivi des bugs / Signaler un problème",
-    "copied": "Copié !"
+    "copied": "Copié !",
+    "root": "Racine",
+    "untitled": "Sans titre",
+    "untitledSession": "Session sans titre",
+    "localWorkspace": "Espace de travail local",
+    "noSnippet": "Aucun extrait de texte."
   },
   "sidebar": {
     "title": "Sessions",
@@ -123,7 +128,10 @@
     "grantPermission": "Accorder l'autorisation de lecture",
     "failedLoad": "Échec du chargement du contenu du fichier : {error}",
     "confirmExternalOpen": "Ce fichier est en dehors de l'espace de travail. Autoriser l'ouverture externe ?",
-    "errorOpeningFile": "Erreur lors de l'ouverture du fichier : {error}"
+    "errorOpeningFile": "Erreur lors de l'ouverture du fichier : {error}",
+    "accessDenied": "Accès refusé.",
+    "failedLoadGeneric": "Échec du chargement du fichier.",
+    "permissionDeniedByUser": "Autorisation refusée par l'utilisateur."
   },
   "settings": {
     "title": "Paramètres",
@@ -354,5 +362,24 @@
       "title": "Aide",
       "feedback": "Envoyer des commentaires à l'équipe de Codeoba..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "Adaptateur source '{sourceId}' introuvable.",
+    "sessionReadLock": "Échec de l'acquisition du verrou de lecture de session.",
+    "onnxNotFound": "La recherche sémantique est indisponible : modèle ONNX/vocabulaire introuvable. Veuillez vérifier l'empaquetage de l'application ou télécharger le modèle.",
+    "embedderCreation": "Échec de l'initialisation de l'embeddeur sémantique.",
+    "embeddingsGeneration": "Échec de la génération des embeddings.",
+    "indexRebuildFailed": "Échec de la reconstruction de l'index.",
+    "fileTooLarge": "Le fichier dépasse la limite maximale d'aperçu de 5 Mo. Veuillez l'ouvrir dans un éditeur externe.",
+    "binaryFilePreview": "Les fichiers binaires ne sont pas pris en charge pour l'aperçu. Veuillez l'ouvrir dans un éditeur externe.",
+    "permissionDenied": "Autorisation refusée par les préférences enregistrées.",
+    "confirmationRequired": "Confirmation requise : {reason}",
+    "metadataRead": "Échec de la lecture des métadonnées : {error}",
+    "fileReadFailed": "Échec de la lecture du fichier : {error}",
+    "externalOpenFailed": "Échec de l'ouverture externe du fichier : {error}",
+    "groupLock": "Échec de l'acquisition du verrou de groupe.",
+    "groupDbError": "Échec de l'opération de la base de données du groupe.",
+    "authServerStart": "Échec du démarrage du serveur d'authentification local : {error}",
+    "generic": "Une erreur inattendue est survenue."
   }
 }

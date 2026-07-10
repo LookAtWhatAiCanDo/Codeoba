@@ -12,7 +12,12 @@
     "loading": "Laden...",
     "showFullContent": "Volledige inhoud weergeven",
     "bugTracker": "Open Bug Tracker / Dien een probleem in",
-    "copied": "Gekopieerd!"
+    "copied": "Gekopieerd!",
+    "root": "Root",
+    "untitled": "Naamloos",
+    "untitledSession": "Naamloze sessie",
+    "localWorkspace": "Lokale werkruimte",
+    "noSnippet": "Geen fragmenttekst."
   },
   "sidebar": {
     "title": "Sessies",
@@ -123,7 +128,10 @@
     "grantPermission": "Leesrechten verlenen",
     "failedLoad": "Laden van bestandsinhoud mislukt: {error}",
     "confirmExternalOpen": "Dit bestand bevindt zich buiten de werkruimte. Extern openen toestaan?",
-    "errorOpeningFile": "Fout bij het openen van bestand: {error}"
+    "errorOpeningFile": "Fout bij het openen van bestand: {error}",
+    "accessDenied": "Toegang geweigerd.",
+    "failedLoadGeneric": "Laden van bestand mislukt.",
+    "permissionDeniedByUser": "Toestemming geweigerd door gebruiker."
   },
   "settings": {
     "title": "Instellingen",
@@ -354,5 +362,24 @@
       "title": "Help",
       "feedback": "Feedback naar het Codeoba-team sturen..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "Bronadapter '{sourceId}' niet gevonden.",
+    "sessionReadLock": "Verkrijgen van leesslot voor sessie mislukt.",
+    "onnxNotFound": "Semantisch zoeken is niet beschikbaar: ONNX-model/vocabulaire niet gevonden. Controleer de applicatieverpakking of download het model.",
+    "embedderCreation": "Initialiseren van semantische embedder mislukt.",
+    "embeddingsGeneration": "Genereren van embeddings mislukt.",
+    "indexRebuildFailed": "Opnieuw opbouwen van index mislukt.",
+    "fileTooLarge": "Bestand overschrijdt de maximale voorbeeldlimiet van 5 MB. Open het in een externe editor.",
+    "binaryFilePreview": "Binaire bestanden worden niet ondersteund voor voorbeeld. Open het in een externe editor.",
+    "permissionDenied": "Toestemming geweigerd door opgeslagen voorkeuren.",
+    "confirmationRequired": "Bevestiging vereist: {reason}",
+    "metadataRead": "Lezen van metadata mislukt: {error}",
+    "fileReadFailed": "Lezen van bestand mislukt: {error}",
+    "externalOpenFailed": "Extern openen van bestand mislukt: {error}",
+    "groupLock": "Verkrijgen van groepsslot mislukt.",
+    "groupDbError": "Groepsdatabasebewerking mislukt.",
+    "authServerStart": "Starten van lokale authenticatieserver mislukt: {error}",
+    "generic": "Er is een onverwachte fout opgetreden."
   }
 }

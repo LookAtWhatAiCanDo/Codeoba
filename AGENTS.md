@@ -148,6 +148,11 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - In development environments, saving workspace source files causes the Vite server to refresh the webview, mounting the root SolidJS application again and calling `rebuild_index`.
    - The backend tracks whether it has completed its initial index rebuild run via `has_rebuilt`. Any subsequent automatic rebuild requests originating from startup mounts short-circuit immediately, avoiding the 700ms index reload lag.
 
+12. **Unified Tauri Structured Errors**:
+   - Tauri command handlers exposed to SolidJS MUST return `Result<T, AppErrorPayload>` rather than raw, unlocalized `String` errors.
+   - Errors are defined as u32 constants (e.g., 2000-2999 range) in `src-tauri/src/commands.rs` and mapped to user-facing translations under the `errors` section in locale dictionaries (e.g., `src/i18n/locales/en.json`).
+   - Frontend callers catching these errors MUST pass the rejected promise payload through the `getLocalizedAppError(err, t)` helper in `src/utils/errorHelper.ts` to resolve and display translated error messages.
+
 ---
 
 ## 🛠️ Common Cargo & NPM Development Commands

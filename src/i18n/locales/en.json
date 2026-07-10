@@ -12,7 +12,12 @@
     "loading": "Loading...",
     "showFullContent": "Show full content",
     "bugTracker": "Open Bug Tracker / File an Issue",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "root": "Root",
+    "untitled": "Untitled",
+    "untitledSession": "Untitled Session",
+    "localWorkspace": "Local Workspace",
+    "noSnippet": "No snippet text."
   },
   "sidebar": {
     "title": "Sessions",
@@ -123,7 +128,10 @@
     "grantPermission": "Grant Read Permission",
     "failedLoad": "Failed to load file contents: {error}",
     "confirmExternalOpen": "This file is outside the workspace. Allow opening externally?",
-    "errorOpeningFile": "Error opening file: {error}"
+    "errorOpeningFile": "Error opening file: {error}",
+    "accessDenied": "Access was denied.",
+    "failedLoadGeneric": "Failed to load file.",
+    "permissionDeniedByUser": "Permission denied by user."
   },
   "settings": {
     "title": "Settings",
@@ -356,5 +364,24 @@
       "title": "Help",
       "feedback": "Send Feedback to Codeoba Team..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "Source adapter '{sourceId}' not found.",
+    "sessionReadLock": "Failed to acquire session read lock.",
+    "onnxNotFound": "Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.",
+    "embedderCreation": "Failed to initialize semantic embedder.",
+    "embeddingsGeneration": "Failed to generate embeddings.",
+    "indexRebuildFailed": "Index rebuild failed.",
+    "fileTooLarge": "File exceeds maximum preview limit of 5MB. Please open in an external editor.",
+    "binaryFilePreview": "Binary files are not supported for preview. Please open in an external editor.",
+    "permissionDenied": "Permission denied by saved preferences.",
+    "confirmationRequired": "Confirmation required: {reason}",
+    "metadataRead": "Failed to read metadata: {error}",
+    "fileReadFailed": "Failed to read file: {error}",
+    "externalOpenFailed": "Failed to open file externally: {error}",
+    "groupLock": "Failed to acquire group lock.",
+    "groupDbError": "Group database operation failed.",
+    "authServerStart": "Failed to start local auth server: {error}",
+    "generic": "An unexpected error occurred."
   }
 }

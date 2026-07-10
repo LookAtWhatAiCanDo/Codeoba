@@ -8,6 +8,96 @@ use serde::Serialize;
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
+// Sync/Licensing activation error codes.
+// IMPORTANT: These codes must remain synchronized with the ones defined in the frontend at:
+// `src/utils/errorHelper.ts`
+
+// Authentication & Licensing (1000 - 1009)
+pub const ERR_TOKEN_MISSING: u32 = 1001;
+pub const ERR_LICENSE_INACTIVE: u32 = 1002;
+
+// Network & Server Connections (1010 - 1029)
+pub const ERR_CLIENT_BUILD: u32 = 1011;
+pub const ERR_MANIFEST_FETCH_CONNECTION: u32 = 1012;
+pub const ERR_MANIFEST_SERVER_ERROR: u32 = 1013;
+pub const ERR_MANIFEST_PARSE: u32 = 1014;
+pub const ERR_WASM_DOWNLOAD_CONNECTION: u32 = 1015;
+pub const ERR_WASM_SERVER_ERROR: u32 = 1016;
+pub const ERR_WASM_READ_BODY: u32 = 1017;
+
+// Cryptography & Integrity (1030 - 1049)
+pub const ERR_INTEGRITY_FAILED: u32 = 1031;
+pub const ERR_SIGNATURE_FAILED: u32 = 1032;
+
+// Local Filesystem & Storage (1050 - 1069)
+pub const ERR_DIR_CREATE: u32 = 1051;
+pub const ERR_FILE_WRITE: u32 = 1052;
+pub const ERR_MANIFEST_SERIALIZE: u32 = 1053;
+pub const ERR_MANIFEST_WRITE: u32 = 1054;
+
+// General/Session Errors (2000 - 2099)
+pub const ERR_SOURCE_NOT_FOUND: u32 = 2001;
+pub const ERR_SESSION_READ_LOCK: u32 = 2002;
+
+// Search & Index Errors (2100 - 2199)
+pub const ERR_ONNX_NOT_FOUND: u32 = 2101;
+pub const ERR_EMBEDDER_CREATION: u32 = 2102;
+pub const ERR_EMBEDDINGS_GENERATION: u32 = 2103;
+pub const ERR_INDEX_REBUILD_FAILED: u32 = 2104;
+
+// File Preview & Permissions (2200 - 2299)
+pub const ERR_FILE_TOO_LARGE: u32 = 2201;
+pub const ERR_BINARY_FILE_PREVIEW: u32 = 2202;
+pub const ERR_PERMISSION_DENIED: u32 = 2203;
+pub const ERR_EXTERNAL_CONFIRMATION_REQUIRED: u32 = 2204;
+pub const ERR_METADATA_READ: u32 = 2205;
+pub const ERR_FILE_READ_FAILED: u32 = 2206;
+pub const ERR_EXTERNAL_OPEN_FAILED: u32 = 2207;
+
+// Group Management Errors (2300 - 2399)
+pub const ERR_GROUP_LOCK: u32 = 2301;
+pub const ERR_GROUP_DB_ERROR: u32 = 2302;
+
+// Auth Server Errors (2400 - 2499)
+pub const ERR_AUTH_SERVER_START: u32 = 2401;
+
+// Generic Fallback (2999)
+pub const ERR_GENERIC: u32 = 2999;
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppErrorPayload {
+    pub code: u32,
+    pub status: Option<u16>,
+    pub message: Option<String>,
+}
+
+impl AppErrorPayload {
+    pub fn new(code: u32) -> Self {
+        Self { code, status: None, message: None }
+    }
+
+    pub fn with_status(code: u32, status: u16) -> Self {
+        Self { code, status: Some(status), message: None }
+    }
+
+    pub fn with_msg(code: u32, msg: impl Into<String>) -> Self {
+        Self { code, status: None, message: Some(msg.into()) }
+    }
+
+    pub fn with_all(code: u32, status: u16, msg: impl Into<String>) -> Self {
+        Self { code, status: Some(status), message: Some(msg.into()) }
+    }
+}
+
+impl std::fmt::Display for AppErrorPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AppError Code: {}, Msg: {:?}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for AppErrorPayload {}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceMetadata {
@@ -34,9 +124,9 @@ pub fn get_sources() -> Vec<SourceMetadata> {
 }
 
 #[tauri::command]
-pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Vec<Session>, String> {
+pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Vec<Session>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
-    let guard = state.sessions.read().map_err(|e| e.to_string())?;
+    let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
     
     let mut all_sessions: Vec<Session> = guard.values().map(|s| {
         let mut lightweight = s.to_lightweight();
@@ -66,13 +156,13 @@ pub async fn get_session<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     source_id: String,
     file_path: String,
-) -> Result<Option<Session>, String> {
+) -> Result<Option<Session>, AppErrorPayload> {
     let start_time = std::time::Instant::now();
     crate::log_info!("[IPC] get_session: Started for source_id='{}', file_path='{}'", source_id, file_path);
 
     let state = app_handle.state::<SearchIndexState>();
     let in_memory_cached = {
-        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         guard.values().find(|s| s.source_id == source_id && s.file_path == file_path).cloned()
     };
 
@@ -125,18 +215,18 @@ pub async fn get_session<R: tauri::Runtime>(
         None => {
             let elapsed = start_time.elapsed();
             crate::log_error!("[IPC] get_session: Completed with error in {:?}: Source adapter '{}' not found", elapsed, source_id);
-            Err(format!("Source adapter '{}' not found", source_id))
+            Err(AppErrorPayload::with_msg(ERR_SOURCE_NOT_FOUND, source_id))
         }
     }
 }
 
 #[tauri::command]
-pub fn delete_source_data(source_id: String) -> Result<bool, String> {
+pub fn delete_source_data(source_id: String) -> Result<bool, AppErrorPayload> {
     let sources = get_sources_list();
     let source = sources.iter().find(|s| s.id() == source_id);
     match source {
         Some(s) => Ok(s.delete_data_paths()),
-        None => Err(format!("Source adapter '{}' not found", source_id)),
+        None => Err(AppErrorPayload::with_msg(ERR_SOURCE_NOT_FOUND, source_id)),
     }
 }
 
@@ -172,18 +262,19 @@ pub async fn search_sessions<R: tauri::Runtime>(
     filter: SearchFilter,
     use_semantic: bool,
     similarity_threshold: Option<f64>,
-) -> Result<Vec<SearchResult>, String> {
+) -> Result<Vec<SearchResult>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
     
     let sessions: Vec<Session> = {
-        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         guard.values().cloned().collect()
     };
 
     if use_semantic {
         if !state.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst) {
             state.is_semantic_initialized.store(true, std::sync::atomic::Ordering::SeqCst);
-            state.rebuild(true, Some(app_handle.clone())).await?;
+            state.rebuild(true, Some(app_handle.clone())).await
+                .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))?;
         }
     }
 
@@ -191,12 +282,14 @@ pub async fn search_sessions<R: tauri::Runtime>(
         let (model_path, vocab_path) = crate::search::resolve_model_paths(Some(&app_handle));
 
         if !model_path.exists() || !vocab_path.exists() {
-            return Err("Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.".to_string());
+            return Err(AppErrorPayload::new(ERR_ONNX_NOT_FOUND));
         }
-        let onnx_embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)?;
-        let query_vector = onnx_embedder.get_embeddings(&query)?;
+        let onnx_embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)
+            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e.to_string()))?;
+        let query_vector = onnx_embedder.get_embeddings(&query)
+            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDINGS_GENERATION, e.to_string()))?;
 
-        let embeddings_guard = state.embeddings.read().map_err(|e| e.to_string())?;
+        let embeddings_guard = state.embeddings.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         let threshold = similarity_threshold.unwrap_or(0.35) as f32;
         crate::search::semantic::semantic_search(
             &sessions,
@@ -220,7 +313,7 @@ pub async fn rebuild_index<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     bypass_cache: Option<bool>,
     is_startup: Option<bool>,
-) -> Result<(), String> {
+) -> Result<(), AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
 
     if is_startup == Some(true) && state.has_rebuilt.load(std::sync::atomic::Ordering::SeqCst) {
@@ -242,6 +335,7 @@ pub async fn rebuild_index<R: tauri::Runtime>(
         }
     }
     state.rebuild(true, Some(app_handle.clone())).await
+        .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))
 }
 
 #[tauri::command]
@@ -418,12 +512,12 @@ fn is_executable_target(path: &Path) -> bool {
 ///
 /// The `Confirmation required:` prefix is load-bearing: `FileViewerDialog` matches on it to
 /// decide whether to raise its prompt or surface a plain error.
-fn require_external_open_permission(path: PathBuf, reason: &str) -> Result<PathBuf, String> {
+fn require_external_open_permission(path: PathBuf, reason: &str) -> Result<PathBuf, AppErrorPayload> {
     let path_str = path.to_string_lossy().to_string();
     match permissions::check_permission(&path_str, "external_open").as_deref() {
         Some("allow") => Ok(path),
-        Some("deny") => Err("Permission denied by saved preferences.".to_string()),
-        _ => Err(format!("Confirmation required: {}", reason)),
+        Some("deny") => Err(AppErrorPayload::new(ERR_PERMISSION_DENIED)),
+        _ => Err(AppErrorPayload::with_msg(ERR_EXTERNAL_CONFIRMATION_REQUIRED, reason)),
     }
 }
 
@@ -440,7 +534,7 @@ pub struct FileReadResponse {
 pub fn resolve_and_read_file(
     raw_path: String,
     session_cwd: Option<String>,
-) -> Result<FileReadResponse, String> {
+) -> Result<FileReadResponse, AppErrorPayload> {
     let base_dir = session_cwd.as_deref().map(Path::new);
     let trusted_root = resolve_trusted_root(session_cwd.as_deref());
 
@@ -454,12 +548,7 @@ pub fn resolve_and_read_file(
             let path_str = path.to_string_lossy().to_string();
             match permissions::check_permission(&path_str, "preview") {
                 Some(ref dec) if dec == "allow" => read_resolved_file(path),
-                Some(ref dec) if dec == "deny" => Ok(FileReadResponse {
-                    status: "denied".to_string(),
-                    content: None,
-                    canonical_path: Some(path_str),
-                    reason: Some("Permission denied by saved preferences.".to_string()),
-                }),
+                Some(ref dec) if dec == "deny" => Err(AppErrorPayload::new(ERR_PERMISSION_DENIED)),
                 _ => Ok(FileReadResponse {
                     status: "confirmation_required".to_string(),
                     content: None,
@@ -469,36 +558,21 @@ pub fn resolve_and_read_file(
             }
         }
         LocalFileResolution::Rejected(reason) => {
-            Ok(FileReadResponse {
-                status: "rejected".to_string(),
-                content: None,
-                canonical_path: None,
-                reason: Some(reason),
-            })
+            Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, reason))
         }
     }
 }
 
-fn read_resolved_file(path: std::path::PathBuf) -> Result<FileReadResponse, String> {
-    let metadata = std::fs::metadata(&path).map_err(|e| format!("Failed to read metadata: {}", e))?;
+fn read_resolved_file(path: std::path::PathBuf) -> Result<FileReadResponse, AppErrorPayload> {
+    let metadata = std::fs::metadata(&path).map_err(|e| AppErrorPayload::with_msg(ERR_METADATA_READ, e.to_string()))?;
     if metadata.len() > 5_242_881 {
-        return Ok(FileReadResponse {
-            status: "rejected".to_string(),
-            content: None,
-            canonical_path: Some(path.to_string_lossy().to_string()),
-            reason: Some("File exceeds maximum preview limit of 5MB. Please open in an external editor.".to_string()),
-        });
+        return Err(AppErrorPayload::new(ERR_FILE_TOO_LARGE));
     }
-    let bytes = std::fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let bytes = std::fs::read(&path).map_err(|e| AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, e.to_string()))?;
     
     // Check if the file contains null bytes (binary indicator)
     if bytes.contains(&0) {
-        return Ok(FileReadResponse {
-            status: "rejected".to_string(),
-            content: None,
-            canonical_path: Some(path.to_string_lossy().to_string()),
-            reason: Some("Binary files are not supported for preview. Please open in an external editor.".to_string()),
-        });
+        return Err(AppErrorPayload::new(ERR_BINARY_FILE_PREVIEW));
     }
 
     let content = String::from_utf8_lossy(&bytes).into_owned();
@@ -535,7 +609,7 @@ pub fn open_file_externally<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     raw_path: String,
     session_cwd: Option<String>,
-) -> Result<(), String> {
+) -> Result<(), AppErrorPayload> {
     let base_dir = session_cwd.as_deref().map(Path::new);
     let trusted_root = resolve_trusted_root(session_cwd.as_deref());
 
@@ -555,17 +629,18 @@ pub fn open_file_externally<R: tauri::Runtime>(
         LocalFileResolution::ConfirmationRequired(path, reason) => {
             require_external_open_permission(path, &reason)?
         }
-        LocalFileResolution::Rejected(reason) => return Err(reason),
+        LocalFileResolution::Rejected(reason) => return Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, reason)),
     };
 
     app.opener()
         .open_path(path.to_string_lossy().to_string(), None::<&str>)
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppErrorPayload::with_msg(ERR_EXTERNAL_OPEN_FAILED, e.to_string()))
 }
 
 #[tauri::command]
-pub fn start_local_auth_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<u16, String> {
+pub fn start_local_auth_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<u16, AppErrorPayload> {
     crate::premium::loopback::start_server(app_handle)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_AUTH_SERVER_START, e))
 }
 
 #[tauri::command]
@@ -614,45 +689,45 @@ pub fn reset_detected_sources<R: tauri::Runtime>(
 }
 
 #[tauri::command]
-pub fn get_groups(state: tauri::State<'_, crate::groups::GroupState>) -> Result<Vec<crate::groups::ConversationGroup>, String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+pub fn get_groups(state: tauri::State<'_, crate::groups::GroupState>) -> Result<Vec<crate::groups::ConversationGroup>, AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     Ok(crate::groups::get_groups())
 }
 
 #[tauri::command]
-pub fn add_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<bool, String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::add_group(&name)
+pub fn add_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<bool, AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::add_group(&name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn delete_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<(), String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::delete_group(&name)
+pub fn delete_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<(), AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::delete_group(&name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn rename_group(state: tauri::State<'_, crate::groups::GroupState>, old_name: String, new_name: String) -> Result<bool, String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::rename_group(&old_name, &new_name)
+pub fn rename_group(state: tauri::State<'_, crate::groups::GroupState>, old_name: String, new_name: String) -> Result<bool, AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::rename_group(&old_name, &new_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn assign_session_to_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::assign_session_to_group(&session_id, &group_name)
+pub fn assign_session_to_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::assign_session_to_group(&session_id, &group_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn remove_session_from_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::remove_session_from_group(&session_id, &group_name)
+pub fn remove_session_from_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::remove_session_from_group(&session_id, &group_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name: String, pinned: bool) -> Result<(), String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
-    crate::groups::set_group_pinned(&name, pinned)
+pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name: String, pinned: bool) -> Result<(), AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::set_group_pinned(&name, pinned).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
@@ -663,9 +738,10 @@ pub fn update_group_details(
     status: String,
     past_work_summary: String,
     tasks: Vec<crate::groups::GroupTask>,
-) -> Result<(), String> {
-    let _lock = state.lock.lock().map_err(|e| e.to_string())?;
+) -> Result<(), AppErrorPayload> {
+    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     crate::groups::update_group_details(&name, &description, &status, &past_work_summary, tasks)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]

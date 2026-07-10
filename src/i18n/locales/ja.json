@@ -12,7 +12,12 @@
     "loading": "読み込み中...",
     "showFullContent": "全コンテンツを表示",
     "bugTracker": "バグトラッカーを開く / 問題を報告",
-    "copied": "コピーしました！"
+    "copied": "コピーしました！",
+    "root": "ルート",
+    "untitled": "無題",
+    "untitledSession": "無題のセッション",
+    "localWorkspace": "ローカルワークスペース",
+    "noSnippet": "スニペットテキストはありません。"
   },
   "sidebar": {
     "title": "セッション",
@@ -123,7 +128,10 @@
     "grantPermission": "読み取り権限を付与",
     "failedLoad": "ファイルコンテンツの読み込みに失敗しました: {error}",
     "confirmExternalOpen": "このファイルはワークスペースの外にあります。外部での開封を許可しますか？",
-    "errorOpeningFile": "ファイルのオープン中にエラーが発生しました: {error}"
+    "errorOpeningFile": "ファイルのオープン中にエラーが発生しました: {error}",
+    "accessDenied": "アクセスが拒否されました。",
+    "failedLoadGeneric": "ファイルの読み込みに失敗しました。",
+    "permissionDeniedByUser": "ユーザーによって権限が拒否されました。"
   },
   "settings": {
     "title": "設定",
@@ -354,5 +362,24 @@
       "title": "ヘルプ",
       "feedback": "Codeobaチームにフィードバックを送信..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "ソースアダプター '{sourceId}' が見つかりません。",
+    "sessionReadLock": "セッション読み取りロックの取得に失敗しました。",
+    "onnxNotFound": "セマンティック検索は利用できません：ONNXモデル/ボキャブラリーが見つかりません。アプリパッケージを確認するか、モデルをダウンロードしてください。",
+    "embedderCreation": "セマンティックエンベッダーの初期化に失敗しました。",
+    "embeddingsGeneration": "埋め込みの生成に失敗しました。",
+    "indexRebuildFailed": "インデックスの再構築に失敗しました。",
+    "fileTooLarge": "ファイルがプレビューの最大制限である5MBを超えています。外部エディタで開いてください。",
+    "binaryFilePreview": "バイナリファイルはプレビューに対応していません。外部エディタで開いてください。",
+    "permissionDenied": "保存された設定によって権限が拒否されました。",
+    "confirmationRequired": "確認が必要です: {reason}",
+    "metadataRead": "メタデータの読み込みに失敗しました: {error}",
+    "fileReadFailed": "ファイルの読み込みに失敗しました: {error}",
+    "externalOpenFailed": "ファイルを外部で開くのに失敗しました: {error}",
+    "groupLock": "グループロックの取得に失敗しました。",
+    "groupDbError": "グループデータベース操作に失敗しました。",
+    "authServerStart": "ローカル認証サーバーの起動に失敗しました: {error}",
+    "generic": "予期しないエラーが発生しました。"
   }
 }

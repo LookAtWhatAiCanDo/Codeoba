@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { logFE } from "../utils/logger";
 import { useI18n } from "../i18n/i18n";
+import { getLocalizedAppError } from "../utils/errorHelper";
 
 interface FileViewerDialogProps {
   sessionCwd?: string | null;
@@ -58,16 +59,13 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
       } else if (response.status === "confirmation_required") {
         setConfirmReason(response.reason);
         setStatus("confirmation_required");
-      } else if (response.status === "denied") {
-        setErrorMsg(response.reason || "Access was denied.");
-        setStatus("denied");
       } else {
-        setErrorMsg(response.reason || "Failed to load file.");
+        setErrorMsg(t("fileViewer.failedLoadGeneric"));
         setStatus("error");
       }
     } catch (err: any) {
       logFE("error", `FileViewerDialog: Failed to resolve file: ${err}`);
-      setErrorMsg(err.toString());
+      setErrorMsg(getLocalizedAppError(err, t));
       setStatus("error");
     }
   };
@@ -86,7 +84,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
         await loadFile(filePath());
       } else {
         setStatus("denied");
-        setErrorMsg("Permission denied by user.");
+        setErrorMsg(t("fileViewer.permissionDeniedByUser"));
       }
     } catch (err) {
       logFE("error", `FileViewerDialog: Failed to save permission: ${err}`);

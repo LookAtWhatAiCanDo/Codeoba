@@ -12,7 +12,12 @@
     "loading": "로딩 중...",
     "showFullContent": "전체 내용 표시",
     "bugTracker": "버그 추적기 열기 / 이슈 등록",
-    "copied": "복사됨!"
+    "copied": "복사됨!",
+    "root": "루트",
+    "untitled": "제목 없음",
+    "untitledSession": "제목 없는 세션",
+    "localWorkspace": "로컬 작업 공간",
+    "noSnippet": "스니펫 텍스트가 없습니다."
   },
   "sidebar": {
     "title": "세션",
@@ -123,7 +128,10 @@
     "grantPermission": "읽기 권한 부여",
     "failedLoad": "파일 내용을 불러오지 못했습니다: {error}",
     "confirmExternalOpen": "이 파일은 작업 공간 외부에 있습니다. 외부에서 열도록 허용하시겠습니까?",
-    "errorOpeningFile": "파일을 여는 중 오류 발생: {error}"
+    "errorOpeningFile": "파일을 여는 중 오류 발생: {error}",
+    "accessDenied": "접근이 거부되었습니다.",
+    "failedLoadGeneric": "파일을 로드하지 못했습니다.",
+    "permissionDeniedByUser": "사용자에 의해 권한이 거부되었습니다."
   },
   "settings": {
     "title": "설정",
@@ -354,5 +362,24 @@
       "title": "도움말",
       "feedback": "Codeoba 팀에 피드백 보내기..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "소스 어댑터 '{sourceId}'를 찾을 수 없습니다.",
+    "sessionReadLock": "세션 읽기 잠금을 획득하지 못했습니다.",
+    "onnxNotFound": "시맨틱 검색을 사용할 수 없습니다: ONNX 모델/어휘를 찾을 수 없습니다. 애플리케이션 패키징을 확인하거나 모델을 다운로드하십시오.",
+    "embedderCreation": "시맨틱 임베더를 초기화하지 못했습니다.",
+    "embeddingsGeneration": "임베딩을 생성하지 못했습니다.",
+    "indexRebuildFailed": "인덱스 재구축에 실패했습니다.",
+    "fileTooLarge": "파일이 최대 미리보기 제한인 5MB를 초과합니다. 외부 편집기에서 여십시오.",
+    "binaryFilePreview": "이진 파일은 미리보기를 지원하지 않습니다. 외부 편집기에서 여십시오.",
+    "permissionDenied": "저장된 기본 설정에 의해 권한이 거부되었습니다.",
+    "confirmationRequired": "확인 필요: {reason}",
+    "metadataRead": "메타데이터를 읽지 못했습니다: {error}",
+    "fileReadFailed": "파일을 읽지 못했습니다: {error}",
+    "externalOpenFailed": "파일을 외부에서 열지 못했습니다: {error}",
+    "groupLock": "그룹 잠금을 획득하지 못했습니다.",
+    "groupDbError": "그룹 데이터베이스 작업에 실패했습니다.",
+    "authServerStart": "로컬 인증 서버를 시작하지 못했습니다: {error}",
+    "generic": "예기치 않은 오류가 발생했습니다."
   }
 }

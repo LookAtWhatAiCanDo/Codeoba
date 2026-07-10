@@ -348,7 +348,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                       <option value="">No Session Link</option>
                       <For each={groupSessions()}>
                         {session => (
-                          <option value={session.id}>{session.threadName || "Untitled"}</option>
+                          <option value={session.id}>{session.threadName || t("common.untitledSession")}</option>
                         )}
                       </For>
                     </select>
@@ -386,8 +386,8 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                     class="flex items-center justify-between p-3.5 bg-surface/30 border border-border/60 hover:border-accent/40 rounded-xl cursor-pointer hover:bg-surface/50 transition-all text-xs"
                   >
                     <div class="min-w-0 flex-grow mr-4">
-                      <span class="font-semibold text-text-primary truncate block">{session.threadName || "Untitled"}</span>
-                      <span class="text-[0.625rem] text-text-secondary/60 mt-0.5 truncate block">{session.snippet || "No snippet text."}</span>
+                      <span class="font-semibold text-text-primary truncate block">{session.threadName || t("common.untitledSession")}</span>
+                      <span class="text-[0.625rem] text-text-secondary/60 mt-0.5 truncate block">{session.snippet || t("common.noSnippet")}</span>
                     </div>
                     <span class="text-[0.625rem] text-text-secondary/50 flex-shrink-0">
                       {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : "Never"}

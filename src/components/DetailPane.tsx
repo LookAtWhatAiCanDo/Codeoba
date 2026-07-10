@@ -541,7 +541,7 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   // Extract folder name from CWD as "Workspace"
   const getWorkspaceName = () => {
-    return props.session?.workspaceName || "Local Workspace";
+    return props.session?.workspaceName || t("common.localWorkspace");
   };
 
   const getStatusLabel = (status: string) => {

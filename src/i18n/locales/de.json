@@ -12,7 +12,12 @@
     "loading": "Wird geladen...",
     "showFullContent": "Vollständigen Inhalt anzeigen",
     "bugTracker": "Bug-Tracker öffnen / Problem melden",
-    "copied": "Kopiert!"
+    "copied": "Kopiert!",
+    "root": "Stammverzeichnis",
+    "untitled": "Unbenannt",
+    "untitledSession": "Unbenannte Sitzung",
+    "localWorkspace": "Lokaler Arbeitsbereich",
+    "noSnippet": "Kein Snippet-Text."
   },
   "sidebar": {
     "title": "Sitzungen",
@@ -123,7 +128,10 @@
     "grantPermission": "Leseberechtigung erteilen",
     "failedLoad": "Fehler beim Laden der Dateiinhalte: {error}",
     "confirmExternalOpen": "Diese Datei befindet sich außerhalb des Arbeitsbereichs. Externes Öffnen erlauben?",
-    "errorOpeningFile": "Fehler beim Öffnen der Datei: {error}"
+    "errorOpeningFile": "Fehler beim Öffnen der Datei: {error}",
+    "accessDenied": "Zugriff verweigert.",
+    "failedLoadGeneric": "Fehler beim Laden der Datei.",
+    "permissionDeniedByUser": "Berechtigung durch Benutzer verweigert."
   },
   "settings": {
     "title": "Einstellungen",
@@ -354,5 +362,24 @@
       "title": "Hilfe",
       "feedback": "Feedback an das Codeoba-Team senden..."
     }
+  },
+  "errors": {
+    "sourceNotFound": "Quelladapter '{sourceId}' nicht gefunden.",
+    "sessionReadLock": "Fehler beim Erwerb der Sitzungslesesperre.",
+    "onnxNotFound": "Semantische Suche ist nicht verfügbar: ONNX-Modell/Vokabular nicht gefunden. Bitte überprüfen Sie die Anwendung Verpackung oder laden Sie das Modell herunter.",
+    "embedderCreation": "Fehler beim Initialisieren des semantischen Embedders.",
+    "embeddingsGeneration": "Fehler beim Generieren von Embeddings.",
+    "indexRebuildFailed": "Index-Rebuild fehlgeschlagen.",
+    "fileTooLarge": "Datei überschreitet das maximale Vorschaulimit von 5 MB. Bitte öffnen Sie sie in einem externen Editor.",
+    "binaryFilePreview": "Binäre Dateien werden für die Vorschau nicht unterstützt. Bitte öffnen Sie sie in einem externen Editor.",
+    "permissionDenied": "Berechtigung durch gespeicherte Einstellungen verweigert.",
+    "confirmationRequired": "Bestätigung erforderlich: {reason}",
+    "metadataRead": "Fehler beim Lesen der Metadaten: {error}",
+    "fileReadFailed": "Fehler beim Lesen der Datei: {error}",
+    "externalOpenFailed": "Fehler beim externen Öffnen der Datei: {error}",
+    "groupLock": "Fehler beim Erwerb der Gruppensperre.",
+    "groupDbError": "Gruppen-Datenbankoperation fehlgeschlagen.",
+    "authServerStart": "Fehler beim Starten des lokalen Authentifizierungsservers: {error}",
+    "generic": "Ein unerwarteter Fehler ist aufgetreten."
   }
 }
