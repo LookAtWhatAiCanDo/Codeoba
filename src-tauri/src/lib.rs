@@ -16,6 +16,10 @@ pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 use tauri::Manager;
 
 pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
+    if endpoints.is_empty() {
+        return false;
+    }
+
     let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
     
     // Official Dev/Staging Keys (add rotated keys here)
@@ -32,25 +36,21 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     let is_dev_pubkey = dev_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
     let is_prod_pubkey = prod_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
 
-    for endpoint in endpoints {
-        let endpoint_lower = endpoint.to_lowercase();
-        // Dev/Staging pair verification (includes dev server and local addresses/emulators)
-        if endpoint_lower.starts_with("https://dev.codeoba.com/api/update")
-            || endpoint_lower.starts_with("http://localhost:")
-            || endpoint_lower.starts_with("http://127.0.0.1:")
-        {
-            if is_dev_pubkey {
-                return true;
-            }
-        }
-        // Prod pair verification
-        if endpoint_lower.starts_with("https://codeoba.com/api/update") {
-            if is_prod_pubkey {
-                return true;
-            }
-        }
+    if is_dev_pubkey {
+        endpoints.iter().all(|endpoint| {
+            let endpoint_lower = endpoint.to_lowercase();
+            endpoint_lower.starts_with("https://dev.codeoba.com/api/update")
+                || endpoint_lower.starts_with("http://localhost:")
+                || endpoint_lower.starts_with("http://127.0.0.1:")
+        })
+    } else if is_prod_pubkey {
+        endpoints.iter().all(|endpoint| {
+            let endpoint_lower = endpoint.to_lowercase();
+            endpoint_lower.starts_with("https://codeoba.com/api/update")
+        })
+    } else {
+        false
     }
-    false
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -291,4 +291,38 @@ pub fn run() {
         ])
         .run(context)
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_updater_config() {
+        let dev_key = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEUwOEM4NjgKUldSb3lBaU92Y3I4NkMyMnRFa1FSWkE4QXZqODFWMS8wODhIbE41Z0U1TWRBL1pJcWRyeVlURnAK";
+        let prod_key = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNDQwODNBQ0MzQTQ0OEUKUldTT1JEck1PZ2hFZit2RU8xVkE0ei93Q3pzT1JhYjMwR0JFMzZOajJGcThDY21kdm0yTVdlaVAK";
+        let evil_key = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEVwVklM";
+
+        // Dev Key Valid scenarios
+        assert!(validate_updater_config(dev_key, &["https://dev.codeoba.com/api/update".to_string()]));
+        assert!(validate_updater_config(dev_key, &["http://localhost:5000".to_string()]));
+        assert!(validate_updater_config(dev_key, &["http://127.0.0.1:8080".to_string(), "https://dev.codeoba.com/api/update/v2".to_string()]));
+
+        // Dev Key Invalid/Blocked scenarios
+        assert!(!validate_updater_config(dev_key, &[]));
+        assert!(!validate_updater_config(dev_key, &["https://dev.codeoba.com/api/update".to_string(), "http://evil.example/api/update".to_string()]));
+        assert!(!validate_updater_config(dev_key, &["https://codeoba.com/api/update".to_string()])); // prod endpoint with dev key
+
+        // Prod Key Valid scenarios
+        assert!(validate_updater_config(prod_key, &["https://codeoba.com/api/update".to_string()]));
+        assert!(validate_updater_config(prod_key, &["https://codeoba.com/api/update/v1".to_string(), "https://codeoba.com/api/update/v2".to_string()]));
+
+        // Prod Key Invalid/Blocked scenarios
+        assert!(!validate_updater_config(prod_key, &[]));
+        assert!(!validate_updater_config(prod_key, &["https://codeoba.com/api/update".to_string(), "http://evil.example/api/update".to_string()]));
+        assert!(!validate_updater_config(prod_key, &["https://dev.codeoba.com/api/update".to_string()])); // dev endpoint with prod key
+
+        // Evil/Untrusted Key
+        assert!(!validate_updater_config(evil_key, &["https://codeoba.com/api/update".to_string()]));
+    }
 }
