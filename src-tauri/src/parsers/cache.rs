@@ -20,7 +20,7 @@ pub struct CacheEntry {
     pub session: Session,
 }
 
-const CURRENT_CACHE_VERSION: &str = "v7";
+const CURRENT_CACHE_VERSION: &str = "v11";
 
 fn default_cache_version() -> String {
     "v0".to_string()

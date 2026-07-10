@@ -492,9 +492,55 @@ fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
     map
 }
 
+fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack.windows(needle.len()).position(|window| window == needle)
+}
+
+fn extract_model_from_blob(data: &[u8]) -> Option<String> {
+    // Start searching after the "model_enum" field to avoid matching text in prompts/skills
+    let start_pos = find_subsequence(data, b"model_enum").unwrap_or(0);
+    let search_slice = &data[start_pos..];
+
+    let prefixes = ["Gemini", "Claude", "gpt-", "o1-", "llama"];
+    for prefix in &prefixes {
+        let prefix_bytes = prefix.as_bytes();
+        if let Some(pos) = find_subsequence(search_slice, prefix_bytes) {
+            let absolute_pos = start_pos + pos;
+            if absolute_pos > 0 {
+                let len = data[absolute_pos - 1] as usize;
+                if len >= prefix_bytes.len() && absolute_pos + len <= data.len() {
+                    let candidate = &data[absolute_pos..absolute_pos + len];
+                    if let Ok(model_str) = std::str::from_utf8(candidate) {
+                        if model_str.chars().all(|c| c.is_ascii_graphic() || c == ' ') {
+                            return Some(model_str.trim().to_string());
+                        }
+                    }
+                }
+            }
+            // Fallback: scan printable chars
+            let mut end = absolute_pos;
+            while end < data.len() {
+                let c = data[end];
+                if c >= 32 && c <= 126 {
+                    end += 1;
+                } else {
+                    break;
+                }
+            }
+            if end > absolute_pos {
+                if let Ok(model_str) = std::str::from_utf8(&data[absolute_pos..end]) {
+                    return Some(model_str.trim().to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 fn parse_sqlite_session_db(
     db_path: &Path,
     cwd: &mut Option<String>,
+    model: &mut Option<String>,
     uncompacted_map: &HashMap<(bool, i64), String>,
 ) -> Result<Vec<Event>, rusqlite::Error> {
     let path_str = db_path.to_string_lossy();
@@ -503,6 +549,19 @@ fn parse_sqlite_session_db(
         Path::new(&uri_path),
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
+
+    // Try to query the latest session metadata checkpoint blob from gen_metadata to extract the active model
+    if let Ok(mut stmt) = conn.prepare("SELECT data FROM gen_metadata ORDER BY idx DESC") {
+        if let Ok(mut rows) = stmt.query([]) {
+            while let Ok(Some(row)) = rows.next() {
+                let data: Vec<u8> = row.get(0).unwrap_or_default();
+                if let Some(m) = extract_model_from_blob(&data) {
+                    *model = Some(m);
+                    break;
+                }
+            }
+        }
+    }
 
     let session_id = db_path.file_stem()
         .and_then(|s| s.to_str())
@@ -612,7 +671,7 @@ fn parse_sqlite_session_db(
                 is_user: true,
                 text,
                 timestamp,
-                model: None,
+                model: model.clone(),
                 is_compaction: false,
                 compaction_time_ms: 0,
             });
@@ -635,7 +694,7 @@ fn parse_sqlite_session_db(
                 is_user: false,
                 text,
                 timestamp,
-                model: None,
+                model: model.clone(),
                 is_compaction: false,
                 compaction_time_ms: 0,
             });
@@ -837,23 +896,25 @@ impl SourceAdapter for AntigravitySource {
                 let tool_calls = obj.get("tool_calls");
 
                 // Track model selection changes
-                if let Some(user_settings) = obj.get("user_settings_change").and_then(|v| v.as_object()) {
-                    if let Some(model_sel) = user_settings.get("Model Selection").and_then(|v| v.as_str()) {
-                        current_model = Some(model_sel.to_string());
+                if step_type == "USER_INPUT" {
+                    if let Some(user_settings) = obj.get("user_settings_change").and_then(|v| v.as_object()) {
+                        if let Some(model_sel) = user_settings.get("Model Selection").and_then(|v| v.as_str()) {
+                            current_model = Some(model_sel.to_string());
+                        }
                     }
-                }
-                if content.contains("<USER_SETTINGS_CHANGE>") {
-                    let settings_content = content.split("<USER_SETTINGS_CHANGE>")
-                        .nth(1)
-                        .unwrap_or("")
-                        .split("</USER_SETTINGS_CHANGE>")
-                        .next()
-                        .unwrap_or("");
-                    if let Some(line_with_model) = settings_content.lines().find(|l| l.contains("`Model Selection`")) {
-                        let after_to = line_with_model.split(" to ").nth(1).unwrap_or("");
-                        let model_name = after_to.split(". ").next().unwrap_or("").trim().trim_end_matches('.');
-                        if !model_name.is_empty() {
-                            current_model = Some(model_name.to_string());
+                    if content.contains("<USER_SETTINGS_CHANGE>") {
+                        let settings_content = content.split("<USER_SETTINGS_CHANGE>")
+                            .nth(1)
+                            .unwrap_or("")
+                            .split("</USER_SETTINGS_CHANGE>")
+                            .next()
+                            .unwrap_or("");
+                        if let Some(line_with_model) = settings_content.lines().find(|l| l.contains("`Model Selection`")) {
+                            let after_to = line_with_model.split(" to ").nth(1).unwrap_or("");
+                            let model_name = after_to.split(". ").next().unwrap_or("").trim().trim_end_matches('.');
+                            if !model_name.is_empty() {
+                                current_model = Some(model_name.to_string());
+                            }
                         }
                     }
                 }
@@ -983,10 +1044,11 @@ impl SourceAdapter for AntigravitySource {
         // Attempt to load older events from the SQLite database
         let mut db_events = Vec::new();
         let db_path = home.join(format!(".gemini/antigravity/conversations/{}.db", session_id));
+        let mut db_model = None;
         if db_path.exists() && db_path.is_file() {
             let uncompacted_map = load_jsonl_uncompacted_map(path);
             let mut db_cwd = None;
-            if let Ok(parsed_db_events) = parse_sqlite_session_db(&db_path, &mut db_cwd, &uncompacted_map) {
+            if let Ok(parsed_db_events) = parse_sqlite_session_db(&db_path, &mut db_cwd, &mut db_model, &uncompacted_map) {
                 // Filter out events that occurred on or after the start of JSONL events
                 db_events = parsed_db_events.into_iter()
                     .filter(|e| e.timestamp < jsonl_start_time)
@@ -1001,6 +1063,18 @@ impl SourceAdapter for AntigravitySource {
         if !db_events.is_empty() {
             db_events.extend(events);
             events = db_events;
+        }
+
+        let has_jsonl_model_change = current_model.is_some();
+        let resolved_model = current_model.or(db_model);
+        if let Some(ref m) = resolved_model {
+            if !has_jsonl_model_change {
+                for ev in &mut events {
+                    if ev.model.is_none() {
+                        ev.model = Some(m.clone());
+                    }
+                }
+            }
         }
 
         if events.is_empty() {
