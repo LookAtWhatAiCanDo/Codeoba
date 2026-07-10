@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use crate::keyring;
 use crate::models::Session;
 use crate::parsers::get_sources_list;
 use crate::search::{SearchFilter, SearchResult, SearchIndexState};
 use serde::Serialize;
 use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -349,6 +351,91 @@ pub fn delete_semantic_model() {
 use crate::parsers::resolver::{resolve_local_file_link, LocalFileResolution};
 use crate::parsers::permissions;
 
+/// Validates a candidate trusted root before it is allowed to suppress the confirmation prompt.
+///
+/// `session_cwd` arrives over IPC, and the frontend in turn read it out of a parsed transcript
+/// (see the `cwd` field handled in `parsers::claude`). A transcript declaring `"cwd": "/"` would
+/// otherwise mark every file on the machine as trusted. Anything at or above the home directory
+/// is rejected, which also covers `/`, `/Users`, `/home`, and `C:\`.
+fn resolve_trusted_root(session_cwd: Option<&str>) -> Option<PathBuf> {
+    let cwd = session_cwd?.trim();
+    if cwd.is_empty() {
+        return None;
+    }
+
+    let canonical = Path::new(cwd).canonicalize().ok()?;
+    if !canonical.is_dir() {
+        return None;
+    }
+
+    if canonical.parent().is_none() {
+        crate::log_warn!("Refusing filesystem root as a trusted root: {:?}", canonical);
+        return None;
+    }
+
+    if let Ok(home) = crate::parsers::get_home_dir().canonicalize() {
+        if home.starts_with(&canonical) {
+            crate::log_warn!(
+                "Refusing trusted root at or above the home directory: {:?}",
+                canonical
+            );
+            return None;
+        }
+    }
+
+    Some(canonical)
+}
+
+/// Extensions the OS launches rather than displays.
+///
+/// Checked on every platform, not just the host: a repository is authored elsewhere and a
+/// `.exe` sitting in a checkout is still a `.exe` when the file is handed to the shell.
+const EXECUTABLE_EXTENSIONS: &[&str] = &[
+    // Windows
+    "bat", "cmd", "com", "cpl", "exe", "hta", "js", "jse", "lnk", "msc", "msi", "msp", "pif",
+    "ps1", "reg", "scr", "vb", "vbe", "vbs", "wsf", "wsh",
+    // macOS
+    "app", "command", "dmg", "pkg", "scpt", "scptd", "terminal", "workflow",
+    // Unix
+    "appimage", "bash", "csh", "desktop", "fish", "ksh", "out", "run", "sh", "zsh",
+    // Cross-platform runtimes
+    "jar",
+];
+
+fn is_executable_target(path: &Path) -> bool {
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        let lower = ext.to_lowercase();
+        if EXECUTABLE_EXTENSIONS.iter().any(|known| *known == lower) {
+            return true;
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = path.metadata() {
+            if metadata.permissions().mode() & 0o111 != 0 {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+/// Returns the path only if the user has already consented to launching it.
+///
+/// The `Confirmation required:` prefix is load-bearing: `FileViewerDialog` matches on it to
+/// decide whether to raise its prompt or surface a plain error.
+fn require_external_open_permission(path: PathBuf, reason: &str) -> Result<PathBuf, String> {
+    let path_str = path.to_string_lossy().to_string();
+    match permissions::check_permission(&path_str, "external_open").as_deref() {
+        Some("allow") => Ok(path),
+        Some("deny") => Err("Permission denied by saved preferences.".to_string()),
+        _ => Err(format!("Confirmation required: {}", reason)),
+    }
+}
+
 #[derive(serde::Serialize)]
 pub struct FileReadResponse {
     status: String, // "allowed" | "confirmation_required" | "denied" | "rejected"
@@ -363,11 +450,11 @@ pub fn resolve_and_read_file(
     raw_path: String,
     session_cwd: Option<String>,
 ) -> Result<FileReadResponse, String> {
-    let base_dir = session_cwd.as_ref().map(std::path::Path::new);
-    let trusted_root = base_dir;
+    let base_dir = session_cwd.as_deref().map(Path::new);
+    let trusted_root = resolve_trusted_root(session_cwd.as_deref());
 
-    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root);
-    
+    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root.as_deref());
+
     match resolution {
         LocalFileResolution::Allowed(path) => {
             read_resolved_file(path)
@@ -453,52 +540,36 @@ pub fn clear_all_permissions() {
 }
 
 #[tauri::command]
-pub fn open_file_externally(raw_path: String, session_cwd: Option<String>) -> Result<(), String> {
-    let base_dir = session_cwd.as_ref().map(std::path::Path::new);
-    let trusted_root = base_dir;
+pub fn open_file_externally<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    raw_path: String,
+    session_cwd: Option<String>,
+) -> Result<(), String> {
+    let base_dir = session_cwd.as_deref().map(Path::new);
+    let trusted_root = resolve_trusted_root(session_cwd.as_deref());
 
-    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root);
-    
+    let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root.as_deref());
+
     let path = match resolution {
+        // Living inside the trusted root is not enough to launch a file the OS would execute.
+        // A workspace is full of files whose names and contents originated elsewhere — a cloned
+        // repo, a build artifact — so these always fall through to explicit consent.
+        LocalFileResolution::Allowed(path) if is_executable_target(&path) => {
+            require_external_open_permission(
+                path,
+                "This file can be executed by the operating system.",
+            )?
+        }
         LocalFileResolution::Allowed(path) => path,
         LocalFileResolution::ConfirmationRequired(path, reason) => {
-            let path_str = path.to_string_lossy().to_string();
-            match permissions::check_permission(&path_str, "external_open") {
-                Some(ref dec) if dec == "allow" => path,
-                Some(ref dec) if dec == "deny" => return Err("Permission denied by saved preferences.".to_string()),
-                _ => return Err(format!("Confirmation required: {}", reason)),
-            }
+            require_external_open_permission(path, &reason)?
         }
         LocalFileResolution::Rejected(reason) => return Err(reason),
     };
 
-    let path_str = path.to_string_lossy().to_string();
-    
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        std::process::Command::new("cmd")
-            .args(&["/c", "start", "", &path_str])
-            .creation_flags(0x08000000) // CREATE_NO_WINDOW
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(&path_str)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(&path_str)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
+    app.opener()
+        .open_path(path.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -670,4 +741,87 @@ pub fn get_language_override() -> Option<String> {
     let args: Vec<String> = std::env::args().collect();
     args.iter().position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
+}
+
+#[cfg(test)]
+mod trusted_root_tests {
+    use super::*;
+
+    /// A transcript controls `cwd`, so these rejections are the boundary that stops a
+    /// hostile transcript from marking the whole filesystem as trusted.
+    #[test]
+    fn rejects_roots_at_or_above_home() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().join("home/user");
+        std::fs::create_dir_all(&home).unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", home.to_string_lossy().to_string());
+
+        let repo = home.join("projects/repo");
+        std::fs::create_dir_all(&repo).unwrap();
+
+        assert!(resolve_trusted_root(None).is_none());
+        assert!(resolve_trusted_root(Some("")).is_none());
+        assert!(resolve_trusted_root(Some("   ")).is_none());
+
+        // Filesystem root.
+        assert!(resolve_trusted_root(Some("/")).is_none(), "filesystem root must be refused");
+
+        // The home directory itself, and an ancestor of it.
+        assert!(
+            resolve_trusted_root(Some(&home.to_string_lossy())).is_none(),
+            "home directory must be refused"
+        );
+        assert!(
+            resolve_trusted_root(Some(&temp.path().join("home").to_string_lossy())).is_none(),
+            "ancestor of home must be refused"
+        );
+
+        // A path that does not exist, and a path that is a file rather than a directory.
+        assert!(resolve_trusted_root(Some(&repo.join("nope").to_string_lossy())).is_none());
+        let file = repo.join("README.md");
+        std::fs::write(&file, "hi").unwrap();
+        assert!(resolve_trusted_root(Some(&file.to_string_lossy())).is_none());
+
+        // An ordinary workspace is accepted.
+        assert_eq!(
+            resolve_trusted_root(Some(&repo.to_string_lossy())),
+            Some(repo.canonicalize().unwrap())
+        );
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    #[test]
+    fn flags_launchable_files() {
+        let temp = tempfile::tempdir().unwrap();
+
+        for name in ["setup.exe", "Payload.APP", "run.Sh", "installer.msi", "a.jar"] {
+            let p = temp.path().join(name);
+            std::fs::write(&p, "x").unwrap();
+            assert!(is_executable_target(&p), "{} should be treated as launchable", name);
+        }
+
+        for name in ["README.md", "notes.txt", "data.json", "image.png"] {
+            let p = temp.path().join(name);
+            std::fs::write(&p, "x").unwrap();
+            assert!(!is_executable_target(&p), "{} should not be launchable", name);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn flags_extensionless_files_carrying_the_exec_bit() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = tempfile::tempdir().unwrap();
+
+        let plain = temp.path().join("Makefile");
+        std::fs::write(&plain, "all:").unwrap();
+        assert!(!is_executable_target(&plain));
+
+        let script = temp.path().join("gradlew");
+        std::fs::write(&script, "#!/bin/sh").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(is_executable_target(&script));
+    }
 }
