@@ -1345,10 +1345,15 @@ impl SourceAdapter for AntigravitySource {
             0
         };
         {
-            let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
-            *mod_guard = current_modified;
+            // Acquire in the same order as get_session_title (antigravity_title_map before
+            // last_pb_file_modified). The reverse order here caused an AB-BA deadlock once the
+            // source adapters became shared singletons: this method held last_pb_file_modified
+            // waiting for antigravity_title_map while a concurrent get_session_title held the
+            // opposite pair.
             let mut map_guard = self.antigravity_title_map.write().expect("Failed to lock antigravity_title_map write lock");
             *map_guard = self.build_antigravity_title_map();
+            let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
+            *mod_guard = current_modified;
         }
 
         crate::parsers::cache::get_cache_manager().start_scan(self.id());
