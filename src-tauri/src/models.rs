@@ -218,17 +218,22 @@ pub fn resolve_workspace_name(cwd: &Option<String>) -> Option<String> {
     let path = std::path::Path::new(cwd_str);
     let mut current = path.to_path_buf();
     let mut git_root: Option<std::path::PathBuf> = None;
-    
-    while let Some(parent) = current.parent() {
+
+    // Walk upward from the session's cwd and stop at the FIRST (nearest) enclosing repo.
+    // Overwriting on every hit would keep the shallowest match, so a `.git` at $HOME
+    // (chezmoi/yadm/`git init ~` setups) or an outer monorepo would mislabel every
+    // nested session with the wrong workspace.
+    loop {
         if current.join(".git").exists() {
             git_root = Some(current.clone());
+            break;
         }
-        current = parent.to_path_buf();
+        match current.parent() {
+            Some(parent) => current = parent.to_path_buf(),
+            None => break,
+        }
     }
-    if current.join(".git").exists() {
-        git_root = Some(current);
-    }
-    
+
     if let Some(root) = git_root {
         if let Ok(rel) = path.strip_prefix(&root) {
             let components: Vec<_> = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
@@ -247,7 +252,71 @@ pub fn resolve_workspace_name(cwd: &Option<String>) -> Option<String> {
         }
         return root.file_name().map(|n| n.to_string_lossy().into_owned());
     }
-    
+
     path.file_name().map(|n| n.to_string_lossy().into_owned())
+}
+
+#[cfg(test)]
+mod workspace_name_tests {
+    use super::resolve_workspace_name;
+
+    fn git_dir(path: &std::path::Path) {
+        std::fs::create_dir_all(path.join(".git")).unwrap();
+    }
+
+    /// The regression: a `.git` above the real repo (e.g. dotfiles at $HOME) must not
+    /// hijack the label. The nearest enclosing repo wins.
+    #[test]
+    fn picks_nearest_repo_not_outermost() {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path();
+        git_dir(home); // stand-in for `git init ~`
+
+        let repo = home.join("dev/myrepo");
+        let cwd = repo.join("src/backend");
+        std::fs::create_dir_all(&cwd).unwrap();
+        git_dir(&repo);
+
+        let name = resolve_workspace_name(&Some(cwd.to_string_lossy().into_owned()));
+        assert_eq!(name.as_deref(), Some("myrepo"));
+    }
+
+    /// Nested repos resolve to the inner one, not the parent.
+    #[test]
+    fn nested_repos_resolve_to_inner() {
+        let tmp = tempfile::tempdir().unwrap();
+        let outer = tmp.path().join("monorepo");
+        let inner = outer.join("vendor/plugin");
+        std::fs::create_dir_all(&inner).unwrap();
+        git_dir(&outer);
+        git_dir(&inner);
+
+        let name = resolve_workspace_name(&Some(inner.to_string_lossy().into_owned()));
+        assert_eq!(name.as_deref(), Some("plugin"));
+    }
+
+    /// When cwd sits in a standard subfolder of the repo, the repo name is used —
+    /// not the subfolder name.
+    #[test]
+    fn standard_subfolder_yields_repo_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("acme");
+        let cwd = repo.join("src");
+        std::fs::create_dir_all(&cwd).unwrap();
+        git_dir(&repo);
+
+        let name = resolve_workspace_name(&Some(cwd.to_string_lossy().into_owned()));
+        assert_eq!(name.as_deref(), Some("acme"));
+    }
+
+    #[test]
+    fn no_repo_falls_back_to_leaf_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cwd = tmp.path().join("loose/folder");
+        std::fs::create_dir_all(&cwd).unwrap();
+
+        let name = resolve_workspace_name(&Some(cwd.to_string_lossy().into_owned()));
+        assert_eq!(name.as_deref(), Some("folder"));
+    }
 }
 
