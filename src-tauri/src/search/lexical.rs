@@ -23,14 +23,19 @@ pub fn build_find_regex(query: &str, match_case: bool, whole_word: bool, use_reg
         .ok()
 }
 
-pub fn lexical_search(
-    sessions: &[Session],
+pub fn lexical_search<'a>(
+    sessions: impl IntoIterator<Item = &'a Session>,
     query: &str,
     filter: &SearchFilter,
 ) -> Vec<SearchResult> {
+    // Collect references, not clones: the caller can pass the live index without deep-cloning the
+    // whole corpus per query. Only sessions that actually match are cloned (below).
+    let sessions: Vec<&Session> = sessions.into_iter().collect();
+
     if query.trim().is_empty() {
         let mut results: Vec<SearchResult> = sessions
             .iter()
+            .copied()
             .filter(|s| filter.matches(s))
             .map(|s| SearchResult {
                 session: s.clone(),
@@ -61,7 +66,7 @@ pub fn lexical_search(
 
     let mut results = Vec::new();
 
-    for session in sessions {
+    for &session in &sessions {
         if !filter.matches(session) {
             continue;
         }

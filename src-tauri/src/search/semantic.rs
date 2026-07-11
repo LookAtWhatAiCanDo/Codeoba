@@ -161,8 +161,8 @@ impl SimpleRng {
     }
 }
 
-pub fn semantic_search(
-    sessions: &[Session],
+pub fn semantic_search<'a>(
+    sessions: impl IntoIterator<Item = &'a Session>,
     embeddings: &std::collections::HashMap<String, SessionVectorIndex>,
     query_vector: &[f32],
     similarity_threshold: f32,
@@ -222,20 +222,19 @@ pub fn semantic_search(
     results
 }
 
+/// Cosine similarity of two embedding vectors.
+///
+/// Every embedding here is L2-normalized at construction (see `OnnxSemanticEmbedder` and
+/// `HashSemanticEmbedder`), so cosine similarity reduces to the plain dot product. We therefore
+/// skip recomputing both magnitudes on every comparison (N sessions × M turns × 384 dims per
+/// query). A zero vector yields 0, matching the previous behavior.
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     if a.len() != b.len() || a.is_empty() {
         return 0.0;
     }
     let mut dot_product = 0.0;
-    let mut norm_a = 0.0;
-    let mut norm_b = 0.0;
     for i in 0..a.len() {
         dot_product += a[i] * b[i];
-        norm_a += a[i] * a[i];
-        norm_b += b[i] * b[i];
     }
-    if norm_a == 0.0 || norm_b == 0.0 {
-        return 0.0;
-    }
-    dot_product / (norm_a.sqrt() * norm_b.sqrt())
+    dot_product
 }

@@ -270,18 +270,13 @@ pub async fn search_sessions<R: tauri::Runtime>(
     similarity_threshold: Option<f64>,
 ) -> Result<Vec<SearchResult>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
-    
-    let sessions: Vec<Session> = {
-        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard.values().cloned().collect()
-    };
 
-    if use_semantic {
-        if !state.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst) {
-            state.is_semantic_initialized.store(true, std::sync::atomic::Ordering::SeqCst);
-            state.rebuild(true, Some(app_handle.clone())).await
-                .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))?;
-        }
+    // First semantic search lazily builds the index, which needs the write lock — do it before
+    // taking any read guard below.
+    if use_semantic && !state.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst) {
+        state.is_semantic_initialized.store(true, std::sync::atomic::Ordering::SeqCst);
+        state.rebuild(true, Some(app_handle.clone())).await
+            .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))?;
     }
 
     let mut results = if use_semantic {
@@ -292,20 +287,25 @@ pub async fn search_sessions<R: tauri::Runtime>(
         }
         let onnx_embedder = state.get_or_load_embedder(&model_path, &vocab_path)
             .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e))?;
+        // Embed the query before taking the read guards so the locks are held only for the scan.
         let query_vector = onnx_embedder.get_embeddings(&query)
             .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDINGS_GENERATION, e.to_string()))?;
-
-        let embeddings_guard = state.embeddings.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         let threshold = similarity_threshold.unwrap_or(0.35) as f32;
+
+        // Search over the live index by reference — no full-corpus clone. Only matched sessions
+        // are cloned inside semantic_search.
+        let sessions_guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        let embeddings_guard = state.embeddings.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         crate::search::semantic::semantic_search(
-            &sessions,
+            sessions_guard.values(),
             &embeddings_guard,
             &query_vector,
             threshold,
             &filter,
         )
     } else {
-        crate::search::lexical::lexical_search(&sessions, &query, &filter)
+        let sessions_guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter)
     };
 
     for res in &mut results {
