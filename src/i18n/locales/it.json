@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "Aiuto",
-      "feedback": "Invia feedback al team di Codeoba..."
+      "feedback": "Invia feedback al team di Codeoba...",
+      "licenses": "Licenze di terze parti...",
+      "privacy": "Informativa sulla privacy..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "Operazione sul database del gruppo non riuscita.",
     "authServerStart": "Impossibile avviare il server di autenticazione locale: {error}",
     "generic": "Si è verificato un errore imprevisto."
+  },
+  "licenses": {
+    "title": "Licenze di terze parti",
+    "description": "Codeoba è basato su software open source. Di seguito è riportato un elenco di licenze di terze parti e attribuzioni per le librerie, i caratteri e i modelli inclusi nell'applicazione.",
+    "fonts": "Tipografia e caratteri",
+    "models": "Modelli e pesi IA",
+    "frameworks": "Framework e strumenti principali",
+    "libraries": "Crates e pacchetti Node"
+  },
+  "privacy": {
+    "title": "Informativa sulla privacy",
+    "viewOnline": "Leggi online"
   }
 }

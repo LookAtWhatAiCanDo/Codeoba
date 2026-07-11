@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "Hilfe",
-      "feedback": "Feedback an das Codeoba-Team senden..."
+      "feedback": "Feedback an das Codeoba-Team senden...",
+      "licenses": "Drittanbieter-Lizenzen...",
+      "privacy": "Datenschutzerklärung..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "Gruppen-Datenbankoperation fehlgeschlagen.",
     "authServerStart": "Fehler beim Starten des lokalen Authentifizierungsservers: {error}",
     "generic": "Ein unerwarteter Fehler ist aufgetreten."
+  },
+  "licenses": {
+    "title": "Drittanbieter-Lizenzen",
+    "description": "Codeoba basiert auf Open-Source-Software. Unten finden Sie eine Liste der Drittanbieter-Lizenzen und Zuweisungen für die in der Anwendung enthaltenen Bibliotheken, Schriftarten und Modelle.",
+    "fonts": "Typografie & Schriftarten",
+    "models": "KI-Modelle & Gewichte",
+    "frameworks": "Frameworks & Kernwerkzeuge",
+    "libraries": "Crates & Node-Pakete"
+  },
+  "privacy": {
+    "title": "Datenschutzerklärung",
+    "viewOnline": "Online lesen"
   }
 }

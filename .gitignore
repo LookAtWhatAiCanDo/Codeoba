@@ -37,3 +37,7 @@ mock_demo/
 mock_rich/
 scratch/
 *.code-workspace
+
+# Downloader cache files
+src/resources/privacy/cache.json
+

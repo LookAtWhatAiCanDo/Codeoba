@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "도움말",
-      "feedback": "Codeoba 팀에 피드백 보내기..."
+      "feedback": "Codeoba 팀에 피드백 보내기...",
+      "licenses": "타사 라이선스...",
+      "privacy": "개인정보 처리방침..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "그룹 데이터베이스 작업에 실패했습니다.",
     "authServerStart": "로컬 인증 서버를 시작하지 못했습니다: {error}",
     "generic": "예기치 않은 오류가 발생했습니다."
+  },
+  "licenses": {
+    "title": "타사 라이선스",
+    "description": "Codeoba는 오픈 소스 소프트웨어를 기반으로 구축되었습니다. 아래는 애플리케이션과 함께 패키징된 라이브러리, 글꼴 및 모델에 대한 타사 라이선스 및 크레딧 목록입니다.",
+    "fonts": "타이포그래피 및 글꼴",
+    "models": "AI 모델 및 가중치",
+    "frameworks": "프레임워크 및 핵심 도구",
+    "libraries": "Crates 및 Node 패키지"
+  },
+  "privacy": {
+    "title": "개인정보 처리방침",
+    "viewOnline": "온라인에서 읽기"
   }
 }

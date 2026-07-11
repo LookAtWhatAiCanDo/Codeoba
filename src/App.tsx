@@ -9,6 +9,8 @@ import { Sidebar } from "./components/Sidebar";
 import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { LicensesDialog } from "./components/LicensesDialog";
+import { PrivacyDialog } from "./components/PrivacyDialog";
 import { FileViewerDialog } from "./components/FileViewerDialog";
 import { TitleBar } from "./components/TitleBar";
 import GroupDetailsView from "./components/GroupDetailsView";
@@ -58,6 +60,8 @@ function App() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
   const [showSettings, setShowSettings] = createSignal(false);
+  const [showLicenses, setShowLicenses] = createSignal(false);
+  const [showPrivacy, setShowPrivacy] = createSignal(false);
   const [showCheckingModal, setShowCheckingModal] = createSignal(false);
   const [checkingStatus, setCheckingStatus] = createSignal<"checking" | "upToDate" | "error">("checking");
   const [checkingErrorMsg, setCheckingErrorMsg] = createSignal<string | null>(null);
@@ -571,6 +575,8 @@ function App() {
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
     let unlistenMenuSettings: (() => void) | undefined;
+    let unlistenMenuLicenses: (() => void) | undefined;
+    let unlistenMenuPrivacy: (() => void) | undefined;
     let unlistenMenuCheckUpdates: (() => void) | undefined;
     let unlistenMenuRebuild: (() => void) | undefined;
     let unlistenMenuRebuildBypass: (() => void) | undefined;
@@ -681,6 +687,12 @@ function App() {
 
       unlistenMenuSettings = await listen("menu-settings", () => {
         setShowSettings(true);
+      });
+      unlistenMenuLicenses = await listen("menu-licenses", () => {
+        setShowLicenses(true);
+      });
+      unlistenMenuPrivacy = await listen("menu-privacy", () => {
+        setShowPrivacy(true);
       });
       unlistenMenuCheckUpdates = await listen("menu-check-updates", () => {
         triggerManualUpdateCheck();
@@ -1103,6 +1115,8 @@ function App() {
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
       if (unlistenMenuSettings) unlistenMenuSettings();
+      if (unlistenMenuLicenses) unlistenMenuLicenses();
+      if (unlistenMenuPrivacy) unlistenMenuPrivacy();
       if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
       if (unlistenMenuRebuild) unlistenMenuRebuild();
       if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
@@ -1810,6 +1824,18 @@ function App() {
         isOpen={showFeedback()}
         onClose={() => setShowFeedback(false)}
         appVersion={appVersion()}
+      />
+
+      {/* Licenses Modal */}
+      <LicensesDialog
+        isOpen={showLicenses()}
+        onClose={() => setShowLicenses(false)}
+      />
+
+      {/* Privacy Modal */}
+      <PrivacyDialog
+        isOpen={showPrivacy()}
+        onClose={() => setShowPrivacy(false)}
       />
 
     </div>

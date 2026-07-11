@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "帮助",
-      "feedback": "向 Codeoba 团队发送反馈..."
+      "feedback": "向 Codeoba 团队发送反馈...",
+      "licenses": "第三方许可...",
+      "privacy": "隐私政策..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "组数据库操作失败。",
     "authServerStart": "启动本地认证服务器失败: {error}",
     "generic": "发生了意外错误。"
+  },
+  "licenses": {
+    "title": "第三方许可",
+    "description": "Codeoba 基于开源软件构建。以下是随应用程序打包的库、字体和模型的第三方许可及署名列表。",
+    "fonts": "排版与字体",
+    "models": "AI 模型与权重",
+    "frameworks": "框架与核心工具",
+    "libraries": "Crates 和 Node 包"
+  },
+  "privacy": {
+    "title": "隐私政策",
+    "viewOnline": "在线阅读"
   }
 }

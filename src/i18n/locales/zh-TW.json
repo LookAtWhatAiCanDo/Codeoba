@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "說明",
-      "feedback": "向 Codeoba 團隊傳送意見回饋..."
+      "feedback": "向 Codeoba 團隊傳送意見回饋...",
+      "licenses": "第三方授權...",
+      "privacy": "隱私權政策..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "組資料庫操作失敗。",
     "authServerStart": "啟動本地認證伺服器失敗: {error}",
     "generic": "發生了意外錯誤。"
+  },
+  "licenses": {
+    "title": "第三方授權",
+    "description": "Codeoba 基於開源軟體構建。以下是隨應用程式打包的庫、字型和模型的第三方授權及署名列表。",
+    "fonts": "排版與字型",
+    "models": "AI 模型與權重",
+    "frameworks": "框架與核心工具",
+    "libraries": "Crates 和 Node 包"
+  },
+  "privacy": {
+    "title": "隱私權政策",
+    "viewOnline": "線上閱讀"
   }
 }

@@ -60,6 +60,7 @@ To ensure the project context remains accurate:
 
 - **`scripts/` (Developer & Build Utilities)**
   - `tauri.cjs`: Compile-time Node.js configuration wrapper. Dynamically overrides CSP (`connect-src`) and updater settings to allow connection to a custom `--base-url` at compile-time, keeping raw configuration files clean and avoiding runtime environment variable leakage.
+  - `download-privacy.cjs`: Pulls down the latest `privacy.md` from the production site at build-time, checking standard caching headers for 304 Not Modified responses, with offline grace fallback.
 
 ---
 

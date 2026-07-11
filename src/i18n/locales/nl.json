@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "Help",
-      "feedback": "Feedback naar het Codeoba-team sturen..."
+      "feedback": "Feedback naar het Codeoba-team sturen...",
+      "licenses": "Licenties van derden...",
+      "privacy": "Privacybeleid..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "Groepsdatabasebewerking mislukt.",
     "authServerStart": "Starten van lokale authenticatieserver mislukt: {error}",
     "generic": "Er is een onverwachte fout opgetreden."
+  },
+  "licenses": {
+    "title": "Licenties van derden",
+    "description": "Codeoba is gebouwd op open-source software. Hieronder vindt u een lijst van licenties van derden en toeschrijvingen voor de bibliotheken, lettertypen en modellen die bij de applicatie zijn geleverd.",
+    "fonts": "Typografie & lettertypen",
+    "models": "AI-modellen & gewichten",
+    "frameworks": "Frameworks & kerngereedschappen",
+    "libraries": "Crates & Node-pakketten"
+  },
+  "privacy": {
+    "title": "Privacybeleid",
+    "viewOnline": "Online lezen"
   }
 }

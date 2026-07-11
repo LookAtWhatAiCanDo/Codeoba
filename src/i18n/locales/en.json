@@ -362,7 +362,9 @@
     },
     "help": {
       "title": "Help",
-      "feedback": "Send Feedback to Codeoba Team..."
+      "feedback": "Send Feedback to Codeoba Team...",
+      "licenses": "Third-Party Licenses...",
+      "privacy": "Privacy Policy..."
     }
   },
   "errors": {
@@ -383,5 +385,17 @@
     "groupDbError": "Group database operation failed.",
     "authServerStart": "Failed to start local auth server: {error}",
     "generic": "An unexpected error occurred."
+  },
+  "licenses": {
+    "title": "Third-Party Licenses",
+    "description": "Codeoba is built on open source software. Below is a list of third-party licenses and attributions for the libraries, fonts, and models packaged with the application.",
+    "fonts": "Typography & Fonts",
+    "models": "AI Models & Weights",
+    "frameworks": "Frameworks & Core Tools",
+    "libraries": "Crates & Node Packages"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "viewOnline": "Read Online"
   }
 }

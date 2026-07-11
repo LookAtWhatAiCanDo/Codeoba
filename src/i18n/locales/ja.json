@@ -360,7 +360,9 @@
     },
     "help": {
       "title": "ヘルプ",
-      "feedback": "Codeobaチームにフィードバックを送信..."
+      "feedback": "Codeobaチームにフィードバックを送信...",
+      "licenses": "サードパーティライセンス...",
+      "privacy": "プライバシーポリシー..."
     }
   },
   "errors": {
@@ -381,5 +383,17 @@
     "groupDbError": "グループデータベース操作に失敗しました。",
     "authServerStart": "ローカル認証サーバーの起動に失敗しました: {error}",
     "generic": "予期しないエラーが発生しました。"
+  },
+  "licenses": {
+    "title": "サードパーティライセンス",
+    "description": "Codeobaはオープンソースソフトウェアで構築されています。以下は、アプリケーションにパッケージ化されているライブラリ、フォント、モデルのサードパーティライセンスと属性の一覧です。",
+    "fonts": "タイポグラフィとフォント",
+    "models": "AIモデルとウェイト",
+    "frameworks": "フレームワークとコアツール",
+    "libraries": "Crates & Nodeパッケージ"
+  },
+  "privacy": {
+    "title": "プライバシーポリシー",
+    "viewOnline": "オンラインで読む"
   }
 }

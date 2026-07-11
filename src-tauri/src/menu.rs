@@ -335,6 +335,12 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         help_menu_builder = help_menu_builder
             .item(&MenuItemBuilder::new(t("menu.help.feedback")).id("help-feedback").build(app_handle)?);
 
+        help_menu_builder = help_menu_builder
+            .item(&MenuItemBuilder::new(t("menu.help.licenses")).id("help-licenses").build(app_handle)?);
+
+        help_menu_builder = help_menu_builder
+            .item(&MenuItemBuilder::new(t("menu.help.privacy")).id("help-privacy").build(app_handle)?);
+
         #[cfg(not(target_os = "macos"))]
         {
             if commands::is_updater_active(app_handle.clone()) {
@@ -604,6 +610,8 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
         "help-feedback-apple" => {
             let _ = app_handle.opener().open_url("applefeedback://new", None::<String>);
         }
+        "help-licenses" => emit_event("menu-licenses"),
+        "help-privacy" => emit_event("menu-privacy"),
         id if id.contains("feedback") => emit_event("menu-feedback"),
         _ => {}
     }
