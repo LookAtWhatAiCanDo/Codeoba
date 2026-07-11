@@ -284,8 +284,8 @@ pub async fn search_sessions<R: tauri::Runtime>(
         if !model_path.exists() || !vocab_path.exists() {
             return Err(AppErrorPayload::new(ERR_ONNX_NOT_FOUND));
         }
-        let onnx_embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path)
-            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e.to_string()))?;
+        let onnx_embedder = state.get_or_load_embedder(&model_path, &vocab_path)
+            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e))?;
         let query_vector = onnx_embedder.get_embeddings(&query)
             .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDINGS_GENERATION, e.to_string()))?;
 

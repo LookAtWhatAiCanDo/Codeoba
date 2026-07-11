@@ -5,7 +5,7 @@ pub mod semantic;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -128,6 +128,10 @@ pub struct SearchIndexState {
     pub has_rebuilt: std::sync::atomic::AtomicBool,
     pub is_semantic_initialized: std::sync::atomic::AtomicBool,
     pub app_handle: RwLock<Option<tauri::AppHandle>>,
+    /// Lazily-built ONNX query embedder, cached so a semantic search reuses one loaded model
+    /// instead of re-reading and re-optimizing the ~90 MB graph on every query. The bundled
+    /// model is fixed, so a cached embedder never goes stale.
+    pub cached_embedder: RwLock<Option<Arc<semantic::OnnxSemanticEmbedder>>>,
 }
 
 impl SearchIndexState {
@@ -140,7 +144,35 @@ impl SearchIndexState {
             has_rebuilt: std::sync::atomic::AtomicBool::new(false),
             is_semantic_initialized: std::sync::atomic::AtomicBool::new(false),
             app_handle: RwLock::new(None),
+            cached_embedder: RwLock::new(None),
         }
+    }
+
+    /// Returns the shared query embedder, building and caching it on first use.
+    ///
+    /// Without this, every semantic search reconstructed an `OnnxSemanticEmbedder` — reading
+    /// the model file and running `into_optimized()` on the full graph — purely to embed one
+    /// short query string, adding multiple seconds of latency per (debounced) keystroke.
+    ///
+    /// A double-checked lock keeps a burst of concurrent searches from each building a copy.
+    pub fn get_or_load_embedder(
+        &self,
+        model_path: &std::path::Path,
+        vocab_path: &std::path::Path,
+    ) -> Result<Arc<semantic::OnnxSemanticEmbedder>, String> {
+        if let Ok(guard) = self.cached_embedder.read() {
+            if let Some(embedder) = guard.as_ref() {
+                return Ok(embedder.clone());
+            }
+        }
+
+        let mut guard = self.cached_embedder.write().map_err(|e| e.to_string())?;
+        if let Some(embedder) = guard.as_ref() {
+            return Ok(embedder.clone());
+        }
+        let embedder = Arc::new(semantic::OnnxSemanticEmbedder::new(model_path, vocab_path)?);
+        *guard = Some(embedder.clone());
+        Ok(embedder)
     }
 
     pub fn load_cached_sessions(&self) {
@@ -621,4 +653,40 @@ pub fn resolve_model_paths<R: tauri::Runtime>(
 
     // 3. Fallback to expected home directory override
     (get_home_model_file(), get_home_vocab_file())
+}
+
+#[cfg(test)]
+mod embedder_cache_tests {
+    use super::SearchIndexState;
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    fn bundled_model_paths() -> (PathBuf, PathBuf) {
+        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/onnx");
+        (base.join("model.onnx"), base.join("vocab.txt"))
+    }
+
+    /// The point of the fix: a second semantic search reuses the loaded model instead of
+    /// rebuilding it. Proven by pointer identity of the returned `Arc`.
+    #[test]
+    fn reuses_the_same_embedder_instance() {
+        let (model, vocab) = bundled_model_paths();
+        if !model.exists() || !vocab.exists() {
+            eprintln!("skipping reuses_the_same_embedder_instance: bundled ONNX model not present");
+            return;
+        }
+
+        let state = SearchIndexState::new();
+        let first = state.get_or_load_embedder(&model, &vocab).expect("first load");
+        let second = state.get_or_load_embedder(&model, &vocab).expect("cached load");
+
+        assert!(
+            Arc::ptr_eq(&first, &second),
+            "second call must return the cached embedder, not rebuild it"
+        );
+
+        // Sanity: the cached embedder still produces a normalized 384-dim MiniLM vector.
+        let v = first.get_embeddings("hello world").expect("embed");
+        assert_eq!(v.len(), 384);
+    }
 }
