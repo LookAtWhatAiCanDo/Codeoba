@@ -134,7 +134,10 @@ export function I18nProvider(props: { children: JSX.Element }) {
 
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        val = val.replace(new RegExp(`{${k}}`, "g"), String(v));
+        // Literal split/join instead of RegExp: the key is not escaped (a metacharacter would
+        // corrupt the pattern or throw), and String replacement via .replace() would interpret
+        // `$` sequences in the value. split/join matches and inserts both verbatim.
+        val = val.split(`{${k}}`).join(String(v));
       }
     }
     return val;
