@@ -199,7 +199,7 @@ impl SessionCacheManager {
         };
 
         if crate::keyring::is_keyring_disabled() {
-            let _ = fs::write(path, plaintext_json);
+            let _ = crate::fs_util::atomic_write(&path, &plaintext_json);
         } else {
             let key_bytes = get_or_create_cache_key();
             let cipher = Aes256Gcm::new(&key_bytes.into());
@@ -211,7 +211,7 @@ impl SessionCacheManager {
                 let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
                 combined.extend_from_slice(&nonce_bytes);
                 combined.extend_from_slice(&ciphertext);
-                let _ = fs::write(path, combined);
+                let _ = crate::fs_util::atomic_write(&path, &combined);
             }
         }
     }

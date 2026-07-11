@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 use keyring::Entry;
 
@@ -29,13 +29,10 @@ pub fn load_fallback_config() -> HashMap<String, String> {
 
 pub fn save_fallback_config(config: &HashMap<String, String>) {
     let path = get_fallback_file_path();
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
+    // atomic_write creates the parent directory and replaces the file via a temp-file rename, so
+    // a crash mid-write can't truncate the config.
     if let Ok(json) = serde_json::to_string(config) {
-        if let Ok(mut file) = File::create(path) {
-            let _ = file.write_all(json.as_bytes());
-        }
+        let _ = crate::fs_util::atomic_write(&path, json.as_bytes());
     }
 }
 

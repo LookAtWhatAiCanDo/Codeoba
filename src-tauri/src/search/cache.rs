@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use aes_gcm::{
@@ -137,8 +137,7 @@ impl EmbeddingCacheManager {
         };
 
         if crate::keyring::is_keyring_disabled() {
-            if let Ok(mut file) = File::create(file_path) {
-                let _ = file.write_all(&plaintext_json);
+            if crate::fs_util::atomic_write(&file_path, &plaintext_json).is_ok() {
                 if let Ok(mut guard) = self.is_modified.lock() {
                     *guard = false;
                 }
@@ -159,8 +158,7 @@ impl EmbeddingCacheManager {
             combined.extend_from_slice(&nonce_bytes);
             combined.extend_from_slice(&ciphertext);
 
-            if let Ok(mut file) = File::create(file_path) {
-                let _ = file.write_all(&combined);
+            if crate::fs_util::atomic_write(&file_path, &combined).is_ok() {
                 if let Ok(mut guard) = self.is_modified.lock() {
                     *guard = false;
                 }
