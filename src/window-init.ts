@@ -132,9 +132,19 @@ import { logFE } from "./utils/logger";
     }
   });
 
-  // Global event listener to disable the default browser right-click context menu (which has "Reload", "Back", etc.)
+  // Suppress the browser's default right-click menu (Reload/Back/Inspect/…) for a native-app feel,
+  // but leave it intact where it's actually useful: editable fields (cut/copy/paste) and any
+  // selected text (copy). Blanket-suppressing it broke cut/copy/paste in inputs.
   document.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
+    const target = e.target;
+    const isEditable =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLElement && target.isContentEditable);
+    const hasSelection = !!window.getSelection()?.toString();
+    if (!isEditable && !hasSelection) {
+      e.preventDefault();
+    }
   });
 
   // Hook up skeleton window controls for Windows/Linux during startup
