@@ -1,5 +1,6 @@
 pub mod models;
 pub mod logging;
+pub mod fs_util;
 pub mod parsers;
 pub mod keyring;
 pub mod tokenizer;

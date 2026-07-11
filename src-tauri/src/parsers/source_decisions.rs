@@ -23,7 +23,9 @@ pub fn load_source_decisions() -> HashMap<String, String> {
 pub fn save_source_decisions(decisions: &HashMap<String, String>) {
     let file_path = get_source_decisions_file();
     if let Ok(content) = serde_json::to_string_pretty(decisions) {
-        let _ = fs::write(file_path, content);
+        if let Err(e) = crate::fs_util::atomic_write(&file_path, content.as_bytes()) {
+            crate::log_error!("Failed to write source decisions file: {}", e);
+        }
     }
 }
 

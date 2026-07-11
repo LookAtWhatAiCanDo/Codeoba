@@ -93,7 +93,7 @@ pub fn save_groups(groups: &[ConversationGroup]) -> Result<(), String> {
     };
     let content = serde_json::to_string_pretty(&container)
         .map_err(|e| format!("Failed to serialize groups: {}", e))?;
-    fs::write(file, content)
+    crate::fs_util::atomic_write(&file, content.as_bytes())
         .map_err(|e| format!("Failed to write groups file: {}", e))?;
     Ok(())
 }
