@@ -1634,6 +1634,100 @@ fn test_antigravity_variants() {
     assert!(ide.get_default_log_paths()[0].contains("antigravity-ide"));
 }
 
+#[test]
+fn test_parse_query_terms_helper() {
+    use crate::search::lexical::parse_query_terms;
+
+    let terms = parse_query_terms("Goal \"make it easy\"");
+    assert_eq!(terms, vec!["Goal".to_string(), "make it easy".to_string()]);
+
+    let terms2 = parse_query_terms("   hello    \"world wide web\"   nested ");
+    assert_eq!(terms2, vec!["hello".to_string(), "world wide web".to_string(), "nested".to_string()]);
+
+    let terms3 = parse_query_terms("\"unclosed quote");
+    assert_eq!(terms3, vec!["unclosed quote".to_string()]);
+}
+
+#[test]
+fn test_lexical_search_multi_term_and() {
+    let session_a = crate::models::Session {
+        id: "session-a".to_string(),
+        source_id: "cursor".to_string(),
+        file_path: "/path/a".to_string(),
+        timestamp: 1000,
+        updated_at: 1000,
+        cwd: Some("/workspace/a".to_string()),
+        thread_name: Some("Goal: Make it easy".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "turn-1".to_string(),
+                user_message: "How to run local index search".to_string(),
+                assistant_message: "Just query it".to_string(),
+                timestamp: 1000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+        snippet: None,
+        workspace_name: Some("workspace-a".to_string()),
+        status: None,
+        is_deleted: false,
+    };
+
+    let session_b = crate::models::Session {
+        id: "session-b".to_string(),
+        source_id: "cursor".to_string(),
+        file_path: "/path/b".to_string(),
+        timestamp: 2000,
+        updated_at: 2000,
+        cwd: Some("/workspace/b".to_string()),
+        thread_name: Some("Just random thread".to_string()),
+        turns: vec![
+            crate::models::Turn {
+                turn_id: "turn-2".to_string(),
+                user_message: "make it simple and clean".to_string(),
+                assistant_message: "Sure thing".to_string(),
+                timestamp: 2000,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }
+        ],
+        is_archived: false,
+        is_pinned: false,
+        summary: None,
+        snippet: None,
+        workspace_name: Some("workspace-b".to_string()),
+        status: None,
+        is_deleted: false,
+    };
+
+    let sessions = vec![session_a, session_b];
+    let filter = crate::search::SearchFilter::default();
+
+    // Query 1: "Goal" - should match session_a
+    let res1 = crate::search::lexical::lexical_search(&sessions, "Goal", &filter);
+    assert_eq!(res1.len(), 1);
+    assert_eq!(res1[0].session.id, "session-a");
+
+    // Query 2: "Goal simple" - should match nothing (since "Goal" is in session_a, but "simple" is in session_b)
+    let res2 = crate::search::lexical::lexical_search(&sessions, "Goal simple", &filter);
+    assert_eq!(res2.len(), 0);
+
+    // Query 3: "make it" - should match both session_a ("Make it" in thread_name) and session_b ("make it" in turn-2)
+    let res3 = crate::search::lexical::lexical_search(&sessions, "make it", &filter);
+    assert_eq!(res3.len(), 2);
+
+    // Query 4: "Goal \"make it\"" - should match session_a only (since only session_a has both "Goal" and "make it")
+    let res4 = crate::search::lexical::lexical_search(&sessions, "Goal \"make it\"", &filter);
+    assert_eq!(res4.len(), 1);
+    assert_eq!(res4[0].session.id, "session-a");
+}
+
 
 
 
