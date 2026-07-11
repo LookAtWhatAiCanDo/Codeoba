@@ -118,10 +118,17 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
 
 pub use crate::get_home_dir;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ParserVariant {
+    Standard,
+    Ide,
+}
+
 pub enum Source {
     Claude(claude::ClaudeSource),
     Cursor(cursor::CursorSource),
     Antigravity(antigravity::AntigravitySource),
+    AntigravityIde(antigravity::AntigravitySource),
     Copilot(copilot::CopilotSource),
     Codex(codex::CodexSource),
 }
@@ -212,6 +219,7 @@ impl Source {
             Source::Claude(s) => s.id(),
             Source::Cursor(s) => s.id(),
             Source::Antigravity(s) => s.id(),
+            Source::AntigravityIde(s) => s.id(),
             Source::Copilot(s) => s.id(),
             Source::Codex(s) => s.id(),
         }
@@ -222,6 +230,7 @@ impl Source {
             Source::Claude(s) => s.display_name(),
             Source::Cursor(s) => s.display_name(),
             Source::Antigravity(s) => s.display_name(),
+            Source::AntigravityIde(s) => s.display_name(),
             Source::Copilot(s) => s.display_name(),
             Source::Codex(s) => s.display_name(),
         }
@@ -232,6 +241,7 @@ impl Source {
             Source::Claude(s) => s.is_available(),
             Source::Cursor(s) => s.is_available(),
             Source::Antigravity(s) => s.is_available(),
+            Source::AntigravityIde(s) => s.is_available(),
             Source::Copilot(s) => s.is_available(),
             Source::Codex(s) => s.is_available(),
         }
@@ -242,6 +252,7 @@ impl Source {
             Source::Claude(s) => s.get_watch_paths(),
             Source::Cursor(s) => s.get_watch_paths(),
             Source::Antigravity(s) => s.get_watch_paths(),
+            Source::AntigravityIde(s) => s.get_watch_paths(),
             Source::Copilot(s) => s.get_watch_paths(),
             Source::Codex(s) => s.get_watch_paths(),
         }
@@ -252,6 +263,7 @@ impl Source {
             Source::Claude(s) => s.get_watch_file_filter(),
             Source::Cursor(s) => s.get_watch_file_filter(),
             Source::Antigravity(s) => s.get_watch_file_filter(),
+            Source::AntigravityIde(s) => s.get_watch_file_filter(),
             Source::Copilot(s) => s.get_watch_file_filter(),
             Source::Codex(s) => s.get_watch_file_filter(),
         }
@@ -262,6 +274,7 @@ impl Source {
             Source::Claude(s) => s.is_file_change_relevant(file_path),
             Source::Cursor(s) => s.is_file_change_relevant(file_path),
             Source::Antigravity(s) => s.is_file_change_relevant(file_path),
+            Source::AntigravityIde(s) => s.is_file_change_relevant(file_path),
             Source::Copilot(s) => s.is_file_change_relevant(file_path),
             Source::Codex(s) => s.is_file_change_relevant(file_path),
         }
@@ -272,6 +285,7 @@ impl Source {
             Source::Claude(s) => s.parse_session(file_path).await,
             Source::Cursor(s) => s.parse_session(file_path).await,
             Source::Antigravity(s) => s.parse_session(file_path).await,
+            Source::AntigravityIde(s) => s.parse_session(file_path).await,
             Source::Copilot(s) => s.parse_session(file_path).await,
             Source::Codex(s) => s.parse_session(file_path).await,
         };
@@ -286,6 +300,7 @@ impl Source {
             Source::Claude(s) => s.parse_all_sessions().await,
             Source::Cursor(s) => s.parse_all_sessions().await,
             Source::Antigravity(s) => s.parse_all_sessions().await,
+            Source::AntigravityIde(s) => s.parse_all_sessions().await,
             Source::Copilot(s) => s.parse_all_sessions().await,
             Source::Codex(s) => s.parse_all_sessions().await,
         };
@@ -300,6 +315,7 @@ impl Source {
             Source::Claude(s) => s.is_app_installed(),
             Source::Cursor(s) => s.is_app_installed(),
             Source::Antigravity(s) => s.is_app_installed(),
+            Source::AntigravityIde(s) => s.is_app_installed(),
             Source::Copilot(s) => s.is_app_installed(),
             Source::Codex(s) => s.is_app_installed(),
         }
@@ -310,6 +326,7 @@ impl Source {
             Source::Claude(s) => s.delete_data_paths(),
             Source::Cursor(s) => s.delete_data_paths(),
             Source::Antigravity(s) => s.delete_data_paths(),
+            Source::AntigravityIde(s) => s.delete_data_paths(),
             Source::Copilot(s) => s.delete_data_paths(),
             Source::Codex(s) => s.delete_data_paths(),
         }
@@ -320,6 +337,7 @@ impl Source {
             Source::Claude(s) => s.product_url(),
             Source::Cursor(s) => s.product_url(),
             Source::Antigravity(s) => s.product_url(),
+            Source::AntigravityIde(s) => s.product_url(),
             Source::Copilot(s) => s.product_url(),
             Source::Codex(s) => s.product_url(),
         }
@@ -330,7 +348,8 @@ pub fn get_sources_list() -> Vec<Source> {
     vec![
         Source::Claude(claude::ClaudeSource),
         Source::Cursor(cursor::CursorSource::new()),
-        Source::Antigravity(antigravity::AntigravitySource::new()),
+        Source::Antigravity(antigravity::AntigravitySource::new(ParserVariant::Standard)),
+        Source::AntigravityIde(antigravity::AntigravitySource::new(ParserVariant::Ide)),
         Source::Copilot(copilot::CopilotSource::new()),
         Source::Codex(codex::CodexSource::new()),
     ]

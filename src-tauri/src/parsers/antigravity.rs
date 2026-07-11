@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 pub struct AntigravitySource {
+    variant: crate::parsers::ParserVariant,
     antigravity_title_map: std::sync::RwLock<HashMap<String, String>>,
     last_pb_file_modified: std::sync::RwLock<i64>,
 }
@@ -14,6 +15,7 @@ pub struct AntigravitySource {
 impl Default for AntigravitySource {
     fn default() -> Self {
         Self {
+            variant: crate::parsers::ParserVariant::Standard,
             antigravity_title_map: std::sync::RwLock::new(HashMap::new()),
             last_pb_file_modified: std::sync::RwLock::new(0),
         }
@@ -21,13 +23,24 @@ impl Default for AntigravitySource {
 }
 
 impl AntigravitySource {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(variant: crate::parsers::ParserVariant) -> Self {
+        Self {
+            variant,
+            antigravity_title_map: std::sync::RwLock::new(HashMap::new()),
+            last_pb_file_modified: std::sync::RwLock::new(0),
+        }
+    }
+
+    fn get_variant_dir(&self) -> PathBuf {
+        let home = crate::parsers::get_home_dir();
+        match self.variant {
+            crate::parsers::ParserVariant::Standard => home.join(".gemini/antigravity"),
+            crate::parsers::ParserVariant::Ide => home.join(".gemini/antigravity-ide"),
+        }
     }
 
     fn get_base_dir(&self) -> PathBuf {
-        let home = crate::parsers::get_home_dir();
-        home.join(".gemini/antigravity/brain")
+        self.get_variant_dir().join("brain")
     }
 
     pub(crate) fn get_session_title(&self, session_id: &str) -> String {
@@ -38,8 +51,7 @@ impl AntigravitySource {
             }
         }
 
-        let home = crate::parsers::get_home_dir();
-        let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
+        let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
         let current_modified = if pb_file.exists() && pb_file.is_file() {
             pb_file.metadata()
                 .and_then(|m| m.modified())
@@ -68,8 +80,7 @@ impl AntigravitySource {
 
     fn build_antigravity_title_map(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        let home = crate::parsers::get_home_dir();
-        let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
+        let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
         if pb_file.exists() && pb_file.is_file() {
             if let Ok(bytes) = fs::read(&pb_file) {
                 let mut offset = 0;
@@ -725,11 +736,17 @@ fn parse_sqlite_session_db(
 
 impl SourceAdapter for AntigravitySource {
     fn id(&self) -> &str {
-        "antigravity"
+        match self.variant {
+            crate::parsers::ParserVariant::Standard => "antigravity",
+            crate::parsers::ParserVariant::Ide => "antigravity_ide",
+        }
     }
 
     fn display_name(&self) -> &str {
-        "Google Antigravity"
+        match self.variant {
+            crate::parsers::ParserVariant::Standard => "Google Antigravity",
+            crate::parsers::ParserVariant::Ide => "Antigravity IDE",
+        }
     }
 
     fn product_url(&self) -> Option<String> {
@@ -745,8 +762,7 @@ impl SourceAdapter for AntigravitySource {
     }
 
     fn get_watch_paths(&self) -> Vec<String> {
-        let home = crate::parsers::get_home_dir();
-        vec![home.join(".gemini/antigravity").to_string_lossy().to_string()]
+        vec![self.get_variant_dir().to_string_lossy().to_string()]
     }
 
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
@@ -762,10 +778,16 @@ impl SourceAdapter for AntigravitySource {
 
     fn is_app_installed(&self) -> bool {
         if cfg!(target_os = "macos") {
-            Path::new("/Applications/Antigravity.app").exists() || Path::new("/Applications/Gemini.app").exists()
+            match self.variant {
+                crate::parsers::ParserVariant::Standard => {
+                    Path::new("/Applications/Antigravity.app").exists()
+                }
+                crate::parsers::ParserVariant::Ide => {
+                    Path::new("/Applications/Antigravity IDE.app").exists()
+                }
+            }
         } else {
-            let home = crate::parsers::get_home_dir();
-            home.join(".gemini/antigravity").exists()
+            self.get_variant_dir().exists()
         }
     }
 
@@ -799,8 +821,7 @@ impl SourceAdapter for AntigravitySource {
         let mut cache_modified = last_modified;
         let mut cache_size = size;
 
-        let home = crate::parsers::get_home_dir();
-        let annotation_file = home.join(format!(".gemini/antigravity/annotations/{}.pbtxt", session_id));
+        let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
         if annotation_file.exists() && annotation_file.is_file() {
             if let Ok(anno_meta) = annotation_file.metadata() {
                 let anno_modified = anno_meta.modified().ok()
@@ -819,7 +840,7 @@ impl SourceAdapter for AntigravitySource {
             cache_size,
         ) {
             let current_title = self.get_session_title(&session_id);
-            let annotation_file = home.join(format!(".gemini/antigravity/annotations/{}.pbtxt", session_id));
+            let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
             let current_archived = if annotation_file.exists() && annotation_file.is_file() {
                 if let Ok(anno_text) = fs::read_to_string(&annotation_file) {
                     let normalized: String = anno_text.chars().filter(|c| !c.is_whitespace()).collect();
@@ -1043,7 +1064,7 @@ impl SourceAdapter for AntigravitySource {
 
         // Attempt to load older events from the SQLite database
         let mut db_events = Vec::new();
-        let db_path = home.join(format!(".gemini/antigravity/conversations/{}.db", session_id));
+        let db_path = self.get_variant_dir().join(format!("conversations/{}.db", session_id));
         let mut db_model = None;
         if db_path.exists() && db_path.is_file() {
             let uncompacted_map = load_jsonl_uncompacted_map(path);
@@ -1261,8 +1282,7 @@ impl SourceAdapter for AntigravitySource {
         let first_time = events.first().map(|e| e.timestamp).unwrap_or(last_modified);
         let last_time = events.last().map(|e| e.timestamp).unwrap_or(last_modified);
 
-        let home = crate::parsers::get_home_dir();
-        let annotation_file = home.join(format!(".gemini/antigravity/annotations/{}.pbtxt", session_id));
+        let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
         let is_archived = if annotation_file.exists() && annotation_file.is_file() {
             if let Ok(text) = fs::read_to_string(&annotation_file) {
                 let normalized: String = text.chars().filter(|c| !c.is_whitespace()).collect();
@@ -1313,8 +1333,7 @@ impl SourceAdapter for AntigravitySource {
             return Vec::new();
         }
 
-        let home = crate::parsers::get_home_dir();
-        let pb_file = home.join(".gemini/antigravity/agyhub_summaries_proto.pb");
+        let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
         let current_modified = if pb_file.exists() && pb_file.is_file() {
             pb_file.metadata()
                 .and_then(|m| m.modified())

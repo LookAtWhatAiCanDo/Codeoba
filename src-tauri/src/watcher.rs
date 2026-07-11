@@ -830,7 +830,7 @@ mod watcher_tests {
         std::fs::write(&pb_file, &entry_field).unwrap();
 
         // 3. Load sessions initially via source to populate index
-        let src = crate::parsers::antigravity::AntigravitySource::new();
+        let src = crate::parsers::antigravity::AntigravitySource::default();
         let sessions = tauri::async_runtime::block_on(async {
             src.parse_all_sessions().await
         });

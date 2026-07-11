@@ -273,7 +273,7 @@ fn test_antigravity_source_parsing() {
 "#,
         ).unwrap();
 
-        let source = AntigravitySource::new();
+        let source = AntigravitySource::default();
         let session = source.parse_session(&temp_path).await.unwrap();
 
         assert_eq!(session.turns.len(), 2);
@@ -306,7 +306,7 @@ fn test_antigravity_system_and_error_parsing() {
 "#,
         ).unwrap();
 
-        let source = AntigravitySource::new();
+        let source = AntigravitySource::default();
         let session = source.parse_session(&temp_path).await.unwrap();
 
         assert_eq!(session.turns.len(), 1);
@@ -411,7 +411,7 @@ fn test_antigravity_protobuf_wire_format_title_resolution() {
             let pb_file = gemini_dir.join("agyhub_summaries_proto.pb");
             fs::write(&pb_file, &entry_field).unwrap();
 
-            let source = AntigravitySource::new();
+            let source = AntigravitySource::default();
             let title = source.get_session_title("session-12345");
             assert_eq!(title, "Exploring Quantum Physics");
         }).await;
@@ -437,7 +437,7 @@ fn test_antigravity_archived_parsing() {
 "#,
             ).unwrap();
 
-            let source = AntigravitySource::new();
+            let source = AntigravitySource::default();
 
             let session1 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
             assert_eq!(session1.is_archived, false);
@@ -508,7 +508,7 @@ fn test_antigravity_tool_tags_edge_cases() {
 "#,
         ).unwrap();
 
-        let source = AntigravitySource::new();
+        let source = AntigravitySource::default();
         let session = source.parse_session(&temp_path).await.unwrap();
 
         assert_eq!(session.turns.len(), 1);
@@ -1615,6 +1615,25 @@ fn test_cache_orphan_preservation() {
         }).await;
     });
 }
+
+#[test]
+fn test_antigravity_variants() {
+    use crate::parsers::{ParserVariant, SourceAdapter};
+    use crate::parsers::antigravity::AntigravitySource;
+
+    let standard = AntigravitySource::new(ParserVariant::Standard);
+    let ide = AntigravitySource::new(ParserVariant::Ide);
+
+    assert_eq!(standard.id(), "antigravity");
+    assert_eq!(ide.id(), "antigravity_ide");
+
+    assert_eq!(standard.display_name(), "Google Antigravity");
+    assert_eq!(ide.display_name(), "Antigravity IDE");
+
+    assert!(standard.get_default_log_paths()[0].contains("antigravity"));
+    assert!(ide.get_default_log_paths()[0].contains("antigravity-ide"));
+}
+
 
 
 

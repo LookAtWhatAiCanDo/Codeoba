@@ -47,7 +47,7 @@ To ensure the project context remains accurate:
   - `src/parsers/`: Log adapters parsing files to models:
     * `claude.rs`: JSONL stream parser.
     * `cursor.rs`: SQLite workspace parser.
-    * `antigravity.rs`: Antigravity JSONL parser.
+    * `antigravity.rs`: Hybrid parser supporting standard Google Antigravity and Antigravity IDE (VSCode fork) variants.
     * `copilot.rs` & `codex.rs`: Stream log event deserializers.
   - `src/search/`: Vector ONNX and lexical search logic.
   - `src/tokenizer.rs`: Offline BPE-based token count estimator (family scales, Hugging Face config loader).

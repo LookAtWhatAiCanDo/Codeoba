@@ -131,7 +131,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
         return Some("executing".to_string());
     }
 
-    if source_id == "antigravity" {
+    if source_id == "antigravity" || source_id == "antigravity_ide" {
         let home = crate::parsers::get_home_dir();
         let brain_dir = home.join(format!(".gemini/antigravity/brain/{}", session_id));
         
