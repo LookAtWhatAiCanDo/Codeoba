@@ -81,6 +81,33 @@ fn is_origin_allowed(origin: Option<&str>, allowed_origins: &[&str]) -> bool {
     }
 }
 
+struct ResolvedAuth {
+    state: Option<String>,
+    id_token: Option<String>,
+    refresh_token: Option<String>,
+    email: String,
+    uid: String,
+}
+
+/// Resolves the auth fields from the two request parameter sources.
+///
+/// Credentials (idToken/refreshToken/email/uid) are read from the POST body **only**, never from
+/// the query string — a query string travels in the URL and leaks into browser history, server
+/// logs, and Referer headers, which must never carry long-lived tokens. The CSRF `state` is not a
+/// credential and may arrive in either source (body preferred).
+fn resolve_auth_fields(
+    query_params: &std::collections::HashMap<String, String>,
+    body_params: &std::collections::HashMap<String, String>,
+) -> ResolvedAuth {
+    ResolvedAuth {
+        state: body_params.get("state").or_else(|| query_params.get("state")).cloned(),
+        id_token: body_params.get("idToken").cloned(),
+        refresh_token: body_params.get("refreshToken").cloned(),
+        email: body_params.get("email").cloned().unwrap_or_default(),
+        uid: body_params.get("uid").cloned().unwrap_or_default(),
+    }
+}
+
 fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &tauri::AppHandle<R>) {
     let mut buffer = [0; 4096];
     let mut read_bytes = 0;
@@ -165,25 +192,24 @@ fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &taur
         return;
     }
 
-    // Parse parameters
-    let mut params = std::collections::HashMap::new();
-
-    // Query parameters parsing
+    // Query parameters (non-secret only — the CSRF state may arrive here; credentials must not).
+    let mut query_params = std::collections::HashMap::new();
     for pair in query.split('&') {
         let kv: Vec<&str> = pair.splitn(2, '=').collect();
         if kv.len() == 2 {
             if let Ok(decoded_val) = percent_encoding::percent_decode_str(kv[1]).decode_utf8() {
-                params.insert(kv[0].to_string(), decoded_val.into_owned());
+                query_params.insert(kv[0].to_string(), decoded_val.into_owned());
             }
         }
     }
 
-    // JSON Body parsing for POST
+    // JSON body parameters (POST). Credentials are read only from here (see resolve_auth_fields).
+    let mut body_params = std::collections::HashMap::new();
     if method == "POST" && content_length > 0 {
         // Read remaining body bytes
         let header_end_idx = req_str.find("\r\n\r\n").map(|i| i + 4).unwrap_or(read_bytes);
         let mut body_bytes = req_str.as_bytes()[header_end_idx..].to_vec();
-        
+
         let remaining = content_length.saturating_sub(body_bytes.len());
         if remaining > 0 {
             let mut extra_buf = vec![0; remaining];
@@ -191,17 +217,19 @@ fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &taur
                 body_bytes.extend(extra_buf);
             }
         }
-        
+
         if let Ok(json_val) = serde_json::from_slice::<serde_json::Value>(&body_bytes) {
             if let Some(obj) = json_val.as_object() {
                 for (key, val) in obj {
                     if let Some(s) = val.as_str() {
-                        params.insert(key.clone(), s.to_string());
+                        body_params.insert(key.clone(), s.to_string());
                     }
                 }
             }
         }
     }
+
+    let auth = resolve_auth_fields(&query_params, &body_params);
 
     // Validate expected state to prevent CSRF
     let expected = {
@@ -212,19 +240,16 @@ fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &taur
         }
     };
 
-    let state_param = params.get("state").cloned();
-    if expected.is_none() || state_param != expected {
+    if expected.is_none() || auth.state != expected {
         let err_json = r#"{"status":"error","message":"Invalid or missing state parameter"}"#;
         send_response(&mut stream, 403, err_json, "application/json", origin.as_deref());
         return;
     }
 
-    let id_token = params.get("idToken");
-    let refresh_token = params.get("refreshToken");
-    let email = params.get("email").cloned().unwrap_or_default();
-    let uid = params.get("uid").cloned().unwrap_or_default();
+    let email = auth.email;
+    let uid = auth.uid;
 
-    if let (Some(id_t), Some(ref_t)) = (id_token, refresh_token) {
+    if let (Some(id_t), Some(ref_t)) = (auth.id_token.as_ref(), auth.refresh_token.as_ref()) {
         // Save tokens securely to keychain keyring
         crate::keyring::put_secret("ecosystem_id_token", Some(id_t));
         crate::keyring::put_secret("ecosystem_refresh_token", Some(ref_t));
@@ -307,5 +332,48 @@ mod origin_tests {
         // No substring / suffix leniency.
         assert!(!is_origin_allowed(Some("https://codeoba.com.evil.example"), ALLOWED));
         assert!(!is_origin_allowed(Some("https://codeoba.com "), ALLOWED));
+    }
+}
+
+#[cfg(test)]
+mod auth_field_tests {
+    use super::resolve_auth_fields;
+    use std::collections::HashMap;
+
+    fn map(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    /// The fix: credentials must be read from the POST body, never the query string.
+    #[test]
+    fn credentials_come_from_body_not_query() {
+        // Tokens supplied only via the query string are ignored.
+        let query = map(&[("idToken", "Q"), ("refreshToken", "Q")]);
+        let auth = resolve_auth_fields(&query, &HashMap::new());
+        assert_eq!(auth.id_token, None);
+        assert_eq!(auth.refresh_token, None);
+
+        // From the body they are honored.
+        let body = map(&[("idToken", "B1"), ("refreshToken", "B2"), ("email", "e"), ("uid", "u")]);
+        let auth = resolve_auth_fields(&HashMap::new(), &body);
+        assert_eq!(auth.id_token.as_deref(), Some("B1"));
+        assert_eq!(auth.refresh_token.as_deref(), Some("B2"));
+        assert_eq!(auth.email, "e");
+        assert_eq!(auth.uid, "u");
+    }
+
+    #[test]
+    fn query_cannot_override_body_credentials() {
+        let auth = resolve_auth_fields(&map(&[("idToken", "ATTACKER")]), &map(&[("idToken", "REAL")]));
+        assert_eq!(auth.id_token.as_deref(), Some("REAL"));
+    }
+
+    #[test]
+    fn state_may_come_from_either_source_body_preferred() {
+        let auth = resolve_auth_fields(&map(&[("state", "q")]), &HashMap::new());
+        assert_eq!(auth.state.as_deref(), Some("q"));
+
+        let auth = resolve_auth_fields(&map(&[("state", "q")]), &map(&[("state", "b")]));
+        assert_eq!(auth.state.as_deref(), Some("b"));
     }
 }
