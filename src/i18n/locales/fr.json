@@ -266,7 +266,9 @@
       "error": "Erreur lors de la vérification des mises à jour : {error}"
     },
     "exclusions": {
-      "title": "Exclusions"
+      "title": "Exclusions",
+      "indexSubagents": "Indexer les sous-tâches des agents en arrière-plan",
+      "indexSubagentsDesc": "Inclut les transcriptions, les commandes et les modifications de fichiers générées par les agents d'assistance en arrière-plan (ceci entraîne des journaux détaillés et une augmentation de l'utilisation des ressources). Désactiver cette option permet d'ignorer les tâches en arrière-plan, gardant votre index de recherche plus propre, et utilise moins de ressources."
     },
     "theme": {
       "title": "Thème"

@@ -266,7 +266,9 @@
       "error": "檢查更新出錯：{error}"
     },
     "exclusions": {
-      "title": "排除項"
+      "title": "排除項",
+      "indexSubagents": "索引背景智慧體子任務",
+      "indexSubagentsDesc": "包含背景輔助智慧體產生的對話內容、指令和檔案修改（這會導致詳細日誌輸出並增加資源消耗）。停用此項將忽略背景任務，從而保持搜尋索引更乾淨並佔用更少資源。"
     },
     "theme": {
       "title": "主題"

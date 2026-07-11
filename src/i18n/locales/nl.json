@@ -266,7 +266,9 @@
       "error": "Fout bij controleren op updates: {error}"
     },
     "exclusions": {
-      "title": "Uitsluitingen"
+      "title": "Uitsluitingen",
+      "indexSubagents": "Subtaken van achtergrondagenten indexeren",
+      "indexSubagentsDesc": "Inclusief transcripties, opdrachten en bestandsbewerkingen die zijn gegenereerd door achtergrond-hulpagenten (dit leidt tot gedetailleerde logboeken en een hoger bronnenverbruik). Als u dit uitschakelt, worden achtergrondtaken genegeerd, waardoor uw zoekindex schoner blijft en er minder bronnen worden gebruikt."
     },
     "theme": {
       "title": "Thema"

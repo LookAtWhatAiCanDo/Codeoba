@@ -266,7 +266,9 @@
       "error": "Fehler beim Prüfen auf Updates: {error}"
     },
     "exclusions": {
-      "title": "Ausschlüsse"
+      "title": "Ausschlüsse",
+      "indexSubagents": "Hintergrund-Agenten-Unteraufgaben indexieren",
+      "indexSubagentsDesc": "Beinhaltet Transkripte, Befehle und Dateiänderungen, die von Hintergrund-Hilfsagenten generiert wurden (dies führt zu ausführlichen Protokollen und erhöhtem Ressourcenverbrauch). Durch das Deaktivieren werden Hintergrundaufgaben ignoriert, wodurch Ihr Suchindex sauberer bleibt und weniger Ressourcen verbraucht werden."
     },
     "theme": {
       "title": "Design"

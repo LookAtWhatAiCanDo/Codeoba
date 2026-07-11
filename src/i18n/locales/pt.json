@@ -266,7 +266,9 @@
       "error": "Erro ao verificar atualizações: {error}"
     },
     "exclusions": {
-      "title": "Exclusões"
+      "title": "Exclusões",
+      "indexSubagents": "Indexar subtarefas de agentes em segundo plano",
+      "indexSubagentsDesc": "Inclui transcrições, comandos e edições de arquivos gerados por agentes auxiliares em segundo plano (isso resulta em logs detalhados e maior uso de recursos). Desativar isso ignora as tarefas em segundo plano, mantendo seu índice de pesquisa mais limpo e usando menos recursos."
     },
     "theme": {
       "title": "Tema"

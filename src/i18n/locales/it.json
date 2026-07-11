@@ -266,7 +266,9 @@
       "error": "Errore durante la verifica degli aggiornamenti: {error}"
     },
     "exclusions": {
-      "title": "Esclusioni"
+      "title": "Esclusioni",
+      "indexSubagents": "Indicizza sotto-attività degli agenti in background",
+      "indexSubagentsDesc": "Include trascrizioni, comandi e modifiche ai file generati dagli agenti helper in background (questo comporta log dettagliati e un maggiore utilizzo delle risorse). La disattivazione consente di ignorare le attività in background, mantenendo l'indice di ricerca più pulito e consumando meno risorse."
     },
     "theme": {
       "title": "Tema"

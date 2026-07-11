@@ -266,7 +266,9 @@
       "error": "检查更新出错：{error}"
     },
     "exclusions": {
-      "title": "排除项"
+      "title": "排除项",
+      "indexSubagents": "索引后台智能体子任务",
+      "indexSubagentsDesc": "包含后台辅助智能体生成的对话内容、命令和文件修改（这会导致详细日志输出并增加资源消耗）。禁用此项将忽略后台任务，从而保持搜索索引更干净并占用更少资源。"
     },
     "theme": {
       "title": "主题"
