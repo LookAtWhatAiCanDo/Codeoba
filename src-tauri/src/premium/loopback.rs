@@ -68,6 +68,19 @@ pub fn stop_server() {
     SHUTDOWN_FLAG.store(true, Ordering::Relaxed);
 }
 
+/// Whether the request's `Origin` is acceptable for the token-bearing auth callback.
+///
+/// A present, allowlisted Origin is required. A missing or empty Origin is rejected: browsers
+/// omit `Origin` on top-level navigations and image/subresource loads, so accepting an empty
+/// Origin (the previous behavior) let any web page reach this endpoint. The legitimate client is
+/// a CORS fetch from the login page, which always sends `Origin`.
+fn is_origin_allowed(origin: Option<&str>, allowed_origins: &[&str]) -> bool {
+    match origin {
+        Some(o) if !o.is_empty() => allowed_origins.iter().any(|&a| a == o),
+        _ => false,
+    }
+}
+
 fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &tauri::AppHandle<R>) {
     let mut buffer = [0; 4096];
     let mut read_bytes = 0;
@@ -131,10 +144,7 @@ fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &taur
         "https://codeoba-dev.firebaseapp.com",
     ];
 
-    let origin_str = origin.as_deref().unwrap_or("");
-    let is_origin_allowed = origin_str.is_empty() || allowed_origins.iter().any(|&o| origin_str == o);
-
-    if !is_origin_allowed {
+    if !is_origin_allowed(origin.as_deref(), &allowed_origins) {
         send_response(&mut stream, 403, "Unauthorized origin", "text/plain", None);
         return;
     }
@@ -272,4 +282,30 @@ fn send_response(stream: &mut TcpStream, status_code: u16, body: &str, content_t
 
     let _ = stream.write_all(response.as_bytes());
     let _ = stream.flush();
+}
+
+#[cfg(test)]
+mod origin_tests {
+    use super::is_origin_allowed;
+
+    const ALLOWED: &[&str] = &["https://codeoba.com", "http://127.0.0.1:5000"];
+
+    #[test]
+    fn rejects_missing_or_empty_origin() {
+        // The bug: an absent or empty Origin used to be accepted, letting any page reach the
+        // token-bearing callback via a top-level navigation or image load.
+        assert!(!is_origin_allowed(None, ALLOWED));
+        assert!(!is_origin_allowed(Some(""), ALLOWED));
+    }
+
+    #[test]
+    fn accepts_only_allowlisted_origins() {
+        assert!(is_origin_allowed(Some("https://codeoba.com"), ALLOWED));
+        assert!(is_origin_allowed(Some("http://127.0.0.1:5000"), ALLOWED));
+
+        assert!(!is_origin_allowed(Some("https://evil.example"), ALLOWED));
+        // No substring / suffix leniency.
+        assert!(!is_origin_allowed(Some("https://codeoba.com.evil.example"), ALLOWED));
+        assert!(!is_origin_allowed(Some("https://codeoba.com "), ALLOWED));
+    }
 }
