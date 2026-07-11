@@ -816,6 +816,16 @@ pub fn get_language_override() -> Option<String> {
         .and_then(|idx| args.get(idx + 1).cloned())
 }
 
+#[tauri::command]
+pub fn get_index_subagents() -> bool {
+    crate::keyring::get_index_subagents_setting()
+}
+
+#[tauri::command]
+pub fn save_index_subagents(enabled: bool) {
+    crate::keyring::save_index_subagents_setting(enabled);
+}
+
 #[cfg(test)]
 mod trusted_root_tests {
     use super::*;

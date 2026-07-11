@@ -313,6 +313,8 @@ pub fn run() {
             commands::get_backend_base_url,
             commands::save_language_setting,
             commands::get_language_override,
+            commands::get_index_subagents,
+            commands::save_index_subagents,
             menu::update_scroll_menu_labels,
             menu::set_menu_item_text
         ])

@@ -811,6 +811,16 @@ impl SourceAdapter for AntigravitySource {
             .unwrap_or_else(|| path.file_stem().and_then(|s| s.to_str()).unwrap_or(""))
             .to_string();
 
+        if !cfg!(test) && !crate::keyring::get_index_subagents_setting() {
+            let contains_session = {
+                let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
+                map.contains_key(&session_id)
+            };
+            if !contains_session {
+                return None;
+            }
+        }
+
         let metadata = path.metadata().ok()?;
         let last_modified = metadata.modified().ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())

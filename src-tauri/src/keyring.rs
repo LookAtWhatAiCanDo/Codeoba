@@ -243,3 +243,14 @@ pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
     save_fallback_config(&config);
 }
 
+pub fn get_index_subagents_setting() -> bool {
+    let config = load_fallback_config();
+    config.get("index_subagents").map(|val| val == "true").unwrap_or(true)
+}
+
+pub fn save_index_subagents_setting(enabled: bool) {
+    let mut config = load_fallback_config();
+    config.insert("index_subagents".to_string(), enabled.to_string());
+    save_fallback_config(&config);
+}
+

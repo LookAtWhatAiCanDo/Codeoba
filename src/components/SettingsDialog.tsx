@@ -47,6 +47,8 @@ interface SettingsDialogProps {
   onNumberFormatChange: (val: string) => void;
   excludedPaths: string;
   onExcludedPathsChange: (val: string) => void;
+  indexSubagents: boolean;
+  onIndexSubagentsChange: (val: boolean) => void;
   customTheme?: {
     bg: { h: number; s: number; l: number };
     surface: { h: number; s: number; l: number };
@@ -1179,6 +1181,26 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     placeholder="e.g. node_modules, dist, temp, .git"
                     class="w-full bg-background border border-border/80 rounded-xl p-3 text-xs text-text-primary focus:outline-none focus:border-accent font-mono resize-none h-32 placeholder:text-text-secondary/30 leading-normal"
                   />
+                </div>
+
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
+                  <div class="flex-1 pr-4">
+                    <h4 class="text-xs font-bold text-text-primary">
+                      {t("settings.exclusions.indexSubagents")}
+                    </h4>
+                    <p class="text-[0.625rem] text-text-secondary/70 mt-1 leading-normal">
+                      {t("settings.exclusions.indexSubagentsDesc")}
+                    </p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={props.indexSubagents} 
+                      onChange={(e) => props.onIndexSubagentsChange(e.currentTarget.checked)}
+                      class="sr-only peer"
+                    />
+                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                  </label>
                 </div>
               </div>
             </Show>

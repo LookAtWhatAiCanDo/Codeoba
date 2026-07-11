@@ -76,6 +76,7 @@ function App() {
   const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
   const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
   const [excludedPaths, setExcludedPaths] = createSignal(localStorage.getItem("codeoba-excluded-paths") || "");
+  const [indexSubagents, setIndexSubagents] = createSignal(true);
   const [fontSize, setFontSize] = createSignal(
     parseInt(localStorage.getItem("codeoba-font-size") || "15", 10)
   );
@@ -92,6 +93,16 @@ function App() {
   const handleExcludedPathsChange = (val: string) => {
     setExcludedPaths(val);
     localStorage.setItem("codeoba-excluded-paths", val);
+  };
+
+  const handleIndexSubagentsChange = async (val: boolean) => {
+    setIndexSubagents(val);
+    try {
+      await invoke("save_index_subagents", { enabled: val });
+      handleRebuildIndex(false);
+    } catch (err) {
+      console.error("Failed to save index_subagents setting:", err);
+    }
   };
 
   const handleDateFormatChange = (val: string) => {
@@ -558,6 +569,14 @@ function App() {
       setPruneDeleted(val === "true");
     } catch (err) {
       console.error("Failed to load prune_deleted_sessions setting:", err);
+    }
+
+    // Load initial index_subagents setting
+    try {
+      const val = await invoke<boolean>("get_index_subagents");
+      setIndexSubagents(val);
+    } catch (err) {
+      console.error("Failed to load index_subagents setting:", err);
     }
 
     // Listen to system color preference change
@@ -1797,6 +1816,8 @@ function App() {
         onNumberFormatChange={handleNumberFormatChange}
         excludedPaths={excludedPaths()}
         onExcludedPathsChange={handleExcludedPathsChange}
+        indexSubagents={indexSubagents()}
+        onIndexSubagentsChange={handleIndexSubagentsChange}
         onUpdateAvailable={(update) => {
           setUpdateManifest(update);
           setShowUpdateModal(true);
