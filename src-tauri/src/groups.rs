@@ -65,7 +65,15 @@ fn get_groups_file() -> std::path::PathBuf {
     dir.join("groups.json")
 }
 
-pub fn load_groups() -> Vec<ConversationGroup> {
+/// In-memory copy of groups.json. This process is the only writer (every write goes through
+/// save_groups), so the cache stays authoritative and lets repeated group mutations avoid
+/// re-reading and re-parsing the whole file on every call.
+fn groups_cache() -> &'static Mutex<Option<Vec<ConversationGroup>>> {
+    static CACHE: std::sync::OnceLock<Mutex<Option<Vec<ConversationGroup>>>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
+
+fn load_groups_from_disk() -> Vec<ConversationGroup> {
     let file = get_groups_file();
     if !file.exists() {
         return Vec::new();
@@ -86,6 +94,19 @@ pub fn load_groups() -> Vec<ConversationGroup> {
     }
 }
 
+pub fn load_groups() -> Vec<ConversationGroup> {
+    if let Ok(mut guard) = groups_cache().lock() {
+        if let Some(ref groups) = *guard {
+            return groups.clone();
+        }
+        // First access: read from disk once and memoize.
+        let groups = load_groups_from_disk();
+        *guard = Some(groups.clone());
+        return groups;
+    }
+    load_groups_from_disk()
+}
+
 pub fn save_groups(groups: &[ConversationGroup]) -> Result<(), String> {
     let file = get_groups_file();
     let container = GroupsContainer {
@@ -95,7 +116,18 @@ pub fn save_groups(groups: &[ConversationGroup]) -> Result<(), String> {
         .map_err(|e| format!("Failed to serialize groups: {}", e))?;
     crate::fs_util::atomic_write(&file, content.as_bytes())
         .map_err(|e| format!("Failed to write groups file: {}", e))?;
+    // Keep the cache in sync with what was just persisted.
+    if let Ok(mut guard) = groups_cache().lock() {
+        *guard = Some(groups.to_vec());
+    }
     Ok(())
+}
+
+#[cfg(test)]
+fn reset_groups_cache() {
+    if let Ok(mut guard) = groups_cache().lock() {
+        *guard = None;
+    }
 }
 
 pub fn get_groups() -> Vec<ConversationGroup> {
@@ -361,8 +393,22 @@ mod rename_tests {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp = tempfile::tempdir().unwrap();
         std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        super::reset_groups_cache(); // isolate the process-wide cache between tests
         f();
+        super::reset_groups_cache();
         std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// The cache is authoritative: after a save, load must serve from memory without touching disk.
+    #[test]
+    fn load_serves_from_cache_after_save() {
+        with_temp_home(|| {
+            save_groups(&[group("X")]).unwrap();
+            // Delete the backing file — a cached load must still return the saved groups.
+            let _ = std::fs::remove_file(super::get_groups_file());
+            let names: Vec<String> = load_groups().into_iter().map(|g| g.name).collect();
+            assert_eq!(names, vec!["X".to_string()]);
+        });
     }
 
     /// Regression: a name whose lowercasing changes byte length ('İ' -> "i̇") used to slice
