@@ -169,11 +169,26 @@ pub fn rename_group(old_name: &str, new_name: &str) -> Result<bool, String> {
         groups[idx].name = new_name.to_string();
         groups[idx].updated_at = now;
         
-        let prefix = format!("{}/", old_name.to_lowercase());
-        for g in &mut groups {
-            let name_lower = g.name.to_lowercase();
-            if name_lower.starts_with(&prefix) {
-                let remaining = &g.name[prefix.len()..];
+        // Re-parent child groups (names are "Parent/Child" paths) by replacing the leading
+        // segments that match old_name. This is done segment-by-segment rather than by byte
+        // slicing: the old code sliced g.name at `old_name.to_lowercase().len()`, i.e. a byte
+        // offset measured on the *lowercased* string applied to the *original-case* string.
+        // Unicode lowercasing is not length-preserving (e.g. Turkish 'İ' -> "i̇"), so that
+        // offset could land mid-codepoint and panic — poisoning the GroupState mutex and
+        // bricking the groups feature for the rest of the session.
+        let old_segments: Vec<&str> = old_name.split('/').collect();
+        for (i, g) in groups.iter_mut().enumerate() {
+            if i == idx {
+                continue; // the parent itself was already renamed above
+            }
+            let g_segments: Vec<&str> = g.name.split('/').collect();
+            let is_descendant = g_segments.len() > old_segments.len()
+                && g_segments[..old_segments.len()]
+                    .iter()
+                    .zip(&old_segments)
+                    .all(|(seg, old)| seg.to_lowercase() == old.to_lowercase());
+            if is_descendant {
+                let remaining = g_segments[old_segments.len()..].join("/");
                 g.name = format!("{}/{}", new_name, remaining);
                 g.updated_at = now;
             }
@@ -319,5 +334,84 @@ pub fn update_group_details(
         Ok(())
     } else {
         Err(format!("Group '{}' not found", name))
+    }
+}
+
+#[cfg(test)]
+mod rename_tests {
+    use super::*;
+
+    fn group(name: &str) -> ConversationGroup {
+        ConversationGroup {
+            name: name.to_string(),
+            description: String::new(),
+            status: "Active".to_string(),
+            session_ids: HashSet::new(),
+            tasks: Vec::new(),
+            past_work_summary: String::new(),
+            is_pinned: false,
+            created_at: 0,
+            updated_at: 0,
+        }
+    }
+
+    /// Runs `f` against a fresh, isolated ~/.codeoba via CODEOBA_MOCK_HOME, serialized with
+    /// the other env-mutating tests.
+    fn with_temp_home(f: impl FnOnce()) {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        f();
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Regression: a name whose lowercasing changes byte length ('İ' -> "i̇") used to slice
+    /// mid-codepoint and panic. Renaming the parent must re-parent the child safely, keeping
+    /// the child's original-case remainder.
+    #[test]
+    fn turkish_dotted_i_rename_does_not_panic() {
+        with_temp_home(|| {
+            save_groups(&[group("İ"), group("İ/İs")]).unwrap();
+
+            let changed = rename_group("İ", "Renamed").unwrap();
+            assert!(changed);
+
+            let names: Vec<String> = load_groups().into_iter().map(|g| g.name).collect();
+            assert!(names.contains(&"Renamed".to_string()), "parent should be renamed: {names:?}");
+            assert!(names.contains(&"Renamed/İs".to_string()), "child should be re-parented: {names:?}");
+        });
+    }
+
+    #[test]
+    fn ascii_rename_reparents_nested_children_only() {
+        with_temp_home(|| {
+            save_groups(&[
+                group("Work"),
+                group("Work/api"),
+                group("Work/api/db"),
+                group("Personal"),
+                group("Workshop"), // must NOT match "Work" (segment boundary)
+            ])
+            .unwrap();
+
+            assert!(rename_group("Work", "Job").unwrap());
+
+            let names: Vec<String> = load_groups().into_iter().map(|g| g.name).collect();
+            assert!(names.contains(&"Job".to_string()));
+            assert!(names.contains(&"Job/api".to_string()));
+            assert!(names.contains(&"Job/api/db".to_string()));
+            assert!(names.contains(&"Personal".to_string()));
+            assert!(names.contains(&"Workshop".to_string()), "'Workshop' must be untouched: {names:?}");
+        });
+    }
+
+    #[test]
+    fn rename_leaf_group_without_children() {
+        with_temp_home(|| {
+            save_groups(&[group("Solo")]).unwrap();
+            assert!(rename_group("Solo", "Alone").unwrap());
+            let names: Vec<String> = load_groups().into_iter().map(|g| g.name).collect();
+            assert_eq!(names, vec!["Alone".to_string()]);
+        });
     }
 }
