@@ -518,10 +518,13 @@ impl SearchIndexState {
         let app_handle_opt = self.app_handle.read().ok().and_then(|g| g.clone());
         let run_embeddings = self.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst);
 
-        let mut onnx_embedder = if run_embeddings {
+        // Reuse the process-wide cached embedder rather than reloading and re-optimizing the
+        // ~90 MB model on every changed file. Falls back to the lightweight hash embedder when the
+        // ONNX model isn't available.
+        let onnx_embedder = if run_embeddings {
             let (model_path, vocab_path) = resolve_model_paths(app_handle_opt.as_ref());
             if model_path.exists() && vocab_path.exists() {
-                semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).ok()
+                self.get_or_load_embedder(&model_path, &vocab_path).ok()
             } else {
                 None
             }
@@ -530,46 +533,34 @@ impl SearchIndexState {
         };
         let hash_embedder = semantic::HashSemanticEmbedder::new(384);
 
-        let model_id = if onnx_embedder.is_some() { "all-MiniLM-L6-v2" } else { "hash-384" };
-        let cache_mgr = cache::EmbeddingCacheManager::new(model_id);
-        cache_mgr.load_cache();
-
-        let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
-        let thread_emb = if let Some(v) = cache_mgr.get(thread_name) {
-            v
-        } else {
-            let v = if let Some(ref mut onnx) = onnx_embedder {
-                onnx.get_embeddings(thread_name).unwrap_or_else(|_| hash_embedder.get_embeddings(thread_name))
-            } else {
-                hash_embedder.get_embeddings(thread_name)
-            };
-            cache_mgr.put(thread_name, v.clone());
-            v
+        // Deliberately no on-disk embedding cache here. Loading and rewriting the whole
+        // embeddings_cache.json on every changed file was a major cost. The computed vectors go
+        // into the in-memory `embeddings` map, which is authoritative for search and which
+        // `rebuild` already reuses (by updated_at/turn-count match); `rebuild` owns persisting the
+        // on-disk cache. Worst case is re-embedding a live-updated session on the first rebuild
+        // after a restart — a forward pass with the now-cached model.
+        let embed = |text: &str| -> Vec<f32> {
+            match onnx_embedder.as_ref() {
+                Some(onnx) => onnx
+                    .get_embeddings(text)
+                    .unwrap_or_else(|_| hash_embedder.get_embeddings(text)),
+                None => hash_embedder.get_embeddings(text),
+            }
         };
 
-        let mut turn_embs = Vec::new();
+        let thread_name = session.thread_name.as_deref().unwrap_or("Untitled Session");
+        let thread_emb = embed(thread_name);
+
+        let mut turn_embs = Vec::with_capacity(session.turns.len());
         for turn in &session.turns {
             let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
-            let turn_emb = if let Some(v) = cache_mgr.get(&text) {
-                v
-            } else {
-                let v = if let Some(ref mut onnx) = onnx_embedder {
-                    onnx.get_embeddings(&text).unwrap_or_else(|_| hash_embedder.get_embeddings(&text))
-                } else {
-                    hash_embedder.get_embeddings(&text)
-                };
-                cache_mgr.put(&text, v.clone());
-                v
-            };
-            turn_embs.push(turn_emb);
+            turn_embs.push(embed(&text));
         }
 
         let vec_index = SessionVectorIndex {
             thread_name_embedding: thread_emb,
             turn_embeddings: turn_embs,
         };
-
-        cache_mgr.save_cache();
 
         if let Ok(mut sessions_guard) = self.sessions.write() {
             sessions_guard.insert(session.id.clone(), session.clone());
@@ -688,5 +679,76 @@ mod embedder_cache_tests {
         // Sanity: the cached embedder still produces a normalized 384-dim MiniLM vector.
         let v = first.get_embeddings("hello world").expect("embed");
         assert_eq!(v.len(), 384);
+    }
+}
+
+#[cfg(test)]
+mod update_session_tests {
+    use super::SearchIndexState;
+    use crate::models::{Session, Turn};
+
+    fn session_with_turns(id: &str, turns: usize) -> Session {
+        Session {
+            id: id.to_string(),
+            source_id: "codex".to_string(),
+            file_path: format!("/tmp/{id}.jsonl"),
+            timestamp: 0,
+            updated_at: 1,
+            cwd: None,
+            thread_name: Some("thread".to_string()),
+            turns: (0..turns)
+                .map(|i| Turn {
+                    turn_id: format!("{id}_{i}"),
+                    user_message: format!("u{i}"),
+                    assistant_message: format!("a{i}"),
+                    timestamp: 0,
+                    input_tokens: None,
+                    output_tokens: None,
+                    extra_data: std::collections::HashMap::new(),
+                })
+                .collect(),
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
+    /// update_session stores the session and a full set of embeddings in the in-memory maps
+    /// (hash fallback path — no model or semantic init required).
+    #[test]
+    fn populates_in_memory_session_and_embeddings() {
+        let state = SearchIndexState::new();
+        tauri::async_runtime::block_on(state.update_session(session_with_turns("s1", 2))).unwrap();
+
+        assert!(state.sessions.read().unwrap().contains_key("s1"));
+        let embs = state.embeddings.read().unwrap();
+        let vi = embs.get("s1").expect("embeddings stored");
+        assert_eq!(vi.thread_name_embedding.len(), 384);
+        assert_eq!(vi.turn_embeddings.len(), 2);
+        assert!(vi.turn_embeddings.iter().all(|e| e.len() == 384));
+    }
+
+    /// The fix: update_session must not load/rewrite the whole embeddings_cache.json per change.
+    /// The old code wrote that file on every call; the file must now be absent.
+    #[test]
+    fn does_not_write_the_embedding_cache_file() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+
+        let state = SearchIndexState::new();
+        tauri::async_runtime::block_on(state.update_session(session_with_turns("s1", 1))).unwrap();
+
+        let cache_file = temp.path().join(".codeoba/cache/embeddings_cache.json");
+        assert!(
+            !cache_file.exists(),
+            "update_session must not rewrite the whole embedding cache file"
+        );
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
