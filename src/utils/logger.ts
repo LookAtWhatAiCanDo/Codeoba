@@ -14,7 +14,13 @@ export const logFE = (level: "info" | "warn" | "error" | "debug" | "trace", mess
     console.log(`[FE-INFO] ${message}`);
   }
 
-  // Send to Tauri backend for terminal output with timestamps
+  // Forward only info/warn/error to the backend terminal log. debug/trace are console-only:
+  // the Rust log_debug!/log_trace! macros compile to nothing in release, so sending them over IPC
+  // just crosses the boundary (per call) to be discarded.
+  if (level === "debug" || level === "trace") {
+    return;
+  }
+
   invoke("log_from_frontend", { level, message }).catch((err) => {
     console.error("Failed to send log to backend:", err);
   });

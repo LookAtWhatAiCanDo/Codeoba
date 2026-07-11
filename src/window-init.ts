@@ -79,31 +79,32 @@ import { logFE } from "./utils/logger";
     logFE("error", `Failed to show app window: ${err}`);
   }
 
-  // Setup window geometry listeners to persist state on resize/move
+  // Setup window geometry listeners to persist state on resize/move.
+  // onResized/onMoved fire many times per drag; debounce so we write to localStorage once the
+  // window settles instead of on every frame. A single writer captures both size and position.
   try {
-    await appWindow.onResized(async () => {
-      try {
-        const scaleFactor = await appWindow.scaleFactor();
-        const size = await appWindow.innerSize();
-        const lSize = size.toLogical(scaleFactor);
-        localStorage.setItem("codeoba-window-width", String(lSize.width));
-        localStorage.setItem("codeoba-window-height", String(lSize.height));
-      } catch (e) {
-        console.error("Failed to save window size:", e);
+    let geometrySaveTimer: ReturnType<typeof setTimeout> | undefined;
+    const persistGeometry = () => {
+      if (geometrySaveTimer !== undefined) {
+        clearTimeout(geometrySaveTimer);
       }
-    });
-    
-    await appWindow.onMoved(async () => {
-      try {
-        const scaleFactor = await appWindow.scaleFactor();
-        const pos = await appWindow.innerPosition();
-        const lPos = pos.toLogical(scaleFactor);
-        localStorage.setItem("codeoba-window-x", String(lPos.x));
-        localStorage.setItem("codeoba-window-y", String(lPos.y));
-      } catch (e) {
-        console.error("Failed to save window position:", e);
-      }
-    });
+      geometrySaveTimer = setTimeout(async () => {
+        try {
+          const scaleFactor = await appWindow.scaleFactor();
+          const lSize = (await appWindow.innerSize()).toLogical(scaleFactor);
+          const lPos = (await appWindow.innerPosition()).toLogical(scaleFactor);
+          localStorage.setItem("codeoba-window-width", String(lSize.width));
+          localStorage.setItem("codeoba-window-height", String(lSize.height));
+          localStorage.setItem("codeoba-window-x", String(lPos.x));
+          localStorage.setItem("codeoba-window-y", String(lPos.y));
+        } catch (e) {
+          console.error("Failed to persist window geometry:", e);
+        }
+      }, 200);
+    };
+
+    await appWindow.onResized(persistGeometry);
+    await appWindow.onMoved(persistGeometry);
   } catch (err) {
     console.error("Failed to setup window geometry listeners:", err);
   }
