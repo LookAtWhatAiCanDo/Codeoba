@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, createMemo } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, getOwner, runWithOwner } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
@@ -547,6 +547,11 @@ function App() {
   });
 
   onMount(async () => {
+    // Capture the reactive owner synchronously. Everything below runs after `await`s, where
+    // getOwner() is null and onCleanup() is a silent no-op — so without this the event listeners
+    // registered below would never be torn down. Cleanups are registered via runWithOwner(owner, …).
+    const owner = getOwner();
+
     // Load initial prune_deleted_sessions setting
     try {
       const val = await invoke<string | null>("get_credential", { key: "prune_deleted_sessions" });
@@ -559,7 +564,7 @@ function App() {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
     mediaQuery.addEventListener("change", handler);
-    onCleanup(() => mediaQuery.removeEventListener("change", handler));
+    runWithOwner(owner, () => onCleanup(() => mediaQuery.removeEventListener("change", handler)));
 
     // Set window title with app version
     try {
@@ -1118,7 +1123,7 @@ function App() {
     };
     window.addEventListener("focusin", handleFocusIn);
 
-    onCleanup(() => {
+    runWithOwner(owner, () => onCleanup(() => {
       if (unlistenSession) unlistenSession();
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
@@ -1152,7 +1157,7 @@ function App() {
       if (unlistenMenuGoSelectHighlighted) unlistenMenuGoSelectHighlighted();
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("focusin", handleFocusIn);
-    });
+    }));
 
     try {
       setIsLoading(true);
