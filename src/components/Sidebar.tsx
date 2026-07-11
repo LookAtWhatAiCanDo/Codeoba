@@ -24,7 +24,8 @@ import {
   Layers,
   Activity,
   ExternalLink,
-  Copy
+  Copy,
+  Trash2
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { Session, SearchResult, SourceMetadata } from "../types";
@@ -58,8 +59,10 @@ export interface GroupTreeNode {
   recursiveSessionCount: number;
   directActiveCount: number;
   directArchivedCount: number;
+  directDeletedCount: number;
   recursiveActiveCount: number;
   recursiveArchivedCount: number;
+  recursiveDeletedCount: number;
   containsPinnedSessions: boolean;
 }
 
@@ -94,8 +97,10 @@ export function buildGroupTree(
           recursiveSessionCount: 0,
           directActiveCount: 0,
           directArchivedCount: 0,
+          directDeletedCount: 0,
           recursiveActiveCount: 0,
           recursiveArchivedCount: 0,
+          recursiveDeletedCount: 0,
           containsPinnedSessions: false
         };
         currentLevel.push(node);
@@ -105,11 +110,14 @@ export function buildGroupTree(
         node.isPinned = group.isPinned;
         let directActive = 0;
         let directArchived = 0;
+        let directDeleted = 0;
         if (group.sessionIds) {
           for (const id of group.sessionIds) {
             const session = sessionsMap.get(id);
             if (session) {
-              if (session.isArchived) {
+              if (session.isDeleted) {
+                directDeleted++;
+              } else if (session.isArchived) {
                 directArchived++;
               } else {
                 directActive++;
@@ -119,24 +127,27 @@ export function buildGroupTree(
         }
         node.directActiveCount = directActive;
         node.directArchivedCount = directArchived;
-        node.directSessionCount = directActive + directArchived;
+        node.directDeletedCount = directDeleted;
+        node.directSessionCount = directActive + directArchived + directDeleted;
         node.containsPinnedSessions = (group.sessionIds || []).some(id => pinnedSessionIds.has(id));
       }
       currentLevel = node.children;
     }
   }
 
-  function finalizeNode(node: GroupTreeNode): [number, number, number, boolean] {
+  function finalizeNode(node: GroupTreeNode): [number, number, number, number, boolean] {
     let childSessionsCount = 0;
     let childActiveCount = 0;
     let childArchivedCount = 0;
+    let childDeletedCount = 0;
     let childHasPinnedSessions = false;
 
     for (const child of node.children) {
-      const [cCount, cActive, cArchived, cPinned] = finalizeNode(child);
+      const [cCount, cActive, cArchived, cDeleted, cPinned] = finalizeNode(child);
       childSessionsCount += cCount;
       childActiveCount += cActive;
       childArchivedCount += cArchived;
+      childDeletedCount += cDeleted;
       if (cPinned) {
         childHasPinnedSessions = true;
       }
@@ -145,6 +156,7 @@ export function buildGroupTree(
     node.recursiveSessionCount = node.directSessionCount + childSessionsCount;
     node.recursiveActiveCount = node.directActiveCount + childActiveCount;
     node.recursiveArchivedCount = node.directArchivedCount + childArchivedCount;
+    node.recursiveDeletedCount = node.directDeletedCount + childDeletedCount;
     node.containsPinnedSessions = node.containsPinnedSessions || childHasPinnedSessions;
 
     node.children.sort((a, b) => {
@@ -153,7 +165,13 @@ export function buildGroupTree(
       return a.segment.toLowerCase().localeCompare(b.segment.toLowerCase());
     });
 
-    return [node.recursiveSessionCount, node.recursiveActiveCount, node.recursiveArchivedCount, node.containsPinnedSessions];
+    return [
+      node.recursiveSessionCount,
+      node.recursiveActiveCount,
+      node.recursiveArchivedCount,
+      node.recursiveDeletedCount,
+      node.containsPinnedSessions
+    ];
   }
 
   for (const root of rootNodes) {
@@ -190,8 +208,9 @@ interface SidebarProps {
   onSemanticToggle: () => void;
   selectedSources: Set<string>;
   onToggleSource: (sourceId: string) => void;
-  archivalFilter: "all" | "active" | "archived";
-  onArchivalFilterChange: (filter: "all" | "active" | "archived") => void;
+  archivalFilter: "all" | "active" | "archived" | "deleted";
+  onArchivalFilterChange: (filter: "all" | "active" | "archived" | "deleted") => void;
+  pruneDeleted: boolean;
   sources: SourceMetadata[];
   indexingProgress: {
     step: string;
@@ -617,11 +636,15 @@ export const Sidebar = (props: SidebarProps) => {
   });
 
   const unassignedActiveCount = createMemo(() => {
-    return unassignedSessions().filter(s => !s.isArchived).length;
+    return unassignedSessions().filter(s => !s.isArchived && !s.isDeleted).length;
   });
 
   const unassignedArchivedCount = createMemo(() => {
-    return unassignedSessions().filter(s => s.isArchived).length;
+    return unassignedSessions().filter(s => s.isArchived && !s.isDeleted).length;
+  });
+
+  const unassignedDeletedCount = createMemo(() => {
+    return unassignedSessions().filter(s => s.isDeleted).length;
   });
 
 
@@ -631,8 +654,9 @@ export const Sidebar = (props: SidebarProps) => {
       counts[src.id] = 0;
     }
     for (const s of searchedAndGroupedSessions()) {
-      if (props.archivalFilter === "active" && s.isArchived) continue;
-      if (props.archivalFilter === "archived" && !s.isArchived) continue;
+      if (props.archivalFilter === "active" && (s.isArchived || s.isDeleted)) continue;
+      if (props.archivalFilter === "archived" && (!s.isArchived || s.isDeleted)) continue;
+      if (props.archivalFilter === "deleted" && !s.isDeleted) continue;
       if (counts[s.sourceId] !== undefined) {
         counts[s.sourceId]++;
       }
@@ -643,21 +667,38 @@ export const Sidebar = (props: SidebarProps) => {
   const archivalCounts = createMemo(() => {
     let active = 0;
     let archived = 0;
+    let deleted = 0;
     for (const s of searchedAndGroupedSessions()) {
       if (props.selectedSources.size > 0 && !props.selectedSources.has(s.sourceId)) {
         continue;
       }
-      if (s.isArchived) {
+      if (s.isDeleted) {
+        deleted++;
+      } else if (s.isArchived) {
         archived++;
       } else {
         active++;
       }
     }
     return {
-      all: active + archived,
+      all: active + archived + deleted,
       active,
-      archived
+      archived,
+      deleted
     };
+  });
+
+  const tabOptions = createMemo(() => {
+    return props.pruneDeleted 
+      ? (["all", "active", "archived"] as const)
+      : (["all", "active", "archived", "deleted"] as const);
+  });
+
+  const gridClasses = createMemo(() => {
+    if (props.pruneDeleted) {
+      return "grid grid-cols-3";
+    }
+    return props.width < 480 ? "grid grid-cols-2" : "grid grid-cols-4";
   });
 
   // Determine what to display based on search results and filters
@@ -672,8 +713,9 @@ export const Sidebar = (props: SidebarProps) => {
             return false;
           }
           // Archival filter
-          if (props.archivalFilter === "active" && r.session.isArchived) return false;
-          if (props.archivalFilter === "archived" && !r.session.isArchived) return false;
+          if (props.archivalFilter === "active" && (r.session.isArchived || r.session.isDeleted)) return false;
+          if (props.archivalFilter === "archived" && (!r.session.isArchived || r.session.isDeleted)) return false;
+          if (props.archivalFilter === "deleted" && !r.session.isDeleted) return false;
           return true;
         })
         .map(r => ({
@@ -689,8 +731,9 @@ export const Sidebar = (props: SidebarProps) => {
             return false;
           }
           // Archival filter
-          if (props.archivalFilter === "active" && s.isArchived) return false;
-          if (props.archivalFilter === "archived" && !s.isArchived) return false;
+          if (props.archivalFilter === "active" && (s.isArchived || s.isDeleted)) return false;
+          if (props.archivalFilter === "archived" && (!s.isArchived || s.isDeleted)) return false;
+          if (props.archivalFilter === "deleted" && !s.isDeleted) return false;
           return true;
         })
         .map(s => ({
@@ -1177,11 +1220,17 @@ export const Sidebar = (props: SidebarProps) => {
               <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
                 {t("sidebar.statusFilter")}
               </div>
-              <div class="flex bg-surface p-1 rounded-lg border border-border/60">
-                <For each={["all", "active", "archived"] as const}>
+              <div class={`${gridClasses()} gap-1 bg-surface p-1 rounded-lg border border-border/60`}>
+                <For each={tabOptions()}>
                   {(tab) => (
                     <button
-                      onClick={() => props.onArchivalFilterChange(tab)}
+                      onClick={() => {
+                        if (props.archivalFilter === tab) {
+                          props.onArchivalFilterChange("all");
+                        } else {
+                          props.onArchivalFilterChange(tab);
+                        }
+                      }}
                       class={`flex-1 text-center py-1 text-xs rounded-md transition-all capitalize cursor-pointer ${
                         props.archivalFilter === tab 
                           ? "bg-background text-accent border border-border font-medium shadow-sm" 
@@ -1197,6 +1246,9 @@ export const Sidebar = (props: SidebarProps) => {
                         </Show>
                         <Show when={tab === "archived"}>
                           <Archive class="w-3.5 h-3.5" />
+                        </Show>
+                        <Show when={tab === "deleted"}>
+                          <Trash2 class="w-3.5 h-3.5 text-red-500" />
                         </Show>
                         <span>{t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}</span>
                         <span class="text-[0.625rem] opacity-60 ml-0.5">
@@ -1363,6 +1415,16 @@ export const Sidebar = (props: SidebarProps) => {
                   }`} title={t("sidebar.filterArchived")}>
                     <Archive class="w-2.5 h-2.5" />
                     {unassignedArchivedCount()}
+                  </span>
+
+                  {/* Deleted */}
+                  <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                    props.archivalFilter === "deleted"
+                      ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                      : "bg-surface-light border-border/40 text-text-secondary/60"
+                  }`} title={t("sidebar.filterDeleted")}>
+                    <Trash2 class="w-2.5 h-2.5" />
+                    {unassignedDeletedCount()}
                   </span>
                 </div>
               </div>
@@ -1859,6 +1921,11 @@ const SessionCard = (props: SessionCardProps) => {
           <Show when={props.session.isArchived}>
             <Archive class="w-3.5 h-3.5 text-text-secondary" />
           </Show>
+          <Show when={props.session.isDeleted}>
+            <span title={t("sidebar.badgeDeleted") || "Deleted"}>
+              <Trash2 class="w-3.5 h-3.5 text-red-500" />
+            </span>
+          </Show>
         </div>
       </div>
 
@@ -1931,7 +1998,7 @@ interface GroupTreeItemProps {
   node: GroupTreeNode;
   depth: number;
   activeGroupFilter: string | null;
-  archivalFilter: "all" | "active" | "archived";
+  archivalFilter: "all" | "active" | "archived" | "deleted";
   onSelect: (filter: string | null) => void;
   onContextMenu: (e: MouseEvent, node: GroupTreeNode) => void;
   renamingGroupPath: string | null;
@@ -2068,6 +2135,18 @@ export const GroupTreeItem = (props: GroupTreeItemProps) => {
                 }`} title={t("sidebar.filterArchived")}>
                   <Archive class="w-2.5 h-2.5" />
                   {props.node.recursiveArchivedCount}
+                </span>
+
+                {/* Deleted */}
+                <span class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
+                  isDragOver() 
+                    ? "bg-white/20 border-white/30 text-white" 
+                    : props.archivalFilter === "deleted"
+                    ? "bg-accent/10 border-accent/20 text-accent font-semibold"
+                    : "bg-surface-light border-border/40 text-text-secondary/60"
+                }`} title={t("sidebar.filterDeleted")}>
+                  <Trash2 class="w-2.5 h-2.5" />
+                  {props.node.recursiveDeletedCount}
                 </span>
               </div>
             </div>

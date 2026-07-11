@@ -148,7 +148,13 @@ where
     std::env::set_var("LOCALAPPDATA", temp_dir.path().join("AppData/Local"));
     std::env::remove_var("CODEOBA_MOCK_HOME");
 
+    // Clear any previous global cache references before mock execution
+    crate::parsers::cache::get_cache_manager().clear_in_memory_caches();
+
     f(temp_dir.path().to_path_buf()).await;
+
+    // Clear the mock cache references before restoring home directory environment variables
+    crate::parsers::cache::get_cache_manager().clear_in_memory_caches();
 
     if let Some(h) = original_home {
         std::env::set_var("HOME", h);
@@ -213,12 +219,12 @@ fn test_claude_source_parsing() {
 "#,
         ).unwrap();
 
-        let source = ClaudeSource;
+        let source = crate::parsers::Source::Claude(ClaudeSource);
         let session = source.parse_session(&temp_path).await.unwrap();
 
         assert_eq!(session.id, "session123");
         assert_eq!(session.cwd, Some("/path/to/project".to_string()));
-        assert_eq!(session.thread_name, Some("Test session".to_string()));
+        assert_eq!(session.thread_name, Some("Hello Claude".to_string()));
         assert_eq!(session.turns.len(), 1);
         assert_eq!(session.turns[0].user_message, "Hello Claude");
         assert_eq!(session.turns[0].assistant_message, "Hello User");
@@ -239,7 +245,7 @@ fn test_claude_compaction_parsing() {
 "#,
         ).unwrap();
 
-        let source = ClaudeSource;
+        let source = crate::parsers::Source::Claude(ClaudeSource);
         let session = source.parse_session(&temp_path).await.unwrap();
 
         assert_eq!(session.id, "sessionCompact");
@@ -903,6 +909,7 @@ fn test_lexical_search_engine_filters() {
         snippet: None,
         workspace_name: Some("workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let archived_session = crate::models::Session {
@@ -930,6 +937,7 @@ fn test_lexical_search_engine_filters() {
         snippet: None,
         workspace_name: Some("workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let sessions = vec![active_session, archived_session];
@@ -982,6 +990,7 @@ fn test_semantic_search_engine_filters() {
         snippet: None,
         workspace_name: Some("workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let archived_session = crate::models::Session {
@@ -1009,6 +1018,7 @@ fn test_semantic_search_engine_filters() {
         snippet: None,
         workspace_name: Some("workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let sessions = vec![active_session, archived_session];
@@ -1316,6 +1326,8 @@ fn test_hybrid_tokenizer_calibration() {
     std::env::set_var("HOME", temp_dir.path());
     std::env::remove_var("CODEOBA_MOCK_HOME");
 
+    crate::tokenizer::clear_custom_tokenizers_cache();
+
     let text_claude = "Verify Claude fallback formula."; // 31 bytes
     let count_claude = crate::tokenizer::estimate_tokens(text_claude, "claude-3-5-sonnet");
     assert_eq!(count_claude, 10); // 31 * 0.256 + 3 = 10.936 -> 10
@@ -1392,6 +1404,7 @@ fn test_search_effectiveness() {
         snippet: None,
         workspace_name: Some("db-workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let session_tailwind = crate::models::Session {
@@ -1419,6 +1432,7 @@ fn test_search_effectiveness() {
         snippet: None,
         workspace_name: Some("ui-workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let session_ml = crate::models::Session {
@@ -1446,6 +1460,7 @@ fn test_search_effectiveness() {
         snippet: None,
         workspace_name: Some("ml-workspace".to_string()),
         status: None,
+        is_deleted: false,
     };
 
     let sessions = vec![session_db, session_tailwind, session_ml];
@@ -1515,6 +1530,91 @@ fn test_search_effectiveness() {
     }
 }
 
+#[test]
+fn test_title_cleanup_and_extraction() {
+    // Test XML tag extraction and cleanup
+    let raw_msg_1 = "<USER_SETTINGS_CHANGE>\nChanged settings\n</USER_SETTINGS_CHANGE>\n<USER_REQUEST>please configure the project indexer</USER_REQUEST>";
+    let title_1 = crate::parsers::extract_title_from_first_query(raw_msg_1);
+    assert_eq!(title_1, "Configure the project indexer");
+
+    let raw_msg_2 = "i need to fix the context menu boundary checking";
+    let title_2 = crate::parsers::extract_title_from_first_query(raw_msg_2);
+    assert_eq!(title_2, "Fix the context menu boundary checking");
+
+    let raw_msg_long = "how do i implement a very long query that should be truncated nicely at a word boundary to prevent sidebar layout shifts in the Codeoba client UI";
+    let title_long = crate::parsers::extract_title_from_first_query(raw_msg_long);
+    assert!(title_long.len() <= 55);
+    assert!(title_long.ends_with("..."));
+
+    // Test friendly slug stripping simulated
+    let slug = "composed-pascal";
+    let raw_title = "Goal make it easy composed pascal";
+    let formatted_slug_space = slug.replace("-", " ").to_lowercase();
+    let clean_title = if raw_title.to_lowercase().ends_with(&formatted_slug_space) {
+        raw_title[..raw_title.len() - formatted_slug_space.len()].trim().to_string()
+    } else {
+        raw_title.to_string()
+    };
+    assert_eq!(clean_title, "Goal make it easy");
+}
+
+#[test]
+fn test_cache_orphan_preservation() {
+    tauri::async_runtime::block_on(async {
+        with_mock_home(|_mock_home| async move {
+            use crate::parsers::cache::get_cache_manager;
+            use crate::models::{Session, Turn};
+
+            let cache_mgr = get_cache_manager();
+            let source_id = "test_preservation_source";
+            cache_mgr.clear_all_caches();
+
+            let session = Session {
+                id: "preserved-session".to_string(),
+                source_id: source_id.to_string(),
+                file_path: "/path/to/old_file.jsonl".to_string(),
+                timestamp: 1000,
+                updated_at: 1000,
+                cwd: None,
+                thread_name: Some("Preserved Conversation".to_string()),
+                turns: vec![
+                    Turn {
+                        turn_id: "turn1".to_string(),
+                        user_message: "Hello".to_string(),
+                        assistant_message: "Hi".to_string(),
+                        timestamp: 1000,
+                        input_tokens: None,
+                        output_tokens: None,
+                        extra_data: std::collections::HashMap::new(),
+                    }
+                ],
+                is_archived: false,
+                is_pinned: false,
+                summary: None,
+                snippet: None,
+                workspace_name: None,
+                status: None,
+                is_deleted: false,
+            };
+
+            // Put directly to disk cache
+            cache_mgr.put_cached_session(source_id, "/path/to/old_file.jsonl", 1000, 100, "", session);
+
+            // Start scan (this loads from disk cache into memory cache AND initializes seen_paths as empty)
+            cache_mgr.start_scan(source_id);
+
+            // End scan (this cleans up orphans that were not seen during this scan)
+            let sessions = cache_mgr.end_scan(source_id);
+            assert_eq!(sessions.len(), 1);
+            assert_eq!(sessions[0].id, "preserved-session");
+            assert!(sessions[0].is_deleted, "Preserved orphan session should have is_deleted set to true");
+
+            // Verify it is NOT pruned since turns is not empty
+            let cache_map = cache_mgr.load_cache(source_id);
+            assert!(cache_map.contains_key("/path/to/old_file.jsonl"), "Session with turns was incorrectly pruned from cache");
+        }).await;
+    });
+}
 
 
 

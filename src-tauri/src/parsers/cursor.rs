@@ -282,6 +282,7 @@ impl CursorSource {
             snippet: None,
             workspace_name,
             status,
+            is_deleted: false,
         })
     }
 }
@@ -458,8 +459,7 @@ impl SourceAdapter for CursorSource {
             "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%';",
         );
         if rows.is_empty() {
-            crate::parsers::cache::get_cache_manager().end_scan(self.id());
-            return Vec::new();
+            return crate::parsers::cache::get_cache_manager().end_scan(self.id());
         }
 
         let (ws_map, active_ids) = self.build_workspace_map();
@@ -516,8 +516,6 @@ impl SourceAdapter for CursorSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id());
-
-        sessions
+        crate::parsers::cache::get_cache_manager().end_scan(self.id())
     }
 }

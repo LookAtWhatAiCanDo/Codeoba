@@ -23,7 +23,8 @@ import {
   AlertCircle,
   Edit,
   X,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
@@ -720,6 +721,12 @@ export const DetailPane = (props: DetailPaneProps) => {
                   <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${getStatusStyle(props.session!.status!)}`}>
                     {getStatusIcon(props.session!.status!)}
                     <span>{getStatusLabel(props.session!.status!)}</span>
+                  </div>
+                </Show>
+                <Show when={props.session!.isDeleted}>
+                  <div class="flex items-center gap-1 px-1.5 py-0.5 border border-red-500/30 bg-red-500/10 text-red-500 rounded-md text-[0.5625rem] font-bold select-none leading-none">
+                    <Trash2 class="w-3 h-3 text-red-500" />
+                    <span>{t("sidebar.badgeDeleted") || "Deleted"}</span>
                   </div>
                 </Show>
                 <Show when={compactionCount() > 0}>

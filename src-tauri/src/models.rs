@@ -53,6 +53,8 @@ pub struct Session {
     pub workspace_name: Option<String>,
     #[serde(default)]
     pub status: Option<String>,
+    #[serde(default)]
+    pub is_deleted: bool,
 }
 
 impl Session {
@@ -96,11 +98,12 @@ impl Session {
             snippet,
             workspace_name: self.workspace_name.clone(),
             status: self.status.clone(),
+            is_deleted: self.is_deleted,
         }
     }
 }
 
-pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn], cwd: &Option<String>) -> Option<String> {
+pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn], _cwd: &Option<String>) -> Option<String> {
     if turns.is_empty() {
         return Some("discussion".to_string());
     }
@@ -119,11 +122,10 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
     }
 
     let age_ms = now - last_timestamp;
-    let is_recent = age_ms >= 0 && age_ms < 3600_000; // 1 hour threshold for recent/active session
-
-    // Check if the last turn's assistant message is empty and the session is recent.
+    
+    // Check if the last turn's assistant message is empty and the session is recent (10 minutes).
     // If it's empty and recent, it means it's currently running/executing.
-    let is_currently_running = last_turn.assistant_message.trim().is_empty() && is_recent;
+    let is_currently_running = last_turn.assistant_message.trim().is_empty() && age_ms >= 0 && age_ms < 600_000;
 
     if is_currently_running {
         return Some("executing".to_string());
@@ -178,16 +180,37 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
         }
     }
 
-    // Default fallback: if cwd is defined, treat it as a tool/workspace execution session
-    if cwd.is_some() {
-        if is_recent {
-            Some("awaiting_review".to_string())
-        } else {
-            Some("completed".to_string())
+    if source_id == "claude" {
+        if let Some(slug) = turns.first().and_then(|t| t.extra_data.get("slug")) {
+            let home = crate::parsers::get_home_dir();
+            let plan_file = home.join(format!(".claude/plans/{}.md", slug));
+            if plan_file.exists() && plan_file.is_file() {
+                if let Ok(content) = std::fs::read_to_string(&plan_file) {
+                    let mut has_any_checklists = false;
+                    let mut has_uncompleted_tasks = false;
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with("- [ ]") || trimmed.starts_with("- [/]") {
+                            has_any_checklists = true;
+                            has_uncompleted_tasks = true;
+                        } else if trimmed.starts_with("- [x]") {
+                            has_any_checklists = true;
+                        }
+                    }
+                    if has_any_checklists {
+                        if has_uncompleted_tasks {
+                            return Some("executing".to_string());
+                        } else {
+                            return Some("completed".to_string());
+                        }
+                    }
+                }
+            }
         }
-    } else {
-        Some("discussion".to_string())
     }
+
+    // Default fallback is always discussion
+    Some("discussion".to_string())
 }
 
 pub fn resolve_workspace_name(cwd: &Option<String>) -> Option<String> {

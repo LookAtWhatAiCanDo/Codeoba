@@ -126,6 +126,86 @@ pub enum Source {
     Codex(codex::CodexSource),
 }
 
+fn strip_xml_tags(input: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    for c in input.chars() {
+        if c == '<' {
+            in_tag = true;
+        } else if c == '>' {
+            in_tag = false;
+        } else if !in_tag {
+            result.push(c);
+        }
+    }
+    result
+}
+
+pub fn extract_title_from_first_query(first_query: &str) -> String {
+    let cleaned = if let Some(start_idx) = first_query.find("<USER_REQUEST>") {
+        if let Some(end_idx) = first_query.find("</USER_REQUEST>") {
+            first_query[start_idx + "<USER_REQUEST>".len()..end_idx].to_string()
+        } else {
+            first_query[start_idx + "<USER_REQUEST>".len()..].to_string()
+        }
+    } else {
+        first_query.to_string()
+    };
+
+    let mut cleaned = strip_xml_tags(&cleaned);
+    cleaned = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    let prefixes = [
+        "i need to ", "i want to ", "please ", "suggest ", "propose ", 
+        "could you ", "can you ", "how to ", "how do i "
+    ];
+    let mut title_candidates = cleaned.clone();
+    let lower = title_candidates.to_lowercase();
+    for prefix in &prefixes {
+        if lower.starts_with(prefix) {
+            title_candidates = title_candidates[prefix.len()..].to_string();
+            break;
+        }
+    }
+
+    let mut chars = title_candidates.chars();
+    let capitalized = match chars.next() {
+        None => cleaned,
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    };
+
+    let max_len = 50;
+    if capitalized.chars().count() > max_len {
+        let mut truncated: String = capitalized.chars().take(max_len).collect();
+        if let Some(last_space) = truncated.rfind(' ') {
+            if last_space > max_len - 15 {
+                truncated.truncate(last_space);
+            }
+        }
+        format!("{}...", truncated.trim())
+    } else {
+        capitalized
+    }
+}
+
+pub fn post_process_session(session: &mut Session) {
+    if let Some(ref current_title) = session.thread_name {
+        let is_generic = matches!(
+            current_title.as_str(),
+            "Antigravity Session" | "Claude Session" | "Cursor Session" | "Codex Session" | "Copilot Session" | ""
+        );
+
+        if is_generic {
+            if let Some(first_turn) = session.turns.first() {
+                let first_query = &first_turn.user_message;
+                if !first_query.trim().is_empty() {
+                    session.thread_name = Some(extract_title_from_first_query(first_query));
+                }
+            }
+        }
+    }
+}
+
 impl Source {
     pub fn id(&self) -> &str {
         match self {
@@ -188,23 +268,31 @@ impl Source {
     }
 
     pub async fn parse_session(&self, file_path: &str) -> Option<Session> {
-        match self {
+        let mut session = match self {
             Source::Claude(s) => s.parse_session(file_path).await,
             Source::Cursor(s) => s.parse_session(file_path).await,
             Source::Antigravity(s) => s.parse_session(file_path).await,
             Source::Copilot(s) => s.parse_session(file_path).await,
             Source::Codex(s) => s.parse_session(file_path).await,
+        };
+        if let Some(ref mut s) = session {
+            post_process_session(s);
         }
+        session
     }
 
     pub async fn parse_all_sessions(&self) -> Vec<Session> {
-        match self {
+        let mut sessions = match self {
             Source::Claude(s) => s.parse_all_sessions().await,
             Source::Cursor(s) => s.parse_all_sessions().await,
             Source::Antigravity(s) => s.parse_all_sessions().await,
             Source::Copilot(s) => s.parse_all_sessions().await,
             Source::Codex(s) => s.parse_all_sessions().await,
+        };
+        for s in &mut sessions {
+            post_process_session(s);
         }
+        sessions
     }
 
     pub fn is_app_installed(&self) -> bool {

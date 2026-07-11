@@ -113,9 +113,7 @@ impl SourceAdapter for ClaudeSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id());
-
-        sessions
+        crate::parsers::cache::get_cache_manager().end_scan(self.id())
     }
 }
 
@@ -366,13 +364,19 @@ impl ClaudeSource {
             }
         }
 
+        if let Some(ref s) = slug {
+            if let Some(first_turn) = turns.first_mut() {
+                first_turn.extra_data.insert("slug".to_string(), s.clone());
+            }
+        }
+
         let first_time = raw_turns.first().map(|t| t.timestamp).unwrap_or(last_modified);
         let last_time = raw_turns.last().map(|t| t.timestamp).unwrap_or(last_modified);
 
         let clean_thread_name = if let Some(ref s) = slug {
             let home = crate::parsers::get_home_dir();
             let plan_file = home.join(format!(".claude/plans/{}.md", s));
-            if plan_file.exists() && plan_file.is_file() {
+            let raw_title = if plan_file.exists() && plan_file.is_file() {
                 if let Ok(file) = File::open(&plan_file) {
                     let mut reader = BufReader::new(file);
                     let mut first_line = String::new();
@@ -388,16 +392,30 @@ impl ClaudeSource {
                                 raw_title.to_string()
                             }
                         } else {
-                            self.format_slug(s)
+                            "Claude Session".to_string()
                         }
                     } else {
-                        self.format_slug(s)
+                        "Claude Session".to_string()
                     }
                 } else {
-                    self.format_slug(s)
+                    "Claude Session".to_string()
                 }
             } else {
-                self.format_slug(s)
+                "Claude Session".to_string()
+            };
+
+            let formatted_slug_space = s.replace("-", " ").to_lowercase();
+            let formatted_slug_hyphen = s.to_lowercase();
+            let raw_title_lower = raw_title.to_lowercase();
+
+            if raw_title_lower == formatted_slug_space || raw_title_lower == formatted_slug_hyphen || raw_title == "Claude Session" {
+                "Claude Session".to_string()
+            } else if raw_title_lower.ends_with(&formatted_slug_space) {
+                raw_title[..raw_title.len() - formatted_slug_space.len()].trim().to_string()
+            } else if raw_title_lower.ends_with(&formatted_slug_hyphen) {
+                raw_title[..raw_title.len() - formatted_slug_hyphen.len()].trim().to_string()
+            } else {
+                raw_title
             }
         } else {
             "Claude Session".to_string()
@@ -421,6 +439,7 @@ impl ClaudeSource {
             snippet: None,
             workspace_name,
             status,
+            is_deleted: false,
         };
 
         crate::parsers::cache::get_cache_manager().put_cached_session(
@@ -435,12 +454,4 @@ impl ClaudeSource {
         Some(session)
     }
 
-    fn format_slug(&self, slug: &str) -> String {
-        let replaced = slug.replace("-", " ").to_lowercase();
-        let mut chars = replaced.chars();
-        match chars.next() {
-            None => String::new(),
-            Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-        }
-    }
 }

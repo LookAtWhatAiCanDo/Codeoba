@@ -244,6 +244,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     } catch (err) {
       logFE("error", `Failed to query keyring or premium status: ${err}`);
     }
+
+    // 6. Load prune deleted sessions setting
+    try {
+      const val = await invoke<string | null>("get_credential", { key: "prune_deleted_sessions" });
+      setPruneDeleted(val === "true");
+    } catch (err) {
+      logFE("error", `Failed to load prune_deleted_sessions setting: ${err}`);
+    }
   });
 
   // General Settings
@@ -258,6 +266,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   );
   const [keyringDisabled, setKeyringDisabled] = createSignal(false);
   const [premiumActive, setPremiumActive] = createSignal(false);
+  const [pruneDeleted, setPruneDeleted] = createSignal(false);
 
   const handleToggleKeyring = async (checked: boolean) => {
     // Prevent toggling if premium is inactive
@@ -316,6 +325,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setCacheEnabled(val);
     localStorage.setItem("codeoba-cache-enabled", String(val));
     logFE("info", `Persistent cache set to: ${val}`);
+  };
+
+  const handleTogglePruneDeleted = async (checked: boolean) => {
+    try {
+      await invoke("save_credential", { key: "prune_deleted_sessions", value: checked ? "true" : "false" });
+      setPruneDeleted(checked);
+      logFE("info", `Prune deleted sessions set to: ${checked}`);
+      props.onRefreshSources();
+    } catch (err) {
+      logFE("error", `Failed to save prune_deleted_sessions setting: ${err}`);
+    }
   };
 
   const handleToggleAutoUpdate = (val: boolean) => {
@@ -595,6 +615,23 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       type="checkbox" 
                       checked={cacheEnabled()} 
                       onChange={(e) => handleToggleCache(e.currentTarget.checked)}
+                      class="sr-only peer"
+                    />
+                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>
+                  </label>
+                </div>
+
+                {/* Prune deleted sessions switch */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">{t("settings.general.pruneDeleted")}</h4>
+                    <p class="text-[0.625rem] text-text-secondary/70">{t("settings.general.pruneDeletedDesc")}</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={pruneDeleted()} 
+                      onChange={(e) => handleTogglePruneDeleted(e.currentTarget.checked)}
                       class="sr-only peer"
                     />
                     <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background"></div>

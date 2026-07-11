@@ -125,6 +125,7 @@ mod tests {
 
     #[test]
     fn test_estimate_tokens_calibrated() {
+        clear_custom_tokenizers_cache();
         // Calibrated estimation check for cl100k_base family
         let text = "Hello world"; // 11 chars
         // 11 * 0.263 + 2.0 = 4.893 -> 4 tokens

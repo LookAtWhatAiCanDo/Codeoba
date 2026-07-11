@@ -23,6 +23,7 @@ export interface Session {
   status?: string | null;
   snippet?: string | null;
   summary?: string | null;
+  isDeleted?: boolean;
 }
 
 export interface SearchResult {

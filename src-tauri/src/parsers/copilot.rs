@@ -413,6 +413,7 @@ impl SourceAdapter for CopilotSource {
             snippet: None,
             workspace_name,
             status,
+            is_deleted: false,
         };
 
         crate::parsers::cache::get_cache_manager().put_cached_session(
@@ -452,8 +453,6 @@ impl SourceAdapter for CopilotSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id());
-
-        sessions
+        crate::parsers::cache::get_cache_manager().end_scan(self.id())
     }
 }

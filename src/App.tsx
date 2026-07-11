@@ -222,9 +222,9 @@ function App() {
       return new Set<string>();
     }
   })());
-  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived">((() => {
+  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived" | "deleted">((() => {
     const stored = localStorage.getItem("codeoba-archival-filter");
-    if (stored === "all" || stored === "active" || stored === "archived") {
+    if (stored === "all" || stored === "active" || stored === "archived" || stored === "deleted") {
       return stored;
     }
     return "active";
@@ -233,6 +233,7 @@ function App() {
   const [isLoading, setIsLoading] = createSignal(true);
   const [isRebuilding, setIsRebuilding] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
+  const [pruneDeleted, setPruneDeleted] = createSignal(false);
   const [indexingProgress, setIndexingProgress] = createSignal<{
     step: string;
     progress: number;
@@ -546,6 +547,14 @@ function App() {
   });
 
   onMount(async () => {
+    // Load initial prune_deleted_sessions setting
+    try {
+      const val = await invoke<string | null>("get_credential", { key: "prune_deleted_sessions" });
+      setPruneDeleted(val === "true");
+    } catch (err) {
+      console.error("Failed to load prune_deleted_sessions setting:", err);
+    }
+
     // Listen to system color preference change
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
@@ -1519,8 +1528,9 @@ function App() {
             return false;
           }
           // Archival filter
-          if (archivalFilter() === "active" && r.session.isArchived) return false;
-          if (archivalFilter() === "archived" && !r.session.isArchived) return false;
+          if (archivalFilter() === "active" && (r.session.isArchived || r.session.isDeleted)) return false;
+          if (archivalFilter() === "archived" && (!r.session.isArchived || r.session.isDeleted)) return false;
+          if (archivalFilter() === "deleted" && !r.session.isDeleted) return false;
           // Excluded paths filter
           if (isExcluded(r.session.filePath)) return false;
           return true;
@@ -1533,8 +1543,9 @@ function App() {
         return false;
       }
       // Archival filter
-      if (archivalFilter() === "active" && s.isArchived) return false;
-      if (archivalFilter() === "archived" && !s.isArchived) return false;
+      if (archivalFilter() === "active" && (s.isArchived || s.isDeleted)) return false;
+      if (archivalFilter() === "archived" && (!s.isArchived || s.isDeleted)) return false;
+      if (archivalFilter() === "deleted" && !s.isDeleted) return false;
       // Excluded paths filter
       if (isExcluded(s.filePath)) return false;
       return true;
@@ -1650,6 +1661,7 @@ function App() {
           onToggleSource={handleToggleSource}
           archivalFilter={archivalFilter()}
           onArchivalFilterChange={setArchivalFilter}
+          pruneDeleted={pruneDeleted()}
           sources={sources()}
           indexingProgress={indexingProgress()}
           width={sidebarWidth()}
@@ -1761,6 +1773,12 @@ function App() {
         onRefreshSources={async () => {
           const metadata = await invoke<SourceMetadata[]>("get_sources");
           setSources(metadata);
+          try {
+            const val = await invoke<string | null>("get_credential", { key: "prune_deleted_sessions" });
+            setPruneDeleted(val === "true");
+          } catch (err) {
+            console.error("Failed to load prune_deleted_sessions setting:", err);
+          }
         }}
         similarityThreshold={similarityThreshold()}
         onSimilarityThresholdChange={setSimilarityThreshold}

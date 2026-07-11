@@ -58,6 +58,27 @@ fn get_or_create_cache_key() -> [u8; 32] {
 }
 
 impl SessionCacheManager {
+    pub fn clear_in_memory_caches(&self) {
+        if let Ok(mut active_guard) = self.active_caches.lock() {
+            active_guard.clear();
+        }
+        if let Ok(mut seen_guard) = self.seen_paths.lock() {
+            seen_guard.clear();
+        }
+    }
+
+    fn is_temporary_path(&self, path_str: &str) -> bool {
+        let home = crate::parsers::get_home_dir().to_string_lossy().to_string();
+        if path_str.starts_with(&home) {
+            return false;
+        }
+        let temp = std::env::temp_dir().to_string_lossy().to_string();
+        path_str.starts_with(&temp) 
+            || path_str.starts_with("/var/folders/") 
+            || path_str.starts_with("/tmp/")
+            || path_str.contains("/T/.tmp")
+    }
+
     pub fn clear_all_caches(&self) {
         if let Ok(mut active_guard) = self.active_caches.lock() {
             active_guard.clear();
@@ -316,40 +337,57 @@ impl SessionCacheManager {
         }
     }
 
-    pub fn end_scan(&self, source_id: &str) {
+    pub fn end_scan(&self, source_id: &str) -> Vec<Session> {
         let entries_to_save = {
             let mut active_guard = match self.active_caches.lock() {
                 Ok(g) => g,
-                Err(_) => return,
+                Err(_) => return Vec::new(),
             };
             let seen_guard = match self.seen_paths.lock() {
                 Ok(g) => g,
-                Err(_) => return,
+                Err(_) => return Vec::new(),
             };
 
             let cache_map = match active_guard.get_mut(source_id) {
                 Some(m) => m,
-                None => return,
+                None => return Vec::new(),
             };
             let seen = match seen_guard.get(source_id) {
                 Some(s) => s,
-                None => return,
+                None => return Vec::new(),
             };
+
+            let prune_deleted = crate::keyring::load_fallback_config()
+                .get("prune_deleted_sessions")
+                .and_then(|v| v.parse::<bool>().ok())
+                .unwrap_or(false);
 
             // Remove orphans
             let keys_to_remove: Vec<String> = cache_map
-                .keys()
-                .filter(|k| !seen.contains(*k))
-                .cloned()
+                .iter()
+                .filter(|(k, entry)| {
+                    if self.is_temporary_path(k) {
+                        return true;
+                    }
+                    if seen.contains(*k) {
+                        return false;
+                    }
+                    prune_deleted || entry.session.turns.is_empty()
+                })
+                .map(|(k, _)| k.clone())
                 .collect();
             for key in keys_to_remove {
                 cache_map.remove(&key);
             }
 
+            for (key, entry) in cache_map.iter_mut() {
+                entry.session.is_deleted = !seen.contains(key);
+            }
+
             cache_map.values().cloned().collect::<Vec<CacheEntry>>()
         };
 
-        self.save_cache(source_id, entries_to_save);
+        self.save_cache(source_id, entries_to_save.clone());
 
         let _hits = if let Ok(guard) = self.hit_counter.lock() {
             guard.get(source_id).cloned().unwrap_or(0)
@@ -377,6 +415,8 @@ impl SessionCacheManager {
         if let Ok(mut seen_guard) = self.seen_paths.lock() {
             seen_guard.remove(source_id);
         }
+
+        entries_to_save.into_iter().map(|entry| entry.session).collect()
     }
 }
 

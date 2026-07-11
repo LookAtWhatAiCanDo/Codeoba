@@ -609,6 +609,7 @@ mod watcher_tests {
             snippet: None,
             workspace_name: None,
             status: None,
+            is_deleted: false,
         };
         
         tauri::async_runtime::block_on(async {
@@ -718,6 +719,7 @@ mod watcher_tests {
             snippet: None,
             workspace_name: None,
             status: None,
+            is_deleted: false,
         };
         
         tauri::async_runtime::block_on(async {
