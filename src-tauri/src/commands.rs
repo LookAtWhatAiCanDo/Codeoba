@@ -126,19 +126,25 @@ pub fn get_sources() -> Vec<SourceMetadata> {
 #[tauri::command]
 pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Vec<Session>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
-    let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-    
-    let mut all_sessions: Vec<Session> = guard.values().map(|s| {
-        let mut lightweight = s.to_lightweight();
-        if lightweight.workspace_name.is_none() && lightweight.cwd.is_some() {
-            lightweight.workspace_name = crate::models::resolve_workspace_name(&lightweight.cwd);
+
+    // Copy the lightweight sessions out from under the read lock, then release it before doing
+    // any filesystem work. resolve_workspace_name walks the filesystem and resolve_session_status
+    // reads plan/task files, per session — holding the read lock across that I/O would block the
+    // rebuild writer (and every other reader) for the whole scan on every load.
+    let mut all_sessions: Vec<Session> = {
+        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        guard.values().map(|s| s.to_lightweight()).collect()
+    };
+
+    for session in &mut all_sessions {
+        if session.workspace_name.is_none() && session.cwd.is_some() {
+            session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
-        if lightweight.status.is_none() {
-            lightweight.status = crate::models::resolve_session_status(&lightweight.source_id, &lightweight.id, &lightweight.turns, &lightweight.cwd);
+        if session.status.is_none() {
+            session.status = crate::models::resolve_session_status(&session.source_id, &session.id, &session.turns, &session.cwd);
         }
-        lightweight
-    }).collect();
-    
+    }
+
     // Clean orphaned sessions from groups
     let all_valid_ids: std::collections::HashSet<String> = all_sessions.iter().map(|s| s.id.clone()).collect();
     let state_groups = app_handle.state::<crate::groups::GroupState>();
@@ -890,5 +896,73 @@ mod trusted_root_tests {
         std::fs::write(&script, "#!/bin/sh").unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(is_executable_target(&script));
+    }
+}
+
+#[cfg(test)]
+mod get_all_sessions_tests {
+    use super::*;
+    use tauri::Manager;
+    use crate::groups::GroupState;
+    use crate::models::Turn;
+
+    fn codex_session(id: &str, updated_at: i64) -> Session {
+        Session {
+            id: id.to_string(),
+            source_id: "codex".to_string(),
+            file_path: format!("/tmp/{id}.jsonl"),
+            timestamp: 0,
+            updated_at,
+            cwd: None,
+            thread_name: Some("t".to_string()),
+            turns: vec![Turn {
+                turn_id: format!("{id}_0"),
+                user_message: "hi".to_string(),
+                assistant_message: "yo".to_string(),
+                timestamp: 0,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+            }],
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
+    /// Guards the lock-scope reorder: enrichment (status/workspace) must still run after the
+    /// read lock is released, and results must stay sorted by updated_at descending.
+    #[test]
+    fn enriches_and_sorts_after_lock_release() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+
+        let app = tauri::test::mock_app();
+        let handle = app.handle().clone();
+        handle.manage(SearchIndexState::new());
+        handle.manage(GroupState::new());
+
+        {
+            let state = handle.state::<SearchIndexState>();
+            let mut guard = state.sessions.write().unwrap();
+            guard.insert("a".to_string(), codex_session("a", 100));
+            guard.insert("b".to_string(), codex_session("b", 200));
+        }
+
+        let result = tauri::async_runtime::block_on(get_all_sessions(handle.clone())).unwrap();
+
+        // Newest first.
+        assert_eq!(result.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), vec!["b", "a"]);
+        // Status was resolved during the post-lock enrichment pass.
+        assert!(result.iter().all(|s| s.status.is_some()), "status should be enriched");
+        // cwd is None, so workspace_name stays None.
+        assert!(result.iter().all(|s| s.workspace_name.is_none()));
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
