@@ -1,9 +1,15 @@
 use crate::parsers::get_sources_list;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::collections::{HashMap, HashSet};
 use tauri::{Emitter, Manager};
+
+/// Guards the background verification loop so it is spawned once per process. `start_watcher`
+/// runs at startup and again on every source-decision change; without this each call would leak
+/// another permanent 5-second polling task.
+static PERIODIC_LOOP_STARTED: AtomicBool = AtomicBool::new(false);
 
 pub struct WatcherState {
     pub watcher: Mutex<Option<RecommendedWatcher>>,
@@ -323,14 +329,18 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
         *guard = Some(watcher);
     }
 
-    // Spawn a background loop to verify monitored paths exist and to passively detect new folders
-    let handle_periodic = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
-        loop {
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            check_and_restore_watched_paths(&handle_periodic);
-        }
-    });
+    // Spawn the background verify/passive-detection loop exactly once for the process. The loop
+    // re-reads source decisions and rebinds watches each tick, so a single instance stays correct
+    // as sources are toggled — re-spawning it on every start_watcher call would just leak tasks.
+    if !PERIODIC_LOOP_STARTED.swap(true, Ordering::SeqCst) {
+        let handle_periodic = app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                check_and_restore_watched_paths(&handle_periodic);
+            }
+        });
+    }
 
     Ok(())
 }
