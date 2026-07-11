@@ -344,16 +344,42 @@ impl Source {
     }
 }
 
-pub fn get_sources_list() -> Vec<Source> {
-    vec![
-        Source::Claude(claude::ClaudeSource),
-        Source::Cursor(cursor::CursorSource::new()),
-        Source::Antigravity(antigravity::AntigravitySource::new(ParserVariant::Standard)),
-        Source::AntigravityIde(antigravity::AntigravitySource::new(ParserVariant::Ide)),
-        Source::Copilot(copilot::CopilotSource::new()),
-        Source::Codex(codex::CodexSource::new()),
-    ]
+/// Returns the shared, process-wide source adapters.
+///
+/// The adapters are built once and reused. Several of them (Cursor, Antigravity, Codex) carry
+/// in-memory caches — composer/workspace and session-title maps plus last-modified markers used to
+/// dedup redundant reloads. Rebuilding the adapters on every call (this is invoked from the watcher
+/// hot path and multiple IPC commands) discarded those caches, so the dedup logic never took
+/// effect. A single shared instance lets the caches persist as designed.
+pub fn get_sources_list() -> &'static [Source] {
+    static SOURCES: std::sync::OnceLock<Vec<Source>> = std::sync::OnceLock::new();
+    SOURCES.get_or_init(|| {
+        vec![
+            Source::Claude(claude::ClaudeSource),
+            Source::Cursor(cursor::CursorSource::new()),
+            Source::Antigravity(antigravity::AntigravitySource::new(ParserVariant::Standard)),
+            Source::AntigravityIde(antigravity::AntigravitySource::new(ParserVariant::Ide)),
+            Source::Copilot(copilot::CopilotSource::new()),
+            Source::Codex(codex::CodexSource::new()),
+        ]
+    })
 }
 
+#[cfg(test)]
+mod source_list_tests {
+    use super::get_sources_list;
 
+    /// The fix: adapters are built once and shared, so their in-memory caches persist across
+    /// calls instead of being discarded. Two calls must return the same backing instance.
+    #[test]
+    fn returns_the_same_shared_instance() {
+        let a = get_sources_list();
+        let b = get_sources_list();
+        assert!(
+            std::ptr::eq(a, b),
+            "adapters should be built once and shared, not rebuilt per call"
+        );
+        assert_eq!(a.len(), 6);
+    }
+}
 

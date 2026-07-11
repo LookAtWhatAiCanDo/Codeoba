@@ -45,7 +45,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
     let idx_state = app_handle.state::<crate::search::SearchIndexState>();
 
     // 1. Passive addition detection for "ask" sources
-    for source in &sources {
+    for source in sources {
         let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
         if decision == "ask" {
             let mut detected = false;
@@ -80,7 +80,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
 
     // 2. Collect all expected watch targets for allowed sources
     let mut targets = Vec::new();
-    for source in &sources {
+    for source in sources {
         let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
         if decision != "allow" {
             continue;
@@ -239,7 +239,7 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
     let decisions = crate::parsers::source_decisions::load_source_decisions();
     let mut targets = Vec::new();
 
-    for source in &sources {
+    for source in sources {
         let decision = decisions.get(source.id()).map(|s| s.as_str()).unwrap_or("ask");
         if decision != "allow" {
             continue;

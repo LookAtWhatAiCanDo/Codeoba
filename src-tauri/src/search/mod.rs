@@ -181,7 +181,7 @@ impl SearchIndexState {
         let mut session_map = HashMap::new();
         
         let cache_mgr = crate::parsers::cache::get_cache_manager();
-        for source in &sources {
+        for source in sources {
             if source.is_available() {
                 let cache = cache_mgr.load_cache(source.id());
                 for entry in cache.into_values() {
