@@ -474,11 +474,39 @@ impl SearchIndexState {
             crate::log_info!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", final_onnx_invocations, final_cache_hits, embed_start.elapsed());
         }
 
-        if let Ok(mut sessions_guard) = self.sessions.write() {
-            *sessions_guard = session_map;
-        }
+        // Merge the rebuild result back rather than wholesale-overwriting, so an update_session
+        // that ran concurrently during the embedding pass above is not clobbered by this rebuild's
+        // older snapshot. `existing_sessions` is that snapshot (captured when the pass began).
+        let (preserved_ids, deleted_ids) = if let Ok(mut sessions_guard) = self.sessions.write() {
+            match &existing_sessions {
+                Some(snapshot) => {
+                    let (merged, preserved, deleted) =
+                        merge_rebuilt_sessions(session_map, &sessions_guard, snapshot);
+                    *sessions_guard = merged;
+                    (preserved, deleted)
+                }
+                None => {
+                    *sessions_guard = session_map;
+                    (Vec::new(), Vec::new())
+                }
+            }
+        } else {
+            (Vec::new(), Vec::new())
+        };
+
         if let Ok(mut embeddings_guard) = self.embeddings.write() {
-            *embeddings_guard = embedding_map;
+            // Reconcile embeddings the same way: keep live embeddings for the concurrently-changed
+            // sessions we preserved, and drop embeddings for concurrently-deleted ones.
+            let mut merged = embedding_map;
+            for id in &preserved_ids {
+                if let Some(live_emb) = embeddings_guard.get(id) {
+                    merged.insert(id.clone(), live_emb.clone());
+                }
+            }
+            for id in &deleted_ids {
+                merged.remove(id);
+            }
+            *embeddings_guard = merged;
         }
 
         emit_progress("complete", 1.0, "Index rebuild complete.");
@@ -571,6 +599,43 @@ impl SearchIndexState {
 
         Ok(())
     }
+}
+
+/// Merges a rebuild's freshly computed session map back over the live index instead of
+/// wholesale-replacing it.
+///
+/// `rebuilt` is what this rebuild produced, `live` is the current index, and `snapshot` is `live`
+/// as it was when the (potentially long) embedding pass began. A plain `*live = rebuilt` would
+/// drop any `update_session` that ran concurrently during that pass. Instead:
+///   - a live entry that differs from the snapshot — or is absent from it — was changed or inserted
+///     concurrently, so it wins over this rebuild's older view;
+///   - a snapshot entry now missing from live was deleted concurrently, so it is dropped.
+///
+/// Returns the merged map plus the ids that were preserved / deleted, so the embeddings map can be
+/// reconciled the same way.
+fn merge_rebuilt_sessions(
+    rebuilt: HashMap<String, crate::models::Session>,
+    live: &HashMap<String, crate::models::Session>,
+    snapshot: &HashMap<String, crate::models::Session>,
+) -> (HashMap<String, crate::models::Session>, Vec<String>, Vec<String>) {
+    let mut merged = rebuilt;
+    let mut preserved = Vec::new();
+    let mut deleted = Vec::new();
+
+    for (id, live_session) in live {
+        if snapshot.get(id) != Some(live_session) {
+            merged.insert(id.clone(), live_session.clone());
+            preserved.push(id.clone());
+        }
+    }
+    for id in snapshot.keys() {
+        if !live.contains_key(id) {
+            merged.remove(id);
+            deleted.push(id.clone());
+        }
+    }
+
+    (merged, preserved, deleted)
 }
 
 // ONNX Model Path Resolution & State Management
@@ -750,5 +815,73 @@ mod update_session_tests {
         );
 
         std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+}
+
+#[cfg(test)]
+mod rebuild_merge_tests {
+    use super::merge_rebuilt_sessions;
+    use crate::models::Session;
+    use std::collections::HashMap;
+
+    fn sess(id: &str, updated_at: i64) -> Session {
+        Session {
+            id: id.to_string(),
+            source_id: "codex".to_string(),
+            file_path: String::new(),
+            timestamp: 0,
+            updated_at,
+            cwd: None,
+            thread_name: None,
+            turns: Vec::new(),
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
+    fn map(entries: Vec<Session>) -> HashMap<String, Session> {
+        entries.into_iter().map(|s| (s.id.clone(), s)).collect()
+    }
+
+    /// A concurrent update, insert, and delete during the embedding pass must survive the rebuild
+    /// writeback rather than being clobbered by the rebuild's older snapshot.
+    #[test]
+    fn preserves_concurrent_changes_and_honors_deletes() {
+        let snapshot = map(vec![sess("a", 1), sess("b", 1), sess("c", 1)]);
+        // During the pass: b was updated, c was deleted, d was inserted.
+        let live = map(vec![sess("a", 1), sess("b", 2), sess("d", 1)]);
+        // What the rebuild computed (its older view, ~= snapshot).
+        let rebuilt = map(vec![sess("a", 1), sess("b", 1), sess("c", 1)]);
+
+        let (merged, mut preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
+
+        assert_eq!(merged.get("a").unwrap().updated_at, 1, "unchanged session keeps rebuild value");
+        assert_eq!(merged.get("b").unwrap().updated_at, 2, "concurrent update must be preserved");
+        assert!(!merged.contains_key("c"), "concurrently deleted session must be dropped");
+        assert_eq!(merged.get("d").unwrap().updated_at, 1, "concurrent insert must be preserved");
+
+        preserved.sort();
+        assert_eq!(preserved, vec!["b".to_string(), "d".to_string()]);
+        assert_eq!(deleted, vec!["c".to_string()]);
+    }
+
+    /// With no concurrent activity, the rebuild's fresh result is used verbatim.
+    #[test]
+    fn no_concurrency_uses_rebuild_result() {
+        let snapshot = map(vec![sess("a", 1), sess("b", 1)]);
+        let live = snapshot.clone();
+        let rebuilt = map(vec![sess("a", 5), sess("b", 5)]); // rebuild refreshed both
+
+        let (merged, preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
+
+        assert_eq!(merged.get("a").unwrap().updated_at, 5);
+        assert_eq!(merged.get("b").unwrap().updated_at, 5);
+        assert!(preserved.is_empty());
+        assert!(deleted.is_empty());
     }
 }
