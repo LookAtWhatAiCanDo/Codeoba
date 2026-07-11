@@ -1,40 +1,49 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::Emitter;
 
-lazy_static::lazy_static! {
-    static ref SHUTDOWN_FLAG: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-    static ref EXPECTED_STATE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
-}
+// CSRF state (nonce) of the currently active server generation.
+static EXPECTED_STATE: Mutex<Option<String>> = Mutex::new(None);
+// Shutdown flag of the currently active generation. Each start_server installs its own flag here,
+// so stopping one generation can never be undone by another resetting a single shared flag.
+static CURRENT_SHUTDOWN: Mutex<Option<Arc<AtomicBool>>> = Mutex::new(None);
+// Monotonic id of the active generation, so a superseded thread's cleanup does not wipe a newer
+// generation's shared state.
+static GENERATION: AtomicU64 = AtomicU64::new(0);
 
 pub fn start_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<u16, String> {
-    // Stop any existing instance first
+    // Signal any existing generation to stop.
     stop_server();
 
     let listener = TcpListener::bind("127.0.0.1:0")
         .map_err(|e| format!("Failed to bind loopback server: {}", e))?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+
+    // Claim a new generation with its own shutdown flag, so stopping this server is independent of
+    // any previous generation that may still be winding down.
+    let my_generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    let shutdown = Arc::new(AtomicBool::new(false));
 
     let state = uuid::Uuid::new_v4().to_string();
     if let Ok(mut guard) = EXPECTED_STATE.lock() {
-        *guard = Some(state.clone());
+        *guard = Some(state);
+    }
+    if let Ok(mut guard) = CURRENT_SHUTDOWN.lock() {
+        *guard = Some(shutdown.clone());
     }
 
-    SHUTDOWN_FLAG.store(false, Ordering::Relaxed);
-    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
-
     let handle_clone = app_handle.clone();
-    let shutdown_flag = SHUTDOWN_FLAG.clone();
 
     thread::spawn(move || {
         let start_time = Instant::now();
         let timeout = Duration::from_secs(5 * 60); // 5 minutes inactivity timeout
 
-        while !shutdown_flag.load(Ordering::Relaxed) {
+        while !shutdown.load(Ordering::Relaxed) {
             if start_time.elapsed() > timeout {
                 crate::log_info!("LocalAuthServer: Stopping due to 5-minute inactivity timeout");
                 break;
@@ -53,9 +62,15 @@ pub fn start_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resul
             }
         }
 
-        // Cleanup expected state on exit
-        if let Ok(mut guard) = EXPECTED_STATE.lock() {
-            *guard = None;
+        // Clear the shared state only if this generation is still the active one — a newer
+        // start_server may have taken over while we were shutting down and must not be disturbed.
+        if GENERATION.load(Ordering::SeqCst) == my_generation {
+            if let Ok(mut guard) = EXPECTED_STATE.lock() {
+                *guard = None;
+            }
+            if let Ok(mut guard) = CURRENT_SHUTDOWN.lock() {
+                *guard = None;
+            }
         }
         crate::log_info!("LocalAuthServer: Thread exited");
     });
@@ -65,7 +80,12 @@ pub fn start_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resul
 }
 
 pub fn stop_server() {
-    SHUTDOWN_FLAG.store(true, Ordering::Relaxed);
+    // Signal only the currently active generation's flag; its own thread performs cleanup.
+    if let Ok(guard) = CURRENT_SHUTDOWN.lock() {
+        if let Some(flag) = guard.as_ref() {
+            flag.store(true, Ordering::Relaxed);
+        }
+    }
 }
 
 /// Whether the request's `Origin` is acceptable for the token-bearing auth callback.
@@ -111,7 +131,10 @@ fn resolve_auth_fields(
 fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &tauri::AppHandle<R>) {
     let mut buffer = [0; 4096];
     let mut read_bytes = 0;
-    stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    // Skip this connection rather than panicking the accept thread if the timeout can't be set.
+    if stream.set_read_timeout(Some(Duration::from_secs(2))).is_err() {
+        return;
+    }
 
     loop {
         match stream.read(&mut buffer[read_bytes..]) {
