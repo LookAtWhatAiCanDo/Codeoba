@@ -1,13 +1,13 @@
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use aes_gcm::{
-    aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce,
-};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SerializedEmbeddingCache {

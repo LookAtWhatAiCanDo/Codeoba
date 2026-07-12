@@ -1,6 +1,8 @@
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder, PredefinedMenuItem, MenuItemKind, MenuEvent};
-use tauri_plugin_opener::OpenerExt;
 use crate::commands;
+use tauri::menu::{
+    MenuBuilder, MenuEvent, MenuItemBuilder, MenuItemKind, PredefinedMenuItem, SubmenuBuilder,
+};
+use tauri_plugin_opener::OpenerExt;
 
 fn translate(lang: &str, key: &str) -> String {
     let json_str = match lang {
@@ -25,7 +27,8 @@ fn translate(lang: &str, key: &str) -> String {
         val
     } else if lang != "en" {
         let en_str = include_str!("../../src/i18n/locales/en.json");
-        let en_dict: serde_json::Value = serde_json::from_str(en_str).unwrap_or(serde_json::Value::Null);
+        let en_dict: serde_json::Value =
+            serde_json::from_str(en_str).unwrap_or(serde_json::Value::Null);
         if let Some(val) = get_nested_value(&en_dict, key) {
             val
         } else {
@@ -176,11 +179,16 @@ fn get_nested_value(dict: &serde_json::Value, key: &str) -> Option<String> {
 pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
     let args: Vec<String> = std::env::args().collect();
-    let lang = args.iter().position(|r| r == "--lang")
+    let lang = args
+        .iter()
+        .position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
         .unwrap_or_else(|| {
             let config = crate::keyring::load_fallback_config();
-            config.get("language").cloned().unwrap_or_else(|| "en".to_string())
+            config
+                .get("language")
+                .cloned()
+                .unwrap_or_else(|| "en".to_string())
         });
     setup_menu_internal(handle, &lang)
 }
@@ -197,8 +205,18 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
 
     // Find submenu
     let find_menu = SubmenuBuilder::new(app_handle, t("menu.find.title"))
-        .item(&MenuItemBuilder::new(t("menu.find.findDetail")).accelerator("CmdOrCtrl+F").id("find-detail").build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.find.findSidebar")).accelerator("CmdOrCtrl+Shift+F").id("find-sidebar").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(t("menu.find.findDetail"))
+                .accelerator("CmdOrCtrl+F")
+                .id("find-detail")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.find.findSidebar"))
+                .accelerator("CmdOrCtrl+Shift+F")
+                .id("find-sidebar")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // Edit submenu: a standard item that is natively localized by the OS
@@ -221,13 +239,28 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
 
     // File Submenu
     let file_menu_builder = SubmenuBuilder::new(app_handle, t("menu.file.title"))
-        .item(&MenuItemBuilder::new(t("menu.file.rebuild")).accelerator("CmdOrCtrl+R").id("rebuild-index").build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.file.rebuildBypass")).accelerator("CmdOrCtrl+Shift+R").id("rebuild-index-bypass").build(app_handle)?);
-    
+        .item(
+            &MenuItemBuilder::new(t("menu.file.rebuild"))
+                .accelerator("CmdOrCtrl+R")
+                .id("rebuild-index")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.file.rebuildBypass"))
+                .accelerator("CmdOrCtrl+Shift+R")
+                .id("rebuild-index-bypass")
+                .build(app_handle)?,
+        );
+
     #[cfg(not(target_os = "macos"))]
     let file_menu_builder = file_menu_builder
         .separator()
-        .item(&MenuItemBuilder::new(t("menu.file.settings")).accelerator("CmdOrCtrl+,").id("settings").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(t("menu.file.settings"))
+                .accelerator("CmdOrCtrl+,")
+                .id("settings")
+                .build(app_handle)?,
+        )
         .separator()
         .item(&PredefinedMenuItem::quit(app_handle, None)?);
 
@@ -239,7 +272,11 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         .build()?;
 
     // Go Submenu
-    let highlight_modifier = if cfg!(target_os = "macos") { "Shift+Ctrl" } else { "Ctrl" };
+    let highlight_modifier = if cfg!(target_os = "macos") {
+        "Shift+Ctrl"
+    } else {
+        "Ctrl"
+    };
     let mod_string = match highlight_modifier.as_ref() {
         "Shift+Ctrl" => "Shift+Ctrl+",
         "Shift+Alt" => "Shift+Alt+",
@@ -265,88 +302,220 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
 
     let select_highlighted_label = if cfg!(target_os = "macos") {
         let (tabs, sym) = get_suffix_tabs_and_symbol(lang, "selectHighlighted");
-        format!("{}{}{}{}", prefix, t("menu.go.selectHighlighted"), tabs, sym)
+        format!(
+            "{}{}{}{}",
+            prefix,
+            t("menu.go.selectHighlighted"),
+            tabs,
+            sym
+        )
     } else {
         t("menu.go.selectHighlighted")
     };
 
     let go_menu = SubmenuBuilder::new(app_handle, t("menu.go.title"))
-        .item(&MenuItemBuilder::new(t("menu.go.back")).accelerator("CmdOrCtrl+[").id("nav-back").build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.go.forward")).accelerator("CmdOrCtrl+]").id("nav-forward").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(t("menu.go.back"))
+                .accelerator("CmdOrCtrl+[")
+                .id("nav-back")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.go.forward"))
+                .accelerator("CmdOrCtrl+]")
+                .id("nav-forward")
+                .build(app_handle)?,
+        )
         .separator()
-        .item(&MenuItemBuilder::new(t("menu.go.dashboard")).accelerator("CmdOrCtrl+0").id("go-home").build(app_handle)?)
-        .item(&MenuItemBuilder::new(sidebar_label).accelerator("CmdOrCtrl+1").id("focus-sidebar").build(app_handle)?)
-        .item(&MenuItemBuilder::new(detail_label).accelerator("CmdOrCtrl+2").id("focus-detail").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(t("menu.go.dashboard"))
+                .accelerator("CmdOrCtrl+0")
+                .id("go-home")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(sidebar_label)
+                .accelerator("CmdOrCtrl+1")
+                .id("focus-sidebar")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(detail_label)
+                .accelerator("CmdOrCtrl+2")
+                .id("focus-detail")
+                .build(app_handle)?,
+        )
         .separator()
-        .item(&MenuItemBuilder::new(t("menu.go.nextSession")).id("go-next-session").accelerator("Down").build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.go.prevSession")).id("go-prev-session").accelerator("Up").build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.go.highlightNext")).id("go-highlight-next").accelerator(format!("{}Down", mod_string)).build(app_handle)?)
-        .item(&MenuItemBuilder::new(t("menu.go.highlightPrev")).id("go-highlight-prev").accelerator(format!("{}Up", mod_string)).build(app_handle)?)
-        .item(&MenuItemBuilder::new(select_highlighted_label).id("go-select-highlighted").accelerator("Enter").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(t("menu.go.nextSession"))
+                .id("go-next-session")
+                .accelerator("Down")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.go.prevSession"))
+                .id("go-prev-session")
+                .accelerator("Up")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.go.highlightNext"))
+                .id("go-highlight-next")
+                .accelerator(format!("{}Down", mod_string))
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.go.highlightPrev"))
+                .id("go-highlight-prev")
+                .accelerator(format!("{}Up", mod_string))
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(select_highlighted_label)
+                .id("go-select-highlighted")
+                .accelerator("Enter")
+                .build(app_handle)?,
+        )
         .separator();
 
     let dashboard_text = t("menu.go.dashboard");
-    let sep = if lang == "ar" { "\u{200E}: \u{200E}" } else { ": " };
-    
+    let sep = if lang == "ar" {
+        "\u{200E}: \u{200E}"
+    } else {
+        ": "
+    };
+
     let (home_tabs, home_sym) = get_suffix_tabs_and_symbol(lang, "home");
     let (end_tabs, end_sym) = get_suffix_tabs_and_symbol(lang, "end");
     let (pu_tabs, pu_sym) = get_suffix_tabs_and_symbol(lang, "page_up");
     let (pd_tabs, pd_sym) = get_suffix_tabs_and_symbol(lang, "page_down");
 
     let scroll_top_text = if cfg!(target_os = "macos") {
-        format!("{}{}{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.home"), home_tabs, home_sym)
+        format!(
+            "{}{}{}{}{}{}",
+            prefix,
+            dashboard_text,
+            sep,
+            t("menu.go.home"),
+            home_tabs,
+            home_sym
+        )
     } else {
         format!("{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.home"))
     };
- 
+
     let scroll_bottom_text = if cfg!(target_os = "macos") {
-        format!("{}{}{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.end"), end_tabs, end_sym)
+        format!(
+            "{}{}{}{}{}{}",
+            prefix,
+            dashboard_text,
+            sep,
+            t("menu.go.end"),
+            end_tabs,
+            end_sym
+        )
     } else {
         format!("{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.end"))
     };
- 
+
     let scroll_page_up_text = if cfg!(target_os = "macos") {
-        format!("{}{}{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.pageUp"), pu_tabs, pu_sym)
+        format!(
+            "{}{}{}{}{}{}",
+            prefix,
+            dashboard_text,
+            sep,
+            t("menu.go.pageUp"),
+            pu_tabs,
+            pu_sym
+        )
     } else {
         format!("{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.pageUp"))
     };
- 
+
     let scroll_page_down_text = if cfg!(target_os = "macos") {
-        format!("{}{}{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.pageDown"), pd_tabs, pd_sym)
+        format!(
+            "{}{}{}{}{}{}",
+            prefix,
+            dashboard_text,
+            sep,
+            t("menu.go.pageDown"),
+            pd_tabs,
+            pd_sym
+        )
     } else {
-        format!("{}{}{}{}", prefix, dashboard_text, sep, t("menu.go.pageDown"))
+        format!(
+            "{}{}{}{}",
+            prefix,
+            dashboard_text,
+            sep,
+            t("menu.go.pageDown")
+        )
     };
 
     let go_menu = go_menu
         // Dynamically updated in update_scroll_menu_labels
-        .item(&MenuItemBuilder::new(scroll_top_text).id("scroll-top").accelerator("Home").build(app_handle)?)
-        .item(&MenuItemBuilder::new(scroll_bottom_text).id("scroll-bottom").accelerator("End").build(app_handle)?)
-        .item(&MenuItemBuilder::new(scroll_page_up_text).id("scroll-page-up").accelerator("PageUp").build(app_handle)?)
-        .item(&MenuItemBuilder::new(scroll_page_down_text).id("scroll-page-down").accelerator("PageDown").build(app_handle)?)
+        .item(
+            &MenuItemBuilder::new(scroll_top_text)
+                .id("scroll-top")
+                .accelerator("Home")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(scroll_bottom_text)
+                .id("scroll-bottom")
+                .accelerator("End")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(scroll_page_up_text)
+                .id("scroll-page-up")
+                .accelerator("PageUp")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(scroll_page_down_text)
+                .id("scroll-page-down")
+                .accelerator("PageDown")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // Help Submenu
     #[cfg(any(not(dev), feature = "enable-help-menu"))]
     let help_menu = {
         #[allow(unused_mut)]
-        let mut help_menu_builder = SubmenuBuilder::new(app_handle, t("menu.help.title"))
-            .item(&MenuItemBuilder::new(server_endpoint.clone()).id("help-website").build(app_handle)?);
+        let mut help_menu_builder = SubmenuBuilder::new(app_handle, t("menu.help.title")).item(
+            &MenuItemBuilder::new(server_endpoint.clone())
+                .id("help-website")
+                .build(app_handle)?,
+        );
 
-        help_menu_builder = help_menu_builder
-            .item(&MenuItemBuilder::new(t("menu.help.feedback")).id("help-feedback").build(app_handle)?);
+        help_menu_builder = help_menu_builder.item(
+            &MenuItemBuilder::new(t("menu.help.feedback"))
+                .id("help-feedback")
+                .build(app_handle)?,
+        );
 
-        help_menu_builder = help_menu_builder
-            .item(&MenuItemBuilder::new(t("menu.help.licenses")).id("help-licenses").build(app_handle)?);
+        help_menu_builder = help_menu_builder.item(
+            &MenuItemBuilder::new(t("menu.help.licenses"))
+                .id("help-licenses")
+                .build(app_handle)?,
+        );
 
-        help_menu_builder = help_menu_builder
-            .item(&MenuItemBuilder::new(t("menu.help.privacy")).id("help-privacy").build(app_handle)?);
+        help_menu_builder = help_menu_builder.item(
+            &MenuItemBuilder::new(t("menu.help.privacy"))
+                .id("help-privacy")
+                .build(app_handle)?,
+        );
 
         #[cfg(not(target_os = "macos"))]
         {
             if commands::is_updater_active(app_handle.clone()) {
-                help_menu_builder = help_menu_builder
-                    .separator()
-                    .item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?);
+                help_menu_builder = help_menu_builder.separator().item(
+                    &MenuItemBuilder::new(t("settings.updates.checkUpdate"))
+                        .id("check-updates")
+                        .build(app_handle)?,
+                );
             }
             help_menu_builder = help_menu_builder
                 .separator()
@@ -359,19 +528,28 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     // Suppress `variable does not need to be mutable` warning in non-macos builds
     #[allow(unused_mut)]
     let mut menu_builder = MenuBuilder::new(app_handle);
-    
+
     #[cfg(target_os = "macos")]
     {
         let mut app_menu_builder = SubmenuBuilder::new(app_handle, "Codeoba")
             .item(&PredefinedMenuItem::about(app_handle, None, None)?);
-            
+
         if commands::is_updater_active(app_handle.clone()) {
-            app_menu_builder = app_menu_builder.item(&MenuItemBuilder::new(t("settings.updates.checkUpdate")).id("check-updates").build(app_handle)?);
+            app_menu_builder = app_menu_builder.item(
+                &MenuItemBuilder::new(t("settings.updates.checkUpdate"))
+                    .id("check-updates")
+                    .build(app_handle)?,
+            );
         }
 
         let app_menu = app_menu_builder
             .separator()
-            .item(&MenuItemBuilder::new(t("menu.file.preferences")).accelerator("CmdOrCtrl+,").id("settings").build(app_handle)?)
+            .item(
+                &MenuItemBuilder::new(t("menu.file.preferences"))
+                    .accelerator("CmdOrCtrl+,")
+                    .id("settings")
+                    .build(app_handle)?,
+            )
             .separator()
             .item(&PredefinedMenuItem::services(app_handle, None)?)
             .separator()
@@ -381,7 +559,7 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
             .separator()
             .item(&PredefinedMenuItem::quit(app_handle, None)?)
             .build()?;
-            
+
         menu_builder = menu_builder.item(&app_menu);
     }
 
@@ -415,9 +593,11 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     pane_name: String,
 ) -> Result<(), String> {
-    
     // Recursive search helper to find a menu item by ID
-    fn find_item_by_id<R: tauri::Runtime>(items: &[MenuItemKind<R>], id: &str) -> Option<MenuItemKind<R>> {
+    fn find_item_by_id<R: tauri::Runtime>(
+        items: &[MenuItemKind<R>],
+        id: &str,
+    ) -> Option<MenuItemKind<R>> {
         for item in items {
             let item_id = match item {
                 MenuItemKind::MenuItem(i) => i.id().as_ref().to_string(),
@@ -452,11 +632,16 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
 
     // Load active language
     let args: Vec<String> = std::env::args().collect();
-    let lang_str = args.iter().position(|r| r == "--lang")
+    let lang_str = args
+        .iter()
+        .position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
         .unwrap_or_else(|| {
             let config = crate::keyring::load_fallback_config();
-            config.get("language").cloned().unwrap_or_else(|| "en".to_string())
+            config
+                .get("language")
+                .cloned()
+                .unwrap_or_else(|| "en".to_string())
         });
     let lang = &lang_str;
     let t = |key: &str| translate(lang, key);
@@ -469,7 +654,11 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
         _ => pane_name,
     };
 
-    let sep = if lang == "ar" { "\u{200E}: \u{200E}" } else { ": " };
+    let sep = if lang == "ar" {
+        "\u{200E}: \u{200E}"
+    } else {
+        ": "
+    };
     let prefix = if lang == "ar" { "\u{200E}" } else { "" };
 
     let (home_tabs, home_sym) = get_suffix_tabs_and_symbol(lang, "home");
@@ -480,39 +669,95 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
     // 1. scroll-top
     if let Some(MenuItemKind::MenuItem(item)) = find_item_by_id(&items, "scroll-top") {
         let text = if cfg!(target_os = "macos") {
-            format!("{}{}{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.home"), home_tabs, home_sym)
+            format!(
+                "{}{}{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.home"),
+                home_tabs,
+                home_sym
+            )
         } else {
-            format!("{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.home"))
+            format!(
+                "{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.home")
+            )
         };
         let _ = item.set_text(text);
     }
- 
+
     // 2. scroll-bottom
     if let Some(MenuItemKind::MenuItem(item)) = find_item_by_id(&items, "scroll-bottom") {
         let text = if cfg!(target_os = "macos") {
-            format!("{}{}{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.end"), end_tabs, end_sym)
+            format!(
+                "{}{}{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.end"),
+                end_tabs,
+                end_sym
+            )
         } else {
-            format!("{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.end"))
+            format!(
+                "{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.end")
+            )
         };
         let _ = item.set_text(text);
     }
- 
+
     // 3. scroll-page-up
     if let Some(MenuItemKind::MenuItem(item)) = find_item_by_id(&items, "scroll-page-up") {
         let text = if cfg!(target_os = "macos") {
-            format!("{}{}{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.pageUp"), pu_tabs, pu_sym)
+            format!(
+                "{}{}{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.pageUp"),
+                pu_tabs,
+                pu_sym
+            )
         } else {
-            format!("{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.pageUp"))
+            format!(
+                "{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.pageUp")
+            )
         };
         let _ = item.set_text(text);
     }
- 
+
     // 4. scroll-page-down
     if let Some(MenuItemKind::MenuItem(item)) = find_item_by_id(&items, "scroll-page-down") {
         let text = if cfg!(target_os = "macos") {
-            format!("{}{}{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.pageDown"), pd_tabs, pd_sym)
+            format!(
+                "{}{}{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.pageDown"),
+                pd_tabs,
+                pd_sym
+            )
         } else {
-            format!("{}{}{}{}", prefix, localized_pane_name, sep, t("menu.go.pageDown"))
+            format!(
+                "{}{}{}{}",
+                prefix,
+                localized_pane_name,
+                sep,
+                t("menu.go.pageDown")
+            )
         };
         let _ = item.set_text(text);
     }
@@ -527,7 +772,10 @@ pub async fn set_menu_item_text<R: tauri::Runtime>(
     text: String,
 ) -> Result<(), String> {
     // Recursive search helper to find a menu item by ID
-    fn find_item_by_id<R: tauri::Runtime>(items: &[MenuItemKind<R>], id: &str) -> Option<MenuItemKind<R>> {
+    fn find_item_by_id<R: tauri::Runtime>(
+        items: &[MenuItemKind<R>],
+        id: &str,
+    ) -> Option<MenuItemKind<R>> {
         for item in items {
             let item_id = match item {
                 MenuItemKind::MenuItem(i) => i.id().as_ref().to_string(),
@@ -608,7 +856,9 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
             let _ = app_handle.opener().open_url(&endpoint, None::<String>);
         }
         "help-feedback-apple" => {
-            let _ = app_handle.opener().open_url("applefeedback://new", None::<String>);
+            let _ = app_handle
+                .opener()
+                .open_url("applefeedback://new", None::<String>);
         }
         "help-licenses" => emit_event("menu-licenses"),
         "help-privacy" => emit_event("menu-privacy"),

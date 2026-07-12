@@ -1,9 +1,9 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
+use std::path::Path;
 use std::sync::Arc;
 use tract_onnx::prelude::tract_ndarray::Array2;
 use tract_onnx::prelude::*;
-use std::path::Path;
 
 pub struct OnnxSemanticEmbedder {
     runnable: Arc<TypedRunnableModel>,
@@ -13,7 +13,7 @@ pub struct OnnxSemanticEmbedder {
 impl OnnxSemanticEmbedder {
     pub fn new(model_path: &Path, vocab_path: &Path) -> Result<Self, String> {
         let tokenizer = super::tokenizer::WordPieceTokenizer::new(vocab_path)?;
-        
+
         let runnable = tract_onnx::onnx()
             .model_for_path(model_path)
             .map_err(|e| e.to_string())?
@@ -22,17 +22,21 @@ impl OnnxSemanticEmbedder {
             .into_runnable()
             .map_err(|e| e.to_string())?;
 
-        Ok(Self { runnable, tokenizer })
+        Ok(Self {
+            runnable,
+            tokenizer,
+        })
     }
 
     pub fn get_embeddings(&self, text: &str) -> Result<Vec<f32>, String> {
         let tokenized = self.tokenizer.tokenize_to_ids(text, 256);
         let seq_len = tokenized.input_ids.len();
 
-        let input_ids_array = Array2::from_shape_vec((1, seq_len), tokenized.input_ids)
-            .map_err(|e| e.to_string())?;
-        let attention_mask_array = Array2::from_shape_vec((1, seq_len), tokenized.attention_mask.clone())
-            .map_err(|e| e.to_string())?;
+        let input_ids_array =
+            Array2::from_shape_vec((1, seq_len), tokenized.input_ids).map_err(|e| e.to_string())?;
+        let attention_mask_array =
+            Array2::from_shape_vec((1, seq_len), tokenized.attention_mask.clone())
+                .map_err(|e| e.to_string())?;
         let token_type_ids_array = Array2::from_shape_vec((1, seq_len), tokenized.token_type_ids)
             .map_err(|e| e.to_string())?;
 
@@ -40,18 +44,25 @@ impl OnnxSemanticEmbedder {
         let attention_mask_val = Tensor::from(attention_mask_array);
         let token_type_ids_val = Tensor::from(token_type_ids_array);
 
-        let mut outputs = self.runnable.run(tvec![
-            input_ids_val.into(),
-            attention_mask_val.into(),
-            token_type_ids_val.into(),
-        ]).map_err(|e| e.to_string())?;
-        
+        let mut outputs = self
+            .runnable
+            .run(tvec![
+                input_ids_val.into(),
+                attention_mask_val.into(),
+                token_type_ids_val.into(),
+            ])
+            .map_err(|e| e.to_string())?;
+
         let output_value = outputs.remove(0).into_tensor();
 
         let shape = output_value.shape();
         let dim = shape[2] as usize;
-        let array_view = output_value.to_plain_array_view::<f32>().map_err(|e| e.to_string())?;
-        let slice = array_view.as_slice().ok_or_else(|| "Tensor is not contiguous".to_string())?;
+        let array_view = output_value
+            .to_plain_array_view::<f32>()
+            .map_err(|e| e.to_string())?;
+        let slice = array_view
+            .as_slice()
+            .ok_or_else(|| "Tensor is not contiguous".to_string())?;
 
         // Mean Pooling
         let mut sentence_embedding = vec![0.0f32; dim];
@@ -151,7 +162,9 @@ struct SimpleRng {
 
 impl SimpleRng {
     fn new(seed: i32) -> Self {
-        Self { seed: (seed as u64) & 0xFFFFFFFF }
+        Self {
+            seed: (seed as u64) & 0xFFFFFFFF,
+        }
     }
 
     fn next_float(&mut self) -> f32 {

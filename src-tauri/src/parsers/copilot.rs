@@ -23,7 +23,10 @@ fn clean(text: &str) -> String {
     let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
-        format!("\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n", bytes)
+        format!(
+            "\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n",
+            bytes
+        )
     });
     cleaned.trim().to_string()
 }
@@ -107,18 +110,17 @@ impl SourceAdapter for CopilotSource {
         }
 
         let metadata = path.metadata().ok()?;
-        let last_modified = metadata.modified().ok()
+        let last_modified = metadata
+            .modified()
+            .ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         let size = metadata.len() as i64;
 
-        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
-            self.id(),
-            file_path,
-            last_modified,
-            size,
-        ) {
+        if let Some(cached) = crate::parsers::cache::get_cache_manager()
+            .get_cached_session_for_file(self.id(), file_path, last_modified, size)
+        {
             return Some(cached);
         }
 
@@ -136,7 +138,10 @@ impl SourceAdapter for CopilotSource {
                 }
                 let mut parts = trimmed.splitn(2, ':');
                 let key = parts.next().unwrap_or("").trim();
-                let val = parts.next().unwrap_or("").trim()
+                let val = parts
+                    .next()
+                    .unwrap_or("")
+                    .trim()
                     .trim_matches('"')
                     .trim_matches('\'');
                 match key {
@@ -199,8 +204,14 @@ impl SourceAdapter for CopilotSource {
                     }
                     "assistant.message" => {
                         let content = data.get("content").and_then(|v| v.as_str()).unwrap_or("");
-                        let reasoning_text = data.get("reasoningText").and_then(|v| v.as_str()).unwrap_or("");
-                        let model = data.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        let reasoning_text = data
+                            .get("reasoningText")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let model = data
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
 
                         let mut text_builder = String::new();
                         if !reasoning_text.trim().is_empty() {
@@ -227,30 +238,52 @@ impl SourceAdapter for CopilotSource {
                             Some(id) => id.to_string(),
                             None => continue,
                         };
-                        let tool_name = data.get("toolName").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                        let arguments_str = data.get("arguments").map(|v| v.to_string()).unwrap_or_default();
-                        active_tool_calls.insert(tool_call_id, ToolStartInfo {
-                            tool_name,
-                            arguments: arguments_str,
-                            timestamp,
-                        });
+                        let tool_name = data
+                            .get("toolName")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let arguments_str = data
+                            .get("arguments")
+                            .map(|v| v.to_string())
+                            .unwrap_or_default();
+                        active_tool_calls.insert(
+                            tool_call_id,
+                            ToolStartInfo {
+                                tool_name,
+                                arguments: arguments_str,
+                                timestamp,
+                            },
+                        );
                     }
                     "tool.execution_complete" => {
                         let tool_call_id = match data.get("toolCallId").and_then(|v| v.as_str()) {
                             Some(id) => id.to_string(),
                             None => continue,
                         };
-                        let success = data.get("success").and_then(|v| v.as_bool()).unwrap_or(true);
+                        let success = data
+                            .get("success")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true);
                         let start_info = match active_tool_calls.remove(&tool_call_id) {
                             Some(info) => info,
                             None => continue,
                         };
 
                         let result_obj = data.get("result").and_then(|v| v.as_object());
-                        let detailed_content = result_obj.and_then(|r| r.get("detailedContent")).and_then(|v| v.as_str());
-                        let content = result_obj.and_then(|r| r.get("content")).and_then(|v| v.as_str()).unwrap_or("");
+                        let detailed_content = result_obj
+                            .and_then(|r| r.get("detailedContent"))
+                            .and_then(|v| v.as_str());
+                        let content = result_obj
+                            .and_then(|r| r.get("content"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
                         let output_content = if let Some(dc) = detailed_content {
-                            if !dc.trim().is_empty() { dc } else { content }
+                            if !dc.trim().is_empty() {
+                                dc
+                            } else {
+                                content
+                            }
                         } else {
                             content
                         };
@@ -258,7 +291,9 @@ impl SourceAdapter for CopilotSource {
                         let label = match start_info.tool_name.to_lowercase().as_str() {
                             "view_file" => "📄 View File",
                             "run_command" | "bash" => "⚡ Run Command",
-                            "replace_file_content" | "multi_replace_file_content" | "write_to_file" => "✏️ Code Edit",
+                            "replace_file_content"
+                            | "multi_replace_file_content"
+                            | "write_to_file" => "✏️ Code Edit",
                             "grep_search" => "🔍 Search",
                             "list_dir" => "📂 List Directory",
                             "search_web" => "🌐 Web Search",
@@ -268,7 +303,9 @@ impl SourceAdapter for CopilotSource {
                         let tool_category = match start_info.tool_name.to_lowercase().as_str() {
                             "view_file" => "VIEW_FILE",
                             "run_command" | "bash" => "RUN_COMMAND",
-                            "replace_file_content" | "multi_replace_file_content" | "write_to_file" => "CODE_ACTION",
+                            "replace_file_content"
+                            | "multi_replace_file_content"
+                            | "write_to_file" => "CODE_ACTION",
                             "grep_search" => "GREP_SEARCH",
                             "list_dir" => "LIST_DIRECTORY",
                             "search_web" => "SEARCH_WEB",
@@ -276,15 +313,25 @@ impl SourceAdapter for CopilotSource {
                         };
 
                         let mut summary = start_info.tool_name.clone();
-                        if let Ok(args_val) = serde_json::from_str::<serde_json::Value>(&start_info.arguments) {
+                        if let Ok(args_val) =
+                            serde_json::from_str::<serde_json::Value>(&start_info.arguments)
+                        {
                             if let Some(args_obj) = args_val.as_object() {
                                 let extracted = match start_info.tool_name.to_lowercase().as_str() {
-                                    "view_file" => args_obj.get("AbsolutePath").and_then(|v| v.as_str()),
-                                    "run_command" => args_obj.get("CommandLine").and_then(|v| v.as_str()),
+                                    "view_file" => {
+                                        args_obj.get("AbsolutePath").and_then(|v| v.as_str())
+                                    }
+                                    "run_command" => {
+                                        args_obj.get("CommandLine").and_then(|v| v.as_str())
+                                    }
                                     "bash" => args_obj.get("command").and_then(|v| v.as_str()),
                                     "grep_search" => args_obj.get("Query").and_then(|v| v.as_str()),
-                                    "list_dir" => args_obj.get("DirectoryPath").and_then(|v| v.as_str()),
-                                    "replace_file_content" | "multi_replace_file_content" | "write_to_file" => {
+                                    "list_dir" => {
+                                        args_obj.get("DirectoryPath").and_then(|v| v.as_str())
+                                    }
+                                    "replace_file_content"
+                                    | "multi_replace_file_content"
+                                    | "write_to_file" => {
                                         args_obj.get("TargetFile").and_then(|v| v.as_str())
                                     }
                                     _ => None,
@@ -300,16 +347,25 @@ impl SourceAdapter for CopilotSource {
                         let cleaned_output = escape_tool_tags(&clean(output_content));
 
                         let formatted_output = if !success {
-                            format!("[[[TOOL:ERROR_MESSAGE|❌ Error: {}|{}]]]\n{}\n[[[/TOOL]]]", summary, start_info.timestamp, cleaned_output)
+                            format!(
+                                "[[[TOOL:ERROR_MESSAGE|❌ Error: {}|{}]]]\n{}\n[[[/TOOL]]]",
+                                summary, start_info.timestamp, cleaned_output
+                            )
                         } else {
-                            format!("[[[TOOL:{}|{}|{}]]]\n{}\n[[[/TOOL]]]", tool_category, header_escaped, start_info.timestamp, cleaned_output)
+                            format!(
+                                "[[[TOOL:{}|{}|{}]]]\n{}\n[[[/TOOL]]]",
+                                tool_category, header_escaped, start_info.timestamp, cleaned_output
+                            )
                         };
 
                         events_list.push(ParsedEvent {
                             is_user: false,
                             text: formatted_output,
                             timestamp: start_info.timestamp,
-                            model: data.get("model").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                            model: data
+                                .get("model")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
                         });
                     }
                     _ => {}
@@ -357,7 +413,8 @@ impl SourceAdapter for CopilotSource {
                 extra_data.insert("model".to_string(), active_model.clone());
 
                 let input_toks = crate::tokenizer::estimate_tokens(&ev.text, &active_model);
-                let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &active_model);
+                let output_toks =
+                    crate::tokenizer::estimate_tokens(&assistant_message, &active_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
@@ -392,8 +449,14 @@ impl SourceAdapter for CopilotSource {
             }
         }
 
-        let first_time = events_list.first().map(|e| e.timestamp).unwrap_or(created_time);
-        let last_time = events_list.last().map(|e| e.timestamp).unwrap_or(updated_time);
+        let first_time = events_list
+            .first()
+            .map(|e| e.timestamp)
+            .unwrap_or(created_time);
+        let last_time = events_list
+            .last()
+            .map(|e| e.timestamp)
+            .unwrap_or(updated_time);
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
         let status = crate::models::resolve_session_status(self.id(), &session_id, &turns, &cwd);
@@ -444,7 +507,9 @@ impl SourceAdapter for CopilotSource {
                     let path = entry.path();
                     if path.is_dir() {
                         walk_stack.push(path);
-                    } else if path.is_file() && path.file_name().and_then(|s| s.to_str()) == Some("events.jsonl") {
+                    } else if path.is_file()
+                        && path.file_name().and_then(|s| s.to_str()) == Some("events.jsonl")
+                    {
                         if let Some(session) = self.parse_session(&path.to_string_lossy()).await {
                             sessions.push(session);
                         }

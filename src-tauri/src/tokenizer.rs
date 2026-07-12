@@ -1,7 +1,7 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};
 use tokenizers::Tokenizer;
-use std::collections::HashMap;
 
 static CUSTOM_TOKENIZERS: OnceLock<RwLock<HashMap<String, Option<Tokenizer>>>> = OnceLock::new();
 
@@ -18,8 +18,10 @@ fn get_config_dir() -> PathBuf {
 /// Loads a tokenizer for a specific model from ~/.codeoba/tokenizers/<model_family>.json.
 fn load_custom_tokenizer(model_family: &str) -> Option<Tokenizer> {
     let config_dir = get_config_dir();
-    let tokenizer_path = config_dir.join("tokenizers").join(format!("{}.json", model_family));
-    
+    let tokenizer_path = config_dir
+        .join("tokenizers")
+        .join(format!("{}.json", model_family));
+
     if tokenizer_path.exists() && tokenizer_path.is_file() {
         Tokenizer::from_file(&tokenizer_path).ok()
     } else {
@@ -58,10 +60,12 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
     }
 
     let family = get_model_family(model_name);
-    
+
     // Try to use custom tokenizer if loaded (cached as Some(Some(tokenizer)) or Some(None))
     let cached = {
-        let guard = get_custom_tokenizers().read().expect("Failed to lock CUSTOM_TOKENIZERS read lock");
+        let guard = get_custom_tokenizers()
+            .read()
+            .expect("Failed to lock CUSTOM_TOKENIZERS read lock");
         guard.get(family).cloned()
     };
 
@@ -75,7 +79,9 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
         // Try loading it on cache miss
         let tokenizer_opt = load_custom_tokenizer(family);
         {
-            let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
+            let mut guard = get_custom_tokenizers()
+                .write()
+                .expect("Failed to lock CUSTOM_TOKENIZERS write lock");
             guard.insert(family.to_string(), tokenizer_opt.clone());
         }
         if let Some(tokenizer) = tokenizer_opt {
@@ -131,7 +137,7 @@ mod tests {
         clear_custom_tokenizers_cache();
         // Calibrated estimation check for cl100k_base family
         let text = "Hello world"; // 11 chars
-        // 11 * 0.263 + 2.0 = 4.893 -> 4 tokens
+                                  // 11 * 0.263 + 2.0 = 4.893 -> 4 tokens
         let count = estimate_tokens(text, "gpt-4");
         assert_eq!(count, 4);
 
@@ -198,7 +204,9 @@ mod tests {
 
         // Clear custom tokenizers cache to force reload
         {
-            let mut guard = get_custom_tokenizers().write().expect("Failed to lock CUSTOM_TOKENIZERS write lock");
+            let mut guard = get_custom_tokenizers()
+                .write()
+                .expect("Failed to lock CUSTOM_TOKENIZERS write lock");
             guard.clear();
         }
 
@@ -214,4 +222,3 @@ mod tests {
         }
     }
 }
-

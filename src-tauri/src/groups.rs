@@ -69,7 +69,8 @@ fn get_groups_file() -> std::path::PathBuf {
 /// save_groups), so the cache stays authoritative and lets repeated group mutations avoid
 /// re-reading and re-parsing the whole file on every call.
 fn groups_cache() -> &'static Mutex<Option<Vec<ConversationGroup>>> {
-    static CACHE: std::sync::OnceLock<Mutex<Option<Vec<ConversationGroup>>>> = std::sync::OnceLock::new();
+    static CACHE: std::sync::OnceLock<Mutex<Option<Vec<ConversationGroup>>>> =
+        std::sync::OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(None))
 }
 
@@ -139,43 +140,45 @@ pub fn add_group(name: &str) -> Result<bool, String> {
     let name = name_normalized.trim();
     if name.is_empty() {
         return Ok(false);
-      }
-      let mut groups = load_groups();
-      let exists = groups.iter().any(|g| g.name.to_lowercase() == name.to_lowercase());
-      if exists {
-          return Ok(false);
-      }
-      let now = SystemTime::now()
-          .duration_since(SystemTime::UNIX_EPOCH)
-          .map(|d| d.as_millis() as i64)
-          .unwrap_or(0);
-      groups.push(ConversationGroup {
-          name: name.to_string(),
-          description: String::new(),
-          status: "Active".to_string(),
-          session_ids: HashSet::new(),
-          tasks: Vec::new(),
-          past_work_summary: String::new(),
-          is_pinned: false,
-          created_at: now,
-          updated_at: now,
-      });
-      save_groups(&groups)?;
-      Ok(true)
+    }
+    let mut groups = load_groups();
+    let exists = groups
+        .iter()
+        .any(|g| g.name.to_lowercase() == name.to_lowercase());
+    if exists {
+        return Ok(false);
+    }
+    let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    groups.push(ConversationGroup {
+        name: name.to_string(),
+        description: String::new(),
+        status: "Active".to_string(),
+        session_ids: HashSet::new(),
+        tasks: Vec::new(),
+        past_work_summary: String::new(),
+        is_pinned: false,
+        created_at: now,
+        updated_at: now,
+    });
+    save_groups(&groups)?;
+    Ok(true)
 }
 
 pub fn delete_group(name: &str) -> Result<(), String> {
     let name_normalized = name.replace('\\', "/");
     let name = name_normalized.trim();
     let mut groups = load_groups();
-    
+
     let name_lower = name.to_lowercase();
     let prefix = format!("{}/", name_lower);
     groups.retain(|g| {
         let g_name_lower = g.name.to_lowercase();
         g_name_lower != name_lower && !g_name_lower.starts_with(&prefix)
     });
-    
+
     save_groups(&groups)
 }
 
@@ -189,10 +192,15 @@ pub fn rename_group(old_name: &str, new_name: &str) -> Result<bool, String> {
         return Ok(false);
     }
     let mut groups = load_groups();
-    if groups.iter().any(|g| g.name.to_lowercase() == new_name.to_lowercase()) {
+    if groups
+        .iter()
+        .any(|g| g.name.to_lowercase() == new_name.to_lowercase())
+    {
         return Ok(false);
     }
-    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == old_name.to_lowercase());
+    let existing_idx = groups
+        .iter()
+        .position(|g| g.name.to_lowercase() == old_name.to_lowercase());
     if let Some(idx) = existing_idx {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -200,7 +208,7 @@ pub fn rename_group(old_name: &str, new_name: &str) -> Result<bool, String> {
             .unwrap_or(0);
         groups[idx].name = new_name.to_string();
         groups[idx].updated_at = now;
-        
+
         // Re-parent child groups (names are "Parent/Child" paths) by replacing the leading
         // segments that match old_name. This is done segment-by-segment rather than by byte
         // slicing: the old code sliced g.name at `old_name.to_lowercase().len()`, i.e. a byte
@@ -241,8 +249,10 @@ pub fn assign_session_to_group(session_id: &str, group_name: &str) -> Result<(),
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    
-    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == group_name.to_lowercase());
+
+    let existing_idx = groups
+        .iter()
+        .position(|g| g.name.to_lowercase() == group_name.to_lowercase());
     if let Some(idx) = existing_idx {
         let group = &mut groups[idx];
         if !group.session_ids.contains(session_id) {
@@ -274,7 +284,9 @@ pub fn remove_session_from_group(session_id: &str, group_name: &str) -> Result<(
     let group_name = group_name_normalized.trim();
 
     let mut groups = load_groups();
-    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == group_name.to_lowercase());
+    let existing_idx = groups
+        .iter()
+        .position(|g| g.name.to_lowercase() == group_name.to_lowercase());
     if let Some(idx) = existing_idx {
         let group = &mut groups[idx];
         if group.session_ids.contains(session_id) {
@@ -294,7 +306,9 @@ pub fn set_group_pinned(name: &str, pinned: bool) -> Result<(), String> {
     let name = name_normalized.trim();
 
     let mut groups = load_groups();
-    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == name.to_lowercase());
+    let existing_idx = groups
+        .iter()
+        .position(|g| g.name.to_lowercase() == name.to_lowercase());
     if let Some(idx) = existing_idx {
         let group = &mut groups[idx];
         group.is_pinned = pinned;
@@ -314,11 +328,13 @@ pub fn clean_orphaned_sessions(all_valid_session_ids: &HashSet<String>) -> Resul
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    
+
     for group in &mut groups {
         let original_len = group.session_ids.len();
-        group.session_ids.retain(|id| all_valid_session_ids.contains(id));
-        
+        group
+            .session_ids
+            .retain(|id| all_valid_session_ids.contains(id));
+
         let mut tasks_changed = false;
         for task in &mut group.tasks {
             if let Some(ref assoc_id) = task.associated_session_id {
@@ -328,7 +344,7 @@ pub fn clean_orphaned_sessions(all_valid_session_ids: &HashSet<String>) -> Resul
                 }
             }
         }
-        
+
         if group.session_ids.len() != original_len || tasks_changed {
             group.updated_at = now;
             changed = true;
@@ -349,9 +365,11 @@ pub fn update_group_details(
 ) -> Result<(), String> {
     let name_normalized = name.replace('\\', "/");
     let name = name_normalized.trim();
-    
+
     let mut groups = load_groups();
-    let existing_idx = groups.iter().position(|g| g.name.to_lowercase() == name.to_lowercase());
+    let existing_idx = groups
+        .iter()
+        .position(|g| g.name.to_lowercase() == name.to_lowercase());
     if let Some(idx) = existing_idx {
         let group = &mut groups[idx];
         group.description = description.to_string();
@@ -423,8 +441,14 @@ mod rename_tests {
             assert!(changed);
 
             let names: Vec<String> = load_groups().into_iter().map(|g| g.name).collect();
-            assert!(names.contains(&"Renamed".to_string()), "parent should be renamed: {names:?}");
-            assert!(names.contains(&"Renamed/İs".to_string()), "child should be re-parented: {names:?}");
+            assert!(
+                names.contains(&"Renamed".to_string()),
+                "parent should be renamed: {names:?}"
+            );
+            assert!(
+                names.contains(&"Renamed/İs".to_string()),
+                "child should be re-parented: {names:?}"
+            );
         });
     }
 
@@ -447,7 +471,10 @@ mod rename_tests {
             assert!(names.contains(&"Job/api".to_string()));
             assert!(names.contains(&"Job/api/db".to_string()));
             assert!(names.contains(&"Personal".to_string()));
-            assert!(names.contains(&"Workshop".to_string()), "'Workshop' must be untouched: {names:?}");
+            assert!(
+                names.contains(&"Workshop".to_string()),
+                "'Workshop' must be untouched: {names:?}"
+            );
         });
     }
 

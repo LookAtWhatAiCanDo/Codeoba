@@ -69,6 +69,9 @@ mod tests {
             .filter_map(|e| e.ok())
             .filter(|e| e.file_name() != "state.json")
             .count();
-        assert_eq!(leftovers, 0, "temp file should have been renamed, not left behind");
+        assert_eq!(
+            leftovers, 0,
+            "temp file should have been renamed, not left behind"
+        );
     }
 }

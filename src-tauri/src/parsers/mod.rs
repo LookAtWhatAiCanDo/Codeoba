@@ -5,14 +5,14 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-pub mod claude;
-pub mod cursor;
 pub mod antigravity;
-pub mod copilot;
-pub mod codex;
 pub mod cache;
-pub mod resolver;
+pub mod claude;
+pub mod codex;
+pub mod copilot;
+pub mod cursor;
 pub mod permissions;
+pub mod resolver;
 pub mod source_decisions;
 
 #[cfg(test)]
@@ -59,7 +59,7 @@ pub trait SourceAdapter: Send + Sync {
 /// Helper function to check if a binary command executable is installed on the host machine.
 pub fn is_executable_installed(binary_name: &str) -> bool {
     let home = env::var("HOME").unwrap_or_default();
-    
+
     // Check common macOS/Linux directories
     let common_paths = vec![
         format!("/opt/homebrew/bin/{}", binary_name),
@@ -68,13 +68,13 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
         format!("{}/.local/bin/{}", home, binary_name),
         format!("{}/.npm-global/bin/{}", home, binary_name),
     ];
-    
+
     for path in common_paths {
         if Path::new(&path).exists() {
             return true;
         }
     }
-    
+
     // Check environment PATH directories
     if let Some(path_env) = env::var_os("PATH") {
         let paths = env::split_paths(&path_env);
@@ -83,7 +83,7 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
         } else {
             vec![""]
         };
-        
+
         for dir in paths {
             for ext in &extensions {
                 let bin_path = dir.join(format!("{}{}", binary_name, ext));
@@ -93,7 +93,7 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
             }
         }
     }
-    
+
     // Fallback search using system tools
     let finder = if cfg!(windows) { "where" } else { "which" };
     let mut cmd = Command::new(finder);
@@ -112,7 +112,7 @@ pub fn is_executable_installed(binary_name: &str) -> bool {
             return true;
         }
     }
-    
+
     false
 }
 
@@ -163,8 +163,15 @@ pub fn extract_title_from_first_query(first_query: &str) -> String {
     cleaned = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
 
     let prefixes = [
-        "i need to ", "i want to ", "please ", "suggest ", "propose ", 
-        "could you ", "can you ", "how to ", "how do i "
+        "i need to ",
+        "i want to ",
+        "please ",
+        "suggest ",
+        "propose ",
+        "could you ",
+        "can you ",
+        "how to ",
+        "how do i ",
     ];
     let mut title_candidates = cleaned.clone();
     let lower = title_candidates.to_lowercase();
@@ -199,7 +206,12 @@ pub fn post_process_session(session: &mut Session) {
     if let Some(ref current_title) = session.thread_name {
         let is_generic = matches!(
             current_title.as_str(),
-            "Antigravity Session" | "Claude Session" | "Cursor Session" | "Codex Session" | "Copilot Session" | ""
+            "Antigravity Session"
+                | "Claude Session"
+                | "Cursor Session"
+                | "Codex Session"
+                | "Copilot Session"
+                | ""
         );
 
         if is_generic {
@@ -382,4 +394,3 @@ mod source_list_tests {
         assert_eq!(a.len(), 6);
     }
 }
-

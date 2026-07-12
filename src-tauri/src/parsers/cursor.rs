@@ -1,7 +1,7 @@
 use crate::models::{Session, Turn};
 use crate::parsers::SourceAdapter;
-use rusqlite::{Connection, OpenFlags};
 use rusqlite::types::Value;
+use rusqlite::{Connection, OpenFlags};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,9 @@ impl CursorSource {
         let uri_path = format!("file:{}?mode=ro", path_str);
         let conn = match Connection::open_with_flags(
             Path::new(&uri_path),
-            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+            OpenFlags::SQLITE_OPEN_READ_ONLY
+                | OpenFlags::SQLITE_OPEN_URI
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         ) {
             Ok(c) => c,
             Err(_) => return Vec::new(),
@@ -109,7 +111,8 @@ impl CursorSource {
                     let ws_json = path.join("workspace.json");
                     let db_file = path.join("state.vscdb");
                     if ws_json.exists() && db_file.exists() {
-                        let mtime = db_file.metadata()
+                        let mtime = db_file
+                            .metadata()
                             .and_then(|m| m.modified())
                             .unwrap_or(SystemTime::UNIX_EPOCH);
                         active_dirs.push((path, mtime));
@@ -144,18 +147,28 @@ impl CursorSource {
                 folder_url.to_string()
             };
 
-            if folder_path.starts_with('/') && folder_path.len() > 2 && folder_path.as_bytes()[2] == b':' {
+            if folder_path.starts_with('/')
+                && folder_path.len() > 2
+                && folder_path.as_bytes()[2] == b':'
+            {
                 folder_path = folder_path[1..].to_string();
             }
 
-            let rows = self.query_db(&db_path, "SELECT value FROM ItemTable WHERE key = 'composer.composerData' LIMIT 1;");
+            let rows = self.query_db(
+                &db_path,
+                "SELECT value FROM ItemTable WHERE key = 'composer.composerData' LIMIT 1;",
+            );
             if let Some(row) = rows.first() {
                 if let Some(val_str) = row.get("value") {
                     if let Ok(data_obj) = serde_json::from_str::<serde_json::Value>(val_str) {
-                        if let Some(all_composers) = data_obj.get("allComposers").and_then(|v| v.as_array()) {
+                        if let Some(all_composers) =
+                            data_obj.get("allComposers").and_then(|v| v.as_array())
+                        {
                             for ci in all_composers {
-                                if let Some(comp_id) = ci.get("composerId").and_then(|v| v.as_str()) {
-                                    composer_to_workspace.insert(comp_id.to_string(), folder_path.clone());
+                                if let Some(comp_id) = ci.get("composerId").and_then(|v| v.as_str())
+                                {
+                                    composer_to_workspace
+                                        .insert(comp_id.to_string(), folder_path.clone());
                                     active_composer_ids.insert(comp_id.to_string());
                                 }
                             }
@@ -170,16 +183,19 @@ impl CursorSource {
 
     fn parse_session_from_json(&self, composer_id: &str, value_str: &str) -> Option<Session> {
         let val_obj: serde_json::Value = serde_json::from_str(value_str).ok()?;
-        let name = val_obj.get("name")
+        let name = val_obj
+            .get("name")
             .and_then(|v| v.as_str())
             .unwrap_or("Cursor Session")
             .to_string();
 
-        let created_at = val_obj.get("createdAt")
+        let created_at = val_obj
+            .get("createdAt")
             .and_then(|v| v.as_i64())
             .unwrap_or(0);
 
-        let updated_at = val_obj.get("lastUpdatedAt")
+        let updated_at = val_obj
+            .get("lastUpdatedAt")
             .and_then(|v| v.as_i64())
             .unwrap_or(created_at);
 
@@ -192,12 +208,16 @@ impl CursorSource {
         while idx < conversation.len() {
             let item = match conversation[idx].as_object() {
                 Some(obj) => obj,
-                None => { idx += 1; continue; }
+                None => {
+                    idx += 1;
+                    continue;
+                }
             };
             let item_type = item.get("type").and_then(|v| v.as_i64()).unwrap_or(1);
             let text = item.get("text").and_then(|v| v.as_str()).unwrap_or("");
-            
-            let model_name = item.get("model")
+
+            let model_name = item
+                .get("model")
                 .and_then(|v| v.as_str())
                 .or_else(|| val_obj.get("model").and_then(|v| v.as_str()))
                 .or_else(|| val_obj.get("modelName").and_then(|v| v.as_str()))
@@ -214,7 +234,11 @@ impl CursorSource {
                     if let Some(next) = conversation[idx + 1].as_object() {
                         let next_type = next.get("type").and_then(|v| v.as_i64()).unwrap_or(1);
                         if next_type == 2 {
-                            assistant_text = next.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            assistant_text = next
+                                .get("text")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string();
                             idx += 2;
                         } else {
                             idx += 1;
@@ -260,7 +284,10 @@ impl CursorSource {
         }
 
         let cwd = {
-            let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+            let map = self
+                .composer_to_workspace
+                .read()
+                .expect("Failed to lock composer_to_workspace read lock");
             map.get(composer_id).cloned()
         };
 
@@ -340,8 +367,14 @@ impl SourceAdapter for CursorSource {
         if file_path.contains("workspaceStorage") {
             let (new_ws_map, new_active_ids) = self.build_workspace_map();
             let changed = {
-                let old_ws_map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
-                let old_active_ids = self.active_composer_ids.read().expect("Failed to lock active_composer_ids read lock");
+                let old_ws_map = self
+                    .composer_to_workspace
+                    .read()
+                    .expect("Failed to lock composer_to_workspace read lock");
+                let old_active_ids = self
+                    .active_composer_ids
+                    .read()
+                    .expect("Failed to lock active_composer_ids read lock");
                 *old_ws_map != new_ws_map || *old_active_ids != new_active_ids
             };
             if !changed {
@@ -357,7 +390,9 @@ impl SourceAdapter for CursorSource {
             Path::new("/Applications/Cursor.app").exists()
         } else if cfg!(target_os = "windows") {
             if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-                Path::new(&local_app_data).join("Programs/cursor/Cursor.exe").exists()
+                Path::new(&local_app_data)
+                    .join("Programs/cursor/Cursor.exe")
+                    .exists()
             } else {
                 false
             }
@@ -386,7 +421,9 @@ impl SourceAdapter for CursorSource {
     fn get_data_paths_to_delete(&self) -> Vec<String> {
         vec![
             self.get_global_db_file().to_string_lossy().to_string(),
-            self.get_workspace_storage_dir().to_string_lossy().to_string(),
+            self.get_workspace_storage_dir()
+                .to_string_lossy()
+                .to_string(),
         ]
     }
 
@@ -404,13 +441,19 @@ impl SourceAdapter for CursorSource {
 
         // If the workspace map is populated, respect it as an allowlist.
         {
-            let known_ids = self.active_composer_ids.read().expect("Failed to lock active_composer_ids read lock");
+            let known_ids = self
+                .active_composer_ids
+                .read()
+                .expect("Failed to lock active_composer_ids read lock");
             if !known_ids.is_empty() && !known_ids.contains(composer_id) {
                 return None;
             }
         }
 
-        let sql = format!("SELECT value FROM cursorDiskKV WHERE key = 'composerData:{}' LIMIT 1;", composer_id);
+        let sql = format!(
+            "SELECT value FROM cursorDiskKV WHERE key = 'composerData:{}' LIMIT 1;",
+            composer_id
+        );
         let rows = self.query_db(&global_db, &sql);
         let value_str = rows.first()?.get("value")?;
 
@@ -418,14 +461,14 @@ impl SourceAdapter for CursorSource {
         let hash = format!("{:x}", md5::compute(value_str.as_bytes()));
         let size = value_str.len() as i64;
 
-        if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_db(
-            self.id(),
-            &key,
-            &hash,
-            size,
-        ) {
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
+            .get_cached_session_for_db(self.id(), &key, &hash, size)
+        {
             let cwd = {
-                let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+                let map = self
+                    .composer_to_workspace
+                    .read()
+                    .expect("Failed to lock composer_to_workspace read lock");
                 map.get(composer_id).cloned()
             };
             if cwd.is_some() {
@@ -464,9 +507,15 @@ impl SourceAdapter for CursorSource {
 
         let (ws_map, active_ids) = self.build_workspace_map();
         {
-            let mut map_guard = self.composer_to_workspace.write().expect("Failed to lock composer_to_workspace write lock");
+            let mut map_guard = self
+                .composer_to_workspace
+                .write()
+                .expect("Failed to lock composer_to_workspace write lock");
             *map_guard = ws_map;
-            let mut ids_guard = self.active_composer_ids.write().expect("Failed to lock active_composer_ids write lock");
+            let mut ids_guard = self
+                .active_composer_ids
+                .write()
+                .expect("Failed to lock active_composer_ids write lock");
             *ids_guard = active_ids.clone();
         }
 
@@ -488,14 +537,14 @@ impl SourceAdapter for CursorSource {
 
             let hash = format!("{:x}", md5::compute(value_str.as_bytes()));
             let size = value_str.len() as i64;
-            if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_db(
-                self.id(),
-                key,
-                &hash,
-                size,
-            ) {
+            if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
+                .get_cached_session_for_db(self.id(), key, &hash, size)
+            {
                 let cwd = {
-                    let map = self.composer_to_workspace.read().expect("Failed to lock composer_to_workspace read lock");
+                    let map = self
+                        .composer_to_workspace
+                        .read()
+                        .expect("Failed to lock composer_to_workspace read lock");
                     map.get(composer_id).cloned()
                 };
                 cached.cwd = cwd;

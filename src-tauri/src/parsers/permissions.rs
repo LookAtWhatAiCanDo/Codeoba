@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PermissionEntry {
     pub canonical_path: String,
-    pub action: String, // "preview" or "external_open"
+    pub action: String,   // "preview" or "external_open"
     pub decision: String, // "allow" or "deny"
     pub timestamp: u64,
 }
@@ -47,10 +47,10 @@ pub fn check_permission(canonical_path: &str, action: &str) -> Option<String> {
 
 pub fn add_permission(canonical_path: &str, action: &str, decision: &str) {
     let mut entries = load_permissions();
-    
+
     // Remove duplicate first
     entries.retain(|e| !(e.canonical_path == canonical_path && e.action == action));
-    
+
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -62,7 +62,7 @@ pub fn add_permission(canonical_path: &str, action: &str, decision: &str) {
         decision: decision.to_string(),
         timestamp: now,
     });
-    
+
     save_permissions(&entries);
 }
 

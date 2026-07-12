@@ -2,7 +2,12 @@ use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult};
 use regex::{Regex, RegexBuilder};
 
-pub fn build_find_regex(query: &str, match_case: bool, whole_word: bool, use_regex: bool) -> Option<Regex> {
+pub fn build_find_regex(
+    query: &str,
+    match_case: bool,
+    whole_word: bool,
+    use_regex: bool,
+) -> Option<Regex> {
     if query.is_empty() {
         return None;
     }
@@ -83,9 +88,14 @@ pub fn lexical_search<'a>(
 
     let is_single_pattern = filter.use_regex || query.contains('\n');
     let regexes: Vec<Regex> = if is_single_pattern {
-        build_find_regex(query, filter.match_case, filter.whole_word, filter.use_regex)
-            .map(|r| vec![r])
-            .unwrap_or_default()
+        build_find_regex(
+            query,
+            filter.match_case,
+            filter.whole_word,
+            filter.use_regex,
+        )
+        .map(|r| vec![r])
+        .unwrap_or_default()
     } else {
         let terms = parse_query_terms(query);
         terms
@@ -163,7 +173,8 @@ pub fn lexical_search<'a>(
             }
             if term_turn_matches > 0 {
                 // BM25-like saturation formula: TF * (k1 + 1) / (TF + k1) with k1 = 1.0. Capped at 2.0 per term.
-                let saturated_score = (term_turn_matches as f32 * 2.0) / (term_turn_matches as f32 + 1.0);
+                let saturated_score =
+                    (term_turn_matches as f32 * 2.0) / (term_turn_matches as f32 + 1.0);
                 score += saturated_score;
             }
         }

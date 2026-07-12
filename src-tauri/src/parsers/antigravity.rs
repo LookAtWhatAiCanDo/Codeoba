@@ -45,7 +45,10 @@ impl AntigravitySource {
 
     pub(crate) fn get_session_title(&self, session_id: &str) -> String {
         {
-            let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
+            let map = self
+                .antigravity_title_map
+                .read()
+                .expect("Failed to lock antigravity_title_map read lock");
             if let Some(title) = map.get(session_id) {
                 return title.clone();
             }
@@ -53,7 +56,8 @@ impl AntigravitySource {
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
         let current_modified = if pb_file.exists() && pb_file.is_file() {
-            pb_file.metadata()
+            pb_file
+                .metadata()
                 .and_then(|m| m.modified())
                 .ok()
                 .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
@@ -63,13 +67,24 @@ impl AntigravitySource {
             0
         };
 
-        let last_mod = { *self.last_pb_file_modified.read().expect("Failed to lock last_pb_file_modified read lock") };
+        let last_mod = {
+            *self
+                .last_pb_file_modified
+                .read()
+                .expect("Failed to lock last_pb_file_modified read lock")
+        };
         if last_mod == 0 || current_modified > last_mod {
             let map = self.build_antigravity_title_map();
             {
-                let mut map_guard = self.antigravity_title_map.write().expect("Failed to lock antigravity_title_map write lock");
+                let mut map_guard = self
+                    .antigravity_title_map
+                    .write()
+                    .expect("Failed to lock antigravity_title_map write lock");
                 *map_guard = map;
-                let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
+                let mut mod_guard = self
+                    .last_pb_file_modified
+                    .write()
+                    .expect("Failed to lock last_pb_file_modified write lock");
                 *mod_guard = current_modified;
             }
         }
@@ -165,7 +180,9 @@ impl AntigravitySource {
                                     }
                                 };
                                 if offset + uuid_len <= entry_end {
-                                    if let Ok(u) = String::from_utf8(bytes[offset..offset+uuid_len].to_vec()) {
+                                    if let Ok(u) =
+                                        String::from_utf8(bytes[offset..offset + uuid_len].to_vec())
+                                    {
                                         uuid = Some(u);
                                     }
                                     offset += uuid_len;
@@ -204,8 +221,13 @@ impl AntigravitySource {
                                                 }
                                             };
                                             if offset + str_len <= info_end {
-                                                if let Ok(s) = String::from_utf8(bytes[offset..offset+str_len].to_vec()) {
-                                                    if title.is_none() && !s.starts_with('\n') && !s.starts_with("file://") {
+                                                if let Ok(s) = String::from_utf8(
+                                                    bytes[offset..offset + str_len].to_vec(),
+                                                ) {
+                                                    if title.is_none()
+                                                        && !s.starts_with('\n')
+                                                        && !s.starts_with("file://")
+                                                    {
                                                         title = Some(s);
                                                     }
                                                 }
@@ -214,7 +236,12 @@ impl AntigravitySource {
                                                 offset = info_end;
                                             }
                                         } else {
-                                            skip_field(&bytes, &mut offset, info_wire_type, info_end);
+                                            skip_field(
+                                                &bytes,
+                                                &mut offset,
+                                                info_wire_type,
+                                                info_end,
+                                            );
                                         }
                                     }
                                 } else {
@@ -345,7 +372,10 @@ fn clean(text: &str) -> String {
     let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
-        format!("\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n", bytes)
+        format!(
+            "\n\n[⚠️ SYSTEM LIMIT: Truncated {} bytes of log output here]\n\n",
+            bytes
+        )
     });
     cleaned.trim().to_string()
 }
@@ -363,7 +393,12 @@ fn escape_tool_tags(text: &str) -> String {
         .replace("[[[/TOOL", "\\[\\[\\[/TOOL")
 }
 
-fn format_tool_entry(tool_type: &str, content: &str, tool_calls: Option<&serde_json::Value>, timestamp: i64) -> String {
+fn format_tool_entry(
+    tool_type: &str,
+    content: &str,
+    tool_calls: Option<&serde_json::Value>,
+    timestamp: i64,
+) -> String {
     let label = match tool_type {
         "VIEW_FILE" => "📄 View File",
         "RUN_COMMAND" => "⚡ Run Command",
@@ -384,11 +419,23 @@ fn format_tool_entry(tool_type: &str, content: &str, tool_calls: Option<&serde_j
                 let name = tc_obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
                 if let Some(args) = tc_obj.get("args").and_then(|v| v.as_object()) {
                     let summary = match name {
-                        "view_file" => args.get("AbsolutePath").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s))),
-                        "run_command" => args.get("CommandLine").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s))),
+                        "view_file" => args
+                            .get("AbsolutePath")
+                            .and_then(|v| v.as_str())
+                            .map(|s| clean(remove_surrounding_quotes(s))),
+                        "run_command" => args
+                            .get("CommandLine")
+                            .and_then(|v| v.as_str())
+                            .map(|s| clean(remove_surrounding_quotes(s))),
                         "grep_search" => {
-                            let query = args.get("Query").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s)));
-                            let path = args.get("SearchPath").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s)));
+                            let query = args
+                                .get("Query")
+                                .and_then(|v| v.as_str())
+                                .map(|s| clean(remove_surrounding_quotes(s)));
+                            let path = args
+                                .get("SearchPath")
+                                .and_then(|v| v.as_str())
+                                .map(|s| clean(remove_surrounding_quotes(s)));
                             query.map(|q| {
                                 if let Some(p) = path {
                                     format!("Query: {} in {}", q, p)
@@ -397,9 +444,14 @@ fn format_tool_entry(tool_type: &str, content: &str, tool_calls: Option<&serde_j
                                 }
                             })
                         }
-                        "list_dir" => args.get("DirectoryPath").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s))),
+                        "list_dir" => args
+                            .get("DirectoryPath")
+                            .and_then(|v| v.as_str())
+                            .map(|s| clean(remove_surrounding_quotes(s))),
                         "replace_file_content" | "multi_replace_file_content" | "write_to_file" => {
-                            args.get("TargetFile").and_then(|v| v.as_str()).map(|s| clean(remove_surrounding_quotes(s)))
+                            args.get("TargetFile")
+                                .and_then(|v| v.as_str())
+                                .map(|s| clean(remove_surrounding_quotes(s)))
                         }
                         _ => None,
                     };
@@ -419,7 +471,10 @@ fn format_tool_entry(tool_type: &str, content: &str, tool_calls: Option<&serde_j
     let header_escaped = escape_tool_tags(&header);
     let cleaned_content = escape_tool_tags(&clean(content));
 
-    format!("[[[TOOL:{}|{}|{}]]]\n{}\n[[[/TOOL]]]", tool_type, header_escaped, timestamp, cleaned_content)
+    format!(
+        "[[[TOOL:{}|{}|{}]]]\n{}\n[[[/TOOL]]]",
+        tool_type, header_escaped, timestamp, cleaned_content
+    )
 }
 
 struct Event {
@@ -477,12 +532,16 @@ fn get_proto_varint_at_path(data: &[u8], path: &[u32]) -> Option<u64> {
                 }
             }
             1 => {
-                if decoder.offset + 8 > decoder.data.len() { return None; }
+                if decoder.offset + 8 > decoder.data.len() {
+                    return None;
+                }
                 decoder.offset += 8;
             }
             2 => {
                 let len = decoder.read_varint()? as usize;
-                if decoder.offset + len > decoder.data.len() { return None; }
+                if decoder.offset + len > decoder.data.len() {
+                    return None;
+                }
                 let val_bytes = &decoder.data[decoder.offset..decoder.offset + len];
                 decoder.offset += len;
                 if field_num == target_field {
@@ -494,7 +553,9 @@ fn get_proto_varint_at_path(data: &[u8], path: &[u32]) -> Option<u64> {
                 }
             }
             5 => {
-                if decoder.offset + 4 > decoder.data.len() { return None; }
+                if decoder.offset + 4 > decoder.data.len() {
+                    return None;
+                }
                 decoder.offset += 4;
             }
             _ => return None,
@@ -517,12 +578,16 @@ fn get_proto_bytes_at_path<'a>(data: &'a [u8], path: &[u32]) -> Option<&'a [u8]>
                 let _val = decoder.read_varint()?;
             }
             1 => {
-                if decoder.offset + 8 > decoder.data.len() { return None; }
+                if decoder.offset + 8 > decoder.data.len() {
+                    return None;
+                }
                 decoder.offset += 8;
             }
             2 => {
                 let len = decoder.read_varint()? as usize;
-                if decoder.offset + len > decoder.data.len() { return None; }
+                if decoder.offset + len > decoder.data.len() {
+                    return None;
+                }
                 let val_bytes = &decoder.data[decoder.offset..decoder.offset + len];
                 decoder.offset += len;
                 if field_num == target_field {
@@ -534,7 +599,9 @@ fn get_proto_bytes_at_path<'a>(data: &'a [u8], path: &[u32]) -> Option<&'a [u8]>
                 }
             }
             5 => {
-                if decoder.offset + 4 > decoder.data.len() { return None; }
+                if decoder.offset + 4 > decoder.data.len() {
+                    return None;
+                }
                 decoder.offset += 4;
             }
             _ => return None,
@@ -589,7 +656,9 @@ fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
                 if !clean_content.is_empty() && clean_content != "[Compacted Request]" {
                     map.insert((true, timestamp_secs), clean_content);
                 }
-            } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION") && source == "MODEL" {
+            } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION")
+                && source == "MODEL"
+            {
                 let clean_content = escape_tool_tags(&clean(content));
                 if !clean_content.is_empty() && clean_content != "[Compacted Response]" {
                     map.insert((false, timestamp_secs), clean_content);
@@ -601,7 +670,9 @@ fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
 }
 
 fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack.windows(needle.len()).position(|window| window == needle)
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
 
 fn extract_model_from_blob(data: &[u8]) -> Option<String> {
@@ -655,7 +726,9 @@ fn parse_sqlite_session_db(
     let uri_path = format!("file:{}?mode=ro", path_str);
     let conn = Connection::open_with_flags(
         Path::new(&uri_path),
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        OpenFlags::SQLITE_OPEN_READ_ONLY
+            | OpenFlags::SQLITE_OPEN_URI
+            | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
 
     // Try to query the latest session metadata checkpoint blob from gen_metadata to extract the active model
@@ -671,14 +744,12 @@ fn parse_sqlite_session_db(
         }
     }
 
-    let session_id = db_path.file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let session_id = db_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
     let main_trajectory_id: Option<String> = match conn.query_row(
         "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? AND trajectory_type = 4",
         [session_id],
-        |row| row.get(0)
+        |row| row.get(0),
     ) {
         Ok(id) => Some(id),
         Err(_) => None,
@@ -690,7 +761,7 @@ fn parse_sqlite_session_db(
             match conn.query_row(
                 "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? LIMIT 1",
                 [session_id],
-                |row| row.get(0)
+                |row| row.get(0),
             ) {
                 Ok(id) => Some(id),
                 Err(_) => None,
@@ -720,9 +791,8 @@ fn parse_sqlite_session_db(
     let mut rows = stmt.query([])?;
 
     static CWD_RE: std::sync::OnceLock<regex::bytes::Regex> = std::sync::OnceLock::new();
-    let cwd_re = CWD_RE.get_or_init(|| {
-        regex::bytes::Regex::new(r#""[Cc]wd"\s*:\s*"([^"]+)""#).unwrap()
-    });
+    let cwd_re =
+        CWD_RE.get_or_init(|| regex::bytes::Regex::new(r#""[Cc]wd"\s*:\s*"([^"]+)""#).unwrap());
 
     let mut events = Vec::new();
     while let Some(row) = rows.next()? {
@@ -900,7 +970,8 @@ impl SourceAdapter for AntigravitySource {
         let path = path_buf.as_path();
         let target_file_path = path.to_string_lossy().to_string();
 
-        let session_id = path.parent()
+        let session_id = path
+            .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
             .and_then(|p| p.file_name())
@@ -910,7 +981,10 @@ impl SourceAdapter for AntigravitySource {
 
         if !cfg!(test) && !crate::keyring::get_index_subagents_setting() {
             let contains_session = {
-                let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
+                let map = self
+                    .antigravity_title_map
+                    .read()
+                    .expect("Failed to lock antigravity_title_map read lock");
                 map.contains_key(&session_id)
             };
             if !contains_session {
@@ -919,7 +993,9 @@ impl SourceAdapter for AntigravitySource {
         }
 
         let metadata = path.metadata().ok()?;
-        let last_modified = metadata.modified().ok()
+        let last_modified = metadata
+            .modified()
+            .ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
@@ -928,10 +1004,14 @@ impl SourceAdapter for AntigravitySource {
         let mut cache_modified = last_modified;
         let mut cache_size = size;
 
-        let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
+        let annotation_file = self
+            .get_variant_dir()
+            .join(format!("annotations/{}.pbtxt", session_id));
         if annotation_file.exists() && annotation_file.is_file() {
             if let Ok(anno_meta) = annotation_file.metadata() {
-                let anno_modified = anno_meta.modified().ok()
+                let anno_modified = anno_meta
+                    .modified()
+                    .ok()
                     .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                     .map(|d| d.as_millis() as i64)
                     .unwrap_or(0);
@@ -940,17 +1020,17 @@ impl SourceAdapter for AntigravitySource {
             }
         }
 
-        if let Some(mut cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
-            self.id(),
-            &target_file_path,
-            cache_modified,
-            cache_size,
-        ) {
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
+            .get_cached_session_for_file(self.id(), &target_file_path, cache_modified, cache_size)
+        {
             let current_title = self.get_session_title(&session_id);
-            let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
+            let annotation_file = self
+                .get_variant_dir()
+                .join(format!("annotations/{}.pbtxt", session_id));
             let current_archived = if annotation_file.exists() && annotation_file.is_file() {
                 if let Ok(anno_text) = fs::read_to_string(&annotation_file) {
-                    let normalized: String = anno_text.chars().filter(|c| !c.is_whitespace()).collect();
+                    let normalized: String =
+                        anno_text.chars().filter(|c| !c.is_whitespace()).collect();
                     normalized.contains("archived:true")
                 } else {
                     false
@@ -995,9 +1075,7 @@ impl SourceAdapter for AntigravitySource {
 
         static SYS_MSG_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
         let sys_msg_re = SYS_MSG_RE.get_or_init(|| {
-            regex::Regex::new(
-                r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$"
-            ).unwrap()
+            regex::Regex::new(r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$").unwrap()
         });
 
         for line in content_str.lines() {
@@ -1025,21 +1103,35 @@ impl SourceAdapter for AntigravitySource {
 
                 // Track model selection changes
                 if step_type == "USER_INPUT" {
-                    if let Some(user_settings) = obj.get("user_settings_change").and_then(|v| v.as_object()) {
-                        if let Some(model_sel) = user_settings.get("Model Selection").and_then(|v| v.as_str()) {
+                    if let Some(user_settings) =
+                        obj.get("user_settings_change").and_then(|v| v.as_object())
+                    {
+                        if let Some(model_sel) = user_settings
+                            .get("Model Selection")
+                            .and_then(|v| v.as_str())
+                        {
                             current_model = Some(model_sel.to_string());
                         }
                     }
                     if content.contains("<USER_SETTINGS_CHANGE>") {
-                        let settings_content = content.split("<USER_SETTINGS_CHANGE>")
+                        let settings_content = content
+                            .split("<USER_SETTINGS_CHANGE>")
                             .nth(1)
                             .unwrap_or("")
                             .split("</USER_SETTINGS_CHANGE>")
                             .next()
                             .unwrap_or("");
-                        if let Some(line_with_model) = settings_content.lines().find(|l| l.contains("`Model Selection`")) {
+                        if let Some(line_with_model) = settings_content
+                            .lines()
+                            .find(|l| l.contains("`Model Selection`"))
+                        {
                             let after_to = line_with_model.split(" to ").nth(1).unwrap_or("");
-                            let model_name = after_to.split(". ").next().unwrap_or("").trim().trim_end_matches('.');
+                            let model_name = after_to
+                                .split(". ")
+                                .next()
+                                .unwrap_or("")
+                                .trim()
+                                .trim_end_matches('.');
                             if !model_name.is_empty() {
                                 current_model = Some(model_name.to_string());
                             }
@@ -1052,7 +1144,11 @@ impl SourceAdapter for AntigravitySource {
                     for tc in arr {
                         if let Some(tc_obj) = tc.as_object() {
                             if let Some(args) = tc_obj.get("args").and_then(|v| v.as_object()) {
-                                if let Some(arg_cwd) = args.get("Cwd").or_else(|| args.get("cwd")).and_then(|v| v.as_str()) {
+                                if let Some(arg_cwd) = args
+                                    .get("Cwd")
+                                    .or_else(|| args.get("cwd"))
+                                    .and_then(|v| v.as_str())
+                                {
                                     cwd = Some(arg_cwd.trim_matches('"').to_string());
                                 }
                             }
@@ -1079,7 +1175,9 @@ impl SourceAdapter for AntigravitySource {
                         is_compaction: false,
                         compaction_time_ms: 0,
                     });
-                } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION") && source == "MODEL" {
+                } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION")
+                    && source == "MODEL"
+                {
                     let clean_content = escape_tool_tags(&clean(content));
                     let text_to_push = if clean_content.is_empty() {
                         "[Compacted Response]".to_string()
@@ -1094,7 +1192,17 @@ impl SourceAdapter for AntigravitySource {
                         is_compaction: false,
                         compaction_time_ms: 0,
                     });
-                } else if matches!(step_type, "VIEW_FILE" | "RUN_COMMAND" | "CODE_ACTION" | "GREP_SEARCH" | "LIST_DIRECTORY" | "SEARCH_WEB" | "GENERIC") && source == "MODEL" {
+                } else if matches!(
+                    step_type,
+                    "VIEW_FILE"
+                        | "RUN_COMMAND"
+                        | "CODE_ACTION"
+                        | "GREP_SEARCH"
+                        | "LIST_DIRECTORY"
+                        | "SEARCH_WEB"
+                        | "GENERIC"
+                ) && source == "MODEL"
+                {
                     let formatted = format_tool_entry(step_type, content, tool_calls, timestamp);
                     if !formatted.trim().is_empty() {
                         events.push(Event {
@@ -1116,7 +1224,8 @@ impl SourceAdapter for AntigravitySource {
                             clean_content = clean_content[intro.len()..].trim().to_string();
                         }
                     }
-                    let formatted = format_tool_entry(step_type, &clean_content, tool_calls, timestamp);
+                    let formatted =
+                        format_tool_entry(step_type, &clean_content, tool_calls, timestamp);
                     if !formatted.trim().is_empty() {
                         events.push(Event {
                             is_user: false,
@@ -1163,7 +1272,8 @@ impl SourceAdapter for AntigravitySource {
         }
 
         // Find the timestamp of the earliest user input or planner response in JSONL events
-        let jsonl_start_time = events.iter()
+        let jsonl_start_time = events
+            .iter()
             .filter(|e| !e.is_compaction)
             .map(|e| e.timestamp)
             .min()
@@ -1171,14 +1281,19 @@ impl SourceAdapter for AntigravitySource {
 
         // Attempt to load older events from the SQLite database
         let mut db_events = Vec::new();
-        let db_path = self.get_variant_dir().join(format!("conversations/{}.db", session_id));
+        let db_path = self
+            .get_variant_dir()
+            .join(format!("conversations/{}.db", session_id));
         let mut db_model = None;
         if db_path.exists() && db_path.is_file() {
             let uncompacted_map = load_jsonl_uncompacted_map(path);
             let mut db_cwd = None;
-            if let Ok(parsed_db_events) = parse_sqlite_session_db(&db_path, &mut db_cwd, &mut db_model, &uncompacted_map) {
+            if let Ok(parsed_db_events) =
+                parse_sqlite_session_db(&db_path, &mut db_cwd, &mut db_model, &uncompacted_map)
+            {
                 // Filter out events that occurred on or after the start of JSONL events
-                db_events = parsed_db_events.into_iter()
+                db_events = parsed_db_events
+                    .into_iter()
                     .filter(|e| e.timestamp < jsonl_start_time)
                     .collect();
                 if db_cwd.is_some() && cwd.is_none() {
@@ -1253,9 +1368,9 @@ impl SourceAdapter for AntigravitySource {
                 }
             }
 
-            let has_actual_text = clean_parts.iter().any(|part| {
-                !part.starts_with("[[[TOOL:") && part != "[Compacted Response]"
-            });
+            let has_actual_text = clean_parts
+                .iter()
+                .any(|part| !part.starts_with("[[[TOOL:") && part != "[Compacted Response]");
 
             if has_actual_text {
                 clean_parts.retain(|part| part != "[Compacted Response]");
@@ -1268,7 +1383,10 @@ impl SourceAdapter for AntigravitySource {
             extra_data.insert("model".to_string(), final_model.clone());
             if has_compaction {
                 extra_data.insert("isCompaction".to_string(), "true".to_string());
-                extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
+                extra_data.insert(
+                    "compactionTimeMs".to_string(),
+                    compaction_time_ms.to_string(),
+                );
             }
 
             let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &final_model);
@@ -1327,9 +1445,9 @@ impl SourceAdapter for AntigravitySource {
                     }
                 }
 
-                let has_actual_text = clean_parts.iter().any(|part| {
-                    !part.starts_with("[[[TOOL:") && part != "[Compacted Response]"
-                });
+                let has_actual_text = clean_parts
+                    .iter()
+                    .any(|part| !part.starts_with("[[[TOOL:") && part != "[Compacted Response]");
 
                 if has_actual_text {
                     clean_parts.retain(|part| part != "[Compacted Response]");
@@ -1342,11 +1460,15 @@ impl SourceAdapter for AntigravitySource {
                 extra_data.insert("model".to_string(), final_model.clone());
                 if has_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
-                    extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
+                    extra_data.insert(
+                        "compactionTimeMs".to_string(),
+                        compaction_time_ms.to_string(),
+                    );
                 }
 
                 let input_toks = crate::tokenizer::estimate_tokens(&ev.text, &final_model);
-                let output_toks = crate::tokenizer::estimate_tokens(&assistant_message, &final_model);
+                let output_toks =
+                    crate::tokenizer::estimate_tokens(&assistant_message, &final_model);
 
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
@@ -1389,7 +1511,9 @@ impl SourceAdapter for AntigravitySource {
         let first_time = events.first().map(|e| e.timestamp).unwrap_or(last_modified);
         let last_time = events.last().map(|e| e.timestamp).unwrap_or(last_modified);
 
-        let annotation_file = self.get_variant_dir().join(format!("annotations/{}.pbtxt", session_id));
+        let annotation_file = self
+            .get_variant_dir()
+            .join(format!("annotations/{}.pbtxt", session_id));
         let is_archived = if annotation_file.exists() && annotation_file.is_file() {
             if let Ok(text) = fs::read_to_string(&annotation_file) {
                 let normalized: String = text.chars().filter(|c| !c.is_whitespace()).collect();
@@ -1442,7 +1566,8 @@ impl SourceAdapter for AntigravitySource {
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
         let current_modified = if pb_file.exists() && pb_file.is_file() {
-            pb_file.metadata()
+            pb_file
+                .metadata()
                 .and_then(|m| m.modified())
                 .ok()
                 .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
@@ -1457,9 +1582,15 @@ impl SourceAdapter for AntigravitySource {
             // source adapters became shared singletons: this method held last_pb_file_modified
             // waiting for antigravity_title_map while a concurrent get_session_title held the
             // opposite pair.
-            let mut map_guard = self.antigravity_title_map.write().expect("Failed to lock antigravity_title_map write lock");
+            let mut map_guard = self
+                .antigravity_title_map
+                .write()
+                .expect("Failed to lock antigravity_title_map write lock");
             *map_guard = self.build_antigravity_title_map();
-            let mut mod_guard = self.last_pb_file_modified.write().expect("Failed to lock last_pb_file_modified write lock");
+            let mut mod_guard = self
+                .last_pb_file_modified
+                .write()
+                .expect("Failed to lock last_pb_file_modified write lock");
             *mod_guard = current_modified;
         }
 
@@ -1473,7 +1604,9 @@ impl SourceAdapter for AntigravitySource {
                     let path = entry.path();
                     if path.is_dir() {
                         walk_stack.push(path);
-                    } else if path.is_file() && path.file_name().and_then(|s| s.to_str()) == Some("transcript.jsonl") {
+                    } else if path.is_file()
+                        && path.file_name().and_then(|s| s.to_str()) == Some("transcript.jsonl")
+                    {
                         if let Some(session) = self.parse_session(&path.to_string_lossy()).await {
                             sessions.push(session);
                         }

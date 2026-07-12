@@ -1,5 +1,5 @@
 use crate::models::{Session, Turn};
-use crate::parsers::{SourceAdapter, is_executable_installed};
+use crate::parsers::{is_executable_installed, SourceAdapter};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
@@ -47,7 +47,12 @@ impl SourceAdapter for ClaudeSource {
         let base_dir = self.get_base_dir();
         if base_dir.exists() && base_dir.is_dir() {
             let mut paths = Vec::new();
-            self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
+            self.find_jsonl_files(
+                &base_dir,
+                RECURSION_START_DEPTH,
+                CLAUDE_LOGS_MAX_DEPTH,
+                &mut paths,
+            );
             if !paths.is_empty() {
                 return true;
             }
@@ -83,7 +88,12 @@ impl SourceAdapter for ClaudeSource {
         let base_dir = self.get_base_dir();
         if base_dir.exists() && base_dir.is_dir() {
             let mut paths = Vec::new();
-            self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
+            self.find_jsonl_files(
+                &base_dir,
+                RECURSION_START_DEPTH,
+                CLAUDE_LOGS_MAX_DEPTH,
+                &mut paths,
+            );
             if !paths.is_empty() {
                 return true;
             }
@@ -104,7 +114,12 @@ impl SourceAdapter for ClaudeSource {
         crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut paths = Vec::new();
-        self.find_jsonl_files(&base_dir, RECURSION_START_DEPTH, CLAUDE_LOGS_MAX_DEPTH, &mut paths);
+        self.find_jsonl_files(
+            &base_dir,
+            RECURSION_START_DEPTH,
+            CLAUDE_LOGS_MAX_DEPTH,
+            &mut paths,
+        );
 
         let mut sessions = Vec::new();
         for path in paths {
@@ -119,7 +134,13 @@ impl SourceAdapter for ClaudeSource {
 
 impl ClaudeSource {
     // Helper function to recursively collect JSONL files down to the specified max depth.
-    fn find_jsonl_files(&self, dir: &Path, depth: usize, max_depth: usize, paths: &mut Vec<PathBuf>) {
+    fn find_jsonl_files(
+        &self,
+        dir: &Path,
+        depth: usize,
+        max_depth: usize,
+        paths: &mut Vec<PathBuf>,
+    ) {
         if depth > max_depth {
             return;
         }
@@ -146,24 +167,23 @@ impl ClaudeSource {
         let path = Path::new(file_path);
         let file = File::open(path).ok()?;
         let metadata = file.metadata().ok()?;
-        let last_modified = metadata.modified().ok()
+        let last_modified = metadata
+            .modified()
+            .ok()
             .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         let size = metadata.len() as i64;
 
-        if let Some(cached) = crate::parsers::cache::get_cache_manager().get_cached_session_for_file(
-            self.id(),
-            file_path,
-            last_modified,
-            size,
-        ) {
+        if let Some(cached) = crate::parsers::cache::get_cache_manager()
+            .get_cached_session_for_file(self.id(), file_path, last_modified, size)
+        {
             return Some(cached);
         }
 
         let reader = BufReader::new(file);
         let mut raw_turns = Vec::new();
-        
+
         let mut session_id = path.file_stem()?.to_string_lossy().to_string();
         let mut cwd: Option<String> = None;
         let mut slug: Option<String> = None;
@@ -182,8 +202,9 @@ impl ClaudeSource {
                         Some(t) => t,
                         None => continue,
                     };
-                    
-                    let timestamp = obj.get("timestamp")
+
+                    let timestamp = obj
+                        .get("timestamp")
                         .and_then(|v| v.as_str())
                         .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
                         .map(|dt| dt.timestamp_millis())
@@ -204,11 +225,17 @@ impl ClaudeSource {
                             let mut text = String::new();
                             if let Some(c_str) = msg_obj.get("content").and_then(|v| v.as_str()) {
                                 text.push_str(c_str);
-                            } else if let Some(content_array) = msg_obj.get("content").and_then(|v| v.as_array()) {
+                            } else if let Some(content_array) =
+                                msg_obj.get("content").and_then(|v| v.as_array())
+                            {
                                 for item in content_array {
                                     if let Some(item_obj) = item.as_object() {
-                                        if item_obj.get("type").and_then(|v| v.as_str()) == Some("text") {
-                                            if let Some(t) = item_obj.get("text").and_then(|v| v.as_str()) {
+                                        if item_obj.get("type").and_then(|v| v.as_str())
+                                            == Some("text")
+                                        {
+                                            if let Some(t) =
+                                                item_obj.get("text").and_then(|v| v.as_str())
+                                            {
                                                 text.push_str(t);
                                                 text.push('\n');
                                             }
@@ -228,13 +255,22 @@ impl ClaudeSource {
                         }
                     } else if line_type == "assistant" {
                         if let Some(msg_obj) = obj.get("message").and_then(|v| v.as_object()) {
-                            let model_name = msg_obj.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                            let model_name = msg_obj
+                                .get("model")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
                             let mut text = String::new();
-                            if let Some(content_array) = msg_obj.get("content").and_then(|v| v.as_array()) {
+                            if let Some(content_array) =
+                                msg_obj.get("content").and_then(|v| v.as_array())
+                            {
                                 for item in content_array {
                                     if let Some(item_obj) = item.as_object() {
-                                        if item_obj.get("type").and_then(|v| v.as_str()) == Some("text") {
-                                            if let Some(t) = item_obj.get("text").and_then(|v| v.as_str()) {
+                                        if item_obj.get("type").and_then(|v| v.as_str())
+                                            == Some("text")
+                                        {
+                                            if let Some(t) =
+                                                item_obj.get("text").and_then(|v| v.as_str())
+                                            {
                                                 text.push_str(t);
                                                 text.push('\n');
                                             }
@@ -256,12 +292,16 @@ impl ClaudeSource {
                         }
                     } else if line_type == "system" {
                         if obj.get("subtype").and_then(|v| v.as_str()) == Some("compact_boundary") {
-                            let duration_ms = obj.get("compactMetadata")
+                            let duration_ms = obj
+                                .get("compactMetadata")
                                 .and_then(|v| v.as_object())
                                 .and_then(|m| m.get("durationMs"))
-                                .and_then(|d| d.as_i64() .or_else(|| d.as_str().and_then(|s| s.parse().ok())))
+                                .and_then(|d| {
+                                    d.as_i64()
+                                        .or_else(|| d.as_str().and_then(|s| s.parse().ok()))
+                                })
                                 .unwrap_or(0);
-                            
+
                             raw_turns.push(RawTurn {
                                 is_user: false,
                                 text: String::new(),
@@ -291,7 +331,7 @@ impl ClaudeSource {
                 let mut model_name: Option<String> = None;
                 let mut has_compaction = false;
                 let mut compaction_time_ms = 0;
-                
+
                 let mut next_idx = current_idx + 1;
                 let mut assistant_parts = Vec::new();
                 let mut last_timestamp = user_raw.timestamp;
@@ -313,14 +353,17 @@ impl ClaudeSource {
 
                 let assistant_text = assistant_parts.join("\n\n");
                 let compute_time_ms = (last_timestamp - user_raw.timestamp).max(0);
-                
+
                 let active_model = model_name.clone().unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), compute_time_ms.to_string());
                 extra_data.insert("model".to_string(), active_model.clone());
                 if has_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
-                    extra_data.insert("compactionTimeMs".to_string(), compaction_time_ms.to_string());
+                    extra_data.insert(
+                        "compactionTimeMs".to_string(),
+                        compaction_time_ms.to_string(),
+                    );
                 }
 
                 let input_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
@@ -339,13 +382,19 @@ impl ClaudeSource {
                 current_idx = next_idx;
             } else {
                 // Assistant only / orphan turn
-                let active_model = user_raw.model.clone().unwrap_or_else(|| "Unknown".to_string());
+                let active_model = user_raw
+                    .model
+                    .clone()
+                    .unwrap_or_else(|| "Unknown".to_string());
                 let mut extra_data = HashMap::new();
                 extra_data.insert("computeTimeMs".to_string(), "0".to_string());
                 extra_data.insert("model".to_string(), active_model.clone());
                 if user_raw.is_compaction {
                     extra_data.insert("isCompaction".to_string(), "true".to_string());
-                    extra_data.insert("compactionTimeMs".to_string(), user_raw.compaction_time_ms.to_string());
+                    extra_data.insert(
+                        "compactionTimeMs".to_string(),
+                        user_raw.compaction_time_ms.to_string(),
+                    );
                 }
 
                 let output_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
@@ -370,8 +419,14 @@ impl ClaudeSource {
             }
         }
 
-        let first_time = raw_turns.first().map(|t| t.timestamp).unwrap_or(last_modified);
-        let last_time = raw_turns.last().map(|t| t.timestamp).unwrap_or(last_modified);
+        let first_time = raw_turns
+            .first()
+            .map(|t| t.timestamp)
+            .unwrap_or(last_modified);
+        let last_time = raw_turns
+            .last()
+            .map(|t| t.timestamp)
+            .unwrap_or(last_modified);
 
         let clean_thread_name = if let Some(ref s) = slug {
             let home = crate::parsers::get_home_dir();
@@ -408,12 +463,19 @@ impl ClaudeSource {
             let formatted_slug_hyphen = s.to_lowercase();
             let raw_title_lower = raw_title.to_lowercase();
 
-            if raw_title_lower == formatted_slug_space || raw_title_lower == formatted_slug_hyphen || raw_title == "Claude Session" {
+            if raw_title_lower == formatted_slug_space
+                || raw_title_lower == formatted_slug_hyphen
+                || raw_title == "Claude Session"
+            {
                 "Claude Session".to_string()
             } else if raw_title_lower.ends_with(&formatted_slug_space) {
-                raw_title[..raw_title.len() - formatted_slug_space.len()].trim().to_string()
+                raw_title[..raw_title.len() - formatted_slug_space.len()]
+                    .trim()
+                    .to_string()
             } else if raw_title_lower.ends_with(&formatted_slug_hyphen) {
-                raw_title[..raw_title.len() - formatted_slug_hyphen.len()].trim().to_string()
+                raw_title[..raw_title.len() - formatted_slug_hyphen.len()]
+                    .trim()
+                    .to_string()
             } else {
                 raw_title
             }
@@ -453,5 +515,4 @@ impl ClaudeSource {
 
         Some(session)
     }
-
 }

@@ -83,15 +83,19 @@ impl Session {
             updated_at: self.updated_at,
             cwd: self.cwd.clone(),
             thread_name: self.thread_name.clone(),
-            turns: self.turns.iter().map(|t| Turn {
-                turn_id: t.turn_id.clone(),
-                user_message: String::new(),
-                assistant_message: String::new(),
-                timestamp: t.timestamp,
-                input_tokens: t.input_tokens,
-                output_tokens: t.output_tokens,
-                extra_data: t.extra_data.clone(),
-            }).collect(),
+            turns: self
+                .turns
+                .iter()
+                .map(|t| Turn {
+                    turn_id: t.turn_id.clone(),
+                    user_message: String::new(),
+                    assistant_message: String::new(),
+                    timestamp: t.timestamp,
+                    input_tokens: t.input_tokens,
+                    output_tokens: t.output_tokens,
+                    extra_data: t.extra_data.clone(),
+                })
+                .collect(),
             is_archived: self.is_archived,
             is_pinned: self.is_pinned,
             summary: None,
@@ -103,7 +107,12 @@ impl Session {
     }
 }
 
-pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn], _cwd: &Option<String>) -> Option<String> {
+pub fn resolve_session_status(
+    source_id: &str,
+    session_id: &str,
+    turns: &[Turn],
+    _cwd: &Option<String>,
+) -> Option<String> {
     if turns.is_empty() {
         return Some("discussion".to_string());
     }
@@ -114,7 +123,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
-    
+
     // Support both second-based and millisecond-based timestamps
     let mut last_timestamp = last_turn.timestamp;
     if last_timestamp < 20_000_000_000 {
@@ -122,10 +131,11 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
     }
 
     let age_ms = now - last_timestamp;
-    
+
     // Check if the last turn's assistant message is empty and the session is recent (10 minutes).
     // If it's empty and recent, it means it's currently running/executing.
-    let is_currently_running = last_turn.assistant_message.trim().is_empty() && age_ms >= 0 && age_ms < 600_000;
+    let is_currently_running =
+        last_turn.assistant_message.trim().is_empty() && age_ms >= 0 && age_ms < 600_000;
 
     if is_currently_running {
         return Some("executing".to_string());
@@ -134,7 +144,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
     if source_id == "antigravity" || source_id == "antigravity_ide" {
         let home = crate::parsers::get_home_dir();
         let brain_dir = home.join(format!(".gemini/antigravity/brain/{}", session_id));
-        
+
         // 1. Check for awaiting approval / pending plan
         let plan_metadata = brain_dir.join("implementation_plan.md.metadata.json");
         if plan_metadata.exists() && plan_metadata.is_file() {
@@ -146,7 +156,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
                 }
             }
         }
-        
+
         // 2. Check if task.md exists
         let task_file = brain_dir.join("task.md");
         if task_file.exists() && task_file.is_file() {
@@ -162,7 +172,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
                         has_any_tasks = true;
                     }
                 }
-                
+
                 if has_any_tasks {
                     if has_uncompleted_tasks {
                         return Some("executing".to_string());
@@ -172,7 +182,7 @@ pub fn resolve_session_status(source_id: &str, session_id: &str, turns: &[Turn],
                 }
             }
         }
-        
+
         // 3. Check walkthrough.md
         let walkthrough_file = brain_dir.join("walkthrough.md");
         if walkthrough_file.exists() && walkthrough_file.is_file() {
@@ -236,15 +246,34 @@ pub fn resolve_workspace_name(cwd: &Option<String>) -> Option<String> {
 
     if let Some(root) = git_root {
         if let Ok(rel) = path.strip_prefix(&root) {
-            let components: Vec<_> = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+            let components: Vec<_> = rel
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect();
             if !components.is_empty() {
                 let first = &components[0];
                 let standard_folders: std::collections::HashSet<&str> = [
-                    "src", "lib", "bin", "app", "tests", "docs", "config", 
-                    ".github", "target", "dist", "node_modules", "build", 
-                    "public", "assets", "functions", "src-tauri"
-                ].iter().cloned().collect();
-                
+                    "src",
+                    "lib",
+                    "bin",
+                    "app",
+                    "tests",
+                    "docs",
+                    "config",
+                    ".github",
+                    "target",
+                    "dist",
+                    "node_modules",
+                    "build",
+                    "public",
+                    "assets",
+                    "functions",
+                    "src-tauri",
+                ]
+                .iter()
+                .cloned()
+                .collect();
+
                 if !standard_folders.contains(first.as_str()) {
                     return Some(first.clone());
                 }
@@ -319,4 +348,3 @@ mod workspace_name_tests {
         assert_eq!(name.as_deref(), Some("folder"));
     }
 }
-

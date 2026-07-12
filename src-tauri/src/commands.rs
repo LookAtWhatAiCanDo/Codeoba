@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use crate::keyring;
 use crate::models::Session;
 use crate::parsers::get_sources_list;
-use crate::search::{SearchFilter, SearchResult, SearchIndexState};
+use crate::search::{SearchFilter, SearchIndexState, SearchResult};
 use serde::Serialize;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
@@ -74,19 +74,35 @@ pub struct AppErrorPayload {
 
 impl AppErrorPayload {
     pub fn new(code: u32) -> Self {
-        Self { code, status: None, message: None }
+        Self {
+            code,
+            status: None,
+            message: None,
+        }
     }
 
     pub fn with_status(code: u32, status: u16) -> Self {
-        Self { code, status: Some(status), message: None }
+        Self {
+            code,
+            status: Some(status),
+            message: None,
+        }
     }
 
     pub fn with_msg(code: u32, msg: impl Into<String>) -> Self {
-        Self { code, status: None, message: Some(msg.into()) }
+        Self {
+            code,
+            status: None,
+            message: Some(msg.into()),
+        }
     }
 
     pub fn with_all(code: u32, status: u16, msg: impl Into<String>) -> Self {
-        Self { code, status: Some(status), message: Some(msg.into()) }
+        Self {
+            code,
+            status: Some(status),
+            message: Some(msg.into()),
+        }
     }
 }
 
@@ -124,7 +140,9 @@ pub fn get_sources() -> Vec<SourceMetadata> {
 }
 
 #[tauri::command]
-pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<Vec<Session>, AppErrorPayload> {
+pub async fn get_all_sessions<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<Vec<Session>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
 
     // Copy the lightweight sessions out from under the read lock, then release it before doing
@@ -132,7 +150,10 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
     // reads plan/task files, per session — holding the read lock across that I/O would block the
     // rebuild writer (and every other reader) for the whole scan on every load.
     let mut all_sessions: Vec<Session> = {
-        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        let guard = state
+            .sessions
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         guard.values().map(|s| s.to_lightweight()).collect()
     };
 
@@ -141,12 +162,18 @@ pub async fn get_all_sessions<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
         if session.status.is_none() {
-            session.status = crate::models::resolve_session_status(&session.source_id, &session.id, &session.turns, &session.cwd);
+            session.status = crate::models::resolve_session_status(
+                &session.source_id,
+                &session.id,
+                &session.turns,
+                &session.cwd,
+            );
         }
     }
 
     // Clean orphaned sessions from groups
-    let all_valid_ids: std::collections::HashSet<String> = all_sessions.iter().map(|s| s.id.clone()).collect();
+    let all_valid_ids: std::collections::HashSet<String> =
+        all_sessions.iter().map(|s| s.id.clone()).collect();
     let state_groups = app_handle.state::<crate::groups::GroupState>();
     if let Ok(_lock) = state_groups.lock.lock() {
         let _ = crate::groups::clean_orphaned_sessions(&all_valid_ids);
@@ -164,12 +191,22 @@ pub async fn get_session<R: tauri::Runtime>(
     file_path: String,
 ) -> Result<Option<Session>, AppErrorPayload> {
     let start_time = std::time::Instant::now();
-    crate::log_info!("[IPC] get_session: Started for source_id='{}', file_path='{}'", source_id, file_path);
+    crate::log_info!(
+        "[IPC] get_session: Started for source_id='{}', file_path='{}'",
+        source_id,
+        file_path
+    );
 
     let state = app_handle.state::<SearchIndexState>();
     let in_memory_cached = {
-        let guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard.values().find(|s| s.source_id == source_id && s.file_path == file_path).cloned()
+        let guard = state
+            .sessions
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        guard
+            .values()
+            .find(|s| s.source_id == source_id && s.file_path == file_path)
+            .cloned()
     };
 
     if let Some(mut session) = in_memory_cached {
@@ -177,7 +214,12 @@ pub async fn get_session<R: tauri::Runtime>(
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
         if session.status.is_none() {
-            session.status = crate::models::resolve_session_status(&session.source_id, &session.id, &session.turns, &session.cwd);
+            session.status = crate::models::resolve_session_status(
+                &session.source_id,
+                &session.id,
+                &session.turns,
+                &session.cwd,
+            );
         }
         let elapsed = start_time.elapsed();
         crate::log_info!(
@@ -189,7 +231,9 @@ pub async fn get_session<R: tauri::Runtime>(
     }
 
     // Not found in in-memory SearchIndexState. Fall back to parsing the file (which uses CacheManager cache checks internally)
-    crate::log_info!("[IPC] get_session: Cache miss in SearchIndexState. Falling back to parsing file...");
+    crate::log_info!(
+        "[IPC] get_session: Cache miss in SearchIndexState. Falling back to parsing file..."
+    );
     let sources = get_sources_list();
     let source = sources.iter().find(|s| s.id() == source_id);
     match source {
@@ -205,7 +249,10 @@ pub async fn get_session<R: tauri::Runtime>(
                     );
                 }
                 None => {
-                    crate::log_info!("[IPC] get_session: Completed in {:?} (failed to parse file)", elapsed);
+                    crate::log_info!(
+                        "[IPC] get_session: Completed in {:?} (failed to parse file)",
+                        elapsed
+                    );
                 }
             }
             Ok(session_opt.map(|mut session| {
@@ -213,14 +260,23 @@ pub async fn get_session<R: tauri::Runtime>(
                     session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
                 }
                 if session.status.is_none() {
-                    session.status = crate::models::resolve_session_status(&session.source_id, &session.id, &session.turns, &session.cwd);
+                    session.status = crate::models::resolve_session_status(
+                        &session.source_id,
+                        &session.id,
+                        &session.turns,
+                        &session.cwd,
+                    );
                 }
                 session
             }))
         }
         None => {
             let elapsed = start_time.elapsed();
-            crate::log_error!("[IPC] get_session: Completed with error in {:?}: Source adapter '{}' not found", elapsed, source_id);
+            crate::log_error!(
+                "[IPC] get_session: Completed with error in {:?}: Source adapter '{}' not found",
+                elapsed,
+                source_id
+            );
             Err(AppErrorPayload::with_msg(ERR_SOURCE_NOT_FOUND, source_id))
         }
     }
@@ -273,9 +329,17 @@ pub async fn search_sessions<R: tauri::Runtime>(
 
     // First semantic search lazily builds the index, which needs the write lock — do it before
     // taking any read guard below.
-    if use_semantic && !state.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst) {
-        state.is_semantic_initialized.store(true, std::sync::atomic::Ordering::SeqCst);
-        state.rebuild(true, Some(app_handle.clone())).await
+    if use_semantic
+        && !state
+            .is_semantic_initialized
+            .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        state
+            .is_semantic_initialized
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        state
+            .rebuild(true, Some(app_handle.clone()))
+            .await
             .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))?;
     }
 
@@ -285,17 +349,25 @@ pub async fn search_sessions<R: tauri::Runtime>(
         if !model_path.exists() || !vocab_path.exists() {
             return Err(AppErrorPayload::new(ERR_ONNX_NOT_FOUND));
         }
-        let onnx_embedder = state.get_or_load_embedder(&model_path, &vocab_path)
+        let onnx_embedder = state
+            .get_or_load_embedder(&model_path, &vocab_path)
             .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e))?;
         // Embed the query before taking the read guards so the locks are held only for the scan.
-        let query_vector = onnx_embedder.get_embeddings(&query)
+        let query_vector = onnx_embedder
+            .get_embeddings(&query)
             .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDINGS_GENERATION, e.to_string()))?;
         let threshold = similarity_threshold.unwrap_or(0.35) as f32;
 
         // Search over the live index by reference — no full-corpus clone. Only matched sessions
         // are cloned inside semantic_search.
-        let sessions_guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        let embeddings_guard = state.embeddings.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        let sessions_guard = state
+            .sessions
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        let embeddings_guard = state
+            .embeddings
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         crate::search::semantic::semantic_search(
             sessions_guard.values(),
             &embeddings_guard,
@@ -304,7 +376,10 @@ pub async fn search_sessions<R: tauri::Runtime>(
             &filter,
         )
     } else {
-        let sessions_guard = state.sessions.read().map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        let sessions_guard = state
+            .sessions
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter)
     };
 
@@ -340,7 +415,9 @@ pub async fn rebuild_index<R: tauri::Runtime>(
             guard.clear();
         }
     }
-    state.rebuild(true, Some(app_handle.clone())).await
+    state
+        .rebuild(true, Some(app_handle.clone()))
+        .await
         .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))
 }
 
@@ -378,9 +455,15 @@ pub fn get_indexing_progress<R: tauri::Runtime>(
 pub fn is_updater_active<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> bool {
     let config = app_handle.config();
     if let Some(updater_config) = config.plugins.0.get("updater") {
-        let active = updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        let active = updater_config
+            .get("active")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         if active {
-            let pubkey = updater_config.get("pubkey").and_then(|v| v.as_str()).unwrap_or("");
+            let pubkey = updater_config
+                .get("pubkey")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let mut endpoints = Vec::new();
             if let Some(endpoints_val) = updater_config.get("endpoints") {
                 if let Some(arr) = endpoints_val.as_array() {
@@ -401,10 +484,15 @@ pub fn is_updater_active<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> 
 }
 
 #[tauri::command]
-pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Vec<String> {
+pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Vec<String> {
     let config = app_handle.config();
-    let current_version = config.version.clone().unwrap_or_else(|| "0.1.0".to_string());
-    
+    let current_version = config
+        .version
+        .clone()
+        .unwrap_or_else(|| "0.1.0".to_string());
+
     // Resolve target and arch
     let target = if cfg!(target_os = "windows") {
         "windows"
@@ -425,12 +513,13 @@ pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppH
     if let Some(updater_config) = config.plugins.0.get("updater") {
         if let Some(endpoints) = updater_config.get("endpoints") {
             if let Some(arr) = endpoints.as_array() {
-                return arr.iter()
+                return arr
+                    .iter()
                     .filter_map(|val| val.as_str())
                     .map(|s| {
                         s.replace("{{current_version}}", &current_version)
-                         .replace("{{target}}", target)
-                         .replace("{{arch}}", arch)
+                            .replace("{{target}}", target)
+                            .replace("{{arch}}", arch)
                     })
                     .collect();
             }
@@ -439,8 +528,8 @@ pub fn get_resolved_updater_endpoints<R: tauri::Runtime>(app_handle: tauri::AppH
     Vec::new()
 }
 
-use crate::parsers::resolver::{resolve_local_file_link, LocalFileResolution};
 use crate::parsers::permissions;
+use crate::parsers::resolver::{resolve_local_file_link, LocalFileResolution};
 
 /// Validates a candidate trusted root before it is allowed to suppress the confirmation prompt.
 ///
@@ -460,7 +549,10 @@ fn resolve_trusted_root(session_cwd: Option<&str>) -> Option<PathBuf> {
     }
 
     if canonical.parent().is_none() {
-        crate::log_warn!("Refusing filesystem root as a trusted root: {:?}", canonical);
+        crate::log_warn!(
+            "Refusing filesystem root as a trusted root: {:?}",
+            canonical
+        );
         return None;
     }
 
@@ -483,9 +575,8 @@ fn resolve_trusted_root(session_cwd: Option<&str>) -> Option<PathBuf> {
 /// `.exe` sitting in a checkout is still a `.exe` when the file is handed to the shell.
 const EXECUTABLE_EXTENSIONS: &[&str] = &[
     // Windows
-    "bat", "cmd", "com", "cpl", "exe", "hta", "js", "jse", "lnk", "msc", "msi", "msp", "pif",
-    "ps1", "reg", "scr", "vb", "vbe", "vbs", "wsf", "wsh",
-    // macOS
+    "bat", "cmd", "com", "cpl", "exe", "hta", "js", "jse", "lnk", "msc", "msi", "msp", "pif", "ps1",
+    "reg", "scr", "vb", "vbe", "vbs", "wsf", "wsh", // macOS
     "app", "command", "dmg", "pkg", "scpt", "scptd", "terminal", "workflow",
     // Unix
     "appimage", "bash", "csh", "desktop", "fish", "ksh", "out", "run", "sh", "zsh",
@@ -518,12 +609,18 @@ fn is_executable_target(path: &Path) -> bool {
 ///
 /// The `Confirmation required:` prefix is load-bearing: `FileViewerDialog` matches on it to
 /// decide whether to raise its prompt or surface a plain error.
-fn require_external_open_permission(path: PathBuf, reason: &str) -> Result<PathBuf, AppErrorPayload> {
+fn require_external_open_permission(
+    path: PathBuf,
+    reason: &str,
+) -> Result<PathBuf, AppErrorPayload> {
     let path_str = path.to_string_lossy().to_string();
     match permissions::check_permission(&path_str, "external_open").as_deref() {
         Some("allow") => Ok(path),
         Some("deny") => Err(AppErrorPayload::new(ERR_PERMISSION_DENIED)),
-        _ => Err(AppErrorPayload::with_msg(ERR_EXTERNAL_CONFIRMATION_REQUIRED, reason)),
+        _ => Err(AppErrorPayload::with_msg(
+            ERR_EXTERNAL_CONFIRMATION_REQUIRED,
+            reason,
+        )),
     }
 }
 
@@ -547,9 +644,7 @@ pub fn resolve_and_read_file(
     let resolution = resolve_local_file_link(&raw_path, base_dir, trusted_root.as_deref());
 
     match resolution {
-        LocalFileResolution::Allowed(path) => {
-            read_resolved_file(path)
-        }
+        LocalFileResolution::Allowed(path) => read_resolved_file(path),
         LocalFileResolution::ConfirmationRequired(path, reason) => {
             let path_str = path.to_string_lossy().to_string();
             match permissions::check_permission(&path_str, "preview") {
@@ -570,12 +665,14 @@ pub fn resolve_and_read_file(
 }
 
 fn read_resolved_file(path: std::path::PathBuf) -> Result<FileReadResponse, AppErrorPayload> {
-    let metadata = std::fs::metadata(&path).map_err(|e| AppErrorPayload::with_msg(ERR_METADATA_READ, e.to_string()))?;
+    let metadata = std::fs::metadata(&path)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_METADATA_READ, e.to_string()))?;
     if metadata.len() > 5_242_881 {
         return Err(AppErrorPayload::new(ERR_FILE_TOO_LARGE));
     }
-    let bytes = std::fs::read(&path).map_err(|e| AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, e.to_string()))?;
-    
+    let bytes = std::fs::read(&path)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, e.to_string()))?;
+
     // Check if the file contains null bytes (binary indicator)
     if bytes.contains(&0) {
         return Err(AppErrorPayload::new(ERR_BINARY_FILE_PREVIEW));
@@ -635,7 +732,9 @@ pub fn open_file_externally<R: tauri::Runtime>(
         LocalFileResolution::ConfirmationRequired(path, reason) => {
             require_external_open_permission(path, &reason)?
         }
-        LocalFileResolution::Rejected(reason) => return Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, reason)),
+        LocalFileResolution::Rejected(reason) => {
+            return Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, reason))
+        }
     };
 
     app.opener()
@@ -644,7 +743,9 @@ pub fn open_file_externally<R: tauri::Runtime>(
 }
 
 #[tauri::command]
-pub fn start_local_auth_server<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<u16, AppErrorPayload> {
+pub fn start_local_auth_server<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<u16, AppErrorPayload> {
     crate::premium::loopback::start_server(app_handle)
         .map_err(|e| AppErrorPayload::with_msg(ERR_AUTH_SERVER_START, e))
 }
@@ -666,17 +767,20 @@ pub fn save_source_decision<R: tauri::Runtime>(
     decision: String,
 ) -> Result<(), String> {
     crate::parsers::source_decisions::save_source_decision(&source_id, &decision);
-    
+
     let state = app_handle.state::<crate::watcher::WatcherState>();
     if let Ok(mut detected) = state.detected_sources.lock() {
         detected.remove(&source_id);
     }
-    
+
     // Restart/reconfigure the watcher based on the new decision
     if let Err(e) = crate::watcher::start_watcher(app_handle) {
-        crate::log_error!("Failed to restart watcher after source decision change: {}", e);
+        crate::log_error!(
+            "Failed to restart watcher after source decision change: {}",
+            e
+        );
     }
-    
+
     Ok(())
 }
 
@@ -688,52 +792,101 @@ pub fn reset_detected_sources<R: tauri::Runtime>(
     if let Ok(mut detected) = state.detected_sources.lock() {
         detected.clear();
     }
-    
+
     crate::watcher::check_and_restore_watched_paths(&app_handle);
-    
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_groups(state: tauri::State<'_, crate::groups::GroupState>) -> Result<Vec<crate::groups::ConversationGroup>, AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+pub fn get_groups(
+    state: tauri::State<'_, crate::groups::GroupState>,
+) -> Result<Vec<crate::groups::ConversationGroup>, AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     Ok(crate::groups::get_groups())
 }
 
 #[tauri::command]
-pub fn add_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<bool, AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+pub fn add_group(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    name: String,
+) -> Result<bool, AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     crate::groups::add_group(&name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn delete_group(state: tauri::State<'_, crate::groups::GroupState>, name: String) -> Result<(), AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+pub fn delete_group(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    name: String,
+) -> Result<(), AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     crate::groups::delete_group(&name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn rename_group(state: tauri::State<'_, crate::groups::GroupState>, old_name: String, new_name: String) -> Result<bool, AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
-    crate::groups::rename_group(&old_name, &new_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
+pub fn rename_group(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    old_name: String,
+    new_name: String,
+) -> Result<bool, AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::rename_group(&old_name, &new_name)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn assign_session_to_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
-    crate::groups::assign_session_to_group(&session_id, &group_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
+pub fn assign_session_to_group(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    session_id: String,
+    group_name: String,
+) -> Result<(), AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::assign_session_to_group(&session_id, &group_name)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn remove_session_from_group(state: tauri::State<'_, crate::groups::GroupState>, session_id: String, group_name: String) -> Result<(), AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
-    crate::groups::remove_session_from_group(&session_id, &group_name).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
+pub fn remove_session_from_group(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    session_id: String,
+    group_name: String,
+) -> Result<(), AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::remove_session_from_group(&session_id, &group_name)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
-pub fn set_group_pinned(state: tauri::State<'_, crate::groups::GroupState>, name: String, pinned: bool) -> Result<(), AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
-    crate::groups::set_group_pinned(&name, pinned).map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
+pub fn set_group_pinned(
+    state: tauri::State<'_, crate::groups::GroupState>,
+    name: String,
+    pinned: bool,
+) -> Result<(), AppErrorPayload> {
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    crate::groups::set_group_pinned(&name, pinned)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
 
 #[tauri::command]
@@ -745,7 +898,10 @@ pub fn update_group_details(
     past_work_summary: String,
     tasks: Vec<crate::groups::GroupTask>,
 ) -> Result<(), AppErrorPayload> {
-    let _lock = state.lock.lock().map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
+    let _lock = state
+        .lock
+        .lock()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_LOCK, e.to_string()))?;
     crate::groups::update_group_details(&name, &description, &status, &past_work_summary, tasks)
         .map_err(|e| AppErrorPayload::with_msg(ERR_GROUP_DB_ERROR, e))
 }
@@ -770,14 +926,19 @@ pub fn save_custom_theme_bg(mode: String, h: i32, s: i32, l: i32) {
     crate::keyring::save_custom_theme_bg(&mode, h, s, l);
 }
 
-
 #[tauri::command]
 pub fn get_backend_base_url<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> String {
     get_backend_base_url_internal(&app_handle)
 }
 
-pub(crate) fn get_backend_base_url_internal<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) -> String {
-    let url_opt = app_handle.config().plugins.0.get("updater")
+pub(crate) fn get_backend_base_url_internal<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+) -> String {
+    let url_opt = app_handle
+        .config()
+        .plugins
+        .0
+        .get("updater")
         .and_then(|u| u.get("endpoints"))
         .and_then(|e| e.as_array())
         .and_then(|a| a.first())
@@ -797,7 +958,10 @@ pub(crate) fn get_backend_base_url_internal<R: tauri::Runtime>(app_handle: &taur
 }
 
 #[tauri::command]
-pub fn save_language_setting<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>, lang: String) -> Result<(), String> {
+pub fn save_language_setting<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+    lang: String,
+) -> Result<(), String> {
     let mut config = crate::keyring::load_fallback_config();
     config.insert("language".to_string(), lang.clone());
     crate::keyring::save_fallback_config(&config);
@@ -812,7 +976,8 @@ pub fn save_language_setting<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>,
 #[tauri::command]
 pub fn get_language_override() -> Option<String> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter().position(|r| r == "--lang")
+    args.iter()
+        .position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
 }
 
@@ -848,7 +1013,10 @@ mod trusted_root_tests {
         assert!(resolve_trusted_root(Some("   ")).is_none());
 
         // Filesystem root.
-        assert!(resolve_trusted_root(Some("/")).is_none(), "filesystem root must be refused");
+        assert!(
+            resolve_trusted_root(Some("/")).is_none(),
+            "filesystem root must be refused"
+        );
 
         // The home directory itself, and an ancestor of it.
         assert!(
@@ -879,16 +1047,30 @@ mod trusted_root_tests {
     fn flags_launchable_files() {
         let temp = tempfile::tempdir().unwrap();
 
-        for name in ["setup.exe", "Payload.APP", "run.Sh", "installer.msi", "a.jar"] {
+        for name in [
+            "setup.exe",
+            "Payload.APP",
+            "run.Sh",
+            "installer.msi",
+            "a.jar",
+        ] {
             let p = temp.path().join(name);
             std::fs::write(&p, "x").unwrap();
-            assert!(is_executable_target(&p), "{} should be treated as launchable", name);
+            assert!(
+                is_executable_target(&p),
+                "{} should be treated as launchable",
+                name
+            );
         }
 
         for name in ["README.md", "notes.txt", "data.json", "image.png"] {
             let p = temp.path().join(name);
             std::fs::write(&p, "x").unwrap();
-            assert!(!is_executable_target(&p), "{} should not be launchable", name);
+            assert!(
+                !is_executable_target(&p),
+                "{} should not be launchable",
+                name
+            );
         }
     }
 
@@ -912,9 +1094,9 @@ mod trusted_root_tests {
 #[cfg(test)]
 mod get_all_sessions_tests {
     use super::*;
-    use tauri::Manager;
     use crate::groups::GroupState;
     use crate::models::Turn;
+    use tauri::Manager;
 
     fn codex_session(id: &str, updated_at: i64) -> Session {
         Session {
@@ -967,9 +1149,15 @@ mod get_all_sessions_tests {
         let result = tauri::async_runtime::block_on(get_all_sessions(handle.clone())).unwrap();
 
         // Newest first.
-        assert_eq!(result.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), vec!["b", "a"]);
+        assert_eq!(
+            result.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(),
+            vec!["b", "a"]
+        );
         // Status was resolved during the post-lock enrichment pass.
-        assert!(result.iter().all(|s| s.status.is_some()), "status should be enriched");
+        assert!(
+            result.iter().all(|s| s.status.is_some()),
+            "status should be enriched"
+        );
         // cwd is None, so workspace_name stays None.
         assert!(result.iter().all(|s| s.workspace_name.is_none()));
 

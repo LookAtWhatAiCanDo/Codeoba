@@ -1,14 +1,14 @@
 use crate::models::Session;
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::OnceLock;
-use aes_gcm::{
-    aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce,
-};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -73,8 +73,8 @@ impl SessionCacheManager {
             return false;
         }
         let temp = std::env::temp_dir().to_string_lossy().to_string();
-        path_str.starts_with(&temp) 
-            || path_str.starts_with("/var/folders/") 
+        path_str.starts_with(&temp)
+            || path_str.starts_with("/var/folders/")
             || path_str.starts_with("/tmp/")
             || path_str.contains("/T/.tmp")
     }
@@ -105,7 +105,8 @@ impl SessionCacheManager {
     }
 
     fn get_cache_file(&self, source_id: &str) -> PathBuf {
-        self.get_cache_dir().join(format!("cache_{}.json", source_id))
+        self.get_cache_dir()
+            .join(format!("cache_{}.json", source_id))
     }
 
     pub fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
@@ -132,7 +133,11 @@ impl SessionCacheManager {
                     .into_iter()
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
-                crate::log_debug!("[load_cache] Loaded unencrypted cache for '{}' in {:?}", source_id, _start.elapsed());
+                crate::log_debug!(
+                    "[load_cache] Loaded unencrypted cache for '{}' in {:?}",
+                    source_id,
+                    _start.elapsed()
+                );
                 return res;
             }
         }
@@ -161,12 +166,19 @@ impl SessionCacheManager {
                                 .into_iter()
                                 .map(|e| (e.file_path.clone(), e))
                                 .collect();
-                            crate::log_debug!("[load_cache] Loaded plaintext fallback cache for '{}' in {:?}", source_id, _start.elapsed());
+                            crate::log_debug!(
+                                "[load_cache] Loaded plaintext fallback cache for '{}' in {:?}",
+                                source_id,
+                                _start.elapsed()
+                            );
                             return res;
                         }
                     }
                 }
-                crate::log_warn!("Warning: Failed to decrypt session cache for '{}'. Discarding cache.", source_id);
+                crate::log_warn!(
+                    "Warning: Failed to decrypt session cache for '{}'. Discarding cache.",
+                    source_id
+                );
                 return HashMap::new();
             }
         };
@@ -178,7 +190,11 @@ impl SessionCacheManager {
                     .into_iter()
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
-                crate::log_debug!("[load_cache] Decrypted and parsed cache for '{}' in {:?}", source_id, _start.elapsed());
+                crate::log_debug!(
+                    "[load_cache] Decrypted and parsed cache for '{}' in {:?}",
+                    source_id,
+                    _start.elapsed()
+                );
                 return res;
             } else {
                 crate::log_error!("Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.", source_id, CURRENT_CACHE_VERSION, source_cache.version);
@@ -399,7 +415,12 @@ impl SessionCacheManager {
         } else {
             0
         };
-        crate::log_debug!("[cache] Source '{}': {} hits, {} misses", source_id, _hits, _misses);
+        crate::log_debug!(
+            "[cache] Source '{}': {} hits, {} misses",
+            source_id,
+            _hits,
+            _misses
+        );
 
         if let Ok(mut guard) = self.hit_counter.lock() {
             guard.insert(source_id.to_string(), 0);
@@ -416,7 +437,10 @@ impl SessionCacheManager {
             seen_guard.remove(source_id);
         }
 
-        entries_to_save.into_iter().map(|entry| entry.session).collect()
+        entries_to_save
+            .into_iter()
+            .map(|entry| entry.session)
+            .collect()
     }
 }
 

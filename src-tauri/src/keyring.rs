@@ -1,8 +1,8 @@
+use keyring::Entry;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
-use keyring::Entry;
 
 const SERVICE_NAME: &str = "Codeoba";
 
@@ -48,7 +48,7 @@ pub fn is_keyring_disabled() -> bool {
             return true;
         }
     }
-    
+
     // 3. Check local fallback config (always plaintext, never keyring)
     let path = get_fallback_file_path();
     if path.exists() {
@@ -56,7 +56,11 @@ pub fn is_keyring_disabled() -> bool {
             let mut content = String::new();
             if file.read_to_string(&mut content).is_ok() {
                 if let Ok(map) = serde_json::from_str::<HashMap<String, String>>(&content) {
-                    if map.get("disable_keyring").map(|v| v == "true").unwrap_or(false) {
+                    if map
+                        .get("disable_keyring")
+                        .map(|v| v == "true")
+                        .unwrap_or(false)
+                    {
                         return true;
                     }
                 }
@@ -64,8 +68,10 @@ pub fn is_keyring_disabled() -> bool {
         }
     }
 
-    let is_dev_mode = cfg!(debug_assertions) || 
-        std::env::var("CODEOBA_APP_SIGNATURE_HASH").unwrap_or_else(|_| "DEVELOPMENT_ONLY".to_string()) == "DEVELOPMENT_ONLY";
+    let is_dev_mode = cfg!(debug_assertions)
+        || std::env::var("CODEOBA_APP_SIGNATURE_HASH")
+            .unwrap_or_else(|_| "DEVELOPMENT_ONLY".to_string())
+            == "DEVELOPMENT_ONLY";
 
     if is_dev_mode {
         // In development mode, keyring is disabled by default to prevent repeated keyring prompts on unsigned builds
@@ -245,7 +251,10 @@ pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
 
 pub fn get_index_subagents_setting() -> bool {
     let config = load_fallback_config();
-    config.get("index_subagents").map(|val| val == "true").unwrap_or(true)
+    config
+        .get("index_subagents")
+        .map(|val| val == "true")
+        .unwrap_or(true)
 }
 
 pub fn save_index_subagents_setting(enabled: bool) {
@@ -253,4 +262,3 @@ pub fn save_index_subagents_setting(enabled: bool) {
     config.insert("index_subagents".to_string(), enabled.to_string());
     save_fallback_config(&config);
 }
-

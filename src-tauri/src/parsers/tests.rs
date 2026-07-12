@@ -1,8 +1,8 @@
-use crate::parsers::claude::ClaudeSource;
-use crate::parsers::cursor::CursorSource;
 use crate::parsers::antigravity::AntigravitySource;
-use crate::parsers::copilot::CopilotSource;
+use crate::parsers::claude::ClaudeSource;
 use crate::parsers::codex::CodexSource;
+use crate::parsers::copilot::CopilotSource;
+use crate::parsers::cursor::CursorSource;
 use crate::parsers::SourceAdapter;
 use rusqlite::Connection;
 use std::fs;
@@ -81,7 +81,9 @@ fn temp_parse_assistant_message(message: &str) -> Vec<TempMessagePart> {
         let header_end_idx = match message[start_idx..].find("]]]") {
             Some(idx) => start_idx + idx,
             None => {
-                parts.push(TempMessagePart::Text(temp_unescape_tool_tags(&message[start_idx..])));
+                parts.push(TempMessagePart::Text(temp_unescape_tool_tags(
+                    &message[start_idx..],
+                )));
                 break;
             }
         };
@@ -90,7 +92,10 @@ fn temp_parse_assistant_message(message: &str) -> Vec<TempMessagePart> {
         let parts_of_header: Vec<&str> = header_content.split('|').collect();
         let tool_type = parts_of_header.first().copied().unwrap_or("");
         let header = parts_of_header.get(1).copied().unwrap_or("");
-        let timestamp = parts_of_header.get(2).and_then(|t| t.parse::<i64>().ok()).unwrap_or(0);
+        let timestamp = parts_of_header
+            .get(2)
+            .and_then(|t| t.parse::<i64>().ok())
+            .unwrap_or(0);
 
         let mut end_idx = None;
         let mut search_from = header_end_idx + 3;
@@ -252,8 +257,20 @@ fn test_claude_compaction_parsing() {
         assert_eq!(session.turns.len(), 1);
         assert_eq!(session.turns[0].user_message, "Hello Claude");
         assert_eq!(session.turns[0].assistant_message, "Hello User");
-        assert_eq!(session.turns[0].extra_data.get("isCompaction").map(|s| s.as_str()), Some("true"));
-        assert_eq!(session.turns[0].extra_data.get("compactionTimeMs").map(|s| s.as_str()), Some("5000"));
+        assert_eq!(
+            session.turns[0]
+                .extra_data
+                .get("isCompaction")
+                .map(|s| s.as_str()),
+            Some("true")
+        );
+        assert_eq!(
+            session.turns[0]
+                .extra_data
+                .get("compactionTimeMs")
+                .map(|s| s.as_str()),
+            Some("5000")
+        );
     });
 }
 
@@ -279,15 +296,38 @@ fn test_antigravity_source_parsing() {
         assert_eq!(session.turns.len(), 2);
         assert_eq!(session.turns[0].user_message, "Hello Antigravity");
         assert_eq!(session.turns[0].assistant_message, "Hello back");
-        assert_eq!(session.turns[0].extra_data.get("model").map(|s| s.as_str()), Some("Unknown"));
-        assert_eq!(session.turns[0].extra_data.get("computeTimeMs").map(|s| s.as_str()), Some("60000"));
+        assert_eq!(
+            session.turns[0].extra_data.get("model").map(|s| s.as_str()),
+            Some("Unknown")
+        );
+        assert_eq!(
+            session.turns[0]
+                .extra_data
+                .get("computeTimeMs")
+                .map(|s| s.as_str()),
+            Some("60000")
+        );
 
         assert_eq!(session.turns[1].user_message, "Another query");
         assert!(session.turns[1].assistant_message.contains("Sure"));
-        assert!(session.turns[1].assistant_message.contains("[[[TOOL:RUN_COMMAND|⚡ Run Command: ls -la"));
-        assert_eq!(session.turns[1].extra_data.get("model").map(|s| s.as_str()), Some("Claude Sonnet 4.6 (Thinking)"));
-        assert_eq!(session.turns[1].extra_data.get("computeTimeMs").map(|s| s.as_str()), Some("120000"));
-        assert_eq!(session.cwd, Some("/Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba2".to_string()));
+        assert!(session.turns[1]
+            .assistant_message
+            .contains("[[[TOOL:RUN_COMMAND|⚡ Run Command: ls -la"));
+        assert_eq!(
+            session.turns[1].extra_data.get("model").map(|s| s.as_str()),
+            Some("Claude Sonnet 4.6 (Thinking)")
+        );
+        assert_eq!(
+            session.turns[1]
+                .extra_data
+                .get("computeTimeMs")
+                .map(|s| s.as_str()),
+            Some("120000")
+        );
+        assert_eq!(
+            session.cwd,
+            Some("/Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba2".to_string())
+        );
     });
 }
 
@@ -311,10 +351,18 @@ fn test_antigravity_system_and_error_parsing() {
 
         assert_eq!(session.turns.len(), 1);
         assert_eq!(session.turns[0].user_message, "Start");
-        assert!(session.turns[0].assistant_message.contains("[[[TOOL:SYSTEM_MESSAGE|⚙️ System Message"));
-        assert!(session.turns[0].assistant_message.contains("Compilation complete"));
-        assert!(session.turns[0].assistant_message.contains("[[[TOOL:ERROR_MESSAGE|❌ Error"));
-        assert!(session.turns[0].assistant_message.contains("Command failed with status 1"));
+        assert!(session.turns[0]
+            .assistant_message
+            .contains("[[[TOOL:SYSTEM_MESSAGE|⚙️ System Message"));
+        assert!(session.turns[0]
+            .assistant_message
+            .contains("Compilation complete"));
+        assert!(session.turns[0]
+            .assistant_message
+            .contains("[[[TOOL:ERROR_MESSAGE|❌ Error"));
+        assert!(session.turns[0]
+            .assistant_message
+            .contains("Command failed with status 1"));
         assert!(session.turns[0].assistant_message.contains("Done"));
     });
 }
@@ -322,7 +370,11 @@ fn test_antigravity_system_and_error_parsing() {
 #[test]
 fn test_codex_source_parsing() {
     tauri::async_runtime::block_on(async {
-        let temp_file = tempfile::Builder::new().prefix("rollout-").suffix(".jsonl").tempfile().unwrap();
+        let temp_file = tempfile::Builder::new()
+            .prefix("rollout-")
+            .suffix(".jsonl")
+            .tempfile()
+            .unwrap();
         let temp_path = temp_file.path().to_string_lossy().to_string();
 
         fs::write(
@@ -361,7 +413,8 @@ repository: LookAtWhatAiCanDo/Codeoba
 created_at: 2026-06-10T14:10:14.691Z
 updated_at: 2026-06-10T21:10:21.486Z
 "#,
-        ).unwrap();
+        )
+        .unwrap();
 
         fs::write(
             &events_jsonl,
@@ -373,7 +426,10 @@ updated_at: 2026-06-10T21:10:21.486Z
         ).unwrap();
 
         let source = CopilotSource::new();
-        let session = source.parse_session(&events_jsonl.to_string_lossy()).await.unwrap();
+        let session = source
+            .parse_session(&events_jsonl.to_string_lossy())
+            .await
+            .unwrap();
 
         assert_eq!(session.id, "copilot-session-123");
         assert_eq!(session.cwd, Some("/path/to/project".to_string()));
@@ -389,7 +445,10 @@ updated_at: 2026-06-10T21:10:21.486Z
         assert!(assistant_text.contains("[[[TOOL:RUN_COMMAND|⚡ Run Command: ls -la"));
         assert!(assistant_text.contains("Reviewing codebase"));
 
-        assert_eq!(session.turns[0].extra_data.get("model").map(|s| s.as_str()), Some("gpt-4o"));
+        assert_eq!(
+            session.turns[0].extra_data.get("model").map(|s| s.as_str()),
+            Some("gpt-4o")
+        );
     });
 }
 
@@ -414,7 +473,8 @@ fn test_antigravity_protobuf_wire_format_title_resolution() {
             let source = AntigravitySource::default();
             let title = source.get_session_title("session-12345");
             assert_eq!(title, "Exploring Quantum Physics");
-        }).await;
+        })
+        .await;
     });
 }
 
@@ -486,10 +546,16 @@ fn test_codex_archived_parsing() {
 
         let source = CodexSource::new();
 
-        let active_session = source.parse_session(&active_file.to_string_lossy()).await.unwrap();
+        let active_session = source
+            .parse_session(&active_file.to_string_lossy())
+            .await
+            .unwrap();
         assert_eq!(active_session.is_archived, false);
 
-        let archived_session = source.parse_session(&archived_file.to_string_lossy()).await.unwrap();
+        let archived_session = source
+            .parse_session(&archived_file.to_string_lossy())
+            .await
+            .unwrap();
         assert_eq!(archived_session.is_archived, true);
     });
 }
@@ -516,11 +582,11 @@ fn test_antigravity_tool_tags_edge_cases() {
 
         let assistant_text = &session.turns[0].assistant_message;
         assert!(assistant_text.contains("I will search for `\\[\\[\\[TOOL:` now."));
-        assert!(assistant_text.contains("[[[TOOL:GREP_SEARCH|🔍 Search: Query: \\[\\[\\[TOOL:|1779242520000]]]"));
+        assert!(assistant_text
+            .contains("[[[TOOL:GREP_SEARCH|🔍 Search: Query: \\[\\[\\[TOOL:|1779242520000]]]"));
         assert!(assistant_text.contains("Found: return \"\\[\\[\\[TOOL:\""));
     });
 }
-
 
 #[test]
 fn test_cursor_windows_path_stripping() {
@@ -536,7 +602,10 @@ fn test_cursor_windows_path_stripping() {
         } else {
             input.to_string()
         };
-        if folder_path.starts_with('/') && folder_path.len() > 2 && folder_path.as_bytes()[2] == b':' {
+        if folder_path.starts_with('/')
+            && folder_path.len() > 2
+            && folder_path.as_bytes()[2] == b':'
+        {
             folder_path = folder_path[1..].to_string();
         }
         assert_eq!(folder_path, expected);
@@ -553,13 +622,15 @@ fn test_cursor_sqlite_parsing() {
         conn.execute(
             "CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
             [],
-        ).unwrap();
+        )
+        .unwrap();
 
         let value_str = r#"{"name":"Feature development","createdAt":1779242400000,"lastUpdatedAt":1779242460000,"conversation":[{"type":1,"text":"Create login screen","model":"gpt-4o"},{"type":2,"text":"Okay, creating..."}]}"#;
         conn.execute(
             "INSERT INTO cursorDiskKV (key, value) VALUES ('composerData:session123', ?1);",
             [value_str],
-        ).unwrap();
+        )
+        .unwrap();
 
         let ws_dir = temp_dir.path().join("workspaceStorage");
         let ws_sub_dir = ws_dir.join("workspace-abc");
@@ -570,10 +641,12 @@ fn test_cursor_sqlite_parsing() {
 
         let ws_db = ws_sub_dir.join("state.vscdb");
         let ws_conn = Connection::open(&ws_db).unwrap();
-        ws_conn.execute(
-            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
-            [],
-        ).unwrap();
+        ws_conn
+            .execute(
+                "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
+                [],
+            )
+            .unwrap();
         ws_conn.execute(
             "INSERT INTO ItemTable (key, value) VALUES ('composer.composerData', '{\"allComposers\": [{\"composerId\": \"session123\"}]}');",
             [],
@@ -585,7 +658,7 @@ fn test_cursor_sqlite_parsing() {
                 let win_cursor_dir = mock_home.join("AppData/Roaming/Cursor/User");
                 fs::create_dir_all(win_cursor_dir.join("globalStorage")).unwrap();
                 fs::copy(&db_path, win_cursor_dir.join("globalStorage/state.vscdb")).unwrap();
-                
+
                 let ws_target_dir = win_cursor_dir.join("workspaceStorage");
                 fs::create_dir_all(ws_target_dir.join("workspace-abc")).unwrap();
                 fs::copy(&ws_json, ws_target_dir.join("workspace-abc/workspace.json")).unwrap();
@@ -593,7 +666,7 @@ fn test_cursor_sqlite_parsing() {
             } else {
                 fs::create_dir_all(cursor_dir.join("globalStorage")).unwrap();
                 fs::copy(&db_path, cursor_dir.join("globalStorage/state.vscdb")).unwrap();
-                
+
                 let ws_target_dir = cursor_dir.join("workspaceStorage");
                 fs::create_dir_all(ws_target_dir.join("workspace-abc")).unwrap();
                 fs::copy(&ws_json, ws_target_dir.join("workspace-abc/workspace.json")).unwrap();
@@ -610,7 +683,8 @@ fn test_cursor_sqlite_parsing() {
             assert_eq!(s.turns.len(), 1);
             assert_eq!(s.turns[0].user_message, "Create login screen");
             assert_eq!(s.turns[0].assistant_message, "Okay, creating...");
-        }).await;
+        })
+        .await;
     });
 }
 
@@ -619,20 +693,31 @@ fn test_antigravity_tool_tags_edge_cases_parser() {
     let text1 = "Preceding text [[[TOOL:GREP_SEARCH|Search|123]]] Tool content without closing tag.\nSubsequent dialogue text.";
     let parts1 = temp_parse_assistant_message(text1);
     assert_eq!(parts1.len(), 3);
-    assert_eq!(parts1[0], TempMessagePart::Text("Preceding text ".to_string()));
+    assert_eq!(
+        parts1[0],
+        TempMessagePart::Text("Preceding text ".to_string())
+    );
     assert_eq!(parts1[1], TempMessagePart::Text("[[[TOOL:".to_string()));
     assert_eq!(parts1[2], TempMessagePart::Text("GREP_SEARCH|Search|123]]] Tool content without closing tag.\nSubsequent dialogue text.".to_string()));
 
     let text2 = "This is an escaped tag: \\[\\[\\[TOOL:GREP_SEARCH]]], and an unescaped tag: [[[TOOL:VIEW_FILE|View|456]]]\nContent\n[[[/TOOL]]]";
     let parts2 = temp_parse_assistant_message(text2);
     assert_eq!(parts2.len(), 2);
-    assert_eq!(parts2[0], TempMessagePart::Text("This is an escaped tag: [[[TOOL:GREP_SEARCH]]], and an unescaped tag: ".to_string()));
-    assert_eq!(parts2[1], TempMessagePart::Tool {
-        tool_type: "VIEW_FILE".to_string(),
-        header: "View".to_string(),
-        content: "\nContent\n".to_string(),
-        timestamp: 456,
-    });
+    assert_eq!(
+        parts2[0],
+        TempMessagePart::Text(
+            "This is an escaped tag: [[[TOOL:GREP_SEARCH]]], and an unescaped tag: ".to_string()
+        )
+    );
+    assert_eq!(
+        parts2[1],
+        TempMessagePart::Tool {
+            tool_type: "VIEW_FILE".to_string(),
+            header: "View".to_string(),
+            content: "\nContent\n".to_string(),
+            timestamp: 456,
+        }
+    );
 }
 
 #[test]
@@ -650,7 +735,7 @@ fn test_mock_subprocess_agent_run() {
         log_file.to_string_lossy(),
         log_file.to_string_lossy()
     );
-    
+
     fs::write(&script_file, script_content).unwrap();
 
     // Make the script executable on Unix
@@ -668,7 +753,7 @@ fn test_mock_subprocess_agent_run() {
         .expect("Failed to execute mock agent");
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
-    
+
     // Parse stdout for token metrics
     let mut reported_prompt_tokens = 0;
     let mut reported_completion_tokens = 0;
@@ -677,9 +762,21 @@ fn test_mock_subprocess_agent_run() {
             let parts: Vec<&str> = line.split(',').collect();
             for part in parts {
                 if part.contains("Prompt tokens:") {
-                    reported_prompt_tokens = part.split(':').nth(1).unwrap().trim().parse::<i64>().unwrap_or(0);
+                    reported_prompt_tokens = part
+                        .split(':')
+                        .nth(1)
+                        .unwrap()
+                        .trim()
+                        .parse::<i64>()
+                        .unwrap_or(0);
                 } else if part.contains("Completion tokens:") {
-                    reported_completion_tokens = part.split(':').nth(1).unwrap().trim().parse::<i64>().unwrap_or(0);
+                    reported_completion_tokens = part
+                        .split(':')
+                        .nth(1)
+                        .unwrap()
+                        .trim()
+                        .parse::<i64>()
+                        .unwrap_or(0);
                 }
             }
         }
@@ -692,7 +789,8 @@ fn test_mock_subprocess_agent_run() {
     let source = ClaudeSource;
     let session = tauri::async_runtime::block_on(async {
         source.parse_session(&log_file.to_string_lossy()).await
-    }).unwrap();
+    })
+    .unwrap();
 
     assert_eq!(session.turns.len(), 1);
     assert_eq!(session.turns[0].user_message, "Hello");
@@ -798,7 +896,12 @@ fn test_hash_semantic_embedder() {
     let sim_disjoint = cosine_similarity(&emb1, &emb3);
 
     println!("simSimilar: {}, simDisjoint: {}", sim_similar, sim_disjoint);
-    assert!(sim_similar > sim_disjoint, "Similar similarity ({}) should be greater than disjoint similarity ({})", sim_similar, sim_disjoint);
+    assert!(
+        sim_similar > sim_disjoint,
+        "Similar similarity ({}) should be greater than disjoint similarity ({})",
+        sim_similar,
+        sim_disjoint
+    );
 }
 
 #[test]
@@ -815,21 +918,33 @@ fn test_word_piece_tokenizer() {
     writeln!(temp_vocab, "project").unwrap();
     writeln!(temp_vocab, "##s").unwrap();
     writeln!(temp_vocab, "kotlin").unwrap();
-    
+
     let tokenizer = crate::search::tokenizer::WordPieceTokenizer::new(temp_vocab.path()).unwrap();
     let tokenized = tokenizer.tokenize_to_ids("how to build projects", 8);
 
     let ids = tokenized.input_ids;
     assert!(!ids.is_empty(), "Token IDs should not be empty");
     assert_eq!(ids[0], 2, "First token should be [CLS]");
-    assert_eq!(tokenized.attention_mask[0], 1, "Attention mask for CLS should be 1");
-    assert_eq!(tokenized.attention_mask[6], 1, "Attention mask for SEP should be 1");
-    assert_eq!(tokenized.attention_mask[7], 0, "Attention mask for padding should be 0");
+    assert_eq!(
+        tokenized.attention_mask[0], 1,
+        "Attention mask for CLS should be 1"
+    );
+    assert_eq!(
+        tokenized.attention_mask[6], 1,
+        "Attention mask for SEP should be 1"
+    );
+    assert_eq!(
+        tokenized.attention_mask[7], 0,
+        "Attention mask for padding should be 0"
+    );
 
     // Test long word to avoid hang
     let long_word = "a".repeat(1000);
     let tokenized_long = tokenizer.tokenize_to_ids(&long_word, 8);
-    assert_eq!(tokenized_long.input_ids[1], 1, "Long word should resolve to [UNK] (id 1)");
+    assert_eq!(
+        tokenized_long.input_ids[1], 1,
+        "Long word should resolve to [UNK] (id 1)"
+    );
 }
 
 #[test]
@@ -837,7 +952,8 @@ fn test_onnx_semantic_embedder() {
     let (model_path, vocab_path) = crate::search::resolve_model_paths(None::<&tauri::AppHandle>);
 
     if model_path.exists() && vocab_path.exists() {
-        let embedder = crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).unwrap();
+        let embedder =
+            crate::search::semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).unwrap();
         let text1 = "how to build a project with kotlin";
         let text2 = "how do I build kotlin projects";
         let text3 = "apples grow on trees in the autumn";
@@ -852,7 +968,11 @@ fn test_onnx_semantic_embedder() {
         for v in &emb1 {
             sum1 += v * v;
         }
-        assert!((sum1 - 1.0f32).abs() < 1e-3, "Vector should be unit normalized, but got magnitude {}", sum1);
+        assert!(
+            (sum1 - 1.0f32).abs() < 1e-3,
+            "Vector should be unit normalized, but got magnitude {}",
+            sum1
+        );
 
         fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
             if a.len() != b.len() || a.is_empty() {
@@ -874,9 +994,17 @@ fn test_onnx_semantic_embedder() {
 
         let sim_similar = cosine_similarity(&emb1, &emb2);
         let sim_disjoint = cosine_similarity(&emb1, &emb3);
-        println!("ONNX Semantic Similarities: sim(1,2) = {}, sim(1,3) = {}", sim_similar, sim_disjoint);
+        println!(
+            "ONNX Semantic Similarities: sim(1,2) = {}, sim(1,3) = {}",
+            sim_similar, sim_disjoint
+        );
 
-        assert!(sim_similar > sim_disjoint, "Similar similarity ({}) should be greater than disjoint similarity ({})", sim_similar, sim_disjoint);
+        assert!(
+            sim_similar > sim_disjoint,
+            "Similar similarity ({}) should be greater than disjoint similarity ({})",
+            sim_similar,
+            sim_disjoint
+        );
     } else {
         println!("Skipping test_onnx_semantic_embedder: model not downloaded.");
     }
@@ -892,17 +1020,15 @@ fn test_lexical_search_engine_filters() {
         updated_at: 1000,
         cwd: Some("/workspace".to_string()),
         thread_name: Some("Active Session".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "1".to_string(),
-                user_message: "user message".to_string(),
-                assistant_message: "assistant response".to_string(),
-                timestamp: 1000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "1".to_string(),
+            user_message: "user message".to_string(),
+            assistant_message: "assistant response".to_string(),
+            timestamp: 1000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: false,
         is_pinned: false,
         summary: None,
@@ -920,17 +1046,15 @@ fn test_lexical_search_engine_filters() {
         updated_at: 2000,
         cwd: Some("/workspace".to_string()),
         thread_name: Some("Archived Session".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "2".to_string(),
-                user_message: "user message".to_string(),
-                assistant_message: "assistant response".to_string(),
-                timestamp: 2000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "2".to_string(),
+            user_message: "user message".to_string(),
+            assistant_message: "assistant response".to_string(),
+            timestamp: 2000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: true,
         is_pinned: false,
         summary: None,
@@ -951,14 +1075,16 @@ fn test_lexical_search_engine_filters() {
     // 2. ACTIVE filter returns only active
     let mut filter_active = crate::search::SearchFilter::default();
     filter_active.archival_filter = crate::search::ArchivalFilter::Active;
-    let active_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_active);
+    let active_results =
+        crate::search::lexical::lexical_search(&sessions, "message", &filter_active);
     assert_eq!(active_results.len(), 1);
     assert_eq!(active_results[0].session.id, "session-active");
 
     // 3. ARCHIVED filter returns only archived
     let mut filter_archived = crate::search::SearchFilter::default();
     filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
-    let archived_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_archived);
+    let archived_results =
+        crate::search::lexical::lexical_search(&sessions, "message", &filter_archived);
     assert_eq!(archived_results.len(), 1);
     assert_eq!(archived_results[0].session.id, "session-archived");
 }
@@ -973,17 +1099,15 @@ fn test_semantic_search_engine_filters() {
         updated_at: 1000,
         cwd: Some("/workspace".to_string()),
         thread_name: Some("Active Session".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "1".to_string(),
-                user_message: "user message".to_string(),
-                assistant_message: "assistant response".to_string(),
-                timestamp: 1000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "1".to_string(),
+            user_message: "user message".to_string(),
+            assistant_message: "assistant response".to_string(),
+            timestamp: 1000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: false,
         is_pinned: false,
         summary: None,
@@ -1001,17 +1125,15 @@ fn test_semantic_search_engine_filters() {
         updated_at: 2000,
         cwd: Some("/workspace".to_string()),
         thread_name: Some("Archived Session".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "2".to_string(),
-                user_message: "user message".to_string(),
-                assistant_message: "assistant response".to_string(),
-                timestamp: 2000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "2".to_string(),
+            user_message: "user message".to_string(),
+            assistant_message: "assistant response".to_string(),
+            timestamp: 2000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: true,
         is_pinned: false,
         summary: None,
@@ -1047,20 +1169,38 @@ fn test_semantic_search_engine_filters() {
     // 1. ALL filter returns both
     let mut filter_all = crate::search::SearchFilter::default();
     filter_all.archival_filter = crate::search::ArchivalFilter::All;
-    let all_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_all);
+    let all_results = crate::search::semantic::semantic_search(
+        &sessions,
+        &embeddings,
+        &query_vector,
+        0.1,
+        &filter_all,
+    );
     assert_eq!(all_results.len(), 2);
 
     // 2. ACTIVE filter returns only active
     let mut filter_active = crate::search::SearchFilter::default();
     filter_active.archival_filter = crate::search::ArchivalFilter::Active;
-    let active_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_active);
+    let active_results = crate::search::semantic::semantic_search(
+        &sessions,
+        &embeddings,
+        &query_vector,
+        0.1,
+        &filter_active,
+    );
     assert_eq!(active_results.len(), 1);
     assert_eq!(active_results[0].session.id, "session-active");
 
     // 3. ARCHIVED filter returns only archived
     let mut filter_archived = crate::search::SearchFilter::default();
     filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
-    let archived_results = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vector, 0.1, &filter_archived);
+    let archived_results = crate::search::semantic::semantic_search(
+        &sessions,
+        &embeddings,
+        &query_vector,
+        0.1,
+        &filter_archived,
+    );
     assert_eq!(archived_results.len(), 1);
     assert_eq!(archived_results[0].session.id, "session-archived");
 }
@@ -1098,7 +1238,8 @@ fn create_mock_cursor_logs(mock_home: &std::path::Path) {
     conn.execute(
         "CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT);",
         [],
-    ).unwrap();
+    )
+    .unwrap();
 
     let session_val_1 = r#"{
         "name": "Cursor Demo Session 1",
@@ -1112,7 +1253,8 @@ fn create_mock_cursor_logs(mock_home: &std::path::Path) {
     conn.execute(
         "INSERT INTO cursorDiskKV (key, value) VALUES ('composerData:session-cursor-demo-1', ?1);",
         [session_val_1],
-    ).unwrap();
+    )
+    .unwrap();
 
     let session_val_2 = r#"{
         "name": "Cursor Demo Session 2",
@@ -1126,17 +1268,24 @@ fn create_mock_cursor_logs(mock_home: &std::path::Path) {
     conn.execute(
         "INSERT INTO cursorDiskKV (key, value) VALUES ('composerData:session-cursor-demo-2', ?1);",
         [session_val_2],
-    ).unwrap();
+    )
+    .unwrap();
 
     let ws_json = ws_dir.join("workspace.json");
-    std::fs::write(&ws_json, r#"{"folder":"file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba"}"#).unwrap();
+    std::fs::write(
+        &ws_json,
+        r#"{"folder":"file:///Users/pv/Dev/GitHub/LookAtWhatAiCanDo/Codeoba"}"#,
+    )
+    .unwrap();
 
     let ws_db = ws_dir.join("state.vscdb");
     let conn_ws = Connection::open(&ws_db).unwrap();
-    conn_ws.execute(
-        "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
-        [],
-    ).unwrap();
+    conn_ws
+        .execute(
+            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
+            [],
+        )
+        .unwrap();
     conn_ws.execute(
         "INSERT INTO ItemTable (key, value) VALUES ('composer.composerData', '{\"allComposers\": [{\"composerId\": \"session-cursor-demo-1\"}, {\"composerId\": \"session-cursor-demo-2\"}]}');",
         [],
@@ -1157,9 +1306,12 @@ fn create_mock_claude_logs(mock_home: &std::path::Path) {
     std::fs::write(&log_file, log_content_clean).unwrap();
 
     let plan_file = claude_plans_dir.join("claude-plan-slug.md");
-    std::fs::write(&plan_file, "# Goal: Claude Demo Session\nVerification plan.").unwrap();
+    std::fs::write(
+        &plan_file,
+        "# Goal: Claude Demo Session\nVerification plan.",
+    )
+    .unwrap();
 }
-
 
 struct TelemetryStats {
     total_conversations: usize,
@@ -1194,7 +1346,9 @@ fn calculate_telemetry_stats(sessions: &[crate::models::Session]) -> TelemetrySt
             total_prompt_tokens += t.input_tokens.unwrap_or(0);
             total_response_tokens += t.output_tokens.unwrap_or(0);
 
-            let ms = t.extra_data.get("computeTimeMs")
+            let ms = t
+                .extra_data
+                .get("computeTimeMs")
                 .and_then(|val| val.parse::<i64>().ok());
             if let Some(compute_ms) = ms {
                 if compute_ms > 0 {
@@ -1210,7 +1364,11 @@ fn calculate_telemetry_stats(sessions: &[crate::models::Session]) -> TelemetrySt
 
             if t.extra_data.get("isCompaction").map(|v| v.as_str()) == Some("true") {
                 total_compactions += 1;
-                if let Some(comp_ms) = t.extra_data.get("compactionTimeMs").and_then(|v| v.parse::<i64>().ok()) {
+                if let Some(comp_ms) = t
+                    .extra_data
+                    .get("compactionTimeMs")
+                    .and_then(|v| v.parse::<i64>().ok())
+                {
                     total_compaction_time_ms += comp_ms;
                 }
             }
@@ -1269,14 +1427,29 @@ fn test_hybrid_telemetry_validation_harness() {
             let claude_sessions = claude_source.parse_all_sessions().await;
 
             assert_eq!(cursor_sessions.len(), 2);
-            let c1 = cursor_sessions.iter().find(|s| s.id == "session-cursor-demo-1").unwrap();
+            let c1 = cursor_sessions
+                .iter()
+                .find(|s| s.id == "session-cursor-demo-1")
+                .unwrap();
             assert_eq!(c1.turns.len(), 1);
             assert_eq!(c1.turns[0].input_tokens, Some(15));
             assert_eq!(c1.turns[0].output_tokens, Some(19));
-            assert_eq!(c1.turns[0].extra_data.get("model").map(|s| s.as_str()), Some("gpt-4o"));
-            assert_eq!(c1.turns[0].extra_data.get("computeTimeMs").map(|s| s.as_str()), Some("0"));
+            assert_eq!(
+                c1.turns[0].extra_data.get("model").map(|s| s.as_str()),
+                Some("gpt-4o")
+            );
+            assert_eq!(
+                c1.turns[0]
+                    .extra_data
+                    .get("computeTimeMs")
+                    .map(|s| s.as_str()),
+                Some("0")
+            );
 
-            let c2 = cursor_sessions.iter().find(|s| s.id == "session-cursor-demo-2").unwrap();
+            let c2 = cursor_sessions
+                .iter()
+                .find(|s| s.id == "session-cursor-demo-2")
+                .unwrap();
             assert_eq!(c2.turns.len(), 1);
             assert_eq!(c2.turns[0].input_tokens, Some(9));
             assert_eq!(c2.turns[0].output_tokens, Some(4));
@@ -1287,8 +1460,20 @@ fn test_hybrid_telemetry_validation_harness() {
             assert_eq!(cl.turns.len(), 1);
             assert_eq!(cl.turns[0].input_tokens, Some(10));
             assert_eq!(cl.turns[0].output_tokens, Some(8));
-            assert_eq!(cl.turns[0].extra_data.get("isCompaction").map(|s| s.as_str()), Some("true"));
-            assert_eq!(cl.turns[0].extra_data.get("compactionTimeMs").map(|s| s.as_str()), Some("8000"));
+            assert_eq!(
+                cl.turns[0]
+                    .extra_data
+                    .get("isCompaction")
+                    .map(|s| s.as_str()),
+                Some("true")
+            );
+            assert_eq!(
+                cl.turns[0]
+                    .extra_data
+                    .get("compactionTimeMs")
+                    .map(|s| s.as_str()),
+                Some("8000")
+            );
             assert_eq!(cl.thread_name.as_deref(), Some("Claude Demo Session"));
 
             let mut all_sessions = Vec::new();
@@ -1312,7 +1497,8 @@ fn test_hybrid_telemetry_validation_harness() {
             assert_eq!(stats.avg_speed_tps, 65000.0 / 14000.0);
             assert_eq!(stats.total_compactions, 1);
             assert_eq!(stats.total_compaction_time_ms, 8000);
-        }).await;
+        })
+        .await;
     });
 }
 
@@ -1470,17 +1656,26 @@ fn test_search_effectiveness() {
 
     // Query A: "WAL" should match session-db
     let results_wal = crate::search::lexical::lexical_search(&sessions, "WAL", &filter);
-    assert!(!results_wal.is_empty(), "Lexical search for 'WAL' returned no results");
+    assert!(
+        !results_wal.is_empty(),
+        "Lexical search for 'WAL' returned no results"
+    );
     assert_eq!(results_wal[0].session.id, "session-db");
 
     // Query B: "Tailwind" should match session-tailwind
     let results_tailwind = crate::search::lexical::lexical_search(&sessions, "Tailwind", &filter);
-    assert!(!results_tailwind.is_empty(), "Lexical search for 'Tailwind' returned no results");
+    assert!(
+        !results_tailwind.is_empty(),
+        "Lexical search for 'Tailwind' returned no results"
+    );
     assert_eq!(results_tailwind[0].session.id, "session-tailwind");
 
     // Query C: "ONNX" should match session-ml
     let results_onnx = crate::search::lexical::lexical_search(&sessions, "ONNX", &filter);
-    assert!(!results_onnx.is_empty(), "Lexical search for 'ONNX' returned no results");
+    assert!(
+        !results_onnx.is_empty(),
+        "Lexical search for 'ONNX' returned no results"
+    );
     assert_eq!(results_onnx[0].session.id, "session-ml");
 
     // 3. Semantic Search Testing (using actual OnnxSemanticEmbedder conditionally)
@@ -1509,22 +1704,65 @@ fn test_search_effectiveness() {
         }
 
         // Semantic Query A: "database concurrency performance" -> should rank SQLite session first
-        let query_vec_db = embedder.get_embeddings("database concurrency performance").unwrap();
-        let results_sem_db = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_db, 0.2, &filter);
-        assert!(!results_sem_db.is_empty(), "Semantic search for 'database concurrency' returned no results");
-        assert_eq!(results_sem_db[0].session.id, "session-db", "Semantic query 'database concurrency performance' did not rank DB session first: {:?}", results_sem_db);
+        let query_vec_db = embedder
+            .get_embeddings("database concurrency performance")
+            .unwrap();
+        let results_sem_db = crate::search::semantic::semantic_search(
+            &sessions,
+            &embeddings,
+            &query_vec_db,
+            0.2,
+            &filter,
+        );
+        assert!(
+            !results_sem_db.is_empty(),
+            "Semantic search for 'database concurrency' returned no results"
+        );
+        assert_eq!(
+            results_sem_db[0].session.id, "session-db",
+            "Semantic query 'database concurrency performance' did not rank DB session first: {:?}",
+            results_sem_db
+        );
 
         // Semantic Query B: "button visual theme design" -> should rank Tailwind session first
-        let query_vec_ui = embedder.get_embeddings("button visual theme design").unwrap();
-        let results_sem_ui = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_ui, 0.2, &filter);
-        assert!(!results_sem_ui.is_empty(), "Semantic search for 'button visual theme' returned no results");
-        assert_eq!(results_sem_ui[0].session.id, "session-tailwind", "Semantic query 'button visual theme design' did not rank Tailwind session first");
+        let query_vec_ui = embedder
+            .get_embeddings("button visual theme design")
+            .unwrap();
+        let results_sem_ui = crate::search::semantic::semantic_search(
+            &sessions,
+            &embeddings,
+            &query_vec_ui,
+            0.2,
+            &filter,
+        );
+        assert!(
+            !results_sem_ui.is_empty(),
+            "Semantic search for 'button visual theme' returned no results"
+        );
+        assert_eq!(
+            results_sem_ui[0].session.id, "session-tailwind",
+            "Semantic query 'button visual theme design' did not rank Tailwind session first"
+        );
 
         // Semantic Query C: "deep learning model runtimes" -> should rank ML/Claude session first
-        let query_vec_ml = embedder.get_embeddings("deep learning model runtimes").unwrap();
-        let results_sem_ml = crate::search::semantic::semantic_search(&sessions, &embeddings, &query_vec_ml, 0.2, &filter);
-        assert!(!results_sem_ml.is_empty(), "Semantic search for 'deep learning model runtimes' returned no results");
-        assert_eq!(results_sem_ml[0].session.id, "session-ml", "Semantic query 'deep learning model runtimes' did not rank ML session first");
+        let query_vec_ml = embedder
+            .get_embeddings("deep learning model runtimes")
+            .unwrap();
+        let results_sem_ml = crate::search::semantic::semantic_search(
+            &sessions,
+            &embeddings,
+            &query_vec_ml,
+            0.2,
+            &filter,
+        );
+        assert!(
+            !results_sem_ml.is_empty(),
+            "Semantic search for 'deep learning model runtimes' returned no results"
+        );
+        assert_eq!(
+            results_sem_ml[0].session.id, "session-ml",
+            "Semantic query 'deep learning model runtimes' did not rank ML session first"
+        );
     } else {
         println!("Skipping neural semantic search rankings validation since ONNX model files are not downloaded.");
     }
@@ -1551,7 +1789,9 @@ fn test_title_cleanup_and_extraction() {
     let raw_title = "Goal make it easy composed pascal";
     let formatted_slug_space = slug.replace("-", " ").to_lowercase();
     let clean_title = if raw_title.to_lowercase().ends_with(&formatted_slug_space) {
-        raw_title[..raw_title.len() - formatted_slug_space.len()].trim().to_string()
+        raw_title[..raw_title.len() - formatted_slug_space.len()]
+            .trim()
+            .to_string()
     } else {
         raw_title.to_string()
     };
@@ -1562,8 +1802,8 @@ fn test_title_cleanup_and_extraction() {
 fn test_cache_orphan_preservation() {
     tauri::async_runtime::block_on(async {
         with_mock_home(|_mock_home| async move {
-            use crate::parsers::cache::get_cache_manager;
             use crate::models::{Session, Turn};
+            use crate::parsers::cache::get_cache_manager;
 
             let cache_mgr = get_cache_manager();
             let source_id = "test_preservation_source";
@@ -1577,17 +1817,15 @@ fn test_cache_orphan_preservation() {
                 updated_at: 1000,
                 cwd: None,
                 thread_name: Some("Preserved Conversation".to_string()),
-                turns: vec![
-                    Turn {
-                        turn_id: "turn1".to_string(),
-                        user_message: "Hello".to_string(),
-                        assistant_message: "Hi".to_string(),
-                        timestamp: 1000,
-                        input_tokens: None,
-                        output_tokens: None,
-                        extra_data: std::collections::HashMap::new(),
-                    }
-                ],
+                turns: vec![Turn {
+                    turn_id: "turn1".to_string(),
+                    user_message: "Hello".to_string(),
+                    assistant_message: "Hi".to_string(),
+                    timestamp: 1000,
+                    input_tokens: None,
+                    output_tokens: None,
+                    extra_data: std::collections::HashMap::new(),
+                }],
                 is_archived: false,
                 is_pinned: false,
                 summary: None,
@@ -1598,7 +1836,14 @@ fn test_cache_orphan_preservation() {
             };
 
             // Put directly to disk cache
-            cache_mgr.put_cached_session(source_id, "/path/to/old_file.jsonl", 1000, 100, "", session);
+            cache_mgr.put_cached_session(
+                source_id,
+                "/path/to/old_file.jsonl",
+                1000,
+                100,
+                "",
+                session,
+            );
 
             // Start scan (this loads from disk cache into memory cache AND initializes seen_paths as empty)
             cache_mgr.start_scan(source_id);
@@ -1607,19 +1852,26 @@ fn test_cache_orphan_preservation() {
             let sessions = cache_mgr.end_scan(source_id);
             assert_eq!(sessions.len(), 1);
             assert_eq!(sessions[0].id, "preserved-session");
-            assert!(sessions[0].is_deleted, "Preserved orphan session should have is_deleted set to true");
+            assert!(
+                sessions[0].is_deleted,
+                "Preserved orphan session should have is_deleted set to true"
+            );
 
             // Verify it is NOT pruned since turns is not empty
             let cache_map = cache_mgr.load_cache(source_id);
-            assert!(cache_map.contains_key("/path/to/old_file.jsonl"), "Session with turns was incorrectly pruned from cache");
-        }).await;
+            assert!(
+                cache_map.contains_key("/path/to/old_file.jsonl"),
+                "Session with turns was incorrectly pruned from cache"
+            );
+        })
+        .await;
     });
 }
 
 #[test]
 fn test_antigravity_variants() {
-    use crate::parsers::{ParserVariant, SourceAdapter};
     use crate::parsers::antigravity::AntigravitySource;
+    use crate::parsers::{ParserVariant, SourceAdapter};
 
     let standard = AntigravitySource::new(ParserVariant::Standard);
     let ide = AntigravitySource::new(ParserVariant::Ide);
@@ -1642,7 +1894,14 @@ fn test_parse_query_terms_helper() {
     assert_eq!(terms, vec!["Goal".to_string(), "make it easy".to_string()]);
 
     let terms2 = parse_query_terms("   hello    \"world wide web\"   nested ");
-    assert_eq!(terms2, vec!["hello".to_string(), "world wide web".to_string(), "nested".to_string()]);
+    assert_eq!(
+        terms2,
+        vec![
+            "hello".to_string(),
+            "world wide web".to_string(),
+            "nested".to_string()
+        ]
+    );
 
     let terms3 = parse_query_terms("\"unclosed quote");
     assert_eq!(terms3, vec!["unclosed quote".to_string()]);
@@ -1658,17 +1917,15 @@ fn test_lexical_search_multi_term_and() {
         updated_at: 1000,
         cwd: Some("/workspace/a".to_string()),
         thread_name: Some("Goal: Make it easy".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "turn-1".to_string(),
-                user_message: "How to run local index search".to_string(),
-                assistant_message: "Just query it".to_string(),
-                timestamp: 1000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "turn-1".to_string(),
+            user_message: "How to run local index search".to_string(),
+            assistant_message: "Just query it".to_string(),
+            timestamp: 1000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: false,
         is_pinned: false,
         summary: None,
@@ -1686,17 +1943,15 @@ fn test_lexical_search_multi_term_and() {
         updated_at: 2000,
         cwd: Some("/workspace/b".to_string()),
         thread_name: Some("Just random thread".to_string()),
-        turns: vec![
-            crate::models::Turn {
-                turn_id: "turn-2".to_string(),
-                user_message: "make it simple and clean".to_string(),
-                assistant_message: "Sure thing".to_string(),
-                timestamp: 2000,
-                input_tokens: None,
-                output_tokens: None,
-                extra_data: std::collections::HashMap::new(),
-            }
-        ],
+        turns: vec![crate::models::Turn {
+            turn_id: "turn-2".to_string(),
+            user_message: "make it simple and clean".to_string(),
+            assistant_message: "Sure thing".to_string(),
+            timestamp: 2000,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+        }],
         is_archived: false,
         is_pinned: false,
         summary: None,
@@ -1727,7 +1982,3 @@ fn test_lexical_search_multi_term_and() {
     assert_eq!(res4.len(), 1);
     assert_eq!(res4[0].session.id, "session-a");
 }
-
-
-
-

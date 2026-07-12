@@ -21,23 +21,33 @@ pub fn resolve_local_file_link(
 
     let lower = trimmed.to_lowercase();
     if lower.starts_with("http://") || lower.starts_with("https://") {
-        return LocalFileResolution::Rejected("Web URLs not supported for local resolution".to_string());
+        return LocalFileResolution::Rejected(
+            "Web URLs not supported for local resolution".to_string(),
+        );
     }
 
     let path: PathBuf = if lower.starts_with("file:") {
         match Url::parse(trimmed) {
             Ok(url) => {
                 if url.cannot_be_a_base() {
-                    return LocalFileResolution::Rejected("Opaque file URIs are not supported".to_string());
+                    return LocalFileResolution::Rejected(
+                        "Opaque file URIs are not supported".to_string(),
+                    );
                 }
                 if let Some(host) = url.host_str() {
                     if host != "localhost" && host != "127.0.0.1" && !host.is_empty() {
-                        return LocalFileResolution::Rejected("Remote authorities/UNC shares are not supported".to_string());
+                        return LocalFileResolution::Rejected(
+                            "Remote authorities/UNC shares are not supported".to_string(),
+                        );
                     }
                 }
                 match url.to_file_path() {
                     Ok(p) => p,
-                    Err(_) => return LocalFileResolution::Rejected("Failed to convert file URL to path".to_string()),
+                    Err(_) => {
+                        return LocalFileResolution::Rejected(
+                            "Failed to convert file URL to path".to_string(),
+                        )
+                    }
                 }
             }
             Err(e) => return LocalFileResolution::Rejected(format!("Invalid file URL: {}", e)),
@@ -73,10 +83,16 @@ pub fn resolve_local_file_link(
 
     // Validate type constraints
     if canonical.is_dir() {
-        return LocalFileResolution::Rejected(format!("Target path is a directory: {:?}", canonical));
+        return LocalFileResolution::Rejected(format!(
+            "Target path is a directory: {:?}",
+            canonical
+        ));
     }
     if !canonical.is_file() {
-        return LocalFileResolution::Rejected(format!("Target path is not a regular file: {:?}", canonical));
+        return LocalFileResolution::Rejected(format!(
+            "Target path is not a regular file: {:?}",
+            canonical
+        ));
     }
 
     // Compare against trusted root
@@ -94,5 +110,8 @@ pub fn resolve_local_file_link(
         }
     }
 
-    LocalFileResolution::ConfirmationRequired(canonical, "The path lies outside your workspace.".to_string())
+    LocalFileResolution::ConfirmationRequired(
+        canonical,
+        "The path lies outside your workspace.".to_string(),
+    )
 }

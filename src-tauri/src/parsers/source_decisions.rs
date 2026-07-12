@@ -31,7 +31,10 @@ pub fn save_source_decisions(decisions: &HashMap<String, String>) {
 
 pub fn get_source_decision(source_id: &str) -> String {
     let decisions = load_source_decisions();
-    decisions.get(source_id).cloned().unwrap_or_else(|| "ask".to_string())
+    decisions
+        .get(source_id)
+        .cloned()
+        .unwrap_or_else(|| "ask".to_string())
 }
 
 pub fn save_source_decision(source_id: &str, decision: &str) {

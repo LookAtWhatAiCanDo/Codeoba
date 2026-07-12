@@ -1,15 +1,15 @@
-pub mod models;
-pub mod logging;
-pub mod fs_util;
-pub mod parsers;
-pub mod keyring;
-pub mod tokenizer;
 pub mod commands;
-pub mod watcher;
-pub mod search;
-pub mod premium;
+pub mod fs_util;
 pub mod groups;
+pub mod keyring;
+pub mod logging;
 pub mod menu;
+pub mod models;
+pub mod parsers;
+pub mod premium;
+pub mod search;
+pub mod tokenizer;
+pub mod watcher;
 
 #[cfg(test)]
 pub static HOME_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -37,7 +37,7 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     }
 
     let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
-    
+
     // Official Dev/Staging Keys (add rotated keys here)
     let dev_pubkeys = [
         // Active dev key used for local development & main branch CI builds (Added June 2026)
@@ -49,8 +49,12 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
         "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNDQwODNBQ0MzQTQ0OEUKUldTT1JEck1PZ2hFZit2RU8xVkE0ei93Q3pzT1JhYjMwR0JFMzZOajJGcThDY21kdm0yTVdlaVAK",
     ];
 
-    let is_dev_pubkey = dev_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
-    let is_prod_pubkey = prod_pubkeys.iter().any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+    let is_dev_pubkey = dev_pubkeys
+        .iter()
+        .any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+    let is_prod_pubkey = prod_pubkeys
+        .iter()
+        .any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
 
     if is_dev_pubkey {
         endpoints.iter().all(|endpoint| {
@@ -74,7 +78,9 @@ pub fn run() {
     // Delete the window state file preemptively before the Tauri builder or plugins initialize
     if std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset") {
         if let Some(mut path) = dirs::data_dir() {
-            path = path.join("com.whataicando.codeoba").join(".window-state.json");
+            path = path
+                .join("com.whataicando.codeoba")
+                .join(".window-state.json");
             if path.exists() {
                 let _ = std::fs::remove_file(&path);
                 crate::log_info!("Pre-emptively deleted window state file: {:?}", path);
@@ -83,12 +89,18 @@ pub fn run() {
     }
 
     let context = tauri::generate_context!();
-    
+
     // Check if the updater is active from configuration and passes validation
     let updater_active = if let Some(updater_config) = context.config().plugins.0.get("updater") {
-        let active = updater_config.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
+        let active = updater_config
+            .get("active")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         if active {
-            let pubkey = updater_config.get("pubkey").and_then(|v| v.as_str()).unwrap_or("");
+            let pubkey = updater_config
+                .get("pubkey")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let mut endpoints = Vec::new();
             if let Some(endpoints_val) = updater_config.get("endpoints") {
                 if let Some(arr) = endpoints_val.as_array() {
@@ -148,9 +160,9 @@ pub fn run() {
 
             // Ensure encryption key is created synchronously on startup to prevent background collisions
             let _ = crate::keyring::get_or_create_cache_key();
-            
+
             let handle = app.handle().clone();
-            
+
             // Startup diagnostics
             let (_dm, _dv) = crate::search::resolve_model_paths(Some(&handle));
 
@@ -166,9 +178,18 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 // Read configurations
                 let config = crate::keyring::load_fallback_config();
-                let appearance = config.get("appearance").map(|s| s.as_str()).unwrap_or("dark");
-                let dark_theme = config.get("dark_theme").map(|s| s.as_str()).unwrap_or("obsidian");
-                let light_theme = config.get("light_theme").map(|s| s.as_str()).unwrap_or("obsidian-light");
+                let appearance = config
+                    .get("appearance")
+                    .map(|s| s.as_str())
+                    .unwrap_or("dark");
+                let dark_theme = config
+                    .get("dark_theme")
+                    .map(|s| s.as_str())
+                    .unwrap_or("obsidian");
+                let light_theme = config
+                    .get("light_theme")
+                    .map(|s| s.as_str())
+                    .unwrap_or("obsidian-light");
 
                 // Get preferred color scheme if "system"
                 let is_dark = if appearance == "system" {
@@ -203,14 +224,23 @@ pub fn run() {
                     "monochrome-light" => (255, 255, 255),
                     "custom" => {
                         let mode_str = if is_dark { "dark" } else { "light" };
-                        let h: f64 = config.get(&format!("custom_{}_bg_h", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 228.0 } else { 210.0 });
-                        let s: f64 = config.get(&format!("custom_{}_bg_s", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 15.0 } else { 20.0 });
-                        let l: f64 = config.get(&format!("custom_{}_bg_l", mode_str)).and_then(|s| s.parse().ok()).unwrap_or(if is_dark { 8.0 } else { 95.0 });
+                        let h: f64 = config
+                            .get(&format!("custom_{}_bg_h", mode_str))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(if is_dark { 228.0 } else { 210.0 });
+                        let s: f64 = config
+                            .get(&format!("custom_{}_bg_s", mode_str))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(if is_dark { 15.0 } else { 20.0 });
+                        let l: f64 = config
+                            .get(&format!("custom_{}_bg_l", mode_str))
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(if is_dark { 8.0 } else { 95.0 });
 
                         // Convert HSL to RGB
                         let s_pct = s / 100.0;
                         let l_pct = l / 100.0;
-                        
+
                         let c = (1.0 - (2.0 * l_pct - 1.0).abs()) * s_pct;
                         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
                         let m = l_pct - c / 2.0;
@@ -238,7 +268,8 @@ pub fn run() {
                     _ => (13, 14, 18),
                 };
 
-                let _ = window.set_background_color(Some(tauri::window::Color(rgb.0, rgb.1, rgb.2, 255)));
+                let _ = window
+                    .set_background_color(Some(tauri::window::Color(rgb.0, rgb.1, rgb.2, 255)));
 
                 #[cfg(not(target_os = "macos"))]
                 {
@@ -251,10 +282,10 @@ pub fn run() {
             std::thread::spawn(move || {
                 tauri::async_runtime::block_on(async move {
                     let state = handle_clone.state::<search::SearchIndexState>();
-                    
+
                     // Load cached sessions in the background
                     state.load_cached_sessions();
-                    
+
                     let progress = search::IndexingProgress {
                         step: "complete".to_string(),
                         progress: 1.0,
@@ -267,7 +298,7 @@ pub fn run() {
                     let _ = handle_clone.emit("indexing-progress", progress);
                 });
             });
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -333,25 +364,67 @@ mod tests {
         let evil_key = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU4RkNDQUJEOEVwVklM";
 
         // Dev Key Valid scenarios
-        assert!(validate_updater_config(dev_key, &["https://dev.codeoba.com/api/update".to_string()]));
-        assert!(validate_updater_config(dev_key, &["http://localhost:5000".to_string()]));
-        assert!(validate_updater_config(dev_key, &["http://127.0.0.1:8080".to_string(), "https://dev.codeoba.com/api/update/v2".to_string()]));
+        assert!(validate_updater_config(
+            dev_key,
+            &["https://dev.codeoba.com/api/update".to_string()]
+        ));
+        assert!(validate_updater_config(
+            dev_key,
+            &["http://localhost:5000".to_string()]
+        ));
+        assert!(validate_updater_config(
+            dev_key,
+            &[
+                "http://127.0.0.1:8080".to_string(),
+                "https://dev.codeoba.com/api/update/v2".to_string()
+            ]
+        ));
 
         // Dev Key Invalid/Blocked scenarios
         assert!(!validate_updater_config(dev_key, &[]));
-        assert!(!validate_updater_config(dev_key, &["https://dev.codeoba.com/api/update".to_string(), "http://evil.example/api/update".to_string()]));
-        assert!(!validate_updater_config(dev_key, &["https://codeoba.com/api/update".to_string()])); // prod endpoint with dev key
+        assert!(!validate_updater_config(
+            dev_key,
+            &[
+                "https://dev.codeoba.com/api/update".to_string(),
+                "http://evil.example/api/update".to_string()
+            ]
+        ));
+        assert!(!validate_updater_config(
+            dev_key,
+            &["https://codeoba.com/api/update".to_string()]
+        )); // prod endpoint with dev key
 
         // Prod Key Valid scenarios
-        assert!(validate_updater_config(prod_key, &["https://codeoba.com/api/update".to_string()]));
-        assert!(validate_updater_config(prod_key, &["https://codeoba.com/api/update/v1".to_string(), "https://codeoba.com/api/update/v2".to_string()]));
+        assert!(validate_updater_config(
+            prod_key,
+            &["https://codeoba.com/api/update".to_string()]
+        ));
+        assert!(validate_updater_config(
+            prod_key,
+            &[
+                "https://codeoba.com/api/update/v1".to_string(),
+                "https://codeoba.com/api/update/v2".to_string()
+            ]
+        ));
 
         // Prod Key Invalid/Blocked scenarios
         assert!(!validate_updater_config(prod_key, &[]));
-        assert!(!validate_updater_config(prod_key, &["https://codeoba.com/api/update".to_string(), "http://evil.example/api/update".to_string()]));
-        assert!(!validate_updater_config(prod_key, &["https://dev.codeoba.com/api/update".to_string()])); // dev endpoint with prod key
+        assert!(!validate_updater_config(
+            prod_key,
+            &[
+                "https://codeoba.com/api/update".to_string(),
+                "http://evil.example/api/update".to_string()
+            ]
+        ));
+        assert!(!validate_updater_config(
+            prod_key,
+            &["https://dev.codeoba.com/api/update".to_string()]
+        )); // dev endpoint with prod key
 
         // Evil/Untrusted Key
-        assert!(!validate_updater_config(evil_key, &["https://codeoba.com/api/update".to_string()]));
+        assert!(!validate_updater_config(
+            evil_key,
+            &["https://codeoba.com/api/update".to_string()]
+        ));
     }
 }

@@ -1,7 +1,7 @@
-pub mod lexical;
-pub mod tokenizer;
 pub mod cache;
+pub mod lexical;
 pub mod semantic;
+pub mod tokenizer;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -179,7 +179,7 @@ impl SearchIndexState {
         let start = std::time::Instant::now();
         let sources = crate::parsers::get_sources_list();
         let mut session_map = HashMap::new();
-        
+
         let cache_mgr = crate::parsers::cache::get_cache_manager();
         for source in sources {
             if source.is_available() {
@@ -189,21 +189,30 @@ impl SearchIndexState {
                 }
             }
         }
-        
+
         let count = session_map.len();
         if let Ok(mut guard) = self.sessions.write() {
             *guard = session_map;
         }
-        crate::log_info!("[SearchIndexState] Loaded {} cached sessions in {:?}", count, start.elapsed());
+        crate::log_info!(
+            "[SearchIndexState] Loaded {} cached sessions in {:?}",
+            count,
+            start.elapsed()
+        );
     }
 
     pub async fn rebuild<R: tauri::Runtime>(
-        &self, 
+        &self,
         use_semantic: bool,
         app_handle: Option<tauri::AppHandle<R>>,
     ) -> Result<(), String> {
-        if self.is_rebuilding.swap(true, std::sync::atomic::Ordering::SeqCst) {
-            crate::log_warn!("[rebuild] Rebuild is already in progress. Ignoring concurrent request.");
+        if self
+            .is_rebuilding
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            crate::log_warn!(
+                "[rebuild] Rebuild is already in progress. Ignoring concurrent request."
+            );
             return Ok(());
         }
 
@@ -216,7 +225,7 @@ impl SearchIndexState {
         let _guard = RebuildGuard(&self.is_rebuilding);
 
         let total_start = std::time::Instant::now();
-        
+
         let emit_progress = |step: &str, progress: f32, current_source: &str| {
             let info = IndexingProgress {
                 step: step.to_string(),
@@ -234,14 +243,20 @@ impl SearchIndexState {
 
         emit_progress("start", 0.0, "Initializing search index...");
 
-        let run_embeddings_flag = use_semantic && self.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst);
+        let run_embeddings_flag = use_semantic
+            && self
+                .is_semantic_initialized
+                .load(std::sync::atomic::Ordering::SeqCst);
 
         let onnx_embedder = if run_embeddings_flag {
             let (model_path, vocab_path) = resolve_model_paths(app_handle.as_ref());
             if model_path.exists() && vocab_path.exists() {
                 let onnx_load_start = std::time::Instant::now();
                 let embedder = semantic::OnnxSemanticEmbedder::new(&model_path, &vocab_path).ok();
-                crate::log_info!("[rebuild] ONNX embedder load time: {:?}", onnx_load_start.elapsed());
+                crate::log_info!(
+                    "[rebuild] ONNX embedder load time: {:?}",
+                    onnx_load_start.elapsed()
+                );
                 embedder
             } else {
                 None
@@ -257,7 +272,10 @@ impl SearchIndexState {
             let mgr = cache::EmbeddingCacheManager::new(model_id);
             let cache_load_start = std::time::Instant::now();
             mgr.load_cache();
-            crate::log_info!("[rebuild] Cache load time: {:?}", cache_load_start.elapsed());
+            crate::log_info!(
+                "[rebuild] Cache load time: {:?}",
+                cache_load_start.elapsed()
+            );
             Some(mgr)
         } else {
             None
@@ -266,7 +284,7 @@ impl SearchIndexState {
         let parse_start = std::time::Instant::now();
         let sources = crate::parsers::get_sources_list();
         let mut all_sessions = Vec::new();
-        
+
         let available_sources: Vec<_> = sources.iter().filter(|s| s.is_available()).collect();
         let total_sources = available_sources.len() as f32;
         let mut current_idx = 0;
@@ -278,7 +296,11 @@ impl SearchIndexState {
 
             let source_start = std::time::Instant::now();
             all_sessions.extend(source.parse_all_sessions().await);
-            crate::log_info!("[rebuild] Parsed source '{}' in {:?}", source.id(), source_start.elapsed());
+            crate::log_info!(
+                "[rebuild] Parsed source '{}' in {:?}",
+                source.id(),
+                source_start.elapsed()
+            );
             tokio::task::yield_now().await;
         }
         crate::log_info!("[rebuild] Total parsing time: {:?}", parse_start.elapsed());
@@ -318,9 +340,15 @@ impl SearchIndexState {
         for session in all_sessions {
             let mut reused = false;
             if run_embeddings {
-                if let (Some(ref old_sessions), Some(ref old_embs)) = (&existing_sessions, &existing_embeddings) {
-                    if let (Some(old_sess), Some(old_emb)) = (old_sessions.get(&session.id), old_embs.get(&session.id)) {
-                        if old_sess.updated_at == session.updated_at && old_sess.turns.len() == session.turns.len() {
+                if let (Some(ref old_sessions), Some(ref old_embs)) =
+                    (&existing_sessions, &existing_embeddings)
+                {
+                    if let (Some(old_sess), Some(old_emb)) =
+                        (old_sessions.get(&session.id), old_embs.get(&session.id))
+                    {
+                        if old_sess.updated_at == session.updated_at
+                            && old_sess.turns.len() == session.turns.len()
+                        {
                             embedding_map.insert(session.id.clone(), old_emb.clone());
                             session_map.insert(session.id.clone(), session.clone());
                             reused = true;
@@ -361,13 +389,13 @@ impl SearchIndexState {
                         let pct = 0.80 + (idx as f32 / total_to_embed.max(1) as f32) * 0.19; // 80% to 99%
                         let display_text = format!("Calculating semantic embeddings... ({}/{})", idx + 1, total_to_embed);
                         crate::log_info!("[rebuild] Progress: {}/{} sessions ({}%)", idx + 1, total_to_embed, (pct * 100.0) as u32);
-                        
+
                         let info = IndexingProgress {
                             step: "embedding".to_string(),
                             progress: pct,
                             current_source: display_text,
                         };
-                        
+
                         if let Some(ref handle) = app_handle_clone {
                             use tauri::Manager;
                             let state = handle.state::<SearchIndexState>();
@@ -382,7 +410,7 @@ impl SearchIndexState {
                     let mut vec_index = None;
                     if let Some(ref cache) = cache_ref {
                         let hash_emb = semantic::HashSemanticEmbedder::new(384);
-                        
+
                         let thread_emb = if let Some(v) = cache.get(thread_name) {
                             c_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             v
@@ -403,7 +431,7 @@ impl SearchIndexState {
                         let mut turn_embs = Vec::with_capacity(session.turns.len());
                         for turn in &session.turns {
                             let text = format!("{}\n{}", turn.user_message, turn.assistant_message);
-                            
+
                             let turn_emb = if let Some(v) = cache.get(&text) {
                                 c_hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                                 v
@@ -471,7 +499,12 @@ impl SearchIndexState {
         };
 
         if run_embeddings {
-            crate::log_info!("[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}", final_onnx_invocations, final_cache_hits, embed_start.elapsed());
+            crate::log_info!(
+                "[rebuild] Embedding calculations: ONNX = {}, Cache Hits = {}, Elapsed: {:?}",
+                final_onnx_invocations,
+                final_cache_hits,
+                embed_start.elapsed()
+            );
         }
 
         // Merge the rebuild result back rather than wholesale-overwriting, so an update_session
@@ -511,11 +544,10 @@ impl SearchIndexState {
 
         emit_progress("complete", 1.0, "Index rebuild complete.");
         crate::log_info!("[rebuild] Total rebuild time: {:?}", total_start.elapsed());
-        self.has_rebuilt.store(true, std::sync::atomic::Ordering::SeqCst);
+        self.has_rebuilt
+            .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
-
-
 
     pub async fn update_session(&self, session: crate::models::Session) -> Result<(), String> {
         // Check if we already have this exact session cached with embeddings
@@ -544,7 +576,9 @@ impl SearchIndexState {
         }
 
         let app_handle_opt = self.app_handle.read().ok().and_then(|g| g.clone());
-        let run_embeddings = self.is_semantic_initialized.load(std::sync::atomic::Ordering::SeqCst);
+        let run_embeddings = self
+            .is_semantic_initialized
+            .load(std::sync::atomic::Ordering::SeqCst);
 
         // Reuse the process-wide cached embedder rather than reloading and re-optimizing the
         // ~90 MB model on every changed file. Falls back to the lightweight hash embedder when the
@@ -617,7 +651,11 @@ fn merge_rebuilt_sessions(
     rebuilt: HashMap<String, crate::models::Session>,
     live: &HashMap<String, crate::models::Session>,
     snapshot: &HashMap<String, crate::models::Session>,
-) -> (HashMap<String, crate::models::Session>, Vec<String>, Vec<String>) {
+) -> (
+    HashMap<String, crate::models::Session>,
+    Vec<String>,
+    Vec<String>,
+) {
     let mut merged = rebuilt;
     let mut preserved = Vec::new();
     let mut deleted = Vec::new();
@@ -643,8 +681,10 @@ use std::path::PathBuf;
 
 pub const MODEL_FILENAME: &str = "model.onnx";
 pub const VOCAB_FILENAME: &str = "vocab.txt";
-pub const EXPECTED_MODEL_HASH: &str = "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e";
-pub const EXPECTED_VOCAB_HASH: &str = "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3";
+pub const EXPECTED_MODEL_HASH: &str =
+    "759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e";
+pub const EXPECTED_VOCAB_HASH: &str =
+    "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3";
 
 pub fn get_home_model_dir() -> PathBuf {
     let home = crate::parsers::get_home_dir();
@@ -659,7 +699,6 @@ pub fn get_home_vocab_file() -> PathBuf {
     get_home_model_dir().join(VOCAB_FILENAME)
 }
 
-
 fn is_dev_env() -> bool {
     if let Ok(exe) = std::env::current_exe() {
         return exe.components().any(|c| c.as_os_str() == "target");
@@ -673,8 +712,14 @@ pub fn resolve_model_paths<R: tauri::Runtime>(
     // 1. Try resolving using Tauri's resource resolver if app_handle is provided
     if let Some(handle) = app_handle {
         use tauri::Manager;
-        if let Ok(bm) = handle.path().resolve("resources/onnx/model.onnx", tauri::path::BaseDirectory::Resource) {
-            if let Ok(bv) = handle.path().resolve("resources/onnx/vocab.txt", tauri::path::BaseDirectory::Resource) {
+        if let Ok(bm) = handle.path().resolve(
+            "resources/onnx/model.onnx",
+            tauri::path::BaseDirectory::Resource,
+        ) {
+            if let Ok(bv) = handle.path().resolve(
+                "resources/onnx/vocab.txt",
+                tauri::path::BaseDirectory::Resource,
+            ) {
                 if bm.exists() && bv.exists() {
                     return (bm, bv);
                 }
@@ -682,8 +727,14 @@ pub fn resolve_model_paths<R: tauri::Runtime>(
         }
         // Try local dev mode layout: src-tauri/resources/onnx
         if is_dev_env() {
-            if let Ok(bm) = handle.path().resolve("onnx/model.onnx", tauri::path::BaseDirectory::Resource) {
-                if let Ok(bv) = handle.path().resolve("onnx/vocab.txt", tauri::path::BaseDirectory::Resource) {
+            if let Ok(bm) = handle
+                .path()
+                .resolve("onnx/model.onnx", tauri::path::BaseDirectory::Resource)
+            {
+                if let Ok(bv) = handle
+                    .path()
+                    .resolve("onnx/vocab.txt", tauri::path::BaseDirectory::Resource)
+                {
                     if bm.exists() && bv.exists() {
                         return (bm, bv);
                     }
@@ -733,8 +784,12 @@ mod embedder_cache_tests {
         }
 
         let state = SearchIndexState::new();
-        let first = state.get_or_load_embedder(&model, &vocab).expect("first load");
-        let second = state.get_or_load_embedder(&model, &vocab).expect("cached load");
+        let first = state
+            .get_or_load_embedder(&model, &vocab)
+            .expect("first load");
+        let second = state
+            .get_or_load_embedder(&model, &vocab)
+            .expect("cached load");
 
         assert!(
             Arc::ptr_eq(&first, &second),
@@ -860,10 +915,25 @@ mod rebuild_merge_tests {
 
         let (merged, mut preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
 
-        assert_eq!(merged.get("a").unwrap().updated_at, 1, "unchanged session keeps rebuild value");
-        assert_eq!(merged.get("b").unwrap().updated_at, 2, "concurrent update must be preserved");
-        assert!(!merged.contains_key("c"), "concurrently deleted session must be dropped");
-        assert_eq!(merged.get("d").unwrap().updated_at, 1, "concurrent insert must be preserved");
+        assert_eq!(
+            merged.get("a").unwrap().updated_at,
+            1,
+            "unchanged session keeps rebuild value"
+        );
+        assert_eq!(
+            merged.get("b").unwrap().updated_at,
+            2,
+            "concurrent update must be preserved"
+        );
+        assert!(
+            !merged.contains_key("c"),
+            "concurrently deleted session must be dropped"
+        );
+        assert_eq!(
+            merged.get("d").unwrap().updated_at,
+            1,
+            "concurrent insert must be preserved"
+        );
 
         preserved.sort();
         assert_eq!(preserved, vec!["b".to_string(), "d".to_string()]);
