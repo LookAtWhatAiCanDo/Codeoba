@@ -16,7 +16,6 @@ import {
   Search,
   FileText,
   HelpCircle,
-  CheckCircle2,
   Loader2,
   MoreVertical,
   Pin,
@@ -547,27 +546,23 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "awaiting_review":
-        return t("sidebar.statusAwaitingReview");
-      case "executing":
-        return t("sidebar.statusExecuting");
-      case "completed":
-        return t("sidebar.statusCompleted");
-      case "discussion":
+      case "active":
+        return t("sidebar.statusActive");
+      case "waiting":
+        return t("sidebar.statusWaiting");
+      case "idle":
       default:
-        return t("sidebar.statusDiscussion");
+        return t("sidebar.statusIdle");
     }
   };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case "awaiting_review":
-        return "bg-amber-500/10 border-amber-500/30 text-amber-500";
-      case "executing":
-        return "bg-purple-500/10 border-purple-500/30 text-purple-500";
-      case "completed":
+      case "active":
         return "bg-emerald-500/10 border-emerald-500/30 text-emerald-500";
-      case "discussion":
+      case "waiting":
+        return "bg-amber-500/10 border-amber-500/30 text-amber-500";
+      case "idle":
       default:
         return "bg-blue-500/10 border-blue-500/20 text-blue-500";
     }
@@ -575,15 +570,13 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "awaiting_review":
-        return <HelpCircle class="w-3 h-3 flex-shrink-0" />;
-      case "executing":
+      case "active":
         return <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />;
-      case "completed":
-        return <CheckCircle2 class="w-3 h-3 flex-shrink-0" />;
-      case "discussion":
+      case "waiting":
+        return <HelpCircle class="w-3 h-3 flex-shrink-0" />;
+      case "idle":
       default:
-        return <MessageSquare class="w-3 h-3 flex-shrink-0" />;
+        return <Clock class="w-3 h-3 flex-shrink-0" />;
     }
   };
 

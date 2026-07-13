@@ -1849,30 +1849,24 @@ const SessionCard = (props: SessionCardProps) => {
     if (!status) return null;
     
     switch (status) {
-      case "awaiting_review":
+      case "active":
         return {
-          label: t("sidebar.statusAwaitingReview"),
+          label: t("sidebar.statusActive"),
+          class: "bg-emerald-500/10 border-emerald-500/30 text-emerald-500",
+          icon: () => <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />
+        };
+      case "waiting":
+        return {
+          label: t("sidebar.statusWaiting"),
           class: "bg-amber-500/10 border-amber-500/30 text-amber-500",
           icon: () => <HelpCircle class="w-3 h-3 flex-shrink-0" />
         };
-      case "executing":
-        return {
-          label: t("sidebar.statusExecuting"),
-          class: "bg-purple-500/10 border-purple-500/30 text-purple-500",
-          icon: () => <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />
-        };
-      case "completed":
-        return {
-          label: t("sidebar.statusCompleted"),
-          class: "bg-emerald-500/10 border-emerald-500/30 text-emerald-500",
-          icon: () => <CheckCircle2 class="w-3 h-3 flex-shrink-0" />
-        };
-      case "discussion":
+      case "idle":
       default:
         return {
-          label: t("sidebar.statusDiscussion"),
+          label: t("sidebar.statusIdle"),
           class: "bg-blue-500/10 border-blue-500/20 text-blue-500",
-          icon: () => <MessageSquare class="w-3 h-3 flex-shrink-0" />
+          icon: () => <Clock class="w-3 h-3 flex-shrink-0" />
         };
     }
   };
