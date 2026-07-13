@@ -1627,7 +1627,7 @@ fn test_antigravity_variants() {
     assert_eq!(standard.id(), "antigravity");
     assert_eq!(ide.id(), "antigravity_ide");
 
-    assert_eq!(standard.display_name(), "Google Antigravity");
+    assert_eq!(standard.display_name(), "Antigravity");
     assert_eq!(ide.display_name(), "Antigravity IDE");
 
     assert!(standard.get_default_log_paths()[0].contains("antigravity"));

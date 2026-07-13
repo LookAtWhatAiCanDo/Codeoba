@@ -744,7 +744,7 @@ impl SourceAdapter for AntigravitySource {
 
     fn display_name(&self) -> &str {
         match self.variant {
-            crate::parsers::ParserVariant::Standard => "Google Antigravity",
+            crate::parsers::ParserVariant::Standard => "Antigravity",
             crate::parsers::ParserVariant::Ide => "Antigravity IDE",
         }
     }

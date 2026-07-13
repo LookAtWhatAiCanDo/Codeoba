@@ -11,7 +11,7 @@ Bitte lesen Sie diese Richtlinie sorgfältig durch. Wenn Sie mit den hier beschr
 > Codeoba ist als lokal-erste Anwendung konzipiert. Alle Dialogtranskripte, Datenbankindizes, Caches und semantischen Modelle werden vollständig auf Ihrem lokalen Rechner gespeichert.
 
 Wesentliche Aspekte dieser lokal-ersten Implementierung sind:
-- **Keine Remote-Protokolle:** Konversationsprotokolle, die aus lokalen Verzeichnissen (Claude Code, Google Antigravity, Cursor, OpenAI Codex, Copilot usw.) aggregiert werden, werden offline verarbeitet und direkt in der Laufzeit des Desktop-Clients auf Ihrem Gerät analysiert.
+- **Keine Remote-Protokolle:** Konversationsprotokolle, die aus lokalen Verzeichnissen (Claude Code, Antigravity, Cursor, OpenAI Codex, Copilot usw.) aggregiert werden, werden offline verarbeitet und direkt in der Laufzeit des Desktop-Clients auf Ihrem Gerät analysiert.
 - **Lokale SQLite-Datenbank & Cache:** Alle indexierten Sitzungen, Protokolle, Suchbegriffe und Leistungsdaten werden in einem lokalen Cache-Verzeichnis gespeichert.
 - **Lokale Vektor-Indexierung:** Für den semantischen Abgleich lädt die Anwendung lokal ein quantisiertes Transformer-Modell (all-MiniLM-L6-v2) herunter. Alle Berechnungen und Ähnlichkeitssuchen werden auf der CPU Ihres Rechners ohne API-Übertragungen an Drittanbieter ausgeführt.
 

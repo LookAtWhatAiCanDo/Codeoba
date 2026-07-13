@@ -11,7 +11,7 @@ Please read this policy carefully. If you do not agree with the terms outlined h
 > Codeoba is built to be a local-first application. All dialogue transcripts, database indices, caches, and semantic models are stored entirely on your local machine.
 
 Key aspects of this local-first implementation include:
-- **Zero Remote Logs:** Conversation transcripts aggregated from local assistant directories (Claude Code, Google Antigravity, Cursor, OpenAI Codex, Copilot, etc.) are processed offline and parsed directly inside the desktop client's runtime on your device.
+- **Zero Remote Logs:** Conversation transcripts aggregated from local assistant directories (Claude Code, Antigravity, Cursor, OpenAI Codex, Copilot, etc.) are processed offline and parsed directly inside the desktop client's runtime on your device.
 - **Local SQLite Database & Cache:** All indexed turns, logs, search keywords, and performance data are persisted in a local cache directory.
 - **Local Vector Indexing:** For semantic query matching, the application downloads a quantized transformer model (all-MiniLM-L6-v2) locally. All conceptual calculations and search lookups are run on your machine's CPU with no third-party API transmissions.
 
