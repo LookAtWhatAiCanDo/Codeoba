@@ -58,8 +58,11 @@ pub fn resolve_local_file_link(
             let home = crate::parsers::get_home_dir();
             if trimmed == "~" {
                 home
-            } else if trimmed.starts_with("~/") || trimmed.starts_with("~\\") {
-                home.join(&trimmed[2..])
+            } else if let Some(rest) = trimmed
+                .strip_prefix("~/")
+                .or_else(|| trimmed.strip_prefix("~\\"))
+            {
+                home.join(rest)
             } else {
                 PathBuf::from(trimmed)
             }

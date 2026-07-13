@@ -149,10 +149,10 @@ impl ClaudeSource {
                 let path = entry.path();
                 if path.is_dir() {
                     self.find_jsonl_files(&path, depth + 1, max_depth, paths);
-                } else if path.is_file() {
-                    if path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
-                        paths.push(path);
-                    }
+                } else if path.is_file()
+                    && path.extension().and_then(|s| s.to_str()) == Some("jsonl")
+                {
+                    paths.push(path);
                 }
             }
         }
@@ -175,9 +175,22 @@ impl ClaudeSource {
             .unwrap_or(0);
         let size = metadata.len() as i64;
 
-        if let Some(cached) = crate::parsers::cache::get_cache_manager()
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
             .get_cached_session_for_file(self.id(), file_path, last_modified, size)
         {
+            // Re-resolve status dynamically to ensure it is not stale
+            cached.status = crate::models::resolve_session_status(
+                self.id(),
+                &cached.id,
+                file_path,
+                &cached.turns,
+                &cached.cwd,
+            );
+            crate::parsers::cache::get_cache_manager().update_cached_session(
+                self.id(),
+                file_path,
+                cached.clone(),
+            );
             return Some(cached);
         }
 
@@ -290,27 +303,27 @@ impl ClaudeSource {
                                 });
                             }
                         }
-                    } else if line_type == "system" {
-                        if obj.get("subtype").and_then(|v| v.as_str()) == Some("compact_boundary") {
-                            let duration_ms = obj
-                                .get("compactMetadata")
-                                .and_then(|v| v.as_object())
-                                .and_then(|m| m.get("durationMs"))
-                                .and_then(|d| {
-                                    d.as_i64()
-                                        .or_else(|| d.as_str().and_then(|s| s.parse().ok()))
-                                })
-                                .unwrap_or(0);
+                    } else if line_type == "system"
+                        && obj.get("subtype").and_then(|v| v.as_str()) == Some("compact_boundary")
+                    {
+                        let duration_ms = obj
+                            .get("compactMetadata")
+                            .and_then(|v| v.as_object())
+                            .and_then(|m| m.get("durationMs"))
+                            .and_then(|d| {
+                                d.as_i64()
+                                    .or_else(|| d.as_str().and_then(|s| s.parse().ok()))
+                            })
+                            .unwrap_or(0);
 
-                            raw_turns.push(RawTurn {
-                                is_user: false,
-                                text: String::new(),
-                                timestamp,
-                                model: None,
-                                is_compaction: true,
-                                compaction_time_ms: duration_ms,
-                            });
-                        }
+                        raw_turns.push(RawTurn {
+                            is_user: false,
+                            text: String::new(),
+                            timestamp,
+                            model: None,
+                            is_compaction: true,
+                            compaction_time_ms: duration_ms,
+                        });
                     }
                 }
             }
@@ -439,10 +452,18 @@ impl ClaudeSource {
                         let trimmed = first_line.trim();
                         if trimmed.starts_with('#') {
                             let raw_title = trimmed.trim_start_matches('#').trim();
-                            if raw_title.to_lowercase().starts_with("plan:") {
-                                raw_title[5..].trim().to_string()
-                            } else if raw_title.to_lowercase().starts_with("goal:") {
-                                raw_title[5..].trim().to_string()
+                            // Strip a "plan:"/"goal:" prefix by CHARACTER, not byte. Slicing
+                            // raw_title[5..] after matching on `to_lowercase()` can panic:
+                            // lowercasing may change byte length, so byte 5 of the original
+                            // string is not guaranteed to be a char boundary.
+                            let lower = raw_title.to_lowercase();
+                            if lower.starts_with("plan:") || lower.starts_with("goal:") {
+                                raw_title
+                                    .chars()
+                                    .skip(5)
+                                    .collect::<String>()
+                                    .trim()
+                                    .to_string()
                             } else {
                                 raw_title.to_string()
                             }
@@ -469,11 +490,28 @@ impl ClaudeSource {
             {
                 "Claude Session".to_string()
             } else if raw_title_lower.ends_with(&formatted_slug_space) {
-                raw_title[..raw_title.len() - formatted_slug_space.len()]
+                // Strip by char count, not byte length: the suffix length is measured on
+                // the lowercased title, so a byte-index slice of the original can split a
+                // multi-byte char and panic.
+                let keep = raw_title
+                    .chars()
+                    .count()
+                    .saturating_sub(formatted_slug_space.chars().count());
+                raw_title
+                    .chars()
+                    .take(keep)
+                    .collect::<String>()
                     .trim()
                     .to_string()
             } else if raw_title_lower.ends_with(&formatted_slug_hyphen) {
-                raw_title[..raw_title.len() - formatted_slug_hyphen.len()]
+                let keep = raw_title
+                    .chars()
+                    .count()
+                    .saturating_sub(formatted_slug_hyphen.chars().count());
+                raw_title
+                    .chars()
+                    .take(keep)
+                    .collect::<String>()
                     .trim()
                     .to_string()
             } else {
@@ -484,7 +522,8 @@ impl ClaudeSource {
         };
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
-        let status = crate::models::resolve_session_status(self.id(), &session_id, &turns, &cwd);
+        let status =
+            crate::models::resolve_session_status(self.id(), &session_id, file_path, &turns, &cwd);
 
         let session = Session {
             id: session_id,

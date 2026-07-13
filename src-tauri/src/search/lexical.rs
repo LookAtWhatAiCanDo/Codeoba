@@ -82,7 +82,7 @@ pub fn lexical_search<'a>(
                 score: 1.0,
             })
             .collect();
-        results.sort_by(|a, b| b.session.updated_at.cmp(&a.session.updated_at));
+        results.sort_by_key(|r| std::cmp::Reverse(r.session.updated_at));
         return results;
     }
 
@@ -163,7 +163,7 @@ pub fn lexical_search<'a>(
             for (index, turn) in session.turns.iter().enumerate() {
                 let user_matches = regex.find_iter(&turn.user_message).count();
                 let assistant_matches = regex.find_iter(&turn.assistant_message).count();
-                let turn_matches = user_matches * 2 + assistant_matches * 1;
+                let turn_matches = user_matches * 2 + assistant_matches;
                 if turn_matches > 0 {
                     term_turn_matches += turn_matches;
                     if !matched_turn_indexes.contains(&index) {

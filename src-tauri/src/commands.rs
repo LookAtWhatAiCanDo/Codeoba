@@ -139,6 +139,8 @@ pub fn get_sources() -> Vec<SourceMetadata> {
         .collect()
 }
 
+pub const STATUS_TTL_MS: i64 = 2000;
+
 #[tauri::command]
 pub async fn get_all_sessions<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
@@ -146,9 +148,9 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
     let state = app_handle.state::<SearchIndexState>();
 
     // Copy the lightweight sessions out from under the read lock, then release it before doing
-    // any filesystem work. resolve_workspace_name walks the filesystem and resolve_session_status
-    // reads plan/task files, per session — holding the read lock across that I/O would block the
-    // rebuild writer (and every other reader) for the whole scan on every load.
+    // any filesystem work. resolve_workspace_name walks the filesystem, per session — holding the
+    // read lock across that I/O would block the rebuild writer (and every other reader) for the
+    // whole scan on every load.
     let mut all_sessions: Vec<Session> = {
         let guard = state
             .sessions
@@ -157,30 +159,64 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
         guard.values().map(|s| s.to_lightweight()).collect()
     };
 
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
     for session in &mut all_sessions {
         if session.workspace_name.is_none() && session.cwd.is_some() {
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
-        if session.status.is_none() {
-            session.status = crate::models::resolve_session_status(
-                &session.source_id,
-                &session.id,
-                &session.turns,
-                &session.cwd,
-            );
+        let is_antigravity_or_claude = session.source_id == "antigravity"
+            || session.source_id == "antigravity_ide"
+            || session.source_id == "claude";
+        if session.status.is_none() || is_antigravity_or_claude {
+            let cached_val = {
+                if let Ok(ttl_guard) = state.status_ttl_cache.read() {
+                    ttl_guard.get(&session.id).cloned()
+                } else {
+                    None
+                }
+            };
+            let mut use_cache = false;
+            if let Some((status, ts)) = cached_val {
+                if now - ts < STATUS_TTL_MS {
+                    session.status = Some(status);
+                    use_cache = true;
+                }
+            }
+            if !use_cache {
+                let status = crate::models::resolve_session_status(
+                    &session.source_id,
+                    &session.id,
+                    &session.file_path,
+                    &session.turns,
+                    &session.cwd,
+                );
+                if let Some(ref st) = status {
+                    if let Ok(mut ttl_guard) = state.status_ttl_cache.write() {
+                        ttl_guard.insert(session.id.clone(), (st.clone(), now));
+                    }
+                }
+                session.status = status;
+            }
         }
     }
 
-    // Clean orphaned sessions from groups
+    // Clean orphaned sessions from groups & TTL cache
     let all_valid_ids: std::collections::HashSet<String> =
         all_sessions.iter().map(|s| s.id.clone()).collect();
     let state_groups = app_handle.state::<crate::groups::GroupState>();
     if let Ok(_lock) = state_groups.lock.lock() {
         let _ = crate::groups::clean_orphaned_sessions(&all_valid_ids);
     }
+    if let Ok(mut ttl_guard) = state.status_ttl_cache.write() {
+        ttl_guard.retain(|id, _| all_valid_ids.contains(id));
+    }
 
     // Sort sessions by updated_at descending
-    all_sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    all_sessions.sort_by_key(|s| std::cmp::Reverse(s.updated_at));
     Ok(all_sessions)
 }
 
@@ -197,7 +233,13 @@ pub async fn get_session<R: tauri::Runtime>(
         file_path
     );
 
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
     let state = app_handle.state::<SearchIndexState>();
+
     let in_memory_cached = {
         let guard = state
             .sessions
@@ -213,13 +255,39 @@ pub async fn get_session<R: tauri::Runtime>(
         if session.workspace_name.is_none() && session.cwd.is_some() {
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
-        if session.status.is_none() {
-            session.status = crate::models::resolve_session_status(
-                &session.source_id,
-                &session.id,
-                &session.turns,
-                &session.cwd,
-            );
+        let is_antigravity_or_claude = session.source_id == "antigravity"
+            || session.source_id == "antigravity_ide"
+            || session.source_id == "claude";
+        if session.status.is_none() || is_antigravity_or_claude {
+            let cached_val = {
+                if let Ok(ttl_guard) = state.status_ttl_cache.read() {
+                    ttl_guard.get(&session.id).cloned()
+                } else {
+                    None
+                }
+            };
+            let mut use_cache = false;
+            if let Some((status, ts)) = cached_val {
+                if now - ts < STATUS_TTL_MS {
+                    session.status = Some(status);
+                    use_cache = true;
+                }
+            }
+            if !use_cache {
+                let status = crate::models::resolve_session_status(
+                    &session.source_id,
+                    &session.id,
+                    &session.file_path,
+                    &session.turns,
+                    &session.cwd,
+                );
+                if let Some(ref st) = status {
+                    if let Ok(mut ttl_guard) = state.status_ttl_cache.write() {
+                        ttl_guard.insert(session.id.clone(), (st.clone(), now));
+                    }
+                }
+                session.status = status;
+            }
         }
         let elapsed = start_time.elapsed();
         crate::log_info!(
@@ -259,13 +327,23 @@ pub async fn get_session<R: tauri::Runtime>(
                 if session.workspace_name.is_none() && session.cwd.is_some() {
                     session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
                 }
-                if session.status.is_none() {
-                    session.status = crate::models::resolve_session_status(
+                let is_antigravity_or_claude = session.source_id == "antigravity"
+                    || session.source_id == "antigravity_ide"
+                    || session.source_id == "claude";
+                if session.status.is_none() || is_antigravity_or_claude {
+                    let status = crate::models::resolve_session_status(
                         &session.source_id,
                         &session.id,
+                        &session.file_path,
                         &session.turns,
                         &session.cwd,
                     );
+                    if let Some(ref st) = status {
+                        if let Ok(mut ttl_guard) = state.status_ttl_cache.write() {
+                            ttl_guard.insert(session.id.clone(), (st.clone(), now));
+                        }
+                    }
+                    session.status = status;
                 }
                 session
             }))

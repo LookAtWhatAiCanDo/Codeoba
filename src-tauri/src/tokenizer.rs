@@ -65,7 +65,7 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
     let cached = {
         let guard = get_custom_tokenizers()
             .read()
-            .expect("Failed to lock CUSTOM_TOKENIZERS read lock");
+            .unwrap_or_else(|e| e.into_inner());
         guard.get(family).cloned()
     };
 
@@ -81,7 +81,7 @@ pub fn estimate_tokens(text: &str, model_name: &str) -> i64 {
         {
             let mut guard = get_custom_tokenizers()
                 .write()
-                .expect("Failed to lock CUSTOM_TOKENIZERS write lock");
+                .unwrap_or_else(|e| e.into_inner());
             guard.insert(family.to_string(), tokenizer_opt.clone());
         }
         if let Some(tokenizer) = tokenizer_opt {
@@ -206,7 +206,7 @@ mod tests {
         {
             let mut guard = get_custom_tokenizers()
                 .write()
-                .expect("Failed to lock CUSTOM_TOKENIZERS write lock");
+                .unwrap_or_else(|e| e.into_inner());
             guard.clear();
         }
 

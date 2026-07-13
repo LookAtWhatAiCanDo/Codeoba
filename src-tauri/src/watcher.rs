@@ -258,6 +258,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
 }
 
 pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
+    crate::log_debug!("[Watcher] start_watcher called");
     let sources = get_sources_list();
     let decisions = crate::parsers::source_decisions::load_source_decisions();
     let mut targets = Vec::new();
@@ -369,7 +370,10 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
             }
         });
     }
-
+    crate::log_debug!(
+        "[Watcher] start_watcher finished successfully, unique_targets: {:?}",
+        unique_targets
+    );
     Ok(())
 }
 
@@ -948,15 +952,22 @@ mod watcher_tests {
         handle_file_change(&app_handle, &pb_file);
 
         // 6. Give the async reload handler a moment to execute
-        std::thread::sleep(std::time::Duration::from_millis(1500));
-
-        // 7. Check if the session title in the index was updated!
         let idx = app_handle.state::<SearchIndexState>();
-        let guard = idx.sessions.read().unwrap();
-        let session_in_idx = guard.get("session-antigravity-123").unwrap();
-        assert_eq!(
-            session_in_idx.thread_name.as_deref(),
-            Some("New Physics Title")
+        let mut title_updated = false;
+        for _ in 0..50 {
+            if let Ok(guard) = idx.sessions.read() {
+                if let Some(session_in_idx) = guard.get("session-antigravity-123") {
+                    if session_in_idx.thread_name.as_deref() == Some("New Physics Title") {
+                        title_updated = true;
+                        break;
+                    }
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        assert!(
+            title_updated,
+            "Session title was not updated to 'New Physics Title' in time"
         );
 
         if let Some(h) = original_home {

@@ -74,7 +74,7 @@ impl CursorSource {
         if let Ok(mut rows) = stmt.query([]) {
             while let Ok(Some(row)) = rows.next() {
                 let mut map = HashMap::new();
-                for i in 0..col_count {
+                for (i, col_name) in col_names.iter().enumerate() {
                     if let Ok(val) = row.get::<_, Value>(i) {
                         let val_str = match val {
                             Value::Null => String::new(),
@@ -83,9 +83,9 @@ impl CursorSource {
                             Value::Text(s) => s,
                             Value::Blob(b) => String::from_utf8_lossy(&b).to_string(),
                         };
-                        map.insert(col_names[i].clone(), val_str);
+                        map.insert(col_name.clone(), val_str);
                     } else {
-                        map.insert(col_names[i].clone(), String::new());
+                        map.insert(col_name.clone(), String::new());
                     }
                 }
                 results.push(map);
@@ -121,7 +121,7 @@ impl CursorSource {
             }
         }
 
-        active_dirs.sort_by(|a, b| b.1.cmp(&a.1));
+        active_dirs.sort_by_key(|d| std::cmp::Reverse(d.1));
         active_dirs.truncate(100);
 
         for (dir, _) in active_dirs {
@@ -147,11 +147,12 @@ impl CursorSource {
                 folder_url.to_string()
             };
 
-            if folder_path.starts_with('/')
-                && folder_path.len() > 2
-                && folder_path.as_bytes()[2] == b':'
-            {
-                folder_path = folder_path[1..].to_string();
+            // Normalize a leading-slash Windows path ("/C:/..." -> "C:/..."). strip_prefix
+            // avoids byte-indexing the string.
+            if folder_path.len() > 2 && folder_path.as_bytes()[2] == b':' {
+                if let Some(stripped) = folder_path.strip_prefix('/') {
+                    folder_path = stripped.to_string();
+                }
             }
 
             let rows = self.query_db(
@@ -287,12 +288,18 @@ impl CursorSource {
             let map = self
                 .composer_to_workspace
                 .read()
-                .expect("Failed to lock composer_to_workspace read lock");
+                .unwrap_or_else(|e| e.into_inner());
             map.get(composer_id).cloned()
         };
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
-        let status = crate::models::resolve_session_status(self.id(), composer_id, &turns, &cwd);
+        let status = crate::models::resolve_session_status(
+            self.id(),
+            composer_id,
+            &format!("composerData:{}", composer_id),
+            &turns,
+            &cwd,
+        );
 
         Some(Session {
             id: composer_id.to_string(),
@@ -370,11 +377,11 @@ impl SourceAdapter for CursorSource {
                 let old_ws_map = self
                     .composer_to_workspace
                     .read()
-                    .expect("Failed to lock composer_to_workspace read lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 let old_active_ids = self
                     .active_composer_ids
                     .read()
-                    .expect("Failed to lock active_composer_ids read lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 *old_ws_map != new_ws_map || *old_active_ids != new_active_ids
             };
             if !changed {
@@ -404,16 +411,12 @@ impl SourceAdapter for CursorSource {
     fn delete_data_paths(&self) -> bool {
         let mut success = true;
         let db_file = self.get_global_db_file();
-        if db_file.exists() {
-            if fs::remove_file(db_file).is_err() {
-                success = false;
-            }
+        if db_file.exists() && fs::remove_file(db_file).is_err() {
+            success = false;
         }
         let ws_dir = self.get_workspace_storage_dir();
-        if ws_dir.exists() {
-            if fs::remove_dir_all(ws_dir).is_err() {
-                success = false;
-            }
+        if ws_dir.exists() && fs::remove_dir_all(ws_dir).is_err() {
+            success = false;
         }
         success
     }
@@ -444,7 +447,7 @@ impl SourceAdapter for CursorSource {
             let known_ids = self
                 .active_composer_ids
                 .read()
-                .expect("Failed to lock active_composer_ids read lock");
+                .unwrap_or_else(|e| e.into_inner());
             if !known_ids.is_empty() && !known_ids.contains(composer_id) {
                 return None;
             }
@@ -468,7 +471,7 @@ impl SourceAdapter for CursorSource {
                 let map = self
                     .composer_to_workspace
                     .read()
-                    .expect("Failed to lock composer_to_workspace read lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 map.get(composer_id).cloned()
             };
             if cwd.is_some() {
@@ -510,12 +513,12 @@ impl SourceAdapter for CursorSource {
             let mut map_guard = self
                 .composer_to_workspace
                 .write()
-                .expect("Failed to lock composer_to_workspace write lock");
+                .unwrap_or_else(|e| e.into_inner());
             *map_guard = ws_map;
             let mut ids_guard = self
                 .active_composer_ids
                 .write()
-                .expect("Failed to lock active_composer_ids write lock");
+                .unwrap_or_else(|e| e.into_inner());
             *ids_guard = active_ids.clone();
         }
 
@@ -544,7 +547,7 @@ impl SourceAdapter for CursorSource {
                     let map = self
                         .composer_to_workspace
                         .read()
-                        .expect("Failed to lock composer_to_workspace read lock");
+                        .unwrap_or_else(|e| e.into_inner());
                     map.get(composer_id).cloned()
                 };
                 cached.cwd = cwd;

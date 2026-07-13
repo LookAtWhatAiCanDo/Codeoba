@@ -47,28 +47,31 @@ impl CodexSource {
             *self
                 .last_index_file_modified
                 .read()
-                .expect("Failed to lock last_index_file_modified read lock")
+                .unwrap_or_else(|e| e.into_inner())
         };
         if last_mod == 0 || current_modified > last_mod {
             self.build_session_title_map();
             let mut mod_guard = self
                 .last_index_file_modified
                 .write()
-                .expect("Failed to lock last_index_file_modified write lock");
+                .unwrap_or_else(|e| e.into_inner());
             *mod_guard = current_modified;
         }
 
         let map = self
             .session_title_map
             .read()
-            .expect("Failed to lock session_title_map read lock");
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(title) = map.get(session_id) {
             return title.clone();
         }
+        // Last 36 bytes = the trailing UUID. `.get()` (not `[..]`) returns None instead
+        // of panicking if the byte offset lands mid-char on a non-ASCII session id.
         if session_id.len() >= 36 {
-            let uuid_part = &session_id[session_id.len() - 36..];
-            if let Some(title) = map.get(uuid_part) {
-                return title.clone();
+            if let Some(uuid_part) = session_id.get(session_id.len() - 36..) {
+                if let Some(title) = map.get(uuid_part) {
+                    return title.clone();
+                }
             }
         }
         "Codex Session".to_string()
@@ -98,7 +101,7 @@ impl CodexSource {
         let mut map_guard = self
             .session_title_map
             .write()
-            .expect("Failed to lock session_title_map write lock");
+            .unwrap_or_else(|e| e.into_inner());
         *map_guard = map;
     }
 }
@@ -199,6 +202,19 @@ impl SourceAdapter for CodexSource {
             .get_cached_session_for_file(self.id(), file_path, cache_modified, cache_size)
         {
             cached.thread_name = Some(self.get_session_title(&cached.id));
+            // Re-resolve status dynamically to ensure it is not stale
+            cached.status = crate::models::resolve_session_status(
+                self.id(),
+                &cached.id,
+                file_path,
+                &cached.turns,
+                &cached.cwd,
+            );
+            crate::parsers::cache::get_cache_manager().update_cached_session(
+                self.id(),
+                file_path,
+                cached.clone(),
+            );
             return Some(cached);
         }
 
@@ -213,9 +229,11 @@ impl SourceAdapter for CodexSource {
             .trim_start_matches("rollout-")
             .to_string();
         if session_id.len() >= 36 {
-            let uuid_part = session_id[session_id.len() - 36..].to_string();
-            if uuid_part.contains('-') {
-                session_id = uuid_part;
+            // `.get()` avoids a UTF-8-boundary panic on a non-ASCII file stem.
+            if let Some(uuid_part) = session_id.get(session_id.len() - 36..) {
+                if uuid_part.contains('-') {
+                    session_id = uuid_part.to_string();
+                }
             }
         }
 
@@ -386,6 +404,9 @@ impl SourceAdapter for CodexSource {
                 index_title
             } else {
                 let first_user_msg = turns.iter().find(|t| !t.user_message.is_empty()).map(|t| {
+                    // First 60 chars (not bytes): a byte-index truncate here panics
+                    // when it splits a multi-byte UTF-8 char, and is redundant since
+                    // the string is already ≤60 chars from `.take(60)`.
                     let mut title = t
                         .user_message
                         .chars()
@@ -393,7 +414,6 @@ impl SourceAdapter for CodexSource {
                         .collect::<String>()
                         .replace('\n', " ");
                     if t.user_message.chars().count() > 60 {
-                        title.truncate(60);
                         title.push_str("...");
                     }
                     title
@@ -409,7 +429,8 @@ impl SourceAdapter for CodexSource {
             == Some("archived_sessions");
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
-        let status = crate::models::resolve_session_status(self.id(), &session_id, &turns, &cwd);
+        let status =
+            crate::models::resolve_session_status(self.id(), &session_id, file_path, &turns, &cwd);
 
         let session = Session {
             id: session_id,

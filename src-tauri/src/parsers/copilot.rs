@@ -7,6 +7,12 @@ use std::time::SystemTime;
 
 pub struct CopilotSource;
 
+impl Default for CopilotSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CopilotSource {
     pub fn new() -> Self {
         Self
@@ -20,7 +26,9 @@ impl CopilotSource {
 
 fn clean(text: &str) -> String {
     static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(r"<truncated (\d+) bytes>\s*").expect("valid static regex")
+    });
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
         format!(
@@ -118,9 +126,22 @@ impl SourceAdapter for CopilotSource {
             .unwrap_or(0);
         let size = metadata.len() as i64;
 
-        if let Some(cached) = crate::parsers::cache::get_cache_manager()
+        if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
             .get_cached_session_for_file(self.id(), file_path, last_modified, size)
         {
+            // Re-resolve status dynamically to ensure it is not stale
+            cached.status = crate::models::resolve_session_status(
+                self.id(),
+                &cached.id,
+                file_path,
+                &cached.turns,
+                &cached.cwd,
+            );
+            crate::parsers::cache::get_cache_manager().update_cached_session(
+                self.id(),
+                file_path,
+                cached.clone(),
+            );
             return Some(cached);
         }
 
@@ -459,7 +480,8 @@ impl SourceAdapter for CopilotSource {
             .unwrap_or(updated_time);
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
-        let status = crate::models::resolve_session_status(self.id(), &session_id, &turns, &cwd);
+        let status =
+            crate::models::resolve_session_status(self.id(), &session_id, file_path, &turns, &cwd);
 
         let session = Session {
             id: session_id,

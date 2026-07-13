@@ -77,7 +77,9 @@ impl EmbeddingCacheManager {
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
         let key_bytes = get_or_create_cache_key();
         let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce = nonce_bytes.try_into().unwrap();
+        let nonce = nonce_bytes
+            .try_into()
+            .expect("GCM nonce is exactly 12 bytes");
 
         let plaintext = match cipher.decrypt(nonce, ciphertext) {
             Ok(p) => p,
@@ -178,8 +180,8 @@ impl EmbeddingCacheManager {
     pub fn put(&self, text: &str, vector: Vec<f32>) {
         let hash = calculate_string_md5(text);
         if let Ok(mut guard) = self.cache_map.lock() {
-            if !guard.contains_key(&hash) {
-                guard.insert(hash, vector);
+            if let std::collections::hash_map::Entry::Vacant(e) = guard.entry(hash) {
+                e.insert(vector);
                 if let Ok(mut mod_guard) = self.is_modified.lock() {
                     *mod_guard = true;
                 }

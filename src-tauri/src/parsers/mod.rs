@@ -16,6 +16,8 @@ pub mod resolver;
 pub mod source_decisions;
 
 #[cfg(test)]
+// Test fixtures slice known-ASCII literals by byte index; that's acceptable in tests.
+#[allow(clippy::string_slice)]
 mod tests;
 
 pub trait SourceAdapter: Send + Sync {
@@ -150,10 +152,14 @@ fn strip_xml_tags(input: &str) -> String {
 
 pub fn extract_title_from_first_query(first_query: &str) -> String {
     let cleaned = if let Some(start_idx) = first_query.find("<USER_REQUEST>") {
+        let after = start_idx + "<USER_REQUEST>".len();
+        // `.get()` (not `[..]`) can't panic on a UTF-8 boundary; `<USER_REQUEST>` is
+        // ASCII so `after` is a valid boundary, and a missing/reordered close tag just
+        // yields "" instead of a panic.
         if let Some(end_idx) = first_query.find("</USER_REQUEST>") {
-            first_query[start_idx + "<USER_REQUEST>".len()..end_idx].to_string()
+            first_query.get(after..end_idx).unwrap_or("").to_string()
         } else {
-            first_query[start_idx + "<USER_REQUEST>".len()..].to_string()
+            first_query.get(after..).unwrap_or("").to_string()
         }
     } else {
         first_query.to_string()
@@ -177,7 +183,13 @@ pub fn extract_title_from_first_query(first_query: &str) -> String {
     let lower = title_candidates.to_lowercase();
     for prefix in &prefixes {
         if lower.starts_with(prefix) {
-            title_candidates = title_candidates[prefix.len()..].to_string();
+            // Strip by character count, not byte index: `prefix.len()` is measured on
+            // the lowercased string, so slicing the original at that byte offset can
+            // land mid-char and panic. Prefixes are ASCII, so char-count is exact.
+            title_candidates = title_candidates
+                .chars()
+                .skip(prefix.chars().count())
+                .collect();
             break;
         }
     }

@@ -134,6 +134,11 @@ fn temp_parse_assistant_message(message: &str) -> Vec<TempMessagePart> {
     parts
 }
 
+// The HOME_MUTEX guard is deliberately held across the `.await`: it serializes the
+// process-global $HOME/env mutation for the duration of the test body so concurrent
+// tests can't observe each other's environment. Tests run on a single-threaded runtime,
+// so this cannot deadlock.
+#[allow(clippy::await_holding_lock)]
 async fn with_mock_home<F, Fut>(f: F)
 where
     F: FnOnce(PathBuf) -> Fut,
@@ -500,18 +505,18 @@ fn test_antigravity_archived_parsing() {
             let source = AntigravitySource::default();
 
             let session1 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
-            assert_eq!(session1.is_archived, false);
+            assert!(!session1.is_archived);
 
             let annotation_file = annotations_dir.join("session-archived.pbtxt");
             fs::write(&annotation_file, "archived:true last_user_view_time:{seconds:1234 nanos:567}").unwrap();
 
             let session2 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
-            assert_eq!(session2.is_archived, true);
+            assert!(session2.is_archived);
 
             fs::write(&annotation_file, "archived:false last_user_view_time:{seconds:1234 nanos:567}").unwrap();
 
             let session3 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
-            assert_eq!(session3.is_archived, false);
+            assert!(!session3.is_archived);
         }).await;
     });
 }
@@ -550,13 +555,13 @@ fn test_codex_archived_parsing() {
             .parse_session(&active_file.to_string_lossy())
             .await
             .unwrap();
-        assert_eq!(active_session.is_archived, false);
+        assert!(!active_session.is_archived);
 
         let archived_session = source
             .parse_session(&archived_file.to_string_lossy())
             .await
             .unwrap();
-        assert_eq!(archived_session.is_archived, true);
+        assert!(archived_session.is_archived);
     });
 }
 
@@ -1067,22 +1072,28 @@ fn test_lexical_search_engine_filters() {
     let sessions = vec![active_session, archived_session];
 
     // 1. ALL filter returns both
-    let mut filter_all = crate::search::SearchFilter::default();
-    filter_all.archival_filter = crate::search::ArchivalFilter::All;
+    let filter_all = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::All,
+        ..Default::default()
+    };
     let all_results = crate::search::lexical::lexical_search(&sessions, "message", &filter_all);
     assert_eq!(all_results.len(), 2);
 
     // 2. ACTIVE filter returns only active
-    let mut filter_active = crate::search::SearchFilter::default();
-    filter_active.archival_filter = crate::search::ArchivalFilter::Active;
+    let filter_active = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::Active,
+        ..Default::default()
+    };
     let active_results =
         crate::search::lexical::lexical_search(&sessions, "message", &filter_active);
     assert_eq!(active_results.len(), 1);
     assert_eq!(active_results[0].session.id, "session-active");
 
     // 3. ARCHIVED filter returns only archived
-    let mut filter_archived = crate::search::SearchFilter::default();
-    filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
+    let filter_archived = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::Archived,
+        ..Default::default()
+    };
     let archived_results =
         crate::search::lexical::lexical_search(&sessions, "message", &filter_archived);
     assert_eq!(archived_results.len(), 1);
@@ -1167,8 +1178,10 @@ fn test_semantic_search_engine_filters() {
     let query_vector = embedder.get_embeddings("message");
 
     // 1. ALL filter returns both
-    let mut filter_all = crate::search::SearchFilter::default();
-    filter_all.archival_filter = crate::search::ArchivalFilter::All;
+    let filter_all = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::All,
+        ..Default::default()
+    };
     let all_results = crate::search::semantic::semantic_search(
         &sessions,
         &embeddings,
@@ -1179,8 +1192,10 @@ fn test_semantic_search_engine_filters() {
     assert_eq!(all_results.len(), 2);
 
     // 2. ACTIVE filter returns only active
-    let mut filter_active = crate::search::SearchFilter::default();
-    filter_active.archival_filter = crate::search::ArchivalFilter::Active;
+    let filter_active = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::Active,
+        ..Default::default()
+    };
     let active_results = crate::search::semantic::semantic_search(
         &sessions,
         &embeddings,
@@ -1192,8 +1207,10 @@ fn test_semantic_search_engine_filters() {
     assert_eq!(active_results[0].session.id, "session-active");
 
     // 3. ARCHIVED filter returns only archived
-    let mut filter_archived = crate::search::SearchFilter::default();
-    filter_archived.archival_filter = crate::search::ArchivalFilter::Archived;
+    let filter_archived = crate::search::SearchFilter {
+        archival_filter: crate::search::ArchivalFilter::Archived,
+        ..Default::default()
+    };
     let archived_results = crate::search::semantic::semantic_search(
         &sessions,
         &embeddings,

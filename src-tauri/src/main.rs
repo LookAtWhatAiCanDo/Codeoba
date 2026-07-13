@@ -32,7 +32,7 @@ fn main() {
             }
 
             let sessions = {
-                let guard = state.sessions.read().unwrap();
+                let guard = state.sessions.read().unwrap_or_else(|e| e.into_inner());
                 println!("Total sessions in index: {}", guard.len());
                 guard.values().cloned().collect::<Vec<_>>()
             };
@@ -66,7 +66,7 @@ fn main() {
                     }
                 };
 
-                let embeddings_guard = state.embeddings.read().unwrap();
+                let embeddings_guard = state.embeddings.read().unwrap_or_else(|e| e.into_inner());
                 codeoba_lib::search::semantic::semantic_search(
                     &sessions,
                     &embeddings_guard,
@@ -95,8 +95,17 @@ fn main() {
                     println!("   Matched turn indexes: {:?}", result.matched_turn_indexes);
                     if let Some(&turn_idx) = result.matched_turn_indexes.first() {
                         if let Some(turn) = result.session.turns.get(turn_idx) {
-                            let user_snippet = if turn.user_message.len() > 80 {
-                                format!("{}...", &turn.user_message[0..80].replace("\n", " "))
+                            // Char-based, not byte-based: slicing &s[0..80] panics when
+                            // byte 80 lands inside a multi-byte UTF-8 character.
+                            let user_snippet = if turn.user_message.chars().count() > 80 {
+                                format!(
+                                    "{}...",
+                                    turn.user_message
+                                        .chars()
+                                        .take(80)
+                                        .collect::<String>()
+                                        .replace("\n", " ")
+                                )
                             } else {
                                 turn.user_message.replace("\n", " ")
                             };

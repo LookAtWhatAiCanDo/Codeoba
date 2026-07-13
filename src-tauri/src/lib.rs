@@ -36,7 +36,7 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
         return false;
     }
 
-    let normalized_pubkey = pubkey.trim().replace('\n', "").replace('\r', "");
+    let normalized_pubkey = pubkey.trim().replace(['\n', '\r'], "");
 
     // Official Dev/Staging Keys (add rotated keys here)
     let dev_pubkeys = [
@@ -51,10 +51,10 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
 
     let is_dev_pubkey = dev_pubkeys
         .iter()
-        .any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+        .any(|k| k.trim().replace(['\n', '\r'], "") == normalized_pubkey);
     let is_prod_pubkey = prod_pubkeys
         .iter()
-        .any(|k| k.trim().replace('\n', "").replace('\r', "") == normalized_pubkey);
+        .any(|k| k.trim().replace(['\n', '\r'], "") == normalized_pubkey);
 
     if is_dev_pubkey {
         endpoints.iter().all(|endpoint| {

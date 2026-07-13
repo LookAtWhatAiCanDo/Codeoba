@@ -48,6 +48,12 @@ pub struct GroupState {
     pub lock: Mutex<()>,
 }
 
+impl Default for GroupState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GroupState {
     pub fn new() -> Self {
         Self {

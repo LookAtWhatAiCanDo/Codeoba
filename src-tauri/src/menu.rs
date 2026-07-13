@@ -23,7 +23,7 @@ fn translate(lang: &str, key: &str) -> String {
 
     let dict: serde_json::Value = serde_json::from_str(json_str).unwrap_or(serde_json::Value::Null);
 
-    let resolved_val = if let Some(val) = get_nested_value(&dict, key) {
+    if let Some(val) = get_nested_value(&dict, key) {
         val
     } else if lang != "en" {
         let en_str = include_str!("../../src/i18n/locales/en.json");
@@ -36,9 +36,7 @@ fn translate(lang: &str, key: &str) -> String {
         }
     } else {
         key.to_string()
-    };
-
-    resolved_val
+    }
 }
 
 fn get_suffix_tabs_and_symbol(lang: &str, key: &str) -> (&'static str, &'static str) {
@@ -277,7 +275,7 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     } else {
         "Ctrl"
     };
-    let mod_string = match highlight_modifier.as_ref() {
+    let mod_string = match highlight_modifier {
         "Shift+Ctrl" => "Shift+Ctrl+",
         "Shift+Alt" => "Shift+Alt+",
         "Ctrl" => "Ctrl+",

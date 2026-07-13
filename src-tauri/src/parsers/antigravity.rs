@@ -48,7 +48,7 @@ impl AntigravitySource {
             let map = self
                 .antigravity_title_map
                 .read()
-                .expect("Failed to lock antigravity_title_map read lock");
+                .unwrap_or_else(|e| e.into_inner());
             if let Some(title) = map.get(session_id) {
                 return title.clone();
             }
@@ -71,7 +71,7 @@ impl AntigravitySource {
             *self
                 .last_pb_file_modified
                 .read()
-                .expect("Failed to lock last_pb_file_modified read lock")
+                .unwrap_or_else(|e| e.into_inner())
         };
         if last_mod == 0 || current_modified > last_mod {
             let map = self.build_antigravity_title_map();
@@ -79,17 +79,20 @@ impl AntigravitySource {
                 let mut map_guard = self
                     .antigravity_title_map
                     .write()
-                    .expect("Failed to lock antigravity_title_map write lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 *map_guard = map;
                 let mut mod_guard = self
                     .last_pb_file_modified
                     .write()
-                    .expect("Failed to lock last_pb_file_modified write lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 *mod_guard = current_modified;
             }
         }
 
-        let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
+        let map = self
+            .antigravity_title_map
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(title) = map.get(session_id) {
             title.clone()
         } else if matches!(self.variant, crate::parsers::ParserVariant::Ide) {
@@ -369,7 +372,9 @@ fn skip_field(bytes: &[u8], offset: &mut usize, wire_type: u8, limit: usize) {
 
 fn clean(text: &str) -> String {
     static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let re = RE.get_or_init(|| regex::Regex::new(r"<truncated (\d+) bytes>\s*").unwrap());
+    let re = RE.get_or_init(|| {
+        regex::Regex::new(r"<truncated (\d+) bytes>\s*").expect("valid static regex")
+    });
     let cleaned = re.replace_all(text, |caps: &regex::Captures| {
         let bytes = &caps[1];
         format!(
@@ -381,8 +386,8 @@ fn clean(text: &str) -> String {
 }
 
 fn remove_surrounding_quotes(s: &str) -> &str {
-    if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
-        &s[1..s.len() - 1]
+    if let Some(inner) = s.strip_prefix('"').and_then(|x| x.strip_suffix('"')) {
+        inner
     } else {
         s
     }
@@ -621,7 +626,7 @@ fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
     let user_req_re = USER_REQ_RE.get_or_init(|| {
         regex::Regex::new(
             r"(?i)^\s*<USER_REQUEST>([\s\S]*?)</USER_REQUEST>\s*(?:<ADDITIONAL_METADATA>|<USER_SETTINGS_CHANGE>|$)"
-        ).unwrap()
+        ).expect("valid static regex")
     });
 
     for line in content_str.lines() {
@@ -700,7 +705,7 @@ fn extract_model_from_blob(data: &[u8]) -> Option<String> {
             let mut end = absolute_pos;
             while end < data.len() {
                 let c = data[end];
-                if c >= 32 && c <= 126 {
+                if (32..=126).contains(&c) {
                     end += 1;
                 } else {
                     break;
@@ -746,27 +751,21 @@ fn parse_sqlite_session_db(
 
     let session_id = db_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
-    let main_trajectory_id: Option<String> = match conn.query_row(
+    let main_trajectory_id: Option<String> = conn.query_row(
         "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? AND trajectory_type = 4",
         [session_id],
-        |row| row.get(0),
-    ) {
-        Ok(id) => Some(id),
-        Err(_) => None,
-    };
+        |row| row.get(0)
+    ).ok();
 
     let main_trajectory_id = match main_trajectory_id {
         Some(id) => Some(id),
-        None => {
-            match conn.query_row(
+        None => conn
+            .query_row(
                 "SELECT trajectory_id FROM trajectory_meta WHERE cascade_id = ? LIMIT 1",
                 [session_id],
                 |row| row.get(0),
-            ) {
-                Ok(id) => Some(id),
-                Err(_) => None,
-            }
-        }
+            )
+            .ok(),
     };
 
     let mut main_trajectory_ids = std::collections::HashSet::new();
@@ -791,8 +790,9 @@ fn parse_sqlite_session_db(
     let mut rows = stmt.query([])?;
 
     static CWD_RE: std::sync::OnceLock<regex::bytes::Regex> = std::sync::OnceLock::new();
-    let cwd_re =
-        CWD_RE.get_or_init(|| regex::bytes::Regex::new(r#""[Cc]wd"\s*:\s*"([^"]+)""#).unwrap());
+    let cwd_re = CWD_RE.get_or_init(|| {
+        regex::bytes::Regex::new(r#""[Cc]wd"\s*:\s*"([^"]+)""#).expect("valid static regex")
+    });
 
     let mut events = Vec::new();
     while let Some(row) = rows.next()? {
@@ -940,6 +940,10 @@ impl SourceAdapter for AntigravitySource {
                 || filename == "transcript_full.jsonl"
                 || filename == "agyhub_summaries_proto.pb"
                 || (path_str.contains("annotations") && filename.ends_with(".pbtxt"))
+                || (path_str.contains("tasks") && filename.ends_with(".log"))
+                || (path_str.contains("messages") && filename.ends_with(".json"))
+                || (path_str.contains("conversations")
+                    && (filename.ends_with(".db") || filename.ends_with(".db-wal")))
         })
     }
 
@@ -961,10 +965,46 @@ impl SourceAdapter for AntigravitySource {
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
         let mut path_buf = PathBuf::from(file_path);
         let filename = path_buf.file_name().and_then(|s| s.to_str()).unwrap_or("");
-        if filename == "transcript.jsonl" {
-            let full_path = path_buf.parent().unwrap().join("transcript_full.jsonl");
+        let is_db_file = filename.ends_with(".db") || filename.ends_with(".db-wal");
+
+        if is_db_file {
+            let mut session_id = path_buf
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            if let Some(stripped) = session_id.strip_suffix(".db") {
+                session_id = stripped.to_string();
+            }
+            let full_path = self.get_variant_dir().join(format!(
+                "brain/{}/.system_generated/logs/transcript_full.jsonl",
+                session_id
+            ));
             if full_path.exists() && full_path.is_file() {
                 path_buf = full_path;
+            }
+        } else if filename != "transcript_full.jsonl" {
+            let mut found = false;
+            let mut current = path_buf.clone();
+            while let Some(parent) = current.parent() {
+                if parent.file_name().and_then(|s| s.to_str()) == Some(".system_generated") {
+                    let full_path = parent.join("logs/transcript_full.jsonl");
+                    if full_path.exists() && full_path.is_file() {
+                        path_buf = full_path;
+                        found = true;
+                        break;
+                    }
+                }
+                current = parent.to_path_buf();
+            }
+            if !found && path_buf.file_name().and_then(|s| s.to_str()) == Some("transcript.jsonl") {
+                let full_path = path_buf
+                    .parent()
+                    .unwrap_or_else(|| std::path::Path::new(""))
+                    .join("transcript_full.jsonl");
+                if full_path.exists() && full_path.is_file() {
+                    path_buf = full_path;
+                }
             }
         }
         let path = path_buf.as_path();
@@ -984,7 +1024,7 @@ impl SourceAdapter for AntigravitySource {
                 let map = self
                     .antigravity_title_map
                     .read()
-                    .expect("Failed to lock antigravity_title_map read lock");
+                    .unwrap_or_else(|e| e.into_inner());
                 map.contains_key(&session_id)
             };
             if !contains_session {
@@ -1057,6 +1097,20 @@ impl SourceAdapter for AntigravitySource {
                 cached.thread_name = Some(current_title);
                 cached.is_archived = current_archived;
             }
+
+            // Re-resolve status dynamically to ensure it is not stale
+            cached.status = crate::models::resolve_session_status(
+                self.id(),
+                &session_id,
+                &target_file_path,
+                &cached.turns,
+                &cached.cwd,
+            );
+            crate::parsers::cache::get_cache_manager().update_cached_session(
+                self.id(),
+                &target_file_path,
+                cached.clone(),
+            );
             return Some(cached);
         }
 
@@ -1065,17 +1119,19 @@ impl SourceAdapter for AntigravitySource {
         let mut events = Vec::new();
         let mut cwd: Option<String> = None;
         let mut current_model: Option<String> = None;
+        let mut last_asked_questions: Option<serde_json::Value> = None;
 
         static USER_REQ_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
         let user_req_re = USER_REQ_RE.get_or_init(|| {
             regex::Regex::new(
                 r"(?i)^\s*<USER_REQUEST>([\s\S]*?)</USER_REQUEST>\s*(?:<ADDITIONAL_METADATA>|<USER_SETTINGS_CHANGE>|$)"
-            ).unwrap()
+            ).expect("valid static regex")
         });
 
         static SYS_MSG_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
         let sys_msg_re = SYS_MSG_RE.get_or_init(|| {
-            regex::Regex::new(r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$").unwrap()
+            regex::Regex::new(r"(?i)^\s*<SYSTEM_MESSAGE>([\s\S]*?)</SYSTEM_MESSAGE>\s*$")
+                .expect("valid static regex")
         });
 
         for line in content_str.lines() {
@@ -1175,9 +1231,35 @@ impl SourceAdapter for AntigravitySource {
                         is_compaction: false,
                         compaction_time_ms: 0,
                     });
-                } else if (step_type == "PLANNER_RESPONSE" || step_type == "ASK_QUESTION")
-                    && source == "MODEL"
-                {
+                } else if step_type == "PLANNER_RESPONSE" && source == "MODEL" {
+                    if let Some(serde_json::Value::Array(arr)) = tool_calls {
+                        for tc in arr {
+                            if let Some(tc_obj) = tc.as_object() {
+                                if tc_obj.get("name").and_then(|v| v.as_str())
+                                    == Some("ask_question")
+                                {
+                                    if let Some(args) =
+                                        tc_obj.get("args").and_then(|v| v.as_object())
+                                    {
+                                        if let Some(q_val) = args.get("questions") {
+                                            let q_str = match q_val {
+                                                serde_json::Value::String(s) => s.clone(),
+                                                _ => q_val.to_string(),
+                                            };
+                                            if let Ok(parsed_q) =
+                                                serde_json::from_str::<serde_json::Value>(&q_str)
+                                            {
+                                                if parsed_q.is_array() {
+                                                    last_asked_questions = Some(parsed_q);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     let clean_content = escape_tool_tags(&clean(content));
                     let text_to_push = if clean_content.is_empty() {
                         "[Compacted Response]".to_string()
@@ -1192,6 +1274,78 @@ impl SourceAdapter for AntigravitySource {
                         is_compaction: false,
                         compaction_time_ms: 0,
                     });
+                } else if step_type == "ASK_QUESTION" && source == "MODEL" {
+                    let mut formatted = String::new();
+                    if let Some(ref questions) = last_asked_questions {
+                        if let Some(q_arr) = questions.as_array() {
+                            for q_item in q_arr {
+                                if let Some(q_obj) = q_item.as_object() {
+                                    let question_text = q_obj
+                                        .get("question")
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("");
+                                    formatted
+                                        .push_str(&format!("**Question:** {}\n\n", question_text));
+                                    if let Some(opts) =
+                                        q_obj.get("options").and_then(|v| v.as_array())
+                                    {
+                                        for opt_val in opts {
+                                            if let Some(opt_str) = opt_val.as_str() {
+                                                formatted.push_str(&format!("* {}\n", opt_str));
+                                            }
+                                        }
+                                    }
+                                    formatted.push('\n');
+                                }
+                            }
+                        }
+                    }
+
+                    let mut answer = String::new();
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty()
+                            && !trimmed.starts_with("Created At:")
+                            && !trimmed.starts_with("Completed At:")
+                        {
+                            let clean_line = if let Some(rest) = trimmed.strip_prefix("A1:") {
+                                rest.trim()
+                            } else if let Some(rest) = trimmed.strip_prefix("A2:") {
+                                rest.trim()
+                            } else if let Some(rest) = trimmed.strip_prefix("A3:") {
+                                rest.trim()
+                            } else {
+                                trimmed
+                            };
+                            if !clean_line.is_empty() {
+                                if !answer.is_empty() {
+                                    answer.push('\n');
+                                }
+                                answer.push_str(clean_line);
+                            }
+                        }
+                    }
+
+                    if !answer.is_empty() {
+                        formatted.push_str(&format!("**Answer:** {}\n", answer));
+                    }
+
+                    let text_to_push = if formatted.is_empty() {
+                        escape_tool_tags(&clean(content))
+                    } else {
+                        escape_tool_tags(&clean(&formatted))
+                    };
+
+                    events.push(Event {
+                        is_user: false,
+                        text: text_to_push,
+                        timestamp,
+                        model: current_model.clone(),
+                        is_compaction: false,
+                        compaction_time_ms: 0,
+                    });
+
+                    last_asked_questions = None;
                 } else if matches!(
                     step_type,
                     "VIEW_FILE"
@@ -1220,8 +1374,8 @@ impl SourceAdapter for AntigravitySource {
                         clean_content = caps[1].trim().to_string();
                     } else {
                         let intro = "The following is a <SYSTEM_MESSAGE> not actually sent by the user. It is provided by the system as important information to pay attention to.";
-                        if clean_content.starts_with(intro) {
-                            clean_content = clean_content[intro.len()..].trim().to_string();
+                        if let Some(rest) = clean_content.strip_prefix(intro) {
+                            clean_content = rest.trim().to_string();
                         }
                     }
                     let formatted =
@@ -1526,7 +1680,13 @@ impl SourceAdapter for AntigravitySource {
         };
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
-        let status = crate::models::resolve_session_status(self.id(), &session_id, &turns, &cwd);
+        let status = crate::models::resolve_session_status(
+            self.id(),
+            &session_id,
+            &target_file_path,
+            &turns,
+            &cwd,
+        );
 
         let session = Session {
             id: session_id.clone(),
@@ -1585,12 +1745,12 @@ impl SourceAdapter for AntigravitySource {
             let mut map_guard = self
                 .antigravity_title_map
                 .write()
-                .expect("Failed to lock antigravity_title_map write lock");
+                .unwrap_or_else(|e| e.into_inner());
             *map_guard = self.build_antigravity_title_map();
             let mut mod_guard = self
                 .last_pb_file_modified
                 .write()
-                .expect("Failed to lock last_pb_file_modified write lock");
+                .unwrap_or_else(|e| e.into_inner());
             *mod_guard = current_modified;
         }
 

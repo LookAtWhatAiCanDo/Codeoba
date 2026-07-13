@@ -78,20 +78,20 @@ impl OnnxSemanticEmbedder {
         }
 
         if valid_count > 0 {
-            for d in 0..dim {
-                sentence_embedding[d] /= valid_count as f32;
+            for se in &mut sentence_embedding {
+                *se /= valid_count as f32;
             }
         }
 
         // L2 Normalization
         let mut sum_squares = 0.0;
-        for d in 0..dim {
-            sum_squares += sentence_embedding[d] * sentence_embedding[d];
+        for &v in &sentence_embedding {
+            sum_squares += v * v;
         }
         let magnitude = sum_squares.sqrt();
         if magnitude > 0.0 {
-            for d in 0..dim {
-                sentence_embedding[d] /= magnitude;
+            for se in &mut sentence_embedding {
+                *se /= magnitude;
             }
         }
 
@@ -118,21 +118,21 @@ impl HashSemanticEmbedder {
         for word in words {
             let hash = calculate_word_hash(&word);
             let mut rng = SimpleRng::new(hash);
-            for d in 0..self.dimensions {
+            for v in &mut vector {
                 let weight = rng.next_float() * 2.0 - 1.0;
-                vector[d] += weight;
+                *v += weight;
             }
         }
 
         // L2 Normalization
         let mut sum_squares = 0.0;
-        for i in 0..self.dimensions {
-            sum_squares += vector[i] * vector[i];
+        for &v in &vector {
+            sum_squares += v * v;
         }
         let magnitude = sum_squares.sqrt();
         if magnitude > 0.0 {
-            for i in 0..self.dimensions {
-                vector[i] /= magnitude;
+            for v in &mut vector {
+                *v /= magnitude;
             }
         }
 

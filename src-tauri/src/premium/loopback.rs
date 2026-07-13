@@ -96,7 +96,7 @@ pub fn stop_server() {
 /// a CORS fetch from the login page, which always sends `Origin`.
 fn is_origin_allowed(origin: Option<&str>, allowed_origins: &[&str]) -> bool {
     match origin {
-        Some(o) if !o.is_empty() => allowed_origins.iter().any(|&a| a == o),
+        Some(o) if !o.is_empty() => allowed_origins.contains(&o),
         _ => false,
     }
 }

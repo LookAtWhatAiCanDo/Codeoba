@@ -132,6 +132,13 @@ pub struct SearchIndexState {
     /// instead of re-reading and re-optimizing the ~90 MB graph on every query. The bundled
     /// model is fixed, so a cached embedder never goes stale.
     pub cached_embedder: RwLock<Option<Arc<semantic::OnnxSemanticEmbedder>>>,
+    pub status_ttl_cache: RwLock<HashMap<String, (String, i64)>>,
+}
+
+impl Default for SearchIndexState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SearchIndexState {
@@ -145,6 +152,7 @@ impl SearchIndexState {
             is_semantic_initialized: std::sync::atomic::AtomicBool::new(false),
             app_handle: RwLock::new(None),
             cached_embedder: RwLock::new(None),
+            status_ttl_cache: RwLock::new(HashMap::new()),
         }
     }
 

@@ -150,7 +150,9 @@ impl SessionCacheManager {
         let (nonce_bytes, ciphertext) = raw_data.split_at(12);
         let key_bytes = get_or_create_cache_key();
         let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce = nonce_bytes.try_into().unwrap();
+        let nonce = nonce_bytes
+            .try_into()
+            .expect("GCM nonce is exactly 12 bytes");
 
         let plaintext = match cipher.decrypt(nonce, ciphertext) {
             Ok(p) => p,
@@ -316,6 +318,16 @@ impl SessionCacheManager {
             *miss_guard.entry(source_id.to_string()).or_insert(0) += 1;
         }
         None
+    }
+
+    pub fn update_cached_session(&self, source_id: &str, file_path: &str, session: Session) {
+        if let Ok(mut active_guard) = self.active_caches.lock() {
+            if let Some(map) = active_guard.get_mut(source_id) {
+                if let Some(entry) = map.get_mut(file_path) {
+                    entry.session = session;
+                }
+            }
+        }
     }
 
     pub fn put_cached_session(
