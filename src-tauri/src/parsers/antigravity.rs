@@ -75,7 +75,45 @@ impl AntigravitySource {
         }
 
         let map = self.antigravity_title_map.read().expect("Failed to lock antigravity_title_map read lock");
-        map.get(session_id).cloned().unwrap_or_else(|| "Antigravity Session".to_string())
+        if let Some(title) = map.get(session_id) {
+            title.clone()
+        } else if matches!(self.variant, crate::parsers::ParserVariant::Ide) {
+            self.extract_title_from_ide_db(session_id)
+                .unwrap_or_else(|| "Antigravity Session".to_string())
+        } else {
+            "Antigravity Session".to_string()
+        }
+    }
+
+    fn extract_title_from_ide_db(&self, session_id: &str) -> Option<String> {
+        let db_path = self
+            .get_variant_dir()
+            .join("conversations")
+            .join(format!("{}.db", session_id));
+        if !db_path.exists() {
+            return None;
+        }
+
+        let conn = Connection::open_with_flags(
+            &db_path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .ok()?;
+
+        let mut stmt = conn
+            .prepare("SELECT step_payload FROM steps ORDER BY idx ASC")
+            .ok()?;
+
+        let rows = stmt
+            .query_map([], |row| row.get::<_, Vec<u8>>(0))
+            .ok()?;
+
+        for payload in rows.flatten() {
+            if let Some(title) = extract_short_title_from_payload(&payload) {
+                return Some(title);
+            }
+        }
+        None
     }
 
     fn build_antigravity_title_map(&self) -> HashMap<String, String> {
@@ -197,8 +235,67 @@ impl AntigravitySource {
                 }
             }
         }
+        if matches!(self.variant, crate::parsers::ParserVariant::Ide) {
+            let conv_dir = self.get_variant_dir().join("conversations");
+            if let Ok(entries) = fs::read_dir(&conv_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().and_then(|e| e.to_str()) == Some("db") {
+                        if let Some(uuid) = path.file_stem().and_then(|s| s.to_str()) {
+                            if !map.contains_key(uuid) {
+                                if let Some(title) = self.extract_title_from_ide_db(uuid) {
+                                    map.insert(uuid.to_string(), title);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         map
     }
+}
+
+fn extract_short_title_from_payload(bytes: &[u8]) -> Option<String> {
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] >= 0x20 && bytes[i] != 0x7F {
+            let start = i;
+            while i < bytes.len() && (bytes[i] >= 0x20 || bytes[i] == b'\n') && bytes[i] != 0x7F {
+                i += 1;
+            }
+            let run = &bytes[start..i];
+            if let Ok(s) = std::str::from_utf8(run) {
+                if let Some(nl) = s.find('\n') {
+                    let first_line = &s[..nl];
+                    let len = first_line.len();
+                    if len >= 10
+                        && len <= 100
+                        && !first_line.starts_with("file://")
+                        && !first_line.starts_with('/')
+                        && !first_line.starts_with('<')
+                        && !first_line.starts_with('`')
+                        && !is_uuid_like(first_line)
+                    {
+                        return Some(first_line.to_string());
+                    }
+                }
+            }
+        } else {
+            i += 1;
+        }
+    }
+    None
+}
+
+fn is_uuid_like(s: &str) -> bool {
+    let parts: Vec<&str> = s.splitn(6, '-').collect();
+    parts.len() == 5
+        && parts[0].len() == 8
+        && parts[1].len() == 4
+        && parts[4].len() == 12
+        && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 fn read_varint(bytes: &[u8], offset: &mut usize) -> Result<u64, String> {
