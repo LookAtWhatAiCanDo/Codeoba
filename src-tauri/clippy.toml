@@ -1,0 +1,6 @@
+# Restriction lints below (unwrap/expect/panic/indexing) are about production
+# robustness, not test code. Tests legitimately use these to assert invariants.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true

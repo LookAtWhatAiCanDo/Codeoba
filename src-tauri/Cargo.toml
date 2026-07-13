@@ -18,6 +18,7 @@ enable-help-menu = []
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "codeoba_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+doctest = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -72,5 +73,24 @@ opt-level = 3
 
 [patch.crates-io]
 esaxx-rs = { git = "https://github.com/mozilla-ai/esaxx-rs-dyn-msvc", branch = "main" }
+
+# Panic-surface guardrails. `string_slice` is DENIED — byte-indexing a `&str` panics on
+# a UTF-8 boundary (this caused a UI freeze); every existing site has been migrated to
+# strip_prefix/strip_suffix/.get()/char-based, so any new one is a hard error in CI.
+# The rest are WARN: they flag genuine robustness risks (a poisoned lock or bad input can
+# panic), but the codebase has ~100 pre-existing sites to burn down before they can deny.
+# DENIED (hard CI failure): these panic on runtime data.
+#   string_slice  — byte-indexing a &str splits UTF-8 (this froze the app)
+#   unwrap_used   — .unwrap() on None/Err; use ?, unwrap_or*, or .expect("invariant")
+# WARN (visible, reviewed, not yet blocking): legitimate uses exist, burn down over time.
+#   expect_used      — fine for compile-time invariants (static regex, RNG); flag runtime use
+#   indexing_slicing — arr[i]; noisy, many are bounds-checked
+#   panic            — panic!/todo!/unreachable!
+[lints.clippy]
+string_slice = "deny"
+unwrap_used = "deny"
+expect_used = "warn"
+indexing_slicing = "warn"
+panic = "warn"
 
 
