@@ -21,9 +21,9 @@
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-updater": "^2",
-    "dompurify": "^3.4.11",
-    "lucide-solid": "^1.23.0",
-    "marked": "^18.0.5",
+    "dompurify": "^3.4.12",
+    "lucide-solid": "^1.24.0",
+    "marked": "^18.0.6",
     "prismjs": "^1.30.0",
     "solid-js": "^1.9.14",
     "tailwindcss": "^4.3.2"
@@ -31,7 +31,7 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@types/prismjs": "^1.26.6",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "vite": "^8.1.4",
     "vite-plugin-solid": "^2.11.12"
   },
