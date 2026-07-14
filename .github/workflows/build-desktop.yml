@@ -69,7 +69,6 @@ jobs:
 
   build:
     name: Build & Package (${{ matrix.platform-name }})
-    needs: qa
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'Production' || null }}
@@ -480,7 +479,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, qa]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     steps:
