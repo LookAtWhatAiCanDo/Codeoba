@@ -39,6 +39,12 @@ export interface GroupTask {
   associatedSessionId: string | null;
 }
 
+interface ListItem {
+  session: Session;
+  matchedTurns?: number[];
+  score?: number;
+}
+
 export interface ConversationGroup {
   name: string;
   description: string;
@@ -702,9 +708,32 @@ export const Sidebar = (props: SidebarProps) => {
     return props.width < 480 ? "grid grid-cols-2" : "grid grid-cols-4";
   });
 
+  // <For> reconciles rows by item identity. These wrapper objects were rebuilt on
+  // every recompute, so a single session update made every row look new and tore
+  // down + rebuilt the entire list's DOM. Reuse the wrapper whenever its contents
+  // are unchanged, so only genuinely-changed rows re-render and the rest are just
+  // moved. Pin state is deliberately NOT part of the wrapper — it is passed to
+  // SessionCard as a reactive prop so toggling a pin never invalidates a row.
+  const itemCache = new Map<string, ListItem>();
+
+  const stableItem = (session: Session, matchedTurns?: number[], score?: number): ListItem => {
+    const cached = itemCache.get(session.id);
+    if (
+      cached &&
+      cached.session === session &&
+      cached.matchedTurns === matchedTurns &&
+      cached.score === score
+    ) {
+      return cached;
+    }
+    const item: ListItem = { session, matchedTurns, score };
+    itemCache.set(session.id, item);
+    return item;
+  };
+
   // Determine what to display based on search results and filters
   const listItems = createMemo(() => {
-    let items: { session: Session; matchedTurns?: number[]; score?: number }[] = [];
+    let items: ListItem[] = [];
 
     if (props.searchResults !== null) {
       items = props.searchResults
@@ -719,11 +748,7 @@ export const Sidebar = (props: SidebarProps) => {
           if (props.archivalFilter === "deleted" && !r.session.isDeleted) return false;
           return true;
         })
-        .map(r => ({
-          session: r.session,
-          matchedTurns: r.matchedTurnIndexes,
-          score: r.score
-        }));
+        .map(r => stableItem(r.session, r.matchedTurnIndexes, r.score));
     } else {
       items = props.sessions
         .filter(s => {
@@ -737,11 +762,7 @@ export const Sidebar = (props: SidebarProps) => {
           if (props.archivalFilter === "deleted" && !s.isDeleted) return false;
           return true;
         })
-        .map(s => ({
-          session: s,
-          matchedTurns: undefined,
-          score: undefined
-        }));
+        .map(s => stableItem(s));
     }
 
     // Filter by group on the frontend
@@ -754,10 +775,20 @@ export const Sidebar = (props: SidebarProps) => {
       }
     }
 
-    // Ensure all items reflect the correct pin state from props.pinnedSessionIds
-    for (const item of items) {
-      item.session.isPinned = props.pinnedSessionIds.has(item.session.id);
+    // Drop cache entries for rows that are no longer listed, so the cache cannot
+    // grow without bound as sessions come and go.
+    if (itemCache.size > items.length) {
+      const live = new Set(items.map(i => i.session.id));
+      for (const id of itemCache.keys()) {
+        if (!live.has(id)) itemCache.delete(id);
+      }
     }
+
+    // Pin state is read from props.pinnedSessionIds rather than mutated onto the
+    // session objects: mutating them was invisible to Solid (the badge only
+    // repainted because the whole list was being recreated anyway) and it would
+    // defeat the wrapper reuse above.
+    const pinned = props.pinnedSessionIds;
 
     // Now sort the items
     const currentEffectiveSort = effectiveSortBy();
@@ -765,8 +796,10 @@ export const Sidebar = (props: SidebarProps) => {
 
     items.sort((a, b) => {
       // Pinned items always go to the top
-      if (a.session.isPinned && !b.session.isPinned) return -1;
-      if (!a.session.isPinned && b.session.isPinned) return 1;
+      const aPinned = pinned.has(a.session.id);
+      const bPinned = pinned.has(b.session.id);
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
 
       // Within pinned / non-pinned items, sort by the chosen dimension
       let comparison = 0;
@@ -1552,6 +1585,7 @@ export const Sidebar = (props: SidebarProps) => {
               return (
                 <SessionCard
                   session={session}
+                  isPinned={props.pinnedSessionIds.has(session.id)}
                   isSelected={isSelected()}
                   isHighlighted={isHighlighted()}
                   isLoading={props.loadingSessionId === session.id}
@@ -1600,7 +1634,7 @@ export const Sidebar = (props: SidebarProps) => {
                           }}
                         >
                           <Pin class="w-3.5 h-3.5" />
-                          <span>{session().isPinned ? t("groups.unpinConversation") : t("groups.pinConversation")}</span>
+                          <span>{props.pinnedSessionIds.has(session().id) ? t("groups.unpinConversation") : t("groups.pinConversation")}</span>
                         </button>
                         
                         <button
@@ -1820,6 +1854,7 @@ interface SessionCardProps {
   getSourceStyle: (sourceId: string) => string;
   getSourceLabel: (sourceId: string) => string;
   groups: ConversationGroup[];
+  isPinned: boolean;
   onContextMenu: (e: MouseEvent, session: Session) => void;
 }
 
@@ -1888,7 +1923,7 @@ const SessionCard = (props: SessionCardProps) => {
           <Show when={props.isLoading}>
             <Loader2 class="w-3.5 h-3.5 text-accent animate-spin" />
           </Show>
-          <Show when={props.session.isPinned}>
+          <Show when={props.isPinned}>
             <Pin class="w-3.5 h-3.5 text-accent" />
           </Show>
           <Show when={props.session.isArchived}>

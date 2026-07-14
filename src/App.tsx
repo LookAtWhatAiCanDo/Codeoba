@@ -370,24 +370,16 @@ function App() {
     setPinnedSessionIds(next);
     const arr = Array.from(next);
     localStorage.setItem("codeoba-pinned-sessions", JSON.stringify(arr));
-    
+
     // Sync to backend config.json
     try {
       await invoke("save_pinned_sessions", { ids: arr });
     } catch (err) {
       console.error("Failed to save pinned sessions to backend:", err);
     }
-
-    // Refresh sessions to apply sorting/enriching
-    setSessions(enrichedSessions(sessions()));
-  };
-
-  const enrichedSessions = (list: Session[]) => {
-    const pinned = pinnedSessionIds();
-    return list.map(s => ({
-      ...s,
-      isPinned: pinned.has(s.id)
-    }));
+    // No setSessions() here: pin state is derived from pinnedSessionIds by the
+    // consumers, so the list re-sorts and the badge repaints reactively without
+    // rebuilding every session object.
   };
 
   const loadGroups = async () => {
@@ -756,7 +748,7 @@ function App() {
               if (!seen.has(id)) list.push(u);
             }
             list.sort((a, b) => b.updatedAt - a.updatedAt);
-            return enrichedSessions(list);
+            return list;
           });
 
           // Reconcile the open detail view against the batched changes.
@@ -814,7 +806,7 @@ function App() {
             lastFetchedStep = payload.step;
             // Re-fetch sessions from backend once rebuild parsing is done or completed
             invoke<Session[]>("get_all_sessions").then((list) => {
-              setSessions(enrichedSessions(list));
+              setSessions(list);
             });
           }
         }
@@ -1323,7 +1315,7 @@ function App() {
       }
 
       const list = await invoke<Session[]>("get_all_sessions");
-      setSessions(enrichedSessions(list));
+      setSessions(list);
       
       setErrorMsg(null);
 
@@ -1544,7 +1536,7 @@ function App() {
     // Refresh sessions and search state after releasing the rebuild lock
     try {
       const list = await invoke<Session[]>("get_all_sessions");
-      setSessions(enrichedSessions(list));
+      setSessions(list);
       
       const query = searchQuery();
       if (query.trim() !== "") {
