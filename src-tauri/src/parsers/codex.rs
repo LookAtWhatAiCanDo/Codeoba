@@ -574,13 +574,14 @@ fn parse_data_url(url: &str) -> Option<(String, String)> {
         return None;
     }
     let comma_idx = url.find(',')?;
-    let header = &url[..comma_idx];
-    let data = &url[comma_idx + 1..];
-    let mime = if header.contains(';') {
-        let semi_idx = header.find(';')?;
-        header["data:".len()..semi_idx].to_string()
+    let header = url.get(..comma_idx)?;
+    let data = url.get(comma_idx + 1..)?;
+    let header_content = header.strip_prefix("data:")?;
+    let mime = if header_content.contains(';') {
+        let semi_idx = header_content.find(';')?;
+        header_content.get(..semi_idx)?.to_string()
     } else {
-        header["data:".len()..].to_string()
+        header_content.to_string()
     };
     Some((mime, data.to_string()))
 }
