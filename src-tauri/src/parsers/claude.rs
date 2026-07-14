@@ -28,6 +28,7 @@ struct RawTurn {
     model: Option<String>,
     is_compaction: bool,
     compaction_time_ms: i64,
+    images: Option<Vec<crate::models::ImageReference>>,
 }
 
 impl SourceAdapter for ClaudeSource {
@@ -236,6 +237,7 @@ impl ClaudeSource {
                     if line_type == "user" {
                         if let Some(msg_obj) = obj.get("message").and_then(|v| v.as_object()) {
                             let mut text = String::new();
+                            let mut images = Vec::new();
                             if let Some(c_str) = msg_obj.get("content").and_then(|v| v.as_str()) {
                                 text.push_str(c_str);
                             } else if let Some(content_array) =
@@ -243,20 +245,31 @@ impl ClaudeSource {
                             {
                                 for item in content_array {
                                     if let Some(item_obj) = item.as_object() {
-                                        if item_obj.get("type").and_then(|v| v.as_str())
-                                            == Some("text")
-                                        {
+                                        let item_type = item_obj.get("type").and_then(|v| v.as_str());
+                                        if item_type == Some("text") {
                                             if let Some(t) =
                                                 item_obj.get("text").and_then(|v| v.as_str())
                                             {
                                                 text.push_str(t);
                                                 text.push('\n');
                                             }
+                                        } else if item_type == Some("image") {
+                                            if let Some(source) = item_obj.get("source").and_then(|v| v.as_object()) {
+                                                let media_type = source.get("media_type").and_then(|v| v.as_str()).map(String::from);
+                                                let base64_data = source.get("data").and_then(|v| v.as_str()).map(String::from);
+                                                images.push(crate::models::ImageReference {
+                                                    id: uuid::Uuid::new_v4().to_string(),
+                                                    path: None,
+                                                    base64: base64_data,
+                                                    media_type,
+                                                });
+                                            }
                                         }
                                     }
                                 }
                             }
                             let text_trimmed = text.trim().to_string();
+                            let images_opt = if images.is_empty() { None } else { Some(images) };
                             raw_turns.push(RawTurn {
                                 is_user: true,
                                 text: text_trimmed,
@@ -264,6 +277,7 @@ impl ClaudeSource {
                                 model: None,
                                 is_compaction: false,
                                 compaction_time_ms: 0,
+                                images: images_opt,
                             });
                         }
                     } else if line_type == "assistant" {
@@ -300,6 +314,7 @@ impl ClaudeSource {
                                     model: model_name,
                                     is_compaction: false,
                                     compaction_time_ms: 0,
+                                    images: None,
                                 });
                             }
                         }
@@ -323,6 +338,7 @@ impl ClaudeSource {
                             model: None,
                             is_compaction: true,
                             compaction_time_ms: duration_ms,
+                            images: None,
                         });
                     }
                 }
@@ -349,6 +365,11 @@ impl ClaudeSource {
                 let mut assistant_parts = Vec::new();
                 let mut last_timestamp = user_raw.timestamp;
 
+                let mut combined_images = Vec::new();
+                if let Some(ref imgs) = user_raw.images {
+                    combined_images.extend(imgs.clone());
+                }
+
                 while next_idx < raw_turns.len() && !raw_turns[next_idx].is_user {
                     let next_raw = &raw_turns[next_idx];
                     if next_raw.is_compaction {
@@ -356,6 +377,9 @@ impl ClaudeSource {
                         compaction_time_ms += next_raw.compaction_time_ms;
                     } else if !next_raw.text.is_empty() {
                         assistant_parts.push(next_raw.text.clone());
+                    }
+                    if let Some(ref imgs) = next_raw.images {
+                        combined_images.extend(imgs.clone());
                     }
                     last_timestamp = next_raw.timestamp;
                     if next_raw.model.is_some() {
@@ -390,6 +414,7 @@ impl ClaudeSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if combined_images.is_empty() { None } else { Some(combined_images) },
                 });
                 turn_count += 1;
                 current_idx = next_idx;
@@ -412,6 +437,11 @@ impl ClaudeSource {
 
                 let output_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
 
+                let mut orphan_images = Vec::new();
+                if let Some(ref imgs) = user_raw.images {
+                    orphan_images.extend(imgs.clone());
+                }
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
@@ -420,6 +450,7 @@ impl ClaudeSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if orphan_images.is_empty() { None } else { Some(orphan_images) },
                 });
                 turn_count += 1;
                 current_idx += 1;

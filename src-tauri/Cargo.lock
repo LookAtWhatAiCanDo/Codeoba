@@ -723,6 +723,7 @@ name = "codeoba"
 version = "0.8.5"
 dependencies = [
  "aes-gcm",
+ "base64 0.22.1",
  "chrono",
  "dirs",
  "ed25519-dalek",

@@ -1168,6 +1168,144 @@ pub fn save_index_subagents(enabled: bool) {
     crate::keyring::save_index_subagents_setting(enabled);
 }
 
+fn validate_image_path(path: &Path) -> Result<(), String> {
+    if !path.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+
+    let ext = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_lowercase());
+
+    let valid_ext = match ext.as_deref() {
+        Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => true,
+        _ => false,
+    };
+    if !valid_ext {
+        return Err("File is not a supported image type".to_string());
+    }
+
+    let canonical = path.canonicalize().map_err(|e| e.to_string())?;
+    let home = crate::parsers::get_home_dir();
+
+    let allowed_prefixes = vec![
+        home.join(".claude/projects"),
+        home.join(".gemini/antigravity/brain"),
+        home.join(".codex/sessions"),
+    ];
+
+    for prefix in allowed_prefixes {
+        if let Ok(canon_prefix) = prefix.canonicalize() {
+            if canonical.starts_with(&canon_prefix) {
+                return Ok(());
+            }
+        }
+    }
+
+    // Cursor workspaceStorage / app support folders
+    let cursor_storage = if cfg!(target_os = "macos") {
+        home.join("Library/Application Support/Cursor/User")
+    } else if cfg!(target_os = "windows") {
+        if let Ok(app_data) = std::env::var("APPDATA") {
+            PathBuf::from(app_data).join("Cursor/User")
+        } else {
+            home.join("AppData/Roaming/Cursor/User")
+        }
+    } else {
+        home.join(".config/Cursor/User")
+    };
+
+    if let Ok(canon_cursor) = cursor_storage.canonicalize() {
+        if canonical.starts_with(&canon_cursor) {
+            return Ok(());
+        }
+    }
+
+    // Security check: Only allow files inside the user home directory
+    if let Ok(canon_home) = home.canonicalize() {
+        if canonical.starts_with(&canon_home) {
+            return Ok(());
+        }
+    }
+
+    Err("Access denied: image is outside the home directory".to_string())
+}
+
+#[tauri::command]
+pub fn read_session_image(path: String) -> Result<String, AppErrorPayload> {
+    use base64::Engine as _;
+
+    let path_buf = PathBuf::from(&path);
+    validate_image_path(&path_buf)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, e))?;
+
+    let bytes = std::fs::read(&path_buf)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, e.to_string()))?;
+
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let mime = match path_buf.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase()).as_deref() {
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        _ => "image/png",
+    };
+
+    Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+#[tauri::command]
+pub fn reveal_image_in_folder(path: String) -> Result<(), AppErrorPayload> {
+    let path_buf = PathBuf::from(&path);
+    validate_image_path(&path_buf)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, e))?;
+
+    if !path_buf.exists() {
+        return Err(AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, "File does not exist"));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg("-R")
+            .arg(&path)
+            .spawn();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let win_path = path.replace('/', "\\");
+        let _ = std::process::Command::new("explorer.exe")
+            .arg(format!("/select,\"{}\"", win_path))
+            .spawn();
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        if let Some(parent) = path_buf.parent() {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(parent)
+                .spawn();
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_external_url<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    url: String,
+) -> Result<(), AppErrorPayload> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, "Only http/https URLs are allowed"));
+    }
+
+    app.opener()
+        .open_url(url, None::<String>)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_EXTERNAL_OPEN_FAILED, e.to_string()))
+}
+
 #[cfg(test)]
 mod trusted_root_tests {
     use super::*;
@@ -1292,6 +1430,7 @@ mod get_all_sessions_tests {
                 input_tokens: None,
                 output_tokens: None,
                 extra_data: std::collections::HashMap::new(),
+                images: None,
             }],
             is_archived: false,
             is_pinned: false,

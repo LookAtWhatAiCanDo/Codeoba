@@ -117,7 +117,13 @@
     "copySessionPath": "复制会话路径",
     "copySessionPathLabel": "会话路径",
     "sessionPathCopied": "会话路径已复制",
-    "resetFontSize": "双击以重置为默认值"
+    "resetFontSize": "双击以重置为默认值",
+    "copyImage": "复制图片",
+    "showInFinder": "在访达中显示",
+    "showInFolder": "在文件夹中显示",
+    "copySelection": "复制选中内容",
+    "searchWithGoogle": "使用Google搜索",
+    "translateSelection": "翻译选中内容"
   },
   "fileViewer": {
     "title": "文件查看器",

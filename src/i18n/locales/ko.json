@@ -117,7 +117,13 @@
     "copySessionPath": "세션 경로 복사",
     "copySessionPathLabel": "세션 경로",
     "sessionPathCopied": "세션 경로가 복사되었습니다",
-    "resetFontSize": "더블 클릭하여 기본값으로 복원"
+    "resetFontSize": "더블 클릭하여 기본값으로 복원",
+    "copyImage": "이미지 복사",
+    "showInFinder": "Finder에서 보기",
+    "showInFolder": "폴더에서 보기",
+    "copySelection": "선택 영역 복사",
+    "searchWithGoogle": "Google로 검색",
+    "translateSelection": "선택 영역 번역"
   },
   "fileViewer": {
     "title": "파일 뷰어",

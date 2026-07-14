@@ -18,6 +18,15 @@ pub struct SessionSummary {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct ImageReference {
+    pub id: String,
+    pub path: Option<String>,
+    pub base64: Option<String>,
+    pub media_type: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Turn {
     pub turn_id: String,
     pub user_message: String,
@@ -29,6 +38,8 @@ pub struct Turn {
     pub output_tokens: Option<i64>,
     #[serde(default)]
     pub extra_data: HashMap<String, String>,
+    #[serde(default)]
+    pub images: Option<Vec<ImageReference>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -108,6 +119,7 @@ impl Session {
                         input_tokens: t.input_tokens,
                         output_tokens: t.output_tokens,
                         extra_data: t.extra_data.clone(),
+                        images: None,
                     }
                 })
                 .collect(),
@@ -729,6 +741,7 @@ mod to_lightweight_tests {
                 input_tokens: None,
                 output_tokens: None,
                 extra_data: HashMap::new(),
+                images: None,
             }],
             is_archived: false,
             is_pinned: false,

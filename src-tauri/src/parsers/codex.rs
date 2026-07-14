@@ -245,6 +245,7 @@ impl SourceAdapter for CodexSource {
             text: String,
             timestamp: i64,
             model: Option<String>,
+            images: Option<Vec<crate::models::ImageReference>>,
         }
         let mut raw_turns = Vec::new();
 
@@ -298,23 +299,51 @@ impl SourceAdapter for CodexSource {
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
                     let mut text_builder = String::new();
+                    let mut images = Vec::new();
                     if let Some(content_array) = payload.get("content").and_then(|v| v.as_array()) {
                         for item in content_array {
                             if let Some(item_obj) = item.as_object() {
-                                if let Some(t) = item_obj.get("text").and_then(|v| v.as_str()) {
-                                    text_builder.push_str(t);
-                                    text_builder.push('\n');
+                                let item_type = item_obj.get("type").and_then(|v| v.as_str());
+                                if item_type == Some("image_url") {
+                                    if let Some(img_url_obj) = item_obj.get("image_url").and_then(|v| v.as_object()) {
+                                        if let Some(url) = img_url_obj.get("url").and_then(|v| v.as_str()) {
+                                            if url.starts_with("data:") {
+                                                if let Some((mime, b64)) = parse_data_url(url) {
+                                                    images.push(crate::models::ImageReference {
+                                                        id: uuid::Uuid::new_v4().to_string(),
+                                                        path: None,
+                                                        base64: Some(b64),
+                                                        media_type: Some(mime),
+                                                    });
+                                                }
+                                            } else {
+                                                images.push(crate::models::ImageReference {
+                                                    id: uuid::Uuid::new_v4().to_string(),
+                                                    path: Some(url.to_string()),
+                                                    base64: None,
+                                                    media_type: None,
+                                                });
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    if let Some(t) = item_obj.get("text").and_then(|v| v.as_str()) {
+                                        text_builder.push_str(t);
+                                        text_builder.push('\n');
+                                    }
                                 }
                             }
                         }
                     }
                     let text = text_builder.trim().to_string();
-                    if !text.is_empty() {
+                    let images_opt = if images.is_empty() { None } else { Some(images) };
+                    if !text.is_empty() || images_opt.is_some() {
                         raw_turns.push(RawTurn {
                             is_user: role == "user",
                             text,
                             timestamp,
                             model: model_name,
+                            images: images_opt,
                         });
                     }
                 }
@@ -332,6 +361,11 @@ impl SourceAdapter for CodexSource {
         while current_idx < raw_turns.len() {
             let user_raw = &raw_turns[current_idx];
             if user_raw.is_user {
+                let mut combined_images = Vec::new();
+                if let Some(ref imgs) = user_raw.images {
+                    combined_images.extend(imgs.clone());
+                }
+
                 let mut assistant_text = String::new();
                 let mut compute_time_ms = 0i64;
                 let mut model_name = None;
@@ -340,6 +374,9 @@ impl SourceAdapter for CodexSource {
                     assistant_text = assistant_raw.text.clone();
                     compute_time_ms = (assistant_raw.timestamp - user_raw.timestamp).max(0);
                     model_name = assistant_raw.model.clone();
+                    if let Some(ref imgs) = assistant_raw.images {
+                        combined_images.extend(imgs.clone());
+                    }
                     current_idx += 2;
                 } else {
                     current_idx += 1;
@@ -360,6 +397,7 @@ impl SourceAdapter for CodexSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if combined_images.is_empty() { None } else { Some(combined_images) },
                 });
                 turn_count += 1;
             } else {
@@ -373,6 +411,11 @@ impl SourceAdapter for CodexSource {
 
                 let output_toks = crate::tokenizer::estimate_tokens(&user_raw.text, &active_model);
 
+                let mut orphan_images = Vec::new();
+                if let Some(ref imgs) = user_raw.images {
+                    orphan_images.extend(imgs.clone());
+                }
+
                 turns.push(Turn {
                     turn_id: format!("{}_{}", session_id, turn_count),
                     user_message: String::new(),
@@ -381,6 +424,7 @@ impl SourceAdapter for CodexSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if orphan_images.is_empty() { None } else { Some(orphan_images) },
                 });
                 turn_count += 1;
                 current_idx += 1;
@@ -507,4 +551,20 @@ impl SourceAdapter for CodexSource {
 
         crate::parsers::cache::get_cache_manager().end_scan(self.id())
     }
+}
+
+fn parse_data_url(url: &str) -> Option<(String, String)> {
+    if !url.starts_with("data:") {
+        return None;
+    }
+    let comma_idx = url.find(',')?;
+    let header = &url[..comma_idx];
+    let data = &url[comma_idx + 1..];
+    let mime = if header.contains(';') {
+        let semi_idx = header.find(';')?;
+        header["data:".len()..semi_idx].to_string()
+    } else {
+        header["data:".len()..].to_string()
+    };
+    Some((mime, data.to_string()))
 }

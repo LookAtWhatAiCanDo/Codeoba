@@ -117,7 +117,13 @@
     "copySessionPath": "Sessiepad kopiëren",
     "copySessionPathLabel": "Sessiepad",
     "sessionPathCopied": "Sessiepad gekopieerd",
-    "resetFontSize": "Dubbelklik om terug te zetten naar standaard"
+    "resetFontSize": "Dubbelklik om terug te zetten naar standaard",
+    "copyImage": "Afbeelding kopiëren",
+    "showInFinder": "Weergeven in Finder",
+    "showInFolder": "Weergeven in map",
+    "copySelection": "Selectie kopiëren",
+    "searchWithGoogle": "Zoeken met Google",
+    "translateSelection": "Selectie vertalen"
   },
   "fileViewer": {
     "title": "Bestandsviewer",

@@ -18,6 +18,7 @@ import "prismjs/components/prism-markdown";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import DOMPurify from "dompurify";
 import { highlightContainer } from "../utils/highlighter";
+import { invoke } from "@tauri-apps/api/core";
 
 interface MarkdownRendererProps {
   content: string;
@@ -51,6 +52,30 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   const parser = new Marked({
     breaks: true,
     gfm: true,
+  });
+
+  parser.use({
+    renderer: {
+      image(hrefOrToken: any, title?: string | null, text?: string): string {
+        let href = "";
+        let t = "";
+        let ttl = "";
+        if (hrefOrToken && typeof hrefOrToken === "object") {
+          href = hrefOrToken.href || "";
+          t = hrefOrToken.text || "";
+          ttl = hrefOrToken.title || "";
+        } else {
+          href = hrefOrToken || "";
+          ttl = title || "";
+          t = text || "";
+        }
+        const isLocal = href.startsWith("file:") || href.startsWith("/") || href.startsWith("~");
+        if (isLocal) {
+          return `<img class="lazy-local-image" data-src="${href}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" style="max-width: 100%; max-height: 500px; border-radius: 8px; opacity: 0.5; transition: opacity 0.3s; display: block; margin: 8px 0;" alt="${t}" title="${ttl}" />`;
+        }
+        return `<img src="${href}" title="${ttl}" alt="${t}" style="max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />`;
+      }
+    }
   });
 
   const htmlContent = createMemo(() => {
@@ -136,6 +161,36 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       if (containerRef) {
         highlightContainer(containerRef, query || "", mc || false, ww || false, rx || false);
       }
+    }, 50);
+  });
+
+  // Load local images asynchronously
+  createEffect(() => {
+    htmlContent(); // trigger on html change
+    if (!containerRef) return;
+
+    // Use a small delay to ensure DOM is updated
+    setTimeout(() => {
+      if (!containerRef) return;
+      const lazyImages = containerRef.querySelectorAll("img.lazy-local-image");
+      lazyImages.forEach(async (imgEl) => {
+        const img = imgEl as HTMLImageElement;
+        const rawSrc = img.getAttribute("data-src");
+        if (rawSrc && (!img.src || img.src.startsWith("data:image/gif"))) {
+          try {
+            let cleanPath = rawSrc;
+            if (cleanPath.startsWith("file://")) {
+              cleanPath = cleanPath.substring(7);
+            }
+            const base64Data = await invoke<string>("read_session_image", { path: cleanPath });
+            img.src = base64Data;
+            img.style.opacity = "1";
+          } catch (err) {
+            logFE("error", `Failed to load local markdown image ${rawSrc}: ${err}`);
+            img.style.display = "none";
+          }
+        }
+      });
     }, 50);
   });
 

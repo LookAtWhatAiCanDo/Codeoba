@@ -842,6 +842,7 @@ mod update_session_tests {
                     input_tokens: None,
                     output_tokens: None,
                     extra_data: std::collections::HashMap::new(),
+                    images: None,
                 })
                 .collect(),
             is_archived: false,

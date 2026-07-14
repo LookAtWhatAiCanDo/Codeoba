@@ -445,6 +445,7 @@ impl SourceAdapter for CopilotSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: None,
                 });
                 turn_count += 1;
                 idx = next_idx;
@@ -464,6 +465,7 @@ impl SourceAdapter for CopilotSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: None,
                 });
                 turn_count += 1;
                 idx += 1;

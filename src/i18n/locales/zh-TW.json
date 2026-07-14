@@ -117,7 +117,13 @@
     "copySessionPath": "複製對話路徑",
     "copySessionPathLabel": "對話路徑",
     "sessionPathCopied": "對話路徑已複製",
-    "resetFontSize": "連按兩下以重設為預設值"
+    "resetFontSize": "連按兩下以重設為預設值",
+    "copyImage": "複製圖片",
+    "showInFinder": "在 Finder 中顯示",
+    "showInFolder": "在資料夾中顯示",
+    "copySelection": "複製選取內容",
+    "searchWithGoogle": "使用 Google 搜尋",
+    "translateSelection": "翻譯選取內容"
   },
   "fileViewer": {
     "title": "檔案檢視器",

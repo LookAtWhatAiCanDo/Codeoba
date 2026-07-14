@@ -117,7 +117,13 @@
     "copySessionPath": "Copy Session Path",
     "copySessionPathLabel": "Session Path",
     "sessionPathCopied": "Session Path Copied",
-    "resetFontSize": "Double click to reset to default"
+    "resetFontSize": "Double click to reset to default",
+    "copyImage": "Copy image",
+    "showInFinder": "Show in Finder",
+    "showInFolder": "Show in Folder",
+    "copySelection": "Copy selection",
+    "searchWithGoogle": "Search with Google",
+    "translateSelection": "Translate selection"
   },
   "fileViewer": {
     "title": "File Viewer",

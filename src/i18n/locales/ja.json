@@ -117,7 +117,13 @@
     "copySessionPath": "セッションパスをコピー",
     "copySessionPathLabel": "セッションパス",
     "sessionPathCopied": "セッションパスがコピーされました",
-    "resetFontSize": "ダブルクリックしてデフォルトに戻す"
+    "resetFontSize": "ダブルクリックしてデフォルトに戻す",
+    "copyImage": "画像をコピー",
+    "showInFinder": "Finderで表示",
+    "showInFolder": "フォルダで表示",
+    "copySelection": "選択範囲をコピー",
+    "searchWithGoogle": "Googleで検索",
+    "translateSelection": "選択範囲を翻訳"
   },
   "fileViewer": {
     "title": "ファイルビューア",

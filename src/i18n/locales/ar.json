@@ -117,7 +117,13 @@
     "copySessionPath": "نسخ مسار الجلسة",
     "copySessionPathLabel": "مسار الجلسة",
     "sessionPathCopied": "تم نسخ مسار الجلسة",
-    "resetFontSize": "انقر نقرًا مزدوجًا لإعادة الضبط إلى الافتراضي"
+    "resetFontSize": "انقر نقرًا مزدوجًا لإعادة الضبط إلى الافتراضي",
+    "copyImage": "نسخ الصورة",
+    "showInFinder": "إظهار في Finder",
+    "showInFolder": "إظهار في المجلد",
+    "copySelection": "نسخ التحديد",
+    "searchWithGoogle": "بحث باستخدام Google",
+    "translateSelection": "ترجمة التحديد"
   },
   "fileViewer": {
     "title": "عارض الملفات",

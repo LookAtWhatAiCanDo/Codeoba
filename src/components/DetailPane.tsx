@@ -74,6 +74,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   const [detailWholeWord, setDetailWholeWord] = createSignal(false);
   const [detailUseRegex, setDetailUseRegex] = createSignal(false);
   const [activeMatchIndex, setActiveMatchIndex] = createSignal(0);
+  const [activeLightboxImage, setActiveLightboxImage] = createSignal<{ path?: string; src: string } | null>(null);
 
   let detailSearchInputRef: HTMLInputElement | undefined;
 
@@ -234,7 +235,10 @@ export const DetailPane = (props: DetailPaneProps) => {
     x: number;
     y: number;
     text: string;
-    type: "user" | "assistant" | "tool";
+    type: "user" | "assistant" | "tool" | "image";
+    extra?: string;
+    imagePath?: string;
+    imageSrc?: string;
   } | null>(null);
 
   const menuPosition = useContextMenuPosition(contextMenu);
@@ -242,12 +246,39 @@ export const DetailPane = (props: DetailPaneProps) => {
   const handleContextMenu = (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => {
     e.preventDefault();
     e.stopPropagation();
+    const selected = window.getSelection()?.toString() || "";
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
-      text,
-      type
+      text: selected ? selected : text,
+      type,
+      extra: selected ? "selected-text" : undefined
     });
+  };
+
+  const handleImageContextMenu = (e: MouseEvent, path?: string, src?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const selected = window.getSelection()?.toString() || "";
+    if (selected) {
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        text: selected,
+        type: "image",
+        extra: "selected-text",
+        imagePath: path,
+        imageSrc: src
+      });
+    } else {
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        text: path || "",
+        type: "image",
+        extra: src
+      });
+    }
   };
 
   const closeContextMenu = () => setContextMenu(null);
@@ -1107,6 +1138,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                       useRegex={activeUseRegex()}
                       numberFormat={props.numberFormat}
                       onContextMenu={handleContextMenu}
+                      onImageClick={setActiveLightboxImage}
+                      onImageContextMenu={handleImageContextMenu}
                     />
                   );
                 }}
@@ -1198,7 +1231,7 @@ export const DetailPane = (props: DetailPaneProps) => {
           {(context) => {
             const [copied, setCopied] = createSignal(false);
             
-            const handleCopy = async () => {
+            const handleCopyText = async () => {
               try {
                 await navigator.clipboard.writeText(context().text);
                 setCopied(true);
@@ -1211,6 +1244,38 @@ export const DetailPane = (props: DetailPaneProps) => {
               }
             };
 
+            const handleCopyImage = async () => {
+              try {
+                const src = context().imageSrc || context().extra;
+                if (!src) return;
+                const response = await fetch(src);
+                const blob = await response.blob();
+                await navigator.clipboard.write([
+                  new ClipboardItem({
+                    [blob.type]: blob
+                  })
+                ]);
+                setCopied(true);
+                setTimeout(() => {
+                  setCopied(false);
+                  setContextMenu(null);
+                }, 800);
+              } catch (err) {
+                console.error("Failed to copy image:", err);
+              }
+            };
+
+            const handleShowInFolder = async () => {
+              try {
+                const path = context().imagePath || context().text;
+                if (!path) return;
+                await invoke("reveal_image_in_folder", { path });
+                setContextMenu(null);
+              } catch (err) {
+                console.error("Failed to reveal file:", err);
+              }
+            };
+
             const getLabel = () => {
               if (context().type === "user" || context().type === "assistant") {
                 return t("detailPane.copyMessageText");
@@ -1218,10 +1283,13 @@ export const DetailPane = (props: DetailPaneProps) => {
               return t("detailPane.copyToolOutput");
             };
 
+            const isImage = () => context().type === "image";
+            const isSelection = () => context().extra === "selected-text";
+
             return (
               <div
                 ref={menuPosition.ref}
-                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none transition-opacity duration-75"
+                class="fixed bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[10001] select-none transition-opacity duration-75 text-xs text-text-primary"
                 style={{
                   top: `${menuPosition.pos().top}px`,
                   left: `${menuPosition.pos().left}px`,
@@ -1230,18 +1298,132 @@ export const DetailPane = (props: DetailPaneProps) => {
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <button
-                  class="w-full text-left px-3 py-2 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer font-medium"
-                  onClick={handleCopy}
-                >
-                  <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
-                    <Check class="w-3.5 h-3.5 text-emerald-400" />
+                <Show when={isSelection()}>
+                  {/* Text Selection Actions */}
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={handleCopyText}
+                  >
+                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                      <Check class="w-3.5 h-3.5 text-emerald-400" />
+                    </Show>
+                    <span>{copied() ? t("common.copied") : t("detailPane.copySelection")}</span>
+                  </button>
+
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={() => {
+                      invoke("open_external_url", { url: `https://www.google.com/search?q=${encodeURIComponent(context().text)}` });
+                      setContextMenu(null);
+                    }}
+                  >
+                    <Search class="w-3.5 h-3.5" />
+                    <span>{t("detailPane.searchWithGoogle")}</span>
+                  </button>
+
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={() => {
+                      invoke("open_external_url", { url: `https://translate.google.com/?sl=auto&text=${encodeURIComponent(context().text)}` });
+                      setContextMenu(null);
+                    }}
+                  >
+                    <ExternalLink class="w-3.5 h-3.5" />
+                    <span>{t("detailPane.translateSelection")}</span>
+                  </button>
+
+                  {/* Append Image Operations if selection is inside an image */}
+                  <Show when={isImage()}>
+                    <div class="h-[1px] bg-border/20 my-1" />
+                    
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                      onClick={handleCopyImage}
+                    >
+                      <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                        <Check class="w-3.5 h-3.5 text-emerald-400" />
+                      </Show>
+                      <span>{copied() ? t("common.copied") : t("detailPane.copyImage")}</span>
+                    </button>
+
+                    <Show when={context().imagePath}>
+                      <button
+                        class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                        onClick={handleShowInFolder}
+                      >
+                        <Folder class="w-3.5 h-3.5" />
+                        <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showInFinder") : t("detailPane.showInFolder")}</span>
+                      </button>
+                    </Show>
                   </Show>
-                  <span>{copied() ? t("common.copied") : getLabel()}</span>
-                </button>
+                </Show>
+
+                <Show when={isImage() && !isSelection()}>
+                  {/* Pure Image Actions */}
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={handleCopyImage}
+                  >
+                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                      <Check class="w-3.5 h-3.5 text-emerald-400" />
+                    </Show>
+                    <span>{copied() ? t("common.copied") : t("detailPane.copyImage")}</span>
+                  </button>
+
+                  <Show when={context().text}>
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                      onClick={handleShowInFolder}
+                    >
+                      <Folder class="w-3.5 h-3.5" />
+                      <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showInFinder") : t("detailPane.showInFolder")}</span>
+                    </button>
+                  </Show>
+                </Show>
+
+                <Show when={!isImage() && !isSelection()}>
+                  {/* Standard Bubble Text Actions */}
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={handleCopyText}
+                  >
+                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                      <Check class="w-3.5 h-3.5 text-emerald-400" />
+                    </Show>
+                    <span>{copied() ? t("common.copied") : getLabel()}</span>
+                  </button>
+                </Show>
               </div>
             );
           }}
+        </Show>
+      </Portal>
+
+      {/* Fullscreen Lightbox Overlay */}
+      <Portal>
+        <Show when={activeLightboxImage()}>
+          {(src) => (
+            <div 
+              class="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200"
+              onClick={() => setActiveLightboxImage(null)}
+            >
+              {/* Close button */}
+              <button 
+                class="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/10 p-2.5 rounded-full transition-all cursor-pointer"
+                onClick={() => setActiveLightboxImage(null)}
+              >
+                <X class="w-6 h-6" />
+              </button>
+              
+              {/* Fullscreen Image */}
+              <img 
+                src={src().src} 
+                class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl border border-white/10 animate-in zoom-in duration-200"
+                onClick={(e) => e.stopPropagation()} 
+                onContextMenu={(e) => handleImageContextMenu(e, src().path, src().src)}
+              />
+            </div>
+          )}
         </Show>
       </Portal>
     </div>
@@ -1259,6 +1441,8 @@ interface VirtualTurnProps {
   useRegex?: boolean;
   numberFormat?: string;
   onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
+  onImageClick: (img: { path?: string; src: string }) => void;
+  onImageContextMenu: (e: MouseEvent, path?: string, src?: string) => void;
 }
 
 const VirtualTurn = (props: VirtualTurnProps) => {
@@ -1291,13 +1475,50 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             <Show 
               when={props.turn.userMessage === "[Compacted Request]"}
               fallback={
-                <MarkdownRenderer 
-                  content={props.turn.userMessage} 
-                  searchQuery={props.searchQuery} 
-                  matchCase={props.matchCase} 
-                  wholeWord={props.wholeWord} 
-                  useRegex={props.useRegex} 
-                />
+                <div class="space-y-3">
+                  <MarkdownRenderer 
+                    content={props.turn.userMessage} 
+                    searchQuery={props.searchQuery} 
+                    matchCase={props.matchCase} 
+                    wholeWord={props.wholeWord} 
+                    useRegex={props.useRegex} 
+                  />
+                  <Show when={props.turn.images && props.turn.images.length > 0}>
+                    <div class="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-border/30">
+                      <For each={props.turn.images}>
+                        {(image) => {
+                          const [src, setSrc] = createSignal<string>("");
+                          
+                          createEffect(async () => {
+                            if (image.base64 && image.mediaType) {
+                              setSrc(`data:${image.mediaType};base64,${image.base64}`);
+                            } else if (image.path) {
+                              try {
+                                const base64Data = await invoke<string>("read_session_image", { path: image.path });
+                                setSrc(base64Data);
+                              } catch (err) {
+                                logFE("error", `Failed to load turn image: ${err}`);
+                              }
+                            }
+                          });
+
+                          return (
+                            <Show when={src()}>
+                              <div class="relative group max-w-[200px] rounded-xl overflow-hidden border border-border/50 bg-background/50 hover:shadow-md transition-all duration-200">
+                                <img 
+                                  src={src()} 
+                                  class="max-h-40 max-w-full object-contain cursor-zoom-in hover:scale-[1.02] transition-all duration-200" 
+                                  onClick={() => props.onImageClick({ path: image.path, src: src() })}
+                                  onContextMenu={(e) => props.onImageContextMenu(e, image.path, src())}
+                                />
+                              </div>
+                            </Show>
+                          );
+                        }}
+                      </For>
+                    </div>
+                  </Show>
+                </div>
               }
             >
               <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">

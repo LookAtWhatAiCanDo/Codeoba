@@ -1,3 +1,10 @@
+export interface ImageReference {
+  id: string;
+  path?: string;
+  base64?: string;
+  mediaType?: string;
+}
+
 export interface Turn {
   turnId: string;
   userMessage: string;
@@ -6,6 +13,7 @@ export interface Turn {
   inputTokens?: number | null;
   outputTokens?: number | null;
   extraData?: Record<string, string> | null;
+  images?: ImageReference[];
 }
 
 export interface Session {

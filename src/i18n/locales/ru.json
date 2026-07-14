@@ -117,7 +117,13 @@
     "copySessionPath": "Копировать путь к сеансу",
     "copySessionPathLabel": "Путь к сеансу",
     "sessionPathCopied": "Путь к сеансу скопирован",
-    "resetFontSize": "Двойной клик для сброса по умолчанию"
+    "resetFontSize": "Двойной клик для сброса по умолчанию",
+    "copyImage": "Копировать изображение",
+    "showInFinder": "Показать в Finder",
+    "showInFolder": "Показать в папке",
+    "copySelection": "Копировать выделенное",
+    "searchWithGoogle": "Искать в Google",
+    "translateSelection": "Перевести выделенное"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",

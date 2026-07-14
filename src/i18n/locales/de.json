@@ -117,7 +117,13 @@
     "copySessionPath": "Sitzungspfad kopieren",
     "copySessionPathLabel": "Sitzungspfad",
     "sessionPathCopied": "Sitzungspfad kopiert",
-    "resetFontSize": "Doppelklicken, um auf Standard zurückzusetzen"
+    "resetFontSize": "Doppelklicken, um auf Standard zurückzusetzen",
+    "copyImage": "Bild kopieren",
+    "showInFinder": "Im Finder anzeigen",
+    "showInFolder": "Im Ordner anzeigen",
+    "copySelection": "Auswahl kopieren",
+    "searchWithGoogle": "Mit Google suchen",
+    "translateSelection": "Auswahl übersetzen"
   },
   "fileViewer": {
     "title": "Dateibetrachter",

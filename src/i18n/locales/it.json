@@ -117,7 +117,13 @@
     "copySessionPath": "Copia percorso della sessione",
     "copySessionPathLabel": "Percorso della sessione",
     "sessionPathCopied": "Percorso della sessione copiato",
-    "resetFontSize": "Fai doppio clic per ripristinare il valore predefinito"
+    "resetFontSize": "Fai doppio clic per ripristinare il valore predefinito",
+    "copyImage": "Copia immagine",
+    "showInFinder": "Mostra nel Finder",
+    "showInFolder": "Mostra nella cartella",
+    "copySelection": "Copia selezione",
+    "searchWithGoogle": "Cerca con Google",
+    "translateSelection": "Traduci selezione"
   },
   "fileViewer": {
     "title": "Visualizzatore file",

@@ -229,6 +229,22 @@ impl CursorSource {
             extra_data.insert("model".to_string(), model_name.clone());
             extra_data.insert("computeTimeMs".to_string(), "0".to_string());
 
+            let mut bubble_images = Vec::new();
+            if let Some(bubble_context) = item.get("context").and_then(|v| v.as_object()) {
+                if let Some(selected_imgs) = bubble_context.get("selectedImages").and_then(|v| v.as_array()) {
+                    for img in selected_imgs {
+                        if let Some(path) = img.get("path").and_then(|v| v.as_str()) {
+                            bubble_images.push(crate::models::ImageReference {
+                                id: uuid::Uuid::new_v4().to_string(),
+                                path: Some(path.to_string()),
+                                base64: None,
+                                media_type: resolve_mime_type(path),
+                            });
+                        }
+                    }
+                }
+            }
+
             if item_type == 1 {
                 let mut assistant_text = String::new();
                 if idx + 1 < conversation.len() {
@@ -261,6 +277,7 @@ impl CursorSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if bubble_images.is_empty() { None } else { Some(bubble_images.clone()) },
                 });
                 turn_count += 1;
             } else {
@@ -274,6 +291,7 @@ impl CursorSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: if bubble_images.is_empty() { None } else { Some(bubble_images) },
                 });
                 turn_count += 1;
                 idx += 1;
@@ -569,5 +587,20 @@ impl SourceAdapter for CursorSource {
         }
 
         crate::parsers::cache::get_cache_manager().end_scan(self.id())
+    }
+}
+
+fn resolve_mime_type(path: &str) -> Option<String> {
+    let lower = path.to_lowercase();
+    if lower.ends_with(".png") {
+        Some("image/png".to_string())
+    } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+        Some("image/jpeg".to_string())
+    } else if lower.ends_with(".gif") {
+        Some("image/gif".to_string())
+    } else if lower.ends_with(".webp") {
+        Some("image/webp".to_string())
+    } else {
+        None
     }
 }

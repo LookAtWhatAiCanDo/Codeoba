@@ -1551,6 +1551,7 @@ impl SourceAdapter for AntigravitySource {
                 input_tokens: Some(0),
                 output_tokens: Some(output_toks),
                 extra_data,
+                images: None,
             });
             turn_count += 1;
         }
@@ -1630,6 +1631,7 @@ impl SourceAdapter for AntigravitySource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: None,
                 });
                 turn_count += 1;
                 idx = next_idx;
@@ -1654,6 +1656,7 @@ impl SourceAdapter for AntigravitySource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
+                    images: None,
                 });
                 turn_count += 1;
                 idx += 1;
@@ -1676,6 +1679,66 @@ impl SourceAdapter for AntigravitySource {
         } else {
             false
         };
+
+        // Scan for media files in the brain directory
+        let mut session_images = Vec::new();
+        if let Some(brain_dir) = path.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+            if let Ok(entries) = fs::read_dir(brain_dir) {
+                for entry in entries.filter_map(Result::ok) {
+                    let entry_path = entry.path();
+                    if entry_path.is_file() {
+                        if let Some(filename) = entry_path.file_name().and_then(|s| s.to_str()) {
+                            if filename.starts_with("media__") {
+                                if let Some(ext) = entry_path.extension().and_then(|e| e.to_str()) {
+                                    let ext_lower = ext.to_lowercase();
+                                    if ext_lower == "png" || ext_lower == "jpg" || ext_lower == "jpeg" || ext_lower == "gif" || ext_lower == "webp" {
+                                        let ts_str = filename.strip_prefix("media__")
+                                            .and_then(|s| s.split('.').next())
+                                            .unwrap_or("");
+                                        if let Ok(ts) = ts_str.parse::<i64>() {
+                                            session_images.push((ts, entry_path.to_string_lossy().to_string(), ext_lower));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Match media files to the closest future turn by timestamp
+        if !session_images.is_empty() && !turns.is_empty() {
+            for (img_ts, img_path, ext) in session_images {
+                let mut matched_index = None;
+                for (i, turn) in turns.iter().enumerate() {
+                    // Match the first turn that occurred after or roughly at the same time as the image (with a 5s leeway for prompt latency)
+                    if turn.timestamp + 5000 >= img_ts {
+                        matched_index = Some(i);
+                        break;
+                    }
+                }
+                let best_index = matched_index.unwrap_or(turns.len() - 1);
+                let mime = match ext.as_str() {
+                    "png" => "image/png",
+                    "jpg" | "jpeg" => "image/jpeg",
+                    "gif" => "image/gif",
+                    "webp" => "image/webp",
+                    _ => "image/png",
+                };
+                let img_ref = crate::models::ImageReference {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    path: Some(img_path),
+                    base64: None,
+                    media_type: Some(mime.to_string()),
+                };
+                if let Some(ref mut img_list) = turns[best_index].images {
+                    img_list.push(img_ref);
+                } else {
+                    turns[best_index].images = Some(vec![img_ref]);
+                }
+            }
+        }
 
         let workspace_name = crate::models::resolve_workspace_name(&cwd);
         let status = crate::models::resolve_session_status(
