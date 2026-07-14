@@ -39,8 +39,8 @@ pub fn start_status_heartbeat<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
 
             let statuses = match crate::commands::compute_session_statuses(&app_handle) {
                 Ok(s) => s,
-                Err(e) => {
-                    crate::log_debug!("[StatusHeartbeat] skipped tick: {}", e);
+                Err(_e) => {
+                    crate::log_debug!("[StatusHeartbeat] skipped tick: {}", _e);
                     continue;
                 }
             };
