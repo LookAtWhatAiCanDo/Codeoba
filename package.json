@@ -21,7 +21,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-updater": "^2",
-    "dompurify": "^3.4.11",
+    "dompurify": "^3.4.12",
     "lucide-solid": "^1.23.0",
     "marked": "^18.0.5",
     "prismjs": "^1.30.0",
