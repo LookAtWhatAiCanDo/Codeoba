@@ -23,7 +23,7 @@
     "@tauri-apps/plugin-updater": "^2",
     "dompurify": "^3.4.12",
     "lucide-solid": "^1.23.0",
-    "marked": "^18.0.5",
+    "marked": "^18.0.6",
     "prismjs": "^1.30.0",
     "solid-js": "^1.9.14",
     "tailwindcss": "^4.3.2"
