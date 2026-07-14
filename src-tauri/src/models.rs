@@ -451,14 +451,6 @@ fn get_running_processes_table() -> String {
     }
 }
 
-/// True when some process matches one of the proposed CommandLines AND has an
-/// Antigravity process among its ancestors. Antigravity executes approved
-/// commands under its `agentapi` helper (`~/.gemini/antigravity*/bin/agentapi`)
-/// inside the Antigravity app, so the ancestry requirement keeps unrelated
-/// look-alike processes (the user's own shells, Codeoba's dev server) from
-/// matching. Only called while a `run_command` proposal is the transcript's
-/// last line — the one state the transcript itself cannot disambiguate.
-#[cfg(unix)]
 /// Heartbeat: is the Antigravity app for this session's variant running at
 /// all? This is the crash/quit failsafe that replaces time-based staleness
 /// caps — any cap X mislabels a command that runs longer than X, whereas
