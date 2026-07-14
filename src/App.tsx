@@ -312,6 +312,54 @@ function App() {
     localStorage.setItem("codeoba-search-multiline", multiline() ? "true" : "false");
   });
 
+  // While any session is active/waiting, poll so status changes that produce
+  // no file event (agent process quit, heartbeat-based degrades) reach the
+  // UI; content changes always arrive via the session-updated push channel.
+  //
+  // - Gated on a memo so the interval survives list churn: an effect reading
+  //   sessions() directly re-runs (tearing down the interval and resetting
+  //   its phase) on EVERY setSessions, which starved the poll whenever push
+  //   events streamed faster than the poll period.
+  // - Fetches statuses only (id -> status), not the full session list: the
+  //   old full-list poll deserialized every session each tick, and worse,
+  //   replaced the fully-loaded selectedSession with a to_lightweight() copy
+  //   whose earlier turns have blanked messages — visibly wiping the open
+  //   conversation. Merging just the status field cannot lose content.
+  const anyActiveOrWaiting = createMemo(() =>
+    sessions().some(s => s.status === "waiting" || s.status === "active")
+  );
+  let statusPollInFlight = false;
+  createEffect(() => {
+    if (!anyActiveOrWaiting()) return;
+    const interval = setInterval(async () => {
+      if (statusPollInFlight) return;
+      statusPollInFlight = true;
+      try {
+        const statuses = await invoke<Record<string, string>>("get_session_statuses");
+        if (sessions().some(s => (statuses[s.id] ?? s.status) !== s.status)) {
+          setSessions(prev =>
+            prev.map(s => {
+              const next = statuses[s.id];
+              return next && next !== s.status ? { ...s, status: next } : s;
+            })
+          );
+        }
+        const current = selectedSession();
+        if (current) {
+          const next = statuses[current.id];
+          if (next && next !== current.status) {
+            setSelectedSession({ ...current, status: next });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to poll session statuses:", err);
+      } finally {
+        statusPollInFlight = false;
+      }
+    }, 2000);
+    onCleanup(() => clearInterval(interval));
+  });
+
   const togglePinSession = async (sessionId: string) => {
     const next = new Set(pinnedSessionIds());
     if (next.has(sessionId)) {
@@ -637,9 +685,37 @@ function App() {
 
     // Register progress and live listeners immediately
     try {
+      // The no-op guard for the open detail view: covers EVERY field the
+      // detail pane renders. Leaving a field out silently freezes it in the
+      // open view until re-selection (this previously dropped late-resolved
+      // titles, pin and workspace changes). summary is compared structurally:
+      // it deserializes as an object, so reference !== is always true once
+      // summaries are ever populated.
+      const sessionViewChanged = (a: Session, b: Session): boolean => {
+        if (a.turns.length !== b.turns.length) return true;
+        for (let i = 0; i < a.turns.length; i++) {
+          if (a.turns[i].turnId !== b.turns[i].turnId
+              || a.turns[i].userMessage !== b.turns[i].userMessage
+              || a.turns[i].assistantMessage !== b.turns[i].assistantMessage) {
+            return true;
+          }
+        }
+        return a.status !== b.status
+          || a.isArchived !== b.isArchived
+          || a.isDeleted !== b.isDeleted
+          || a.isPinned !== b.isPinned
+          || a.threadName !== b.threadName
+          || a.workspaceName !== b.workspaceName
+          || a.cwd !== b.cwd
+          || a.updatedAt !== b.updatedAt
+          || JSON.stringify(a.summary ?? null) !== JSON.stringify(b.summary ?? null);
+      };
+
       unlistenSession = await listen<Session>("session-updated", (event) => {
         const updated = event.payload;
-        logFE("info", `Live event update: ${updated.id}`);
+        // debug level: console-only. Forwarding to the backend is one IPC
+        // round-trip per event — on this hot path that amplified event storms.
+        logFE("debug", `Live event update: ${updated.id}`);
 
         // Update sessions state list
         setSessions(prev => {
@@ -656,14 +732,14 @@ function App() {
 
         // Update selected view if open
         const current = selectedSession();
-        if (current && current.id === updated.id) {
+        if (current && current.id === updated.id && sessionViewChanged(current, updated)) {
           setSelectedSession(updated);
         }
       });
 
       unlistenDeleted = await listen<string>("session-deleted", (event) => {
         const deletedId = event.payload;
-        logFE("info", `Live event deletion: ${deletedId}`);
+        logFE("debug", `Live event deletion: ${deletedId}`);
 
         // Filter out deleted session from state list
         setSessions(prev => prev.filter(s => s.id !== deletedId));

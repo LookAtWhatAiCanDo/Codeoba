@@ -40,7 +40,7 @@
     "daysAgo": "{count}일 전",
     "statusActive": "활성",
     "statusIdle": "유휴",
-    "statusWaiting": "대기 중",
+    "statusQuestion": "질문",
     "badgeDeleted": "삭제됨",
     "sortBy": "정렬 기준",
     "sortRelevance": "관련성",

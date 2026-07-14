@@ -635,6 +635,15 @@ impl SearchIndexState {
         if let Ok(mut sessions_guard) = self.sessions.write() {
             sessions_guard.insert(session.id.clone(), session.clone());
         }
+        if let Some(ref status) = session.status {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            if let Ok(mut ttl_guard) = self.status_ttl_cache.write() {
+                ttl_guard.insert(session.id.clone(), (status.clone(), now));
+            }
+        }
         if let Ok(mut embeddings_guard) = self.embeddings.write() {
             embeddings_guard.insert(session.id.clone(), vec_index);
         }

@@ -304,6 +304,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_sources,
             commands::get_all_sessions,
+            commands::get_session_statuses,
             commands::get_session,
             commands::delete_source_data,
             commands::get_credential,

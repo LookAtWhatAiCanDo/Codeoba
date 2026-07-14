@@ -40,7 +40,7 @@
     "daysAgo": "{count}d geleden",
     "statusActive": "Actief",
     "statusIdle": "Inactief",
-    "statusWaiting": "Wachtend",
+    "statusQuestion": "Vraag",
     "badgeDeleted": "Verwijderd",
     "sortBy": "Sorteren op",
     "sortRelevance": "Relevantie",

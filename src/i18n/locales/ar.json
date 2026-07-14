@@ -40,7 +40,7 @@
     "daysAgo": "منذ {count} يوم",
     "statusActive": "نشط",
     "statusIdle": "خامل",
-    "statusWaiting": "قيد الانتظار",
+    "statusQuestion": "سؤال",
     "badgeDeleted": "محذوف",
     "sortBy": "ترتيب حسب",
     "sortRelevance": "الملاءمة",

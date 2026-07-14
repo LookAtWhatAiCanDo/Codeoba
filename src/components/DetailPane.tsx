@@ -16,7 +16,6 @@ import {
   Search,
   FileText,
   HelpCircle,
-  Loader2,
   MoreVertical,
   Pin,
   AlertCircle,
@@ -28,6 +27,7 @@ import {
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
+import { getStatusBadge } from "../utils/sessionStatus";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
 import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
 import { Turn, Session } from "../types";
@@ -544,41 +544,7 @@ export const DetailPane = (props: DetailPaneProps) => {
     return props.session?.workspaceName || t("common.localWorkspace");
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active":
-        return t("sidebar.statusActive");
-      case "waiting":
-        return t("sidebar.statusWaiting");
-      case "idle":
-      default:
-        return t("sidebar.statusIdle");
-    }
-  };
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-emerald-500/10 border-emerald-500/30 text-emerald-500";
-      case "waiting":
-        return "bg-amber-500/10 border-amber-500/30 text-amber-500";
-      case "idle":
-      default:
-        return "bg-blue-500/10 border-blue-500/20 text-blue-500";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />;
-      case "waiting":
-        return <HelpCircle class="w-3 h-3 flex-shrink-0" />;
-      case "idle":
-      default:
-        return <Clock class="w-3 h-3 flex-shrink-0" />;
-    }
-  };
+  const statusBadge = (status: string) => getStatusBadge(status, t);
 
   const handleCopyPath = () => {
     if (props.session) {
@@ -711,9 +677,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                   </Show>
                 </div>
                 <Show when={props.session!.status}>
-                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${getStatusStyle(props.session!.status!)}`}>
-                    {getStatusIcon(props.session!.status!)}
-                    <span>{getStatusLabel(props.session!.status!)}</span>
+                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${statusBadge(props.session!.status!).class}`}>
+                    {statusBadge(props.session!.status!).icon()}
+                    <span>{statusBadge(props.session!.status!).label}</span>
                   </div>
                 </Show>
                 <Show when={props.session!.isDeleted}>

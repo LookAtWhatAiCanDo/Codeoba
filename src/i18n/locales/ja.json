@@ -40,7 +40,7 @@
     "daysAgo": "{count}日前",
     "statusActive": "アクティブ",
     "statusIdle": "アイドル",
-    "statusWaiting": "待機中",
+    "statusQuestion": "質問",
     "badgeDeleted": "削除済み",
     "sortBy": "並べ替え",
     "sortRelevance": "関連性",

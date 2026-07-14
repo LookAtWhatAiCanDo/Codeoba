@@ -40,7 +40,7 @@
     "daysAgo": "{count}дн. назад",
     "statusActive": "Активен",
     "statusIdle": "Бездействует",
-    "statusWaiting": "Ожидание",
+    "statusQuestion": "Вопрос",
     "badgeDeleted": "Удалено",
     "sortBy": "Сортировать по",
     "sortRelevance": "Релевантность",

@@ -176,63 +176,6 @@ fn last_json_object(path: &std::path::Path) -> Option<serde_json::Value> {
     None
 }
 
-fn get_last_event_info_antigravity(session_id: &str) -> Option<(String, i64, bool, bool)> {
-    let home = crate::parsers::get_home_dir();
-    let paths = [
-        home.join(format!(
-            ".gemini/antigravity/brain/{}/.system_generated/logs/transcript_full.jsonl",
-            session_id
-        )),
-        home.join(format!(
-            ".gemini/antigravity/brain/{}/.system_generated/logs/transcript.jsonl",
-            session_id
-        )),
-        home.join(format!(
-            ".gemini/antigravity-ide/brain/{}/.system_generated/logs/transcript_full.jsonl",
-            session_id
-        )),
-        home.join(format!(
-            ".gemini/antigravity-ide/brain/{}/.system_generated/logs/transcript.jsonl",
-            session_id
-        )),
-    ];
-
-    for path in &paths {
-        if path.exists() && path.is_file() {
-            if let Some(obj) = last_json_object(path).as_ref().and_then(|v| v.as_object()) {
-                let step_type = obj
-                    .get("type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let created_at_str = obj.get("created_at").and_then(|v| v.as_str());
-                let timestamp = created_at_str
-                    .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                    .map(|dt| dt.timestamp_millis())
-                    .unwrap_or(0);
-
-                let mut has_tool_calls = false;
-                let mut has_waiting_tool_calls = false;
-                if let Some(serde_json::Value::Array(arr)) = obj.get("tool_calls") {
-                    if !arr.is_empty() {
-                        has_tool_calls = true;
-                        for tc in arr {
-                            if let Some(name) = tc.get("name").and_then(|v| v.as_str()) {
-                                if name == "ask_question" || name == "ask_permission" {
-                                    has_waiting_tool_calls = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                return Some((step_type, timestamp, has_tool_calls, has_waiting_tool_calls));
-            }
-        }
-    }
-    None
-}
-
 fn get_last_event_info_claude(file_path: &str) -> Option<(String, i64, bool)> {
     let path = std::path::Path::new(file_path);
     if path.exists() && path.is_file() {
@@ -270,80 +213,365 @@ fn parse_task_id(content: &str) -> Option<u32> {
         .ok()
 }
 
-fn get_active_running_task_antigravity(session_id: &str) -> Option<u32> {
-    let home = crate::parsers::get_home_dir();
-    let variants = ["antigravity", "antigravity-ide"];
+// ---------------------------------------------------------------------------
+// Antigravity status resolution (v1)
+//
+// The entire state machine, in resolution order:
+//
+//   Antigravity[ IDE] app not running               -> idle    (heartbeat)
+//   last = PLANNER + ask_question/ask_permission    -> waiting (question showing)
+//   last = bare PLANNER, no unfinished bg task      -> idle    (turn over)
+//   anything else                                   -> active
+//
+// Status is derived from the tail state of the session transcript
+// (`transcript_full.jsonl` / `transcript.jsonl` under the session's brain
+// dir), both rolling windows that Antigravity appends to on every agent step.
+// There are deliberately NO time-based staleness caps: any cap X mislabels a
+// legitimate command that runs longer than X. The crash/quit failsafe is the
+// process heartbeat instead — if the Antigravity app is alive, the transcript
+// is trusted indefinitely; if it is dead, every session is idle.
+//
+// Observed line semantics (verified against real transcripts):
+//   * `USER_INPUT` — the user submitted a prompt; the model is thinking.
+//   * `PLANNER_RESPONSE` + `ask_question`/`ask_permission` tool call — a
+//     question is showing. The `ASK_QUESTION` line is appended only *after*
+//     the user answers (it contains the answer), so both edges of the
+//     question — the ask and the answer — are reliably observable on disk.
+//     This is why "waiting" is reserved for questions.
+//   * `PLANNER_RESPONSE` + `run_command` tool call — a command was proposed.
+//     IMPORTANT: Antigravity buffers the resulting `RUN_COMMAND` line and only
+//     flushes it when the command *finishes* (its `created_at` still says
+//     launch time — verified by watching appends live). While the proposal is
+//     the last line, the session is EITHER awaiting approval OR executing the
+//     command; the transcript cannot tell the two apart. v1 shows both as
+//     "active": the session is mid-turn either way, and for auto-approved
+//     commands no prompt was ever shown. (Distinguishing them requires
+//     process-table probing — deferred until it earns its complexity.)
+//   * `PLANNER_RESPONSE` without tool calls — the turn is finished (idle),
+//     unless a background task launched this turn has not reported completion
+//     (the agent wakes again when the task-finished message arrives).
+//   * `RUN_COMMAND` with status `RUNNING` — a background task launched
+//     ("…task id: <session>/task-N…"). The line stays `RUNNING` forever;
+//     completion arrives later as a `SYSTEM_MESSAGE` (`Task id "…/task-N"
+//     finished with result: …`) or a `GENERIC` line (`Task: …/task-N
+//     Status: DONE`).
+//   * Anything else (tool results, `SYSTEM_MESSAGE`, `GENERIC`, answered
+//     `ASK_QUESTION`s, `CHECKPOINT`, …) — the agent is mid-turn.
 
-    for variant in &variants {
-        let transcript_path = home.join(format!(
-            ".gemini/{}/brain/{}/.system_generated/logs/transcript.jsonl",
+/// Facts extracted from one full pass over a transcript, cached per session
+/// keyed by (path, len, mtime) so the file is re-read only when it changes.
+#[derive(Clone, Debug)]
+struct AgTranscriptInfo {
+    /// `type` of the last transcript line, e.g. "PLANNER_RESPONSE".
+    last_type: String,
+    /// Tool-call names on the last line (PLANNER_RESPONSE lines only).
+    last_tool_calls: Vec<String>,
+    /// A background task launched since the last USER_INPUT has no
+    /// completion record yet.
+    has_unfinished_task: bool,
+}
+
+type AgInfoCache = HashMap<String, (std::path::PathBuf, u64, i64, AgTranscriptInfo)>;
+
+fn ag_info_cache() -> &'static std::sync::Mutex<AgInfoCache> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<AgInfoCache>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(HashMap::new()))
+}
+
+/// Picks the transcript to read for a session: the most recently modified of
+/// the candidates across both variant dirs, preferring `transcript_full.jsonl`
+/// (a superset) when mtimes tie. Returns (path, len, mtime_ms).
+fn ag_pick_transcript(session_id: &str) -> Option<(std::path::PathBuf, u64, i64)> {
+    let home = crate::parsers::get_home_dir();
+    let mut best: Option<(std::path::PathBuf, u64, i64)> = None;
+    for variant in ["antigravity", "antigravity-ide"] {
+        let logs = home.join(format!(
+            ".gemini/{}/brain/{}/.system_generated/logs",
             variant, session_id
         ));
-
-        if transcript_path.exists() && transcript_path.is_file() {
-            if let Ok(file) = std::fs::File::open(&transcript_path) {
-                let reader = std::io::BufReader::new(file);
-                use std::io::BufRead;
-
-                let mut launched_tasks = Vec::new();
-                let mut finished_tasks = std::collections::HashSet::new();
-
-                // `while let Some(Ok(..))` rather than `.lines().flatten()`: flatten
-                // swallows read errors and would spin forever on a persistent one.
-                let mut lines = reader.lines();
-                while let Some(Ok(line)) = lines.next() {
-                    let has_run = line.contains("\"RUN_COMMAND\"");
-                    let has_finished = line.contains("finished")
-                        || line.contains("result")
-                        || line.contains("task-");
-
-                    if has_run || has_finished {
-                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
-                            let step_type = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                            let content = val.get("content").and_then(|v| v.as_str()).unwrap_or("");
-
-                            if step_type == "RUN_COMMAND" {
-                                // Extract task ID from content, e.g. "task-2397"
-                                if let Some(task_id) = parse_task_id(content) {
-                                    let status =
-                                        val.get("status").and_then(|v| v.as_str()).unwrap_or("");
-                                    if status == "RUNNING" {
-                                        launched_tasks.push(task_id);
-                                    } else {
-                                        finished_tasks.insert(task_id);
-                                    }
-                                }
-                            } else if step_type == "SYSTEM_MESSAGE" || step_type == "ERROR_MESSAGE"
-                            {
-                                // Extract task ID and check if finished, e.g. "task-2397"
-                                if let Some(task_id) = parse_task_id(content) {
-                                    let lower = content.to_lowercase();
-                                    let task_str = format!("task-{}", task_id);
-                                    if lower.contains(&task_str)
-                                        && (lower.contains("finished")
-                                            || lower.contains("result")
-                                            || lower.contains("completed")
-                                            || lower.contains("exit")
-                                            || lower.contains("terminated"))
-                                    {
-                                        finished_tasks.insert(task_id);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Find the most recently launched task that is not finished
-                for task_id in launched_tasks.iter().rev() {
-                    if !finished_tasks.contains(task_id) {
-                        return Some(*task_id);
-                    }
-                }
+        for name in ["transcript_full.jsonl", "transcript.jsonl"] {
+            let path = logs.join(name);
+            let meta = match std::fs::metadata(&path) {
+                Ok(m) if m.is_file() => m,
+                _ => continue,
+            };
+            let mtime_ms = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            // Strictly-greater keeps the earlier candidate (transcript_full) on ties.
+            let is_better = match &best {
+                None => true,
+                Some((_, _, best_mtime)) => mtime_ms > *best_mtime,
+            };
+            if is_better {
+                best = Some((path, meta.len(), mtime_ms));
             }
         }
     }
-    None
+    best
+}
+
+/// One forward pass over the transcript: remembers the last line and tracks
+/// background tasks launched/finished since the most recent USER_INPUT.
+fn ag_scan_transcript(path: &std::path::Path) -> Option<AgTranscriptInfo> {
+    let content = std::fs::read_to_string(path).ok()?;
+
+    let mut launched: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    let mut finished: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    let mut last: Option<serde_json::Value> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let val = match serde_json::from_str::<serde_json::Value>(trimmed) {
+            Ok(v) if v.is_object() => v,
+            _ => continue,
+        };
+        let step_type = val.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        let status = val.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        let content_str = val.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
+        match step_type {
+            // Task tracking is scoped to the current turn: a new prompt makes
+            // earlier launches irrelevant to the "will the agent wake again?"
+            // question this info answers.
+            "USER_INPUT" => {
+                launched.clear();
+                finished.clear();
+            }
+            // Launch: "Tool is running as a background task with task id: <sid>/task-N".
+            // GENERIC RUNNING lines are status polls ("Task: <sid>/task-N Status:
+            // RUNNING") — also proof the task exists and runs.
+            "RUN_COMMAND" | "GENERIC" if status == "RUNNING" => {
+                if let Some(task_id) = parse_task_id(content_str) {
+                    launched.insert(task_id);
+                }
+            }
+            // Completion notices, e.g. SYSTEM_MESSAGE `Task id "…/task-N" finished
+            // with result: …` or GENERIC `Task: …/task-N Status: DONE`.
+            "SYSTEM_MESSAGE" | "ERROR_MESSAGE" | "GENERIC" => {
+                if let Some(task_id) = parse_task_id(content_str) {
+                    let lower = content_str.to_lowercase();
+                    // NOTE: deliberately conservative. In particular `sender=`
+                    // is NOT a completion marker — every inter-task message
+                    // envelope carries it, so matching it would mark running
+                    // tasks finished on any mid-task progress message.
+                    if lower.contains("finished")
+                        || lower.contains("status: done")
+                        || lower.contains("completed")
+                        || lower.contains("terminated")
+                        || lower.contains("cancelled")
+                        || lower.contains("expired")
+                    {
+                        finished.insert(task_id);
+                    }
+                }
+            }
+            _ => {}
+        }
+        last = Some(val);
+    }
+
+    let last = last?;
+    let last_tool_calls = match last.get("tool_calls") {
+        Some(serde_json::Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|tc| tc.get("name").and_then(|v| v.as_str()))
+            .map(|s| s.to_string())
+            .collect(),
+        _ => Vec::new(),
+    };
+
+    Some(AgTranscriptInfo {
+        last_type: last
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        last_tool_calls,
+        has_unfinished_task: launched.difference(&finished).next().is_some(),
+    })
+}
+
+// `not(test)`: the only caller is ag_agent_alive's non-test path (tests stub
+// the heartbeat), so the test build would flag this as dead code.
+#[cfg(all(unix, not(test)))]
+fn get_running_processes_table() -> String {
+    static PS_CACHE: std::sync::OnceLock<std::sync::Mutex<Option<(std::time::Instant, String)>>> =
+        std::sync::OnceLock::new();
+    let cache = PS_CACHE.get_or_init(|| std::sync::Mutex::new(None));
+    let mut guard = match cache.lock() {
+        Ok(g) => g,
+        Err(_) => return String::new(),
+    };
+    match &*guard {
+        Some((at, text)) if at.elapsed() < std::time::Duration::from_secs(1) => text.clone(),
+        _ => {
+            let output = std::process::Command::new("ps")
+                .args(["-axo", "pid=,ppid=,command="])
+                .output();
+            let text = match output {
+                Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
+                Err(_) => String::new(),
+            };
+            *guard = Some((std::time::Instant::now(), text.clone()));
+            text
+        }
+    }
+}
+
+#[cfg(all(not(unix), not(test)))]
+fn get_running_processes_table() -> String {
+    static TASKLIST_CACHE: std::sync::OnceLock<
+        std::sync::Mutex<Option<(std::time::Instant, String)>>,
+    > = std::sync::OnceLock::new();
+    let cache = TASKLIST_CACHE.get_or_init(|| std::sync::Mutex::new(None));
+    let mut guard = match cache.lock() {
+        Ok(g) => g,
+        Err(_) => return String::new(),
+    };
+    match &*guard {
+        Some((at, text)) if at.elapsed() < std::time::Duration::from_secs(1) => text.clone(),
+        _ => {
+            let output = std::process::Command::new("tasklist")
+                .args(["/FO", "CSV"])
+                .output();
+            let text = match output {
+                Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
+                Err(_) => String::new(),
+            };
+            *guard = Some((std::time::Instant::now(), text.clone()));
+            text
+        }
+    }
+}
+
+/// True when some process matches one of the proposed CommandLines AND has an
+/// Antigravity process among its ancestors. Antigravity executes approved
+/// commands under its `agentapi` helper (`~/.gemini/antigravity*/bin/agentapi`)
+/// inside the Antigravity app, so the ancestry requirement keeps unrelated
+/// look-alike processes (the user's own shells, Codeoba's dev server) from
+/// matching. Only called while a `run_command` proposal is the transcript's
+/// last line — the one state the transcript itself cannot disambiguate.
+#[cfg(unix)]
+/// Heartbeat: is the Antigravity app for this session's variant running at
+/// all? This is the crash/quit failsafe that replaces time-based staleness
+/// caps — any cap X mislabels a command that runs longer than X, whereas
+/// "the writer is alive" stays correct for arbitrarily long work.
+///
+/// Matches the app bundle path (macOS) / executable name (Windows), not a
+/// loose substring, so a terminal sitting in `~/.gemini/antigravity/` or an
+/// editor viewing a transcript cannot fake a heartbeat. Fails OPEN (alive)
+/// when the process table is unavailable: a possibly-stale "active" beats
+/// declaring every session idle.
+///
+/// Residual blind spot, accepted for v1: the app is alive but this specific
+/// run died mid-turn (agent error, user pressed Stop). The session then shows
+/// a stale "active" until its next transcript event.
+fn ag_agent_alive(source_id: &str) -> bool {
+    #[cfg(test)]
+    {
+        let _ = source_id;
+        std::env::var("CODEOBA_MOCK_AGENT_DEAD").is_err()
+    }
+    #[cfg(not(test))]
+    {
+        let table = get_running_processes_table();
+        if table.is_empty() {
+            return true;
+        }
+        let is_ide = source_id == "antigravity_ide";
+        if cfg!(target_os = "macos") {
+            let needle = if is_ide {
+                "Antigravity IDE.app/Contents"
+            } else {
+                "Antigravity.app/Contents"
+            };
+            table.lines().any(|line| line.contains(needle))
+        } else if cfg!(windows) {
+            let needle = if is_ide {
+                "Antigravity IDE.exe"
+            } else {
+                "Antigravity.exe"
+            };
+            table.lines().any(|line| line.contains(needle))
+        } else {
+            // Other platforms: best-effort name match (install layout unknown).
+            table
+                .lines()
+                .any(|line| line.to_lowercase().contains("antigravity"))
+        }
+    }
+}
+
+fn resolve_antigravity_status(source_id: &str, session_id: &str) -> String {
+    let (path, len, mtime_ms) = match ag_pick_transcript(session_id) {
+        Some(p) => p,
+        None => return "idle".to_string(),
+    };
+
+    let cached = match ag_info_cache().lock() {
+        Ok(guard) => guard.get(session_id).and_then(|(p, l, m, info)| {
+            if *p == path && *l == len && *m == mtime_ms {
+                Some(info.clone())
+            } else {
+                None
+            }
+        }),
+        Err(_) => None,
+    };
+    let info = match cached {
+        Some(info) => info,
+        None => {
+            let info = match ag_scan_transcript(&path) {
+                Some(i) => i,
+                None => return "idle".to_string(),
+            };
+            if let Ok(mut guard) = ag_info_cache().lock() {
+                guard.insert(session_id.to_string(), (path, len, mtime_ms, info.clone()));
+            }
+            info
+        }
+    };
+
+    ag_status_decision(&info, ag_agent_alive(source_id)).to_string()
+}
+
+/// The entire v1 state machine, pure and unit-testable:
+///
+///   agent dead                                    -> idle
+///   last = PLANNER + ask_question/ask_permission  -> waiting
+///   last = bare PLANNER, no unfinished bg task    -> idle
+///   anything else                                 -> active
+///
+/// "waiting" is reserved for questions because both edges — the ask and the
+/// user's answer — are reliably observable in the transcript. Command
+/// approval prompts show as "active": the transcript cannot distinguish
+/// "approval pending" from "command executing" (the RUN_COMMAND line is only
+/// flushed at completion), both are honestly mid-turn, and auto-approved
+/// commands never show a prompt at all.
+fn ag_status_decision(info: &AgTranscriptInfo, agent_alive: bool) -> &'static str {
+    if !agent_alive {
+        return "idle";
+    }
+    if info.last_type == "PLANNER_RESPONSE" {
+        let asks_user = info
+            .last_tool_calls
+            .iter()
+            .any(|n| n == "ask_question" || n == "ask_permission");
+        if asks_user {
+            return "waiting";
+        }
+        if info.last_tool_calls.is_empty() && !info.has_unfinished_task {
+            return "idle";
+        }
+    }
+    "active"
 }
 
 pub fn resolve_session_status(
@@ -363,106 +591,7 @@ pub fn resolve_session_status(
         .unwrap_or(0);
 
     if source_id == "antigravity" || source_id == "antigravity_ide" {
-        if get_active_running_task_antigravity(session_id).is_some() {
-            return Some("active".to_string());
-        }
-
-        let mut last_ts = 0;
-
-        if let Some((step_type, ts, has_tool_calls, has_waiting_tool_calls)) =
-            get_last_event_info_antigravity(session_id)
-        {
-            last_ts = ts;
-            let age_ms = now - ts;
-            let is_recent = age_ms.abs() < 600_000; // 10 minutes
-            if is_recent {
-                if step_type == "ASK_QUESTION" {
-                    return Some("waiting".to_string());
-                } else if step_type == "PLANNER_RESPONSE" {
-                    if has_tool_calls {
-                        if has_waiting_tool_calls {
-                            return Some("waiting".to_string());
-                        } else {
-                            // If a task were executing, line 310 would have already returned "active".
-                            // Since we reached here, we are waiting for command approval.
-                            return Some("waiting".to_string());
-                        }
-                    } else {
-                        // Check if this PLANNER_RESPONSE wrote an implementation plan that requests feedback
-                        let home = crate::parsers::get_home_dir();
-                        let variant_folder = if source_id == "antigravity_ide" {
-                            "antigravity-ide"
-                        } else {
-                            "antigravity"
-                        };
-                        let brain_dir =
-                            home.join(format!(".gemini/{}/brain/{}", variant_folder, session_id));
-                        let plan_metadata = brain_dir.join("implementation_plan.md.metadata.json");
-                        let mut is_waiting_for_plan = false;
-                        if plan_metadata.exists() && plan_metadata.is_file() {
-                            if let Ok(content) = std::fs::read_to_string(&plan_metadata) {
-                                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content)
-                                {
-                                    if val.get("requestFeedback").and_then(|v| v.as_bool())
-                                        == Some(true)
-                                    {
-                                        let plan_updated_at =
-                                            val.get("updatedAt").and_then(|v| v.as_str());
-                                        let plan_ts = plan_updated_at
-                                            .and_then(|t| {
-                                                chrono::DateTime::parse_from_rfc3339(t).ok()
-                                            })
-                                            .map(|dt| dt.timestamp_millis())
-                                            .unwrap_or(0);
-                                        if ts <= plan_ts + 5000 {
-                                            is_waiting_for_plan = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if is_waiting_for_plan {
-                            return Some("waiting".to_string());
-                        } else {
-                            return Some("idle".to_string());
-                        }
-                    }
-                } else {
-                    // USER_INPUT and any other recent step both mean the agent is active.
-                    return Some("active".to_string());
-                }
-            }
-        }
-
-        let home = crate::parsers::get_home_dir();
-        let variant_folder = if source_id == "antigravity_ide" {
-            "antigravity-ide"
-        } else {
-            "antigravity"
-        };
-        let brain_dir = home.join(format!(".gemini/{}/brain/{}", variant_folder, session_id));
-
-        // Check for awaiting approval / pending plan -> Waiting
-        let plan_metadata = brain_dir.join("implementation_plan.md.metadata.json");
-        if plan_metadata.exists() && plan_metadata.is_file() {
-            if let Ok(content) = std::fs::read_to_string(&plan_metadata) {
-                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if val.get("requestFeedback").and_then(|v| v.as_bool()) == Some(true) {
-                        let plan_updated_at = val.get("updatedAt").and_then(|v| v.as_str());
-                        let plan_ts = plan_updated_at
-                            .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                            .map(|dt| dt.timestamp_millis())
-                            .unwrap_or(0);
-
-                        if last_ts <= plan_ts + 5000 && last_ts > 0 {
-                            return Some("waiting".to_string());
-                        }
-                    }
-                }
-            }
-        }
-
-        return Some("idle".to_string());
+        return Some(resolve_antigravity_status(source_id, session_id));
     }
 
     if source_id == "claude" {
@@ -732,7 +861,6 @@ mod workspace_name_tests {
 
 #[cfg(test)]
 mod last_json_object_tests {
-    use super::get_active_running_task_antigravity;
     use super::last_json_object;
     use std::io::Write;
 
@@ -794,45 +922,255 @@ mod last_json_object_tests {
         let f = write_file(b"not json\n[1,2,3]\n");
         assert!(last_json_object(f.path()).is_none());
     }
+}
 
-    #[test]
-    fn test_antigravity_task_tracking() {
-        let _lock = crate::HOME_MUTEX.lock().unwrap();
-        let temp_dir = tempfile::tempdir().unwrap();
-        std::env::set_var("CODEOBA_MOCK_HOME", temp_dir.path());
+#[cfg(test)]
+mod antigravity_status_tests {
+    use super::resolve_antigravity_status;
 
-        let session_id = "test-session-task";
-        let logs_dir = temp_dir
-            .path()
+    /// Fixture lines mirror real Antigravity transcripts: RUN_COMMAND launch
+    /// lines carry "…task id: <sid>/task-N…" and stay RUNNING forever, and
+    /// completion arrives as a later SYSTEM_MESSAGE.
+    fn write_transcript(home: &std::path::Path, session_id: &str, lines: &[&str]) {
+        let logs_dir = home
             .join(".gemini/antigravity/brain")
             .join(session_id)
             .join(".system_generated/logs");
         std::fs::create_dir_all(&logs_dir).unwrap();
-        let transcript_path = logs_dir.join("transcript.jsonl");
+        let mut content = lines.join("\n");
+        content.push('\n');
+        std::fs::write(logs_dir.join("transcript.jsonl"), content).unwrap();
+    }
 
-        // Write transcript with task start and task finished messages (carrying quotes)
-        let content = r#"{"type":"USER_INPUT","content":"please run test"}
-{"type":"RUN_COMMAND","content":"task-1001","status":"RUNNING"}
-{"type":"RUN_COMMAND","content":"task-1002","status":"RUNNING"}
-{"type":"SYSTEM_MESSAGE","content":"Task id \"3cef995a-35ce-4de2-abf6-ca7437cb7eec/task-1001\" finished with result: Success"}
-"#;
-        std::fs::write(&transcript_path, content).unwrap();
+    const USER_INPUT: &str = r#"{"step_index":1,"type":"USER_INPUT","status":"DONE","created_at":"2026-07-13T04:29:11Z","content":"<USER_REQUEST>sleep then quiz me</USER_REQUEST>"}"#;
+    const PROPOSE_SLEEP: &str = r#"{"step_index":2,"type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-07-13T04:29:12Z","tool_calls":[{"name":"run_command","args":{"CommandLine":"sleep 10"}}]}"#;
+    const LAUNCH_SLEEP: &str = r#"{"step_index":3,"type":"RUN_COMMAND","status":"RUNNING","created_at":"2026-07-13T04:29:20Z","content":"Created At: 2026-07-13T04:29:20Z\nTool is running as a background task with task id: sid/task-3\nTask Description: sleep 10"}"#;
+    const AWAIT_TASK: &str = r#"{"step_index":4,"type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-07-13T04:29:22Z","content":"I started sleep 10 and am waiting for it to finish."}"#;
+    const FINISH_SLEEP: &str = r#"{"step_index":5,"type":"SYSTEM_MESSAGE","status":"DONE","created_at":"2026-07-13T04:29:35Z","content":"<SYSTEM_MESSAGE>\n[Message] sender=sid/task-3 content=Task id \"sid/task-3\" finished with result:\n\nThe command completed"}"#;
+    const FINAL_RESPONSE: &str = r#"{"step_index":6,"type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-07-13T04:29:40Z","content":"All done."}"#;
+    const ASK_QUESTION_CALL: &str = r#"{"step_index":7,"type":"PLANNER_RESPONSE","status":"DONE","created_at":"2026-07-13T04:29:41Z","tool_calls":[{"name":"ask_question","args":{"Question":"Pick one: A, B, or C?"}}]}"#;
+    const QUESTION_ANSWERED: &str = r#"{"step_index":8,"type":"ASK_QUESTION","status":"DONE","created_at":"2026-07-13T04:29:41Z","content":"Created At: 2026-07-13T04:29:41Z\nCompleted At: 2026-07-13T04:31:00Z\nA1: B"}"#;
 
-        // Call resolver: task 1001 should be marked finished, but 1002 is still running!
-        let active_task = get_active_running_task_antigravity(session_id);
-        assert_eq!(active_task, Some(1002));
+    /// The whole v1 decision table, exercised directly on the pure function.
+    #[test]
+    fn decision_table() {
+        let planner = |tools: &[&str], unfinished: bool| super::AgTranscriptInfo {
+            last_type: "PLANNER_RESPONSE".to_string(),
+            last_tool_calls: tools.iter().map(|s| s.to_string()).collect(),
+            has_unfinished_task: unfinished,
+        };
 
-        // Finish 1002 as well
-        std::fs::write(
-            &transcript_path,
-            format!(
-                "{}{{\"type\":\"SYSTEM_MESSAGE\",\"content\":\"Task id \\\"mock/task-1002\\\" finished successfully\"}}\n",
-                content
-            ),
-        ).unwrap();
+        // Dead agent trumps everything — even a pending question.
+        assert_eq!(
+            super::ag_status_decision(&planner(&["ask_question"], false), false),
+            "idle"
+        );
+        // Question showing -> waiting.
+        assert_eq!(
+            super::ag_status_decision(&planner(&["ask_question"], false), true),
+            "waiting"
+        );
+        assert_eq!(
+            super::ag_status_decision(&planner(&["ask_permission"], false), true),
+            "waiting"
+        );
+        // Command proposal -> active, whether approval is pending or the
+        // command is executing (the transcript cannot tell them apart; the
+        // accepted v1 gap).
+        assert_eq!(
+            super::ag_status_decision(&planner(&["run_command"], false), true),
+            "active"
+        );
+        // Turn over -> idle.
+        assert_eq!(
+            super::ag_status_decision(&planner(&[], false), true),
+            "idle"
+        );
+        // Turn "over" but a background task will wake the agent -> active.
+        assert_eq!(
+            super::ag_status_decision(&planner(&[], true), true),
+            "active"
+        );
+        // Any other last line (tool result, SYSTEM_MESSAGE, ...) -> mid-turn.
+        let mid_turn = super::AgTranscriptInfo {
+            last_type: "VIEW_FILE".to_string(),
+            last_tool_calls: Vec::new(),
+            has_unfinished_task: false,
+        };
+        assert_eq!(super::ag_status_decision(&mid_turn, true), "active");
+    }
 
-        let active_task_after = get_active_running_task_antigravity(session_id);
-        assert_eq!(active_task_after, None);
+    /// A run_command proposal shows "active": on disk it is indistinguishable
+    /// from the command already executing, and both are mid-turn.
+    #[test]
+    fn command_proposal_shows_active() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-approval";
+
+        write_transcript(temp.path(), sid, &[USER_INPUT, PROPOSE_SLEEP]);
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// While an approved command runs as a background task the session is
+    /// "active" (the bare "waiting for the task" PLANNER_RESPONSE does not
+    /// read as turn-over); once the completion message and final response
+    /// land, it is "idle".
+    #[test]
+    fn active_while_background_task_runs_and_idle_after_finish() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-background";
+
+        write_transcript(
+            temp.path(),
+            sid,
+            &[USER_INPUT, PROPOSE_SLEEP, LAUNCH_SLEEP, AWAIT_TASK],
+        );
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+
+        write_transcript(
+            temp.path(),
+            sid,
+            &[
+                USER_INPUT,
+                PROPOSE_SLEEP,
+                LAUNCH_SLEEP,
+                AWAIT_TASK,
+                FINISH_SLEEP,
+                FINAL_RESPONSE,
+            ],
+        );
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Steps 7-8: a pending ask_question is "waiting"; the ASK_QUESTION line
+    /// is appended only after the user answers, and then the agent is
+    /// resuming — "active", not "waiting".
+    #[test]
+    fn question_waits_then_resumes_when_answered() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-question";
+
+        let prefix = [
+            USER_INPUT,
+            PROPOSE_SLEEP,
+            LAUNCH_SLEEP,
+            AWAIT_TASK,
+            FINISH_SLEEP,
+        ];
+        let mut lines = prefix.to_vec();
+        lines.push(ASK_QUESTION_CALL);
+        write_transcript(temp.path(), sid, &lines);
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "waiting");
+
+        lines.push(QUESTION_ANSWERED);
+        write_transcript(temp.path(), sid, &lines);
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Regression: task launch/finish lines mentioning dev-server-ish strings
+    /// ("npm run", "vite", "tauri dev") were skipped wholesale, so such tasks
+    /// could never be marked finished and the session stuck at "active".
+    #[test]
+    fn dev_server_task_lines_are_not_skipped() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-devserver";
+
+        let launch = r#"{"step_index":3,"type":"RUN_COMMAND","status":"RUNNING","created_at":"2026-07-13T06:46:00Z","content":"Tool is running as a background task with task id: sid/task-3\nTask Description: npm run build:local"}"#;
+        let finish = r#"{"step_index":5,"type":"SYSTEM_MESSAGE","status":"DONE","created_at":"2026-07-13T06:48:18Z","content":"[Message] sender=sid/task-3 content=Task id \"sid/task-3\" finished with result:\n\nvite v5 building for production... The command completed"}"#;
+        // Without the completion line, the task pins the session active.
+        write_transcript(temp.path(), sid, &[USER_INPUT, launch, FINAL_RESPONSE]);
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+        // With it, the finish is counted (agent alive — this exercises the
+        // keyword matching, not the dead-agent shortcut).
+        write_transcript(
+            temp.path(),
+            sid,
+            &[USER_INPUT, launch, finish, FINAL_RESPONSE],
+        );
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Regression: `sender=` appears on EVERY inter-task message envelope,
+    /// not just completions. A mid-task progress message must not mark the
+    /// task finished (it briefly did, pinning sessions idle mid-task).
+    #[test]
+    fn progress_message_does_not_finish_task() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-progress";
+
+        let progress = r#"{"step_index":4,"type":"SYSTEM_MESSAGE","status":"DONE","created_at":"2026-07-13T04:29:30Z","content":"[Message] sender=sid/task-3 priority=MESSAGE_PRIORITY_LOW content=Still working, no output yet."}"#;
+        write_transcript(
+            temp.path(),
+            sid,
+            &[
+                USER_INPUT,
+                PROPOSE_SLEEP,
+                LAUNCH_SLEEP,
+                progress,
+                AWAIT_TASK,
+            ],
+        );
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Everything is idle the moment the Antigravity app is not running —
+    /// the heartbeat is the crash/quit failsafe (there are no time caps).
+    #[test]
+    fn dead_agent_degrades_to_idle() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-stale";
+
+        write_transcript(temp.path(), sid, &[USER_INPUT]);
+        // Active when agent process is running
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
+
+        // Instantly idle when agent process dies
+        std::env::set_var("CODEOBA_MOCK_AGENT_DEAD", "1");
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
+
+        std::env::remove_var("CODEOBA_MOCK_AGENT_DEAD");
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// Timer expiry/cancellations or cancelled task lines should be parsed as finished
+    /// to avoid getting stuck at "active".
+    #[test]
+    fn timer_and_cancellation_tasks_are_marked_finished() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let sid = "ag-timer-cancel";
+
+        let launch = r#"{"step_index":3,"type":"GENERIC","status":"RUNNING","created_at":"2026-07-13T06:46:00Z","content":"Created At: ...\nTool is running as a background task with task id: sid/task-4\nTask Description: Timer: 30s"}"#;
+        let cancel = r#"{"step_index":5,"type":"SYSTEM_MESSAGE","status":"DONE","created_at":"2026-07-13T06:48:18Z","content":"[Message] sender=sid/task-4 priority=MESSAGE_PRIORITY_LOW content=Your scheduled timer was cancelled because you received another message."}"#;
+        write_transcript(
+            temp.path(),
+            sid,
+            &[USER_INPUT, launch, cancel, FINAL_RESPONSE],
+        );
+        assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
 
         std::env::remove_var("CODEOBA_MOCK_HOME");
     }

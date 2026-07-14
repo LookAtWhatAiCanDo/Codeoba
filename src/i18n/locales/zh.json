@@ -40,7 +40,7 @@
     "daysAgo": "{count}天前",
     "statusActive": "运行中",
     "statusIdle": "空闲",
-    "statusWaiting": "等待中",
+    "statusQuestion": "提问",
     "badgeDeleted": "已删除",
     "sortBy": "排序方式",
     "sortRelevance": "相关性",

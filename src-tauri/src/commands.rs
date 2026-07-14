@@ -220,6 +220,105 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
     Ok(all_sessions)
 }
 
+/// Lightweight status poll: session id -> current status, with no session
+/// content cloned or serialized. The 2s frontend status poll only needs
+/// statuses — shipping the entire session list (last-turn messages included)
+/// on every tick was a large part of the UI-freeze feedback storm.
+#[tauri::command]
+pub async fn get_session_statuses<R: tauri::Runtime>(
+    app_handle: tauri::AppHandle<R>,
+) -> Result<std::collections::HashMap<String, String>, AppErrorPayload> {
+    // Minimal per-session snapshot. resolve_session_status only ever reads
+    // the FIRST turn (claude plan slug) and the LAST turn (fallback sources'
+    // finality/timestamp check), so clone just those two instead of the
+    // whole turn list.
+    struct StatusProbe {
+        id: String,
+        source_id: String,
+        file_path: String,
+        cwd: Option<String>,
+        stored_status: Option<String>,
+        edge_turns: Vec<crate::models::Turn>,
+    }
+
+    let state = app_handle.state::<SearchIndexState>();
+    let probes: Vec<StatusProbe> = {
+        let guard = state
+            .sessions
+            .read()
+            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        guard
+            .values()
+            .map(|s| {
+                let mut edge_turns = Vec::with_capacity(2);
+                if let Some(first) = s.turns.first() {
+                    edge_turns.push(first.clone());
+                }
+                if s.turns.len() > 1 {
+                    if let Some(last) = s.turns.last() {
+                        edge_turns.push(last.clone());
+                    }
+                }
+                StatusProbe {
+                    id: s.id.clone(),
+                    source_id: s.source_id.clone(),
+                    file_path: s.file_path.clone(),
+                    cwd: s.cwd.clone(),
+                    stored_status: s.status.clone(),
+                    edge_turns,
+                }
+            })
+            .collect()
+    };
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    let mut statuses = std::collections::HashMap::new();
+    for probe in probes {
+        // Same recompute policy as get_all_sessions: antigravity/claude have
+        // dynamic statuses; other sources keep their parse-time status.
+        let is_dynamic = probe.source_id == "antigravity"
+            || probe.source_id == "antigravity_ide"
+            || probe.source_id == "claude";
+        let status = if probe.stored_status.is_none() || is_dynamic {
+            let cached = {
+                if let Ok(ttl_guard) = state.status_ttl_cache.read() {
+                    ttl_guard.get(&probe.id).cloned()
+                } else {
+                    None
+                }
+            };
+            match cached {
+                Some((status, ts)) if now - ts < STATUS_TTL_MS => Some(status),
+                _ => {
+                    let resolved = crate::models::resolve_session_status(
+                        &probe.source_id,
+                        &probe.id,
+                        &probe.file_path,
+                        &probe.edge_turns,
+                        &probe.cwd,
+                    );
+                    if let Some(ref st) = resolved {
+                        if let Ok(mut ttl_guard) = state.status_ttl_cache.write() {
+                            ttl_guard.insert(probe.id.clone(), (st.clone(), now));
+                        }
+                    }
+                    resolved
+                }
+            }
+        } else {
+            probe.stored_status
+        };
+        if let Some(st) = status {
+            statuses.insert(probe.id, st);
+        }
+    }
+    Ok(statuses)
+}
+
 #[tauri::command]
 pub async fn get_session<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,

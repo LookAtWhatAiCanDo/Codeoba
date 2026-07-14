@@ -154,6 +154,16 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - Errors are defined as u32 constants (e.g., 2000-2999 range) in `src-tauri/src/commands.rs` and mapped to user-facing translations under the `errors` section in locale dictionaries (e.g., `src/i18n/locales/en.json`).
    - Frontend callers catching these errors MUST pass the rejected promise payload through the `getLocalizedAppError(err, t)` helper in `src/utils/errorHelper.ts` to resolve and display translated error messages.
 
+13. **Antigravity Session Status Resolution (v1 state machine)**:
+   - Status is derived from the last line of the session transcript (`transcript_full.jsonl`/`transcript.jsonl` under the session's brain dir) plus one process heartbeat. There are deliberately **no time-based staleness caps** — any cap X mislabels a command that legitimately runs longer than X.
+   - Resolution order (see `ag_status_decision` in `src-tauri/src/models.rs`):
+     1. Antigravity[ IDE] app not running → `"idle"` (heartbeat failsafe for crash/quit; matched by app bundle path, not loose substrings).
+     2. Last line is a `PLANNER_RESPONSE` with an `ask_question`/`ask_permission` tool call → `"waiting"` (a question is showing; the `ASK_QUESTION` line is only appended after the user answers, so both edges are reliably on disk).
+     3. Last line is a bare `PLANNER_RESPONSE` with no unfinished background task → `"idle"` (turn over).
+     4. Anything else → `"active"`.
+   - **Known/accepted v1 gap**: a `run_command` proposal shows `"active"` whether approval is pending or the command is executing — Antigravity only flushes the `RUN_COMMAND` line when the command *finishes*, so the two states are indistinguishable on disk, and auto-approved commands never show a prompt at all. Distinguishing them requires process-table probing and is deferred.
+   - **Task completion tracking**: `RUN_COMMAND`/`GENERIC` lines with status `RUNNING` launch background tasks (scoped per user turn); completion is detected via `SYSTEM_MESSAGE`/`ERROR_MESSAGE`/`GENERIC` lines carrying the task id plus a completion keyword (finished/status: done/completed/terminated/cancelled/expired). `sender=` is **not** a completion marker — every inter-task message envelope carries it.
+
 ---
 
 ## 🛠️ Common Cargo & NPM Development Commands

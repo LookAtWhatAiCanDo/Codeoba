@@ -40,7 +40,7 @@
     "daysAgo": "{count}d ago",
     "statusActive": "Active",
     "statusIdle": "Idle",
-    "statusWaiting": "Waiting",
+    "statusQuestion": "Question",
     "badgeDeleted": "Deleted",
     "sortBy": "Sort by",
     "sortRelevance": "Relevance",

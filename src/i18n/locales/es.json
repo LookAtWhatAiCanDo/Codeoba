@@ -40,7 +40,7 @@
     "daysAgo": "hace {count}d",
     "statusActive": "Activo",
     "statusIdle": "Inactivo",
-    "statusWaiting": "Esperando",
+    "statusQuestion": "Pregunta",
     "badgeDeleted": "Eliminado",
     "sortBy": "Ordenar por",
     "sortRelevance": "Relevancia",

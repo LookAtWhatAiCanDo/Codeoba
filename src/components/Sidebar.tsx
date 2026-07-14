@@ -2,6 +2,7 @@ import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup }
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n/i18n";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
+import { getStatusBadge } from "../utils/sessionStatus";
 import { 
   Search, 
   Sparkles, 
@@ -1844,31 +1845,9 @@ const SessionCard = (props: SessionCardProps) => {
   
   const sessionGroups = () => props.groups.filter(g => g.sessionIds?.includes(props.session.id));
 
-  const getStatusBadge = () => {
+  const statusBadge = () => {
     const status = props.session.status;
-    if (!status) return null;
-    
-    switch (status) {
-      case "active":
-        return {
-          label: t("sidebar.statusActive"),
-          class: "bg-emerald-500/10 border-emerald-500/30 text-emerald-500",
-          icon: () => <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />
-        };
-      case "waiting":
-        return {
-          label: t("sidebar.statusWaiting"),
-          class: "bg-amber-500/10 border-amber-500/30 text-amber-500",
-          icon: () => <HelpCircle class="w-3 h-3 flex-shrink-0" />
-        };
-      case "idle":
-      default:
-        return {
-          label: t("sidebar.statusIdle"),
-          class: "bg-blue-500/10 border-blue-500/20 text-blue-500",
-          icon: () => <Clock class="w-3 h-3 flex-shrink-0" />
-        };
-    }
+    return status ? getStatusBadge(status, t) : null;
   };
 
   return (
@@ -1961,10 +1940,10 @@ const SessionCard = (props: SessionCardProps) => {
         <span class={`px-1.5 py-0.5 border rounded text-[0.59375rem] uppercase font-bold flex-shrink-0 ${props.getSourceStyle(props.session.sourceId)}`}>
           {props.getSourceLabel(props.session.sourceId)}
         </span>
-        <Show when={getStatusBadge()}>
-          <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold flex-shrink-0 ${getStatusBadge()?.class}`}>
-            {getStatusBadge()?.icon()}
-            <span>{getStatusBadge()?.label}</span>
+        <Show when={statusBadge()}>
+          <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold flex-shrink-0 ${statusBadge()?.class}`}>
+            {statusBadge()?.icon()}
+            <span>{statusBadge()?.label}</span>
           </div>
         </Show>
         

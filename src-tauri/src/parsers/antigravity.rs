@@ -122,9 +122,7 @@ impl AntigravitySource {
             .prepare("SELECT step_payload FROM steps ORDER BY idx ASC")
             .ok()?;
 
-        let rows = stmt
-            .query_map([], |row| row.get::<_, Vec<u8>>(0))
-            .ok()?;
+        let rows = stmt.query_map([], |row| row.get::<_, Vec<u8>>(0)).ok()?;
 
         for payload in rows.flatten() {
             if let Some(title) = extract_short_title_from_payload(&payload) {
@@ -297,11 +295,9 @@ fn extract_short_title_from_payload(bytes: &[u8]) -> Option<String> {
             }
             let run = &bytes[start..i];
             if let Ok(s) = std::str::from_utf8(run) {
-                if let Some(nl) = s.find('\n') {
-                    let first_line = &s[..nl];
+                if let Some(first_line) = s.find('\n').and_then(|nl| s.get(..nl)) {
                     let len = first_line.len();
-                    if len >= 10
-                        && len <= 100
+                    if (10..=100).contains(&len)
                         && !first_line.starts_with("file://")
                         && !first_line.starts_with('/')
                         && !first_line.starts_with('<')
@@ -325,7 +321,9 @@ fn is_uuid_like(s: &str) -> bool {
         && parts[0].len() == 8
         && parts[1].len() == 4
         && parts[4].len() == 12
-        && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_hexdigit()))
+        && parts
+            .iter()
+            .all(|p| p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 fn read_varint(bytes: &[u8], offset: &mut usize) -> Result<u64, String> {
