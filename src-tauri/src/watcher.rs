@@ -467,6 +467,50 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
     Ok(())
 }
 
+/// Drop sessions the adapter has since decided must not be indexed.
+///
+/// A subagent's transcript can be parsed before its parent's INVOKE_SUBAGENT step
+/// is seen, in which case it is indexed and pushed to the sidebar before anything
+/// knows it is a subagent. The moment the parent is parsed the relationship is
+/// known, so evict the child here rather than leaving it visible until the next
+/// full rebuild.
+fn evict_excluded_sessions<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    excluded: HashSet<String>,
+) {
+    if excluded.is_empty() {
+        return;
+    }
+
+    let idx_state = app_handle.state::<crate::search::SearchIndexState>();
+
+    let removed: Vec<String> = match idx_state.sessions.read() {
+        Ok(guard) => excluded
+            .into_iter()
+            .filter(|id| guard.contains_key(id))
+            .collect(),
+        Err(_) => return,
+    };
+    if removed.is_empty() {
+        return;
+    }
+
+    if let Ok(mut guard) = idx_state.sessions.write() {
+        for id in &removed {
+            guard.remove(id);
+        }
+    }
+    if let Ok(mut guard) = idx_state.embeddings.write() {
+        for id in &removed {
+            guard.remove(id);
+        }
+    }
+    for id in &removed {
+        crate::log_debug!("Evicting subagent session from index: {}", id);
+        let _ = app_handle.emit("session-deleted", id);
+    }
+}
+
 fn is_relevant_event(kind: &EventKind) -> bool {
     matches!(
         kind,
@@ -653,6 +697,14 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                 let _ = idx_state.update_session(sess.clone()).await;
                                 emit_session_update(&app_handle_clone, &sess);
                             }
+
+                            // parse_all_sessions above refreshed the parent->child
+                            // map, so a subagent indexed before its parent was known
+                            // can be dropped now.
+                            evict_excluded_sessions(
+                                &app_handle_clone,
+                                src.excluded_session_ids(),
+                            );
                         } else {
                             // Check if file exists (if not, it's deleted)
                             if !Path::new(&file_path).exists() {
@@ -682,12 +734,26 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                     }
                                     let _ = app_handle_clone.emit("session-deleted", &session_id);
                                 }
-                            } else if let Some(session) = src.parse_session(&file_path).await {
-                                crate::log_debug!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
-                                let idx_state =
-                                    app_handle_clone.state::<crate::search::SearchIndexState>();
-                                let _ = idx_state.update_session(session.clone()).await;
-                                emit_session_update(&app_handle_clone, &session);
+                            } else {
+                                let parsed = src.parse_session(&file_path).await;
+
+                                // Deliberately outside the `if let` below, because it
+                                // must run whether or not this file yielded a session:
+                                // parsing a PARENT is what reveals its children, and
+                                // parsing a known subagent yields None while that child
+                                // may still be sitting in the index from an earlier tick.
+                                evict_excluded_sessions(
+                                    &app_handle_clone,
+                                    src.excluded_session_ids(),
+                                );
+
+                                if let Some(session) = parsed {
+                                    crate::log_debug!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
+                                    let idx_state = app_handle_clone
+                                        .state::<crate::search::SearchIndexState>();
+                                    let _ = idx_state.update_session(session.clone()).await;
+                                    emit_session_update(&app_handle_clone, &session);
+                                }
                             }
                         }
                     }

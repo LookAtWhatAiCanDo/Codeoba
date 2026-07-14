@@ -24,6 +24,18 @@ pub trait SourceAdapter: Send + Sync {
     fn id(&self) -> &str;
     fn display_name(&self) -> &str;
     fn is_available(&self) -> bool;
+    /// Sessions this adapter knows about but that must not appear in the index —
+    /// currently Antigravity subagents, whose parentage is only discoverable from
+    /// the PARENT's transcript.
+    ///
+    /// parse_session already refuses to return these, but on the live path a
+    /// child can be parsed before its parent's INVOKE_SUBAGENT step has been seen,
+    /// so it gets indexed and pushed to the UI before anything knows what it is.
+    /// The watcher uses this to evict such a session once the parent reveals the
+    /// relationship, instead of leaving it in the sidebar until the next full scan.
+    fn excluded_session_ids(&self) -> std::collections::HashSet<String> {
+        std::collections::HashSet::new()
+    }
     fn get_default_log_paths(&self) -> Vec<String>;
     fn get_watch_paths(&self) -> Vec<String>;
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
@@ -246,6 +258,17 @@ impl Source {
             Source::AntigravityIde(s) => s.id(),
             Source::Copilot(s) => s.id(),
             Source::Codex(s) => s.id(),
+        }
+    }
+
+    pub fn excluded_session_ids(&self) -> std::collections::HashSet<String> {
+        match self {
+            Source::Claude(s) => s.excluded_session_ids(),
+            Source::Cursor(s) => s.excluded_session_ids(),
+            Source::Antigravity(s) => s.excluded_session_ids(),
+            Source::AntigravityIde(s) => s.excluded_session_ids(),
+            Source::Copilot(s) => s.excluded_session_ids(),
+            Source::Codex(s) => s.excluded_session_ids(),
         }
     }
 
