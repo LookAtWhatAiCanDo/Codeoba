@@ -305,8 +305,12 @@ impl SourceAdapter for CodexSource {
                             if let Some(item_obj) = item.as_object() {
                                 let item_type = item_obj.get("type").and_then(|v| v.as_str());
                                 if item_type == Some("image_url") {
-                                    if let Some(img_url_obj) = item_obj.get("image_url").and_then(|v| v.as_object()) {
-                                        if let Some(url) = img_url_obj.get("url").and_then(|v| v.as_str()) {
+                                    if let Some(img_url_obj) =
+                                        item_obj.get("image_url").and_then(|v| v.as_object())
+                                    {
+                                        if let Some(url) =
+                                            img_url_obj.get("url").and_then(|v| v.as_str())
+                                        {
                                             if url.starts_with("data:") {
                                                 if let Some((mime, b64)) = parse_data_url(url) {
                                                     images.push(crate::models::ImageReference {
@@ -336,7 +340,11 @@ impl SourceAdapter for CodexSource {
                         }
                     }
                     let text = text_builder.trim().to_string();
-                    let images_opt = if images.is_empty() { None } else { Some(images) };
+                    let images_opt = if images.is_empty() {
+                        None
+                    } else {
+                        Some(images)
+                    };
                     if !text.is_empty() || images_opt.is_some() {
                         raw_turns.push(RawTurn {
                             is_user: role == "user",
@@ -397,7 +405,11 @@ impl SourceAdapter for CodexSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if combined_images.is_empty() { None } else { Some(combined_images) },
+                    images: if combined_images.is_empty() {
+                        None
+                    } else {
+                        Some(combined_images)
+                    },
                 });
                 turn_count += 1;
             } else {
@@ -424,7 +436,11 @@ impl SourceAdapter for CodexSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if orphan_images.is_empty() { None } else { Some(orphan_images) },
+                    images: if orphan_images.is_empty() {
+                        None
+                    } else {
+                        Some(orphan_images)
+                    },
                 });
                 turn_count += 1;
                 current_idx += 1;

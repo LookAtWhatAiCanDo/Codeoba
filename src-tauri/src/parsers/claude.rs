@@ -245,7 +245,8 @@ impl ClaudeSource {
                             {
                                 for item in content_array {
                                     if let Some(item_obj) = item.as_object() {
-                                        let item_type = item_obj.get("type").and_then(|v| v.as_str());
+                                        let item_type =
+                                            item_obj.get("type").and_then(|v| v.as_str());
                                         if item_type == Some("text") {
                                             if let Some(t) =
                                                 item_obj.get("text").and_then(|v| v.as_str())
@@ -254,9 +255,17 @@ impl ClaudeSource {
                                                 text.push('\n');
                                             }
                                         } else if item_type == Some("image") {
-                                            if let Some(source) = item_obj.get("source").and_then(|v| v.as_object()) {
-                                                let media_type = source.get("media_type").and_then(|v| v.as_str()).map(String::from);
-                                                let base64_data = source.get("data").and_then(|v| v.as_str()).map(String::from);
+                                            if let Some(source) =
+                                                item_obj.get("source").and_then(|v| v.as_object())
+                                            {
+                                                let media_type = source
+                                                    .get("media_type")
+                                                    .and_then(|v| v.as_str())
+                                                    .map(String::from);
+                                                let base64_data = source
+                                                    .get("data")
+                                                    .and_then(|v| v.as_str())
+                                                    .map(String::from);
                                                 images.push(crate::models::ImageReference {
                                                     id: uuid::Uuid::new_v4().to_string(),
                                                     path: None,
@@ -269,7 +278,11 @@ impl ClaudeSource {
                                 }
                             }
                             let text_trimmed = text.trim().to_string();
-                            let images_opt = if images.is_empty() { None } else { Some(images) };
+                            let images_opt = if images.is_empty() {
+                                None
+                            } else {
+                                Some(images)
+                            };
                             raw_turns.push(RawTurn {
                                 is_user: true,
                                 text: text_trimmed,
@@ -414,7 +427,11 @@ impl ClaudeSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if combined_images.is_empty() { None } else { Some(combined_images) },
+                    images: if combined_images.is_empty() {
+                        None
+                    } else {
+                        Some(combined_images)
+                    },
                 });
                 turn_count += 1;
                 current_idx = next_idx;
@@ -450,7 +467,11 @@ impl ClaudeSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if orphan_images.is_empty() { None } else { Some(orphan_images) },
+                    images: if orphan_images.is_empty() {
+                        None
+                    } else {
+                        Some(orphan_images)
+                    },
                 });
                 turn_count += 1;
                 current_idx += 1;

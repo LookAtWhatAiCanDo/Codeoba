@@ -56,7 +56,10 @@ pub fn start_status_heartbeat<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>
             last = statuses;
 
             if !changed.is_empty() {
-                crate::log_debug!("[StatusHeartbeat] emitting {} status change(s)", changed.len());
+                crate::log_debug!(
+                    "[StatusHeartbeat] emitting {} status change(s)",
+                    changed.len()
+                );
                 let _ = app_handle.emit("session-status-changed", &changed);
             }
         }
@@ -701,10 +704,7 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             // parse_all_sessions above refreshed the parent->child
                             // map, so a subagent indexed before its parent was known
                             // can be dropped now.
-                            evict_excluded_sessions(
-                                &app_handle_clone,
-                                src.excluded_session_ids(),
-                            );
+                            evict_excluded_sessions(&app_handle_clone, src.excluded_session_ids());
                         } else {
                             // Check if file exists (if not, it's deleted)
                             if !Path::new(&file_path).exists() {
@@ -749,8 +749,8 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
 
                                 if let Some(session) = parsed {
                                     crate::log_debug!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
-                                    let idx_state = app_handle_clone
-                                        .state::<crate::search::SearchIndexState>();
+                                    let idx_state =
+                                        app_handle_clone.state::<crate::search::SearchIndexState>();
                                     let _ = idx_state.update_session(session.clone()).await;
                                     emit_session_update(&app_handle_clone, &session);
                                 }
