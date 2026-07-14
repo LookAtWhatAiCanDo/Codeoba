@@ -1,7 +1,7 @@
 use crate::models::{Session, Turn};
 use crate::parsers::SourceAdapter;
 use rusqlite::{Connection, OpenFlags};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
@@ -10,6 +10,16 @@ pub struct AntigravitySource {
     variant: crate::parsers::ParserVariant,
     antigravity_title_map: std::sync::RwLock<HashMap<String, String>>,
     last_pb_file_modified: std::sync::RwLock<i64>,
+    /// Conversation ids that were spawned as subagents by some other session.
+    ///
+    /// Subagent-ness cannot be read off the subagent itself: its transcript has
+    /// no self-marker, and Antigravity writes subagent conversations into
+    /// agyhub_summaries_proto.pb exactly like top-level ones (which is why the
+    /// old "absent from the title map" test never actually excluded anything).
+    /// The only authoritative signal is on the PARENT side — an INVOKE_SUBAGENT
+    /// step naming the child's conversationId — so it has to be collected across
+    /// sessions and cached here.
+    antigravity_subagent_ids: std::sync::RwLock<HashSet<String>>,
 }
 
 impl Default for AntigravitySource {
@@ -18,6 +28,7 @@ impl Default for AntigravitySource {
             variant: crate::parsers::ParserVariant::Standard,
             antigravity_title_map: std::sync::RwLock::new(HashMap::new()),
             last_pb_file_modified: std::sync::RwLock::new(0),
+            antigravity_subagent_ids: std::sync::RwLock::new(HashSet::new()),
         }
     }
 }
@@ -28,7 +39,84 @@ impl AntigravitySource {
             variant,
             antigravity_title_map: std::sync::RwLock::new(HashMap::new()),
             last_pb_file_modified: std::sync::RwLock::new(0),
+            antigravity_subagent_ids: std::sync::RwLock::new(HashSet::new()),
         }
+    }
+
+    /// Collect every conversation id that any transcript spawned as a subagent.
+    ///
+    /// The child's id is not a field on the step — it sits inside a JSON blob
+    /// embedded in the step's `content` STRING:
+    ///
+    ///   {"type":"INVOKE_SUBAGENT","content":"...Created the following subagents:
+    ///    \n{ \"conversationId\": \"<child-uuid>\", ... }"}
+    ///
+    /// Note the escaping: in the raw line those inner quotes are backslashed, so
+    /// scanning the line text directly never matches. The line has to be decoded
+    /// first and the pattern applied to the unescaped `content`.
+    ///
+    /// Two step types are read. INVOKE_SUBAGENT records the spawn. CHECKPOINT
+    /// repeats the roster in its "# Subagents" summary, and that is what survives
+    /// when a long transcript is compacted and the original INVOKE_SUBAGENT step
+    /// gets truncated away — without it, subagents of compacted conversations
+    /// would silently reappear as top-level sessions.
+    fn build_antigravity_subagent_ids(&self) -> HashSet<String> {
+        static SUBAGENT_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let re = SUBAGENT_RE.get_or_init(|| {
+            regex::Regex::new(r#""conversationId"\s*:\s*"([^"]+)""#).expect("valid static regex")
+        });
+
+        let mut ids = HashSet::new();
+        let base_dir = self.get_base_dir();
+        if !base_dir.exists() || !base_dir.is_dir() {
+            return ids;
+        }
+
+        let mut walk_stack = vec![base_dir];
+        while let Some(current_dir) = walk_stack.pop() {
+            let entries = match fs::read_dir(current_dir) {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk_stack.push(path);
+                    continue;
+                }
+                if path.file_name().and_then(|s| s.to_str()) != Some("transcript_full.jsonl") {
+                    continue;
+                }
+                let text = match fs::read_to_string(&path) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+                // Cheap prefilter: only the few transcripts that mention a
+                // subagent at all pay for the per-line JSON decode.
+                if !text.contains("conversationId") {
+                    continue;
+                }
+
+                for line in text.lines() {
+                    let value: serde_json::Value = match serde_json::from_str(line) {
+                        Ok(v) => v,
+                        Err(_) => continue,
+                    };
+                    let step_type = value.get("type").and_then(|t| t.as_str()).unwrap_or("");
+                    if step_type != "INVOKE_SUBAGENT" && step_type != "CHECKPOINT" {
+                        continue;
+                    }
+                    let step_content = match value.get("content").and_then(|c| c.as_str()) {
+                        Some(c) => c,
+                        None => continue,
+                    };
+                    for cap in re.captures_iter(step_content) {
+                        ids.insert(cap[1].to_string());
+                    }
+                }
+            }
+        }
+        ids
     }
 
     fn get_variant_dir(&self) -> PathBuf {
@@ -1017,15 +1105,24 @@ impl SourceAdapter for AntigravitySource {
             .unwrap_or_else(|| path.file_stem().and_then(|s| s.to_str()).unwrap_or(""))
             .to_string();
 
+        // Skip conversations that some other session spawned as a subagent.
+        //
+        // This used to test "absent from the pb title map", which never excluded
+        // anything: Antigravity writes subagent conversations into
+        // agyhub_summaries_proto.pb with titles, exactly like top-level ones, so
+        // every subagent passed the check and showed up as its own conversation
+        // in the sidebar while Antigravity's own UI showed one. The set below is
+        // built from the parents' INVOKE_SUBAGENT steps, which is the only place
+        // the relationship is actually recorded.
         if !cfg!(test) && !crate::keyring::get_index_subagents_setting() {
-            let contains_session = {
-                let map = self
-                    .antigravity_title_map
+            let is_subagent = {
+                let ids = self
+                    .antigravity_subagent_ids
                     .read()
                     .unwrap_or_else(|e| e.into_inner());
-                map.contains_key(&session_id)
+                ids.contains(&session_id)
             };
-            if !contains_session {
+            if is_subagent {
                 return None;
             }
         }
@@ -1813,6 +1910,19 @@ impl SourceAdapter for AntigravitySource {
                 .write()
                 .unwrap_or_else(|e| e.into_inner());
             *mod_guard = current_modified;
+        }
+
+        // Refresh the parent->child map before the walk below, so parse_session
+        // can tell a subagent from a real conversation as it goes. Built here
+        // rather than per-file because the evidence lives in the PARENT's
+        // transcript, not the subagent's.
+        {
+            let subagent_ids = self.build_antigravity_subagent_ids();
+            let mut guard = self
+                .antigravity_subagent_ids
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
+            *guard = subagent_ids;
         }
 
         crate::parsers::cache::get_cache_manager().start_scan(self.id());

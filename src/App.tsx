@@ -76,7 +76,8 @@ function App() {
   const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
   const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
   const [excludedPaths, setExcludedPaths] = createSignal(localStorage.getItem("codeoba-excluded-paths") || "");
-  const [indexSubagents, setIndexSubagents] = createSignal(true);
+  // Matches the backend default; the real value is loaded from config on mount.
+  const [indexSubagents, setIndexSubagents] = createSignal(false);
   const [fontSize, setFontSize] = createSignal(
     parseInt(localStorage.getItem("codeoba-font-size") || "15", 10)
   );

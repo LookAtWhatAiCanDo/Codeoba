@@ -249,12 +249,17 @@ pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
     save_fallback_config(&config);
 }
 
+/// Defaults to false: a subagent is an implementation detail of the conversation
+/// that spawned it, and the host app (Antigravity) shows the pair as a single
+/// conversation. Surfacing them as separate top-level sessions was never an
+/// intentional default — the subagent test was broken, so this setting had no
+/// effect either way and every subagent leaked into the list regardless.
 pub fn get_index_subagents_setting() -> bool {
     let config = load_fallback_config();
     config
         .get("index_subagents")
         .map(|val| val == "true")
-        .unwrap_or(true)
+        .unwrap_or(false)
 }
 
 pub fn save_index_subagents_setting(enabled: bool) {
