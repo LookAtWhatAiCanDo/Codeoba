@@ -1202,10 +1202,10 @@ fn validate_image_path(path: &Path) -> Result<(), String> {
         .and_then(|e| e.to_str())
         .map(|s| s.to_lowercase());
 
-    let valid_ext = match ext.as_deref() {
-        Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp") => true,
-        _ => false,
-    };
+    let valid_ext = matches!(
+        ext.as_deref(),
+        Some("png") | Some("jpg") | Some("jpeg") | Some("gif") | Some("webp")
+    );
     if !valid_ext {
         return Err("File is not a supported image type".to_string());
     }
