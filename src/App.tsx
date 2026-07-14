@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, getOwner, runWithOwner } from "solid-js";
+import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, getOwner, runWithOwner, batch } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
@@ -651,6 +651,17 @@ function App() {
       }, 250);
     }
 
+    // Coalesced live-update pump. session-updated/-deleted arrive in bursts (an
+    // agent streaming into one transcript, or a DB source that re-parses every
+    // session per file change). Applying each event synchronously rebuilt +
+    // re-sorted + re-enriched the whole list and forced a full sidebar re-render,
+    // saturating the UI thread ("softlock"). We buffer events (deduped by id) and
+    // apply them once per animation frame instead. Declared out here (not inside
+    // the try below) so the cleanup handler can cancel a pending frame.
+    const pendingUpdates = new Map<string, Session>();
+    const pendingDeletes = new Set<string>();
+    let flushHandle: number | null = null;
+
     let unlistenSession: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
@@ -711,44 +722,78 @@ function App() {
           || JSON.stringify(a.summary ?? null) !== JSON.stringify(b.summary ?? null);
       };
 
+      // Apply all buffered updates/deletes in a single reactive batch. Runs at
+      // most once per frame regardless of how many events arrived, so an event
+      // storm collapses into one list rebuild + one sidebar render per frame.
+      const flushLiveUpdates = () => {
+        flushHandle = null;
+        if (pendingUpdates.size === 0 && pendingDeletes.size === 0) return;
+
+        // Snapshot + clear so events arriving during the flush queue the next frame.
+        const updates = new Map(pendingUpdates);
+        const deletes = new Set(pendingDeletes);
+        pendingUpdates.clear();
+        pendingDeletes.clear();
+
+        logFE("debug", `Live update flush: ${updates.size} updated, ${deletes.size} deleted`);
+
+        batch(() => {
+          setSessions(prev => {
+            const seen = new Set<string>();
+            const list: Session[] = [];
+            for (const s of prev) {
+              if (deletes.has(s.id)) continue;
+              const u = updates.get(s.id);
+              if (u) {
+                list.push(u);
+                seen.add(u.id);
+              } else {
+                list.push(s);
+              }
+            }
+            // Remaining updates are sessions not previously in the list (new).
+            for (const [id, u] of updates) {
+              if (!seen.has(id)) list.push(u);
+            }
+            list.sort((a, b) => b.updatedAt - a.updatedAt);
+            return enrichedSessions(list);
+          });
+
+          // Reconcile the open detail view against the batched changes.
+          const current = selectedSession();
+          if (current) {
+            if (deletes.has(current.id)) {
+              setSelectedSession(null);
+            } else {
+              const u = updates.get(current.id);
+              if (u && sessionViewChanged(current, u)) {
+                setSelectedSession(u);
+              }
+            }
+          }
+        });
+      };
+
+      const scheduleLiveFlush = () => {
+        if (flushHandle === null) {
+          flushHandle = requestAnimationFrame(flushLiveUpdates);
+        }
+      };
+
       unlistenSession = await listen<Session>("session-updated", (event) => {
         const updated = event.payload;
-        // debug level: console-only. Forwarding to the backend is one IPC
-        // round-trip per event — on this hot path that amplified event storms.
-        logFE("debug", `Live event update: ${updated.id}`);
-
-        // Update sessions state list
-        setSessions(prev => {
-          const index = prev.findIndex(s => s.id === updated.id);
-          const list = [...prev];
-          if (index !== -1) {
-            list[index] = updated;
-          } else {
-            list.unshift(updated);
-          }
-          list.sort((a, b) => b.updatedAt - a.updatedAt);
-          return enrichedSessions(list);
-        });
-
-        // Update selected view if open
-        const current = selectedSession();
-        if (current && current.id === updated.id && sessionViewChanged(current, updated)) {
-          setSelectedSession(updated);
-        }
+        // A later update supersedes any pending delete for the same id.
+        pendingDeletes.delete(updated.id);
+        pendingUpdates.set(updated.id, updated);
+        scheduleLiveFlush();
       });
 
       unlistenDeleted = await listen<string>("session-deleted", (event) => {
         const deletedId = event.payload;
-        logFE("debug", `Live event deletion: ${deletedId}`);
-
-        // Filter out deleted session from state list
-        setSessions(prev => prev.filter(s => s.id !== deletedId));
-
-        // Deselect if active view
-        const current = selectedSession();
-        if (current && current.id === deletedId) {
-          setSelectedSession(null);
-        }
+        // A delete supersedes any pending update for the same id.
+        pendingUpdates.delete(deletedId);
+        pendingDeletes.add(deletedId);
+        scheduleLiveFlush();
       });
 
       let lastFetchedStep = "";
@@ -1219,6 +1264,7 @@ function App() {
     window.addEventListener("focusin", handleFocusIn);
 
     runWithOwner(owner, () => onCleanup(() => {
+      if (flushHandle !== null) cancelAnimationFrame(flushHandle);
       if (unlistenSession) unlistenSession();
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
