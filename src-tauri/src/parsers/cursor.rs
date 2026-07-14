@@ -231,7 +231,10 @@ impl CursorSource {
 
             let mut bubble_images = Vec::new();
             if let Some(bubble_context) = item.get("context").and_then(|v| v.as_object()) {
-                if let Some(selected_imgs) = bubble_context.get("selectedImages").and_then(|v| v.as_array()) {
+                if let Some(selected_imgs) = bubble_context
+                    .get("selectedImages")
+                    .and_then(|v| v.as_array())
+                {
                     for img in selected_imgs {
                         if let Some(path) = img.get("path").and_then(|v| v.as_str()) {
                             bubble_images.push(crate::models::ImageReference {
@@ -277,7 +280,11 @@ impl CursorSource {
                     input_tokens: Some(input_toks),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if bubble_images.is_empty() { None } else { Some(bubble_images.clone()) },
+                    images: if bubble_images.is_empty() {
+                        None
+                    } else {
+                        Some(bubble_images.clone())
+                    },
                 });
                 turn_count += 1;
             } else {
@@ -291,7 +298,11 @@ impl CursorSource {
                     input_tokens: Some(0),
                     output_tokens: Some(output_toks),
                     extra_data,
-                    images: if bubble_images.is_empty() { None } else { Some(bubble_images) },
+                    images: if bubble_images.is_empty() {
+                        None
+                    } else {
+                        Some(bubble_images)
+                    },
                 });
                 turn_count += 1;
                 idx += 1;

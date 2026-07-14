@@ -1804,7 +1804,11 @@ impl SourceAdapter for AntigravitySource {
 
         // Scan for media files in the brain directory
         let mut session_images = Vec::new();
-        if let Some(brain_dir) = path.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+        if let Some(brain_dir) = path
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+        {
             if let Ok(entries) = fs::read_dir(brain_dir) {
                 for entry in entries.filter_map(Result::ok) {
                     let entry_path = entry.path();
@@ -1813,12 +1817,22 @@ impl SourceAdapter for AntigravitySource {
                             if filename.starts_with("media__") {
                                 if let Some(ext) = entry_path.extension().and_then(|e| e.to_str()) {
                                     let ext_lower = ext.to_lowercase();
-                                    if ext_lower == "png" || ext_lower == "jpg" || ext_lower == "jpeg" || ext_lower == "gif" || ext_lower == "webp" {
-                                        let ts_str = filename.strip_prefix("media__")
+                                    if ext_lower == "png"
+                                        || ext_lower == "jpg"
+                                        || ext_lower == "jpeg"
+                                        || ext_lower == "gif"
+                                        || ext_lower == "webp"
+                                    {
+                                        let ts_str = filename
+                                            .strip_prefix("media__")
                                             .and_then(|s| s.split('.').next())
                                             .unwrap_or("");
                                         if let Ok(ts) = ts_str.parse::<i64>() {
-                                            session_images.push((ts, entry_path.to_string_lossy().to_string(), ext_lower));
+                                            session_images.push((
+                                                ts,
+                                                entry_path.to_string_lossy().to_string(),
+                                                ext_lower,
+                                            ));
                                         }
                                     }
                                 }

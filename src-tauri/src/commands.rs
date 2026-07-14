@@ -1197,7 +1197,8 @@ fn validate_image_path(path: &Path) -> Result<(), String> {
         return Err("Path is not a file".to_string());
     }
 
-    let ext = path.extension()
+    let ext = path
+        .extension()
         .and_then(|e| e.to_str())
         .map(|s| s.to_lowercase());
 
@@ -1267,7 +1268,12 @@ pub fn read_session_image(path: String) -> Result<String, AppErrorPayload> {
         .map_err(|e| AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, e.to_string()))?;
 
     let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-    let mime = match path_buf.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase()).as_deref() {
+    let mime = match path_buf
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_lowercase())
+        .as_deref()
+    {
         Some("png") => "image/png",
         Some("jpg") | Some("jpeg") => "image/jpeg",
         Some("gif") => "image/gif",
@@ -1285,7 +1291,10 @@ pub fn reveal_image_in_folder(path: String) -> Result<(), AppErrorPayload> {
         .map_err(|e| AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, e))?;
 
     if !path_buf.exists() {
-        return Err(AppErrorPayload::with_msg(ERR_FILE_READ_FAILED, "File does not exist"));
+        return Err(AppErrorPayload::with_msg(
+            ERR_FILE_READ_FAILED,
+            "File does not exist",
+        ));
     }
 
     #[cfg(target_os = "macos")]
@@ -1307,9 +1316,7 @@ pub fn reveal_image_in_folder(path: String) -> Result<(), AppErrorPayload> {
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         if let Some(parent) = path_buf.parent() {
-            let _ = std::process::Command::new("xdg-open")
-                .arg(parent)
-                .spawn();
+            let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
         }
     }
 
@@ -1322,7 +1329,10 @@ pub fn open_external_url<R: tauri::Runtime>(
     url: String,
 ) -> Result<(), AppErrorPayload> {
     if !url.starts_with("http://") && !url.starts_with("https://") {
-        return Err(AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, "Only http/https URLs are allowed"));
+        return Err(AppErrorPayload::with_msg(
+            ERR_PERMISSION_DENIED,
+            "Only http/https URLs are allowed",
+        ));
     }
 
     app.opener()
