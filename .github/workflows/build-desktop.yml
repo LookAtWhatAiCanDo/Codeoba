@@ -69,7 +69,6 @@ jobs:
 
   build:
     name: Build & Package (${{ matrix.platform-name }})
-    needs: qa
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'Production' || null }}
@@ -130,7 +129,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: 'npm'
@@ -480,7 +479,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, qa]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     steps:
