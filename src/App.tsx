@@ -312,53 +312,11 @@ function App() {
     localStorage.setItem("codeoba-search-multiline", multiline() ? "true" : "false");
   });
 
-  // While any session is active/waiting, poll so status changes that produce
-  // no file event (agent process quit, heartbeat-based degrades) reach the
-  // UI; content changes always arrive via the session-updated push channel.
-  //
-  // - Gated on a memo so the interval survives list churn: an effect reading
-  //   sessions() directly re-runs (tearing down the interval and resetting
-  //   its phase) on EVERY setSessions, which starved the poll whenever push
-  //   events streamed faster than the poll period.
-  // - Fetches statuses only (id -> status), not the full session list: the
-  //   old full-list poll deserialized every session each tick, and worse,
-  //   replaced the fully-loaded selectedSession with a to_lightweight() copy
-  //   whose earlier turns have blanked messages — visibly wiping the open
-  //   conversation. Merging just the status field cannot lose content.
-  const anyActiveOrWaiting = createMemo(() =>
-    sessions().some(s => s.status === "waiting" || s.status === "active")
-  );
-  let statusPollInFlight = false;
-  createEffect(() => {
-    if (!anyActiveOrWaiting()) return;
-    const interval = setInterval(async () => {
-      if (statusPollInFlight) return;
-      statusPollInFlight = true;
-      try {
-        const statuses = await invoke<Record<string, string>>("get_session_statuses");
-        if (sessions().some(s => (statuses[s.id] ?? s.status) !== s.status)) {
-          setSessions(prev =>
-            prev.map(s => {
-              const next = statuses[s.id];
-              return next && next !== s.status ? { ...s, status: next } : s;
-            })
-          );
-        }
-        const current = selectedSession();
-        if (current) {
-          const next = statuses[current.id];
-          if (next && next !== current.status) {
-            setSelectedSession({ ...current, status: next });
-          }
-        }
-      } catch (err) {
-        console.error("Failed to poll session statuses:", err);
-      } finally {
-        statusPollInFlight = false;
-      }
-    }, 2000);
-    onCleanup(() => clearInterval(interval));
-  });
+  // Session status is pushed, not polled. Some status changes have no file event
+  // behind them (the agent process quits or crashes and writes nothing), so they
+  // can never arrive on the session-updated channel; the backend heartbeat
+  // resolves those and emits "session-status-changed" with ONLY the ids that
+  // actually flipped. See the session-status-changed listener in onMount.
 
   const togglePinSession = async (sessionId: string) => {
     const next = new Set(pinnedSessionIds());
@@ -652,9 +610,14 @@ function App() {
     // the try below) so the cleanup handler can cancel a pending frame.
     const pendingUpdates = new Map<string, Session>();
     const pendingDeletes = new Set<string>();
+    // The latest full-turn payload for the open session, if one arrived this
+    // frame. Only ever one, since only the open session gets this channel.
+    let pendingFull: Session | null = null;
     let flushHandle: number | null = null;
 
     let unlistenSession: (() => void) | undefined;
+    let unlistenSessionFull: (() => void) | undefined;
+    let unlistenStatus: (() => void) | undefined;
     let unlistenProgress: (() => void) | undefined;
     let unlistenDeleted: (() => void) | undefined;
     let unlistenDetectedSource: (() => void) | undefined;
@@ -719,13 +682,15 @@ function App() {
       // storm collapses into one list rebuild + one sidebar render per frame.
       const flushLiveUpdates = () => {
         flushHandle = null;
-        if (pendingUpdates.size === 0 && pendingDeletes.size === 0) return;
+        if (pendingUpdates.size === 0 && pendingDeletes.size === 0 && pendingFull === null) return;
 
         // Snapshot + clear so events arriving during the flush queue the next frame.
         const updates = new Map(pendingUpdates);
         const deletes = new Set(pendingDeletes);
+        const full = pendingFull;
         pendingUpdates.clear();
         pendingDeletes.clear();
+        pendingFull = null;
 
         logFE("debug", `Live update flush: ${updates.size} updated, ${deletes.size} deleted`);
 
@@ -751,16 +716,18 @@ function App() {
             return list;
           });
 
-          // Reconcile the open detail view against the batched changes.
+          // The detail pane is driven ONLY by the full-turn channel. Payloads on
+          // the list channel are lightweight (earlier turns have blanked
+          // messages), so feeding one to the open conversation would visibly wipe
+          // its history.
           const current = selectedSession();
           if (current) {
             if (deletes.has(current.id)) {
               setSelectedSession(null);
-            } else {
-              const u = updates.get(current.id);
-              if (u && sessionViewChanged(current, u)) {
-                setSelectedSession(u);
-              }
+              invoke("set_selected_session", { sessionId: null })
+                .catch(err => console.error("Failed to clear selected session:", err));
+            } else if (full && full.id === current.id && sessionViewChanged(current, full)) {
+              setSelectedSession(full);
             }
           }
         });
@@ -772,12 +739,49 @@ function App() {
         }
       };
 
+      // Lightweight payloads: drives the sidebar list only.
       unlistenSession = await listen<Session>("session-updated", (event) => {
         const updated = event.payload;
         // A later update supersedes any pending delete for the same id.
         pendingDeletes.delete(updated.id);
         pendingUpdates.set(updated.id, updated);
         scheduleLiveFlush();
+      });
+
+      // Full-turn payloads: emitted only for the session the detail pane has
+      // open, so the visible conversation still streams live.
+      unlistenSessionFull = await listen<Session>("session-updated-full", (event) => {
+        pendingFull = event.payload;
+        scheduleLiveFlush();
+      });
+
+      // Only the ids whose status actually flipped arrive here, so this is a
+      // no-op on a quiet app. Unchanged sessions are returned by reference so the
+      // sidebar re-renders only the rows that really changed.
+      unlistenStatus = await listen<Record<string, string>>("session-status-changed", (event) => {
+        const statuses = event.payload;
+        batch(() => {
+          setSessions(prev => {
+            let changed = false;
+            const next = prev.map(s => {
+              const status = statuses[s.id];
+              if (status && status !== s.status) {
+                changed = true;
+                return { ...s, status };
+              }
+              return s;
+            });
+            return changed ? next : prev;
+          });
+
+          const current = selectedSession();
+          if (current) {
+            const status = statuses[current.id];
+            if (status && status !== current.status) {
+              setSelectedSession({ ...current, status });
+            }
+          }
+        });
       });
 
       unlistenDeleted = await listen<string>("session-deleted", (event) => {
@@ -1258,6 +1262,8 @@ function App() {
     runWithOwner(owner, () => onCleanup(() => {
       if (flushHandle !== null) cancelAnimationFrame(flushHandle);
       if (unlistenSession) unlistenSession();
+      if (unlistenSessionFull) unlistenSessionFull();
+      if (unlistenStatus) unlistenStatus();
       if (unlistenDeleted) unlistenDeleted();
       if (unlistenProgress) unlistenProgress();
       if (unlistenDetectedSource) unlistenDetectedSource();
@@ -1558,6 +1564,11 @@ function App() {
       }
     }
 
+    // Register the selection before fetching, so any live update that lands while
+    // the session is loading already arrives on the full-turn channel.
+    invoke("set_selected_session", { sessionId: session.id })
+      .catch(err => console.error("Failed to register selected session:", err));
+
     const start = performance.now();
     (window as any).sessionSelectionStart = start;
     logFE("info", `Selecting session: ${session.id} (${session.threadName || 'Untitled'})`);
@@ -1597,6 +1608,8 @@ function App() {
 
   const handleGoHome = (skipHistory = false) => {
     localStorage.removeItem("codeoba-last-selected-session-id");
+    invoke("set_selected_session", { sessionId: null })
+      .catch(err => console.error("Failed to clear selected session:", err));
     if (!skipHistory) {
       const history = [...navHistory().slice(0, historyIndex() + 1)];
       if (history[history.length - 1] !== "dashboard") {

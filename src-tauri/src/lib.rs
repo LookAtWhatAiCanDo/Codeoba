@@ -149,6 +149,7 @@ pub fn run() {
             detected_sources: std::sync::Mutex::new(std::collections::HashSet::new()),
             last_file_hashes: std::sync::Mutex::new(std::collections::HashMap::new()),
         })
+        .manage(watcher::SelectedSessionState(std::sync::Mutex::new(None)))
         .manage(search::SearchIndexState::new())
         .manage(groups::GroupState::new())
         .setup(|app| {
@@ -171,6 +172,7 @@ pub fn run() {
                 *guard = Some(handle.clone());
             }
             let _ = watcher::start_watcher(handle.clone());
+            watcher::start_status_heartbeat(handle.clone());
 
             // Set up the custom system menus
             menu::setup_menu(app)?;
@@ -305,6 +307,7 @@ pub fn run() {
             commands::get_sources,
             commands::get_all_sessions,
             commands::get_session_statuses,
+            commands::set_selected_session,
             commands::get_session,
             commands::delete_source_data,
             commands::get_credential,

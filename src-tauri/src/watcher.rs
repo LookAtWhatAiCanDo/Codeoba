@@ -11,12 +11,102 @@ use tauri::{Emitter, Manager};
 /// another permanent 5-second polling task.
 static PERIODIC_LOOP_STARTED: AtomicBool = AtomicBool::new(false);
 
+/// Guards the status heartbeat so it is spawned once per process.
+static STATUS_HEARTBEAT_STARTED: AtomicBool = AtomicBool::new(false);
+
+/// A session's status can change with no filesystem event behind it: when an
+/// agent process exits or crashes, nothing is written, so the session-updated
+/// push channel never fires and the session would sit on a stale "active"
+/// forever. The frontend used to cover this by polling get_session_statuses
+/// every 2s, which rebuilt and re-serialized a status map for every session in
+/// the index on every tick — even when nothing had changed, which is almost
+/// always.
+///
+/// Inverted here: resolve statuses on this side and emit only the ids whose
+/// status actually flipped. A quiet app now sends nothing at all.
+pub fn start_status_heartbeat<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) {
+    if STATUS_HEARTBEAT_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    tauri::async_runtime::spawn(async move {
+        // Seeded empty, so the first tick emits the current status of every
+        // session once. The frontend merge is a no-op when nothing differs.
+        let mut last: HashMap<String, String> = HashMap::new();
+
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+            let statuses = match crate::commands::compute_session_statuses(&app_handle) {
+                Ok(s) => s,
+                Err(e) => {
+                    crate::log_debug!("[StatusHeartbeat] skipped tick: {}", e);
+                    continue;
+                }
+            };
+
+            let mut changed: HashMap<String, String> = HashMap::new();
+            for (id, status) in &statuses {
+                if last.get(id) != Some(status) {
+                    changed.insert(id.clone(), status.clone());
+                }
+            }
+            // Replacing wholesale also drops ids that left the index, so a
+            // removed session cannot leave a stale entry behind.
+            last = statuses;
+
+            if !changed.is_empty() {
+                crate::log_debug!("[StatusHeartbeat] emitting {} status change(s)", changed.len());
+                let _ = app_handle.emit("session-status-changed", &changed);
+            }
+        }
+    });
+}
+
 pub struct WatcherState {
     pub watcher: Mutex<Option<RecommendedWatcher>>,
     pub last_generations: Mutex<HashMap<String, u64>>,
     pub watched_inodes: Mutex<HashMap<PathBuf, u64>>,
     pub detected_sources: Mutex<HashSet<String>>,
     pub last_file_hashes: Mutex<HashMap<String, u64>>,
+}
+
+/// The session currently open in the detail pane, if any. Set by the frontend on
+/// selection; read here to decide who is worth shipping full turns to.
+pub struct SelectedSessionState(pub Mutex<Option<String>>);
+
+/// Fan a session change out on two channels.
+///
+/// The sidebar list only ever renders metadata and a snippet — get_all_sessions
+/// has always served it `to_lightweight()`. But the watcher was pushing FULL
+/// sessions (every turn's message text, plus images) into that same list on every
+/// write an agent makes, so a long conversation re-serialized its entire history
+/// through the IPC boundary several times a second to update a row that shows a
+/// title and a timestamp.
+///
+/// So: `session-updated` always carries a lightweight payload and drives the list.
+/// `session-updated-full` carries real turns and is emitted only for the session
+/// the detail pane has open, so live streaming of the visible conversation keeps
+/// working. Splitting the channels also makes the frontend race-proof — a stale
+/// selection on this side can only cost the detail pane one skipped tick, it can
+/// never blank an open conversation by handing it a lightweight copy.
+fn emit_session_update<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    session: &crate::models::Session,
+) {
+    let _ = app_handle.emit("session-updated", &session.to_lightweight());
+
+    let is_selected = match app_handle.try_state::<SelectedSessionState>() {
+        Some(state) => match state.0.lock() {
+            Ok(guard) => guard.as_deref() == Some(session.id.as_str()),
+            Err(_) => false,
+        },
+        None => false,
+    };
+
+    if is_selected {
+        let _ = app_handle.emit("session-updated-full", session);
+    }
 }
 
 fn is_directory_not_empty(path: &Path) -> bool {
@@ -249,7 +339,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                     let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
                     for sess in sessions {
                         let _ = idx_state.update_session(sess.clone()).await;
-                        let _ = app_handle_clone.emit("session-updated", &sess);
+                        emit_session_update(&app_handle_clone, &sess);
                     }
                 }
             });
@@ -491,7 +581,10 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                 }
                             }
 
-                            crate::log_info!(
+                            // debug: this fires on every write an agent makes to a
+                            // DB-backed source. At info level a single live session
+                            // buried the log.
+                            crate::log_debug!(
                                 "Database file changed ({}). Reloading all sessions for {}...",
                                 file_path,
                                 src.display_name()
@@ -554,9 +647,11 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
 
                             // 3. Update index with modified sessions list and emit updates
                             for sess in modified_sessions {
-                                crate::log_info!("Updating index and emitting session-updated for database change: {}", sess.id);
+                                crate::log_debug!("Updating index and emitting session-updated for database change: {}", sess.id);
+                                // The index keeps the full session; only the wire
+                                // payload is trimmed.
                                 let _ = idx_state.update_session(sess.clone()).await;
-                                let _ = app_handle_clone.emit("session-updated", &sess);
+                                emit_session_update(&app_handle_clone, &sess);
                             }
                         } else {
                             // Check if file exists (if not, it's deleted)
@@ -588,11 +683,11 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                     let _ = app_handle_clone.emit("session-deleted", &session_id);
                                 }
                             } else if let Some(session) = src.parse_session(&file_path).await {
-                                crate::log_info!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
+                                crate::log_debug!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
                                 let idx_state =
                                     app_handle_clone.state::<crate::search::SearchIndexState>();
                                 let _ = idx_state.update_session(session.clone()).await;
-                                let _ = app_handle_clone.emit("session-updated", &session);
+                                emit_session_update(&app_handle_clone, &session);
                             }
                         }
                     }
