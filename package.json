@@ -23,7 +23,10 @@
     "format": "npm run format:fe && npm run format:be",
     "lint": "npm run format:fe:check && npm run lint:fe && npm run format:be:check && npm run clippy",
     "qa": "npm run lint && cargo test --manifest-path src-tauri/Cargo.toml && npm run build",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "clean:be": "cargo clean --manifest-path src-tauri/Cargo.toml",
+    "clean:fe": "rm -rf node_modules dist .vite",
+    "clean": "npm run clean:be && npm run clean:fe"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
