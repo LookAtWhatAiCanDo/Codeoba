@@ -443,6 +443,7 @@
     "speechPrev": "이전 문장",
     "readSessionAloud": "세션 소리 내어 읽기",
     "stopReading": "읽기 중지",
-    "playFromHere": "여기서부터 낭독"
+    "playFromHere": "여기서부터 낭독",
+    "sessionTransition": "세션 {sessionTitle}. {text}"
   }
 }

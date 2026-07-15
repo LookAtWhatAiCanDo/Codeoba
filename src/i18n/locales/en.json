@@ -449,6 +449,7 @@
     "speechPrev": "Previous sentence",
     "readSessionAloud": "Read Session Aloud",
     "stopReading": "Stop Reading",
-    "playFromHere": "Read Aloud from here"
+    "playFromHere": "Read Aloud from here",
+    "sessionTransition": "Session {sessionTitle}. {text}"
   }
 }

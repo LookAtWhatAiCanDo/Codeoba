@@ -443,6 +443,7 @@
     "speechPrev": "前の文章",
     "readSessionAloud": "セッションを読み上げる",
     "stopReading": "読み上げを停止",
-    "playFromHere": "ここから朗読"
+    "playFromHere": "ここから朗読",
+    "sessionTransition": "セッション {sessionTitle}。{text}"
   }
 }

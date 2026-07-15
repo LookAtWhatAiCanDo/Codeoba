@@ -443,6 +443,7 @@
     "speechPrev": "Vorige zin",
     "readSessionAloud": "Sessie voorlezen",
     "stopReading": "Voorlezen stoppen",
-    "playFromHere": "Vanaf hier voorlezen"
+    "playFromHere": "Vanaf hier voorlezen",
+    "sessionTransition": "Sessie {sessionTitle}. {text}"
   }
 }

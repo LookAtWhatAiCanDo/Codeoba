@@ -443,6 +443,7 @@
     "speechPrev": "上一句",
     "readSessionAloud": "朗讀工作階段",
     "stopReading": "停止朗讀",
-    "playFromHere": "從這裡開始朗讀"
+    "playFromHere": "從這裡開始朗讀",
+    "sessionTransition": "會話 {sessionTitle}。{text}"
   }
 }

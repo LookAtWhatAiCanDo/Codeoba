@@ -443,6 +443,7 @@
     "speechPrev": "Frase anterior",
     "readSessionAloud": "Leer sesión en voz alta",
     "stopReading": "Detener lectura",
-    "playFromHere": "Leer en voz alta desde aquí"
+    "playFromHere": "Leer en voz alta desde aquí",
+    "sessionTransition": "Sesión {sessionTitle}. {text}"
   }
 }

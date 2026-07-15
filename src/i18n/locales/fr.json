@@ -443,6 +443,7 @@
     "speechPrev": "Phrase précédente",
     "readSessionAloud": "Lire la session à haute voix",
     "stopReading": "Arrêter la lecture",
-    "playFromHere": "Lire à haute voix à partir d'ici"
+    "playFromHere": "Lire à haute voix à partir d'ici",
+    "sessionTransition": "Session {sessionTitle}. {text}"
   }
 }

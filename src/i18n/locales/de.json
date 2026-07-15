@@ -443,6 +443,7 @@
     "speechPrev": "Vorheriger Satz",
     "readSessionAloud": "Sitzung vorlesen",
     "stopReading": "Vorlesen stoppen",
-    "playFromHere": "Von hier an vorlesen"
+    "playFromHere": "Von hier an vorlesen",
+    "sessionTransition": "Sitzung {sessionTitle}. {text}"
   }
 }

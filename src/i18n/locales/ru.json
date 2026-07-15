@@ -443,6 +443,7 @@
     "speechPrev": "Предыдущее предложение",
     "readSessionAloud": "Прочитать сеанс вслух",
     "stopReading": "Остановить чтение",
-    "playFromHere": "Читать вслух отсюда"
+    "playFromHere": "Читать вслух отсюда",
+    "sessionTransition": "Сессия {sessionTitle}. {text}"
   }
 }

@@ -2,6 +2,7 @@ import { createSignal, createMemo } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { Session } from "../types";
 import { parseAssistantMessage } from "./messageParser";
+import { useI18n } from "../i18n/i18n";
 
 export interface SpeechItem {
   globalIndex: number;
@@ -110,8 +111,11 @@ const readAloudSessionStates = new Map<string, { lastSentenceCount: number }>();
 
 let currentLanguage = "en";
 let currentSentenceStartTime = 0;
+let lastSpokenSessionId: string | null = null;
 
 export function useSpeech() {
+  const { t } = useI18n();
+
   const activeSessionId = createMemo(() => {
     const list = sentences();
     const idx = currentSentenceIndex();
@@ -165,6 +169,7 @@ export function useSpeech() {
     setIsPlaying(false);
     setIsPaused(false);
     setCurrentSentenceIndex(-1);
+    lastSpokenSessionId = null;
   };
 
   const playCurrent = () => {
@@ -176,7 +181,22 @@ export function useSpeech() {
     }
 
     const currentItem = list[idx]!;
-    const textToSpeak = currentItem.text;
+    let textToSpeak = currentItem.text;
+
+    // Check if the session name changes from the last spoken track
+    const currentSessionId = currentItem.sessionId || null;
+    const sessionChanged = currentSessionId !== lastSpokenSessionId;
+
+    if (sessionChanged) {
+      lastSpokenSessionId = currentSessionId;
+      if (currentItem.sessionTitle) {
+        textToSpeak = t("readAloud.sessionTransition", {
+          sessionTitle: currentItem.sessionTitle,
+          text: textToSpeak,
+        });
+      }
+    }
+
     currentSentenceStartTime = performance.now();
 
     setIsPlaying(true);
