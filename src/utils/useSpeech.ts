@@ -35,10 +35,12 @@ export function sanitizeBlockForSpeech(text: string): string {
   clean = clean.replace(/__([^_]+)__/g, "$1");
   clean = clean.replace(/_([^_]+)_/g, "$1");
 
-  // 5. Remove list item prefixes, blockquote markers
+  // 5. Remove list item prefixes, blockquote markers, and heading hashes
   clean = clean.replace(/^[-*+]\s+/g, "");
   clean = clean.replace(/^\d+\.\s+/g, "");
   clean = clean.replace(/^>\s+/g, "");
+  clean = clean.replace(/^#{1,6}\s+/g, "");
+  clean = clean.replace(/\s+#{1,6}$/g, "");
 
   return clean.trim();
 }
@@ -77,8 +79,12 @@ export function extractSpeechItems(session: Session): SpeechItem[] {
     const blocks = splitIntoLogicalBlocks(narrativeTexts);
     let blockIndex = 0;
     for (const rawBlock of blocks) {
+      // Skip horizontal rules (e.g. ---, ***, ___)
+      if (/^[-*_]{3,}$/.test(rawBlock)) continue;
+
       const sanitized = sanitizeBlockForSpeech(rawBlock);
-      if (sanitized) {
+      // Skip blocks that contain no letters or numbers in any language
+      if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
         items.push({
           globalIndex: globalIndex++,
           turnIndex,

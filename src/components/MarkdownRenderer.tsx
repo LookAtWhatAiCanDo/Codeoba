@@ -277,16 +277,26 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
     let targetEl: HTMLElement | null = null;
 
-    if (currentItem.blockIndex !== undefined && currentItem.blockIndex < narrativeElements.length) {
-      targetEl = narrativeElements[currentItem.blockIndex] as HTMLElement;
-    } else {
-      // Fallback matching
-      const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^a-z0-9]/g, "");
+    // Try text-similarity matching first (highly robust against off-by-one formatting/tag gaps)
+    const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+    if (cleanSpeakText) {
       targetEl =
         (narrativeElements.find((el) => {
-          const cleanElText = el.textContent?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
-          return cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText);
+          const cleanElText = el.textContent?.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") || "";
+          return (
+            cleanElText.length > 0 &&
+            (cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText))
+          );
         }) as HTMLElement) || null;
+    }
+
+    // Fallback to positional index matching
+    if (
+      !targetEl &&
+      currentItem.blockIndex !== undefined &&
+      currentItem.blockIndex < narrativeElements.length
+    ) {
+      targetEl = narrativeElements[currentItem.blockIndex] as HTMLElement;
     }
 
     if (targetEl) {
