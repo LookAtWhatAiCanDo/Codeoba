@@ -44,11 +44,11 @@ export const PrivacyDialog = (props: PrivacyDialogProps) => {
   const activePrivacyMd = createMemo(() => {
     const currentLocale = locale();
     const key = `../resources/privacy/privacy_${currentLocale}.md`;
-    
+
     if (PRIVACY_MDS[key]) {
       return PRIVACY_MDS[key].default;
     }
-    
+
     // Default fallback to English
     return PRIVACY_MDS["../resources/privacy/privacy_en.md"]?.default || "";
   });
@@ -56,17 +56,17 @@ export const PrivacyDialog = (props: PrivacyDialogProps) => {
   return (
     <Show when={props.isOpen}>
       {/* Modal scrim background */}
-      <div 
+      <div
         class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
         onClick={props.onClose}
       >
         {/* Privacy Dialog box */}
-        <div 
+        <div
           class="w-[720px] h-[520px] bg-surface border border-border/80 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200 p-6 pt-7"
           onClick={(e) => e.stopPropagation()} // Consume click propagation
         >
           {/* Close button in top-right */}
-          <button 
+          <button
             onClick={props.onClose}
             class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer z-10"
           >
@@ -77,11 +77,13 @@ export const PrivacyDialog = (props: PrivacyDialogProps) => {
           <div class="flex items-center justify-between mb-4 border-b border-border/60 pb-3 flex-shrink-0">
             <div class="flex items-center gap-2">
               <Shield class="w-5 h-5 text-accent" />
-              <span class="font-bold text-text-primary tracking-wide text-base">{t("privacy.title")}</span>
+              <span class="font-bold text-text-primary tracking-wide text-base">
+                {t("privacy.title")}
+              </span>
             </div>
-            
+
             {/* View online link */}
-            <a 
+            <a
               href={`${backendUrl()}/privacy/?lang=${locale()}`}
               onClick={(e) => {
                 e.preventDefault();

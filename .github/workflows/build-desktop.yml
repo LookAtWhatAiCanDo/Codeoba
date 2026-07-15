@@ -28,16 +28,18 @@ env:
 
 jobs:
   qa:
-    name: Lint & Test (Rust)
+    name: Lint & Test (All)
     runs-on: macos-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
-        working-directory: src-tauri
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: 'npm'
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -49,23 +51,11 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Formatting (cargo fmt)
-        run: cargo fmt --check
+      - name: Install dependencies
+        run: npm install
 
-      # Blocks on: all default clippy lints (-D warnings), plus string_slice and
-      # unwrap_used (deny in Cargo.toml) — the UTF-8/panic-on-runtime-data classes.
-      # expect_used / indexing_slicing / panic stay warn (advisory) via -A, to be
-      # burned down before promoting to deny.
-      - name: Clippy
-        run: >
-          cargo clippy --all-targets --no-default-features --
-          -D warnings
-          -A clippy::expect_used
-          -A clippy::indexing_slicing
-          -A clippy::panic
-
-      - name: Unit tests
-        run: cargo test --lib --no-default-features
+      - name: Run QA Pipeline
+        run: npm run qa
 
   build:
     name: Build & Package (${{ matrix.platform-name }})

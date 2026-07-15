@@ -15,7 +15,9 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
   const [isOpen, setIsOpen] = createSignal(false);
   const [filePath, setFilePath] = createSignal("");
   const [canonicalPath, setCanonicalPath] = createSignal<string | null>(null);
-  const [status, setStatus] = createSignal<"idle" | "loading" | "allowed" | "confirmation_required" | "denied" | "error">("idle");
+  const [status, setStatus] = createSignal<
+    "idle" | "loading" | "allowed" | "confirmation_required" | "denied" | "error"
+  >("idle");
   const [content, setContent] = createSignal("");
   const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
   const [confirmReason, setConfirmReason] = createSignal<string | null>(null);
@@ -39,7 +41,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
     setStatus("loading");
     setErrorMsg(null);
     setConfirmReason(null);
-    
+
     try {
       const response = await invoke<{
         status: string;
@@ -52,7 +54,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
       });
 
       setCanonicalPath(response.canonicalPath);
-      
+
       if (response.status === "allowed") {
         setContent(response.content || "");
         setStatus("allowed");
@@ -78,8 +80,11 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
         action: "preview",
         decision,
       });
-      logFE("info", `FileViewerDialog: Saved preview permission '${decision}' for ${canonicalPath()}`);
-      
+      logFE(
+        "info",
+        `FileViewerDialog: Saved preview permission '${decision}' for ${canonicalPath()}`
+      );
+
       if (decision === "allow") {
         await loadFile(filePath());
       } else {
@@ -141,7 +146,6 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
     <Show when={isOpen()}>
       <div class="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div class="bg-[#121318]/95 border border-border/60 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in scale-in duration-200">
-          
           {/* Header */}
           <div class="flex items-center justify-between border-b border-border/40 px-6 py-4 flex-shrink-0 bg-surface/30">
             <div class="flex items-center gap-3">
@@ -153,7 +157,7 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                 </span>
               </div>
             </div>
-            
+
             <div class="flex items-center gap-3">
               <button
                 onClick={handleLaunchExternal}
@@ -174,23 +178,27 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
 
           {/* Content Area */}
           <div class="flex-grow overflow-y-auto p-6 relative bg-background/25">
-            
             {/* Loading */}
             <Show when={status() === "loading"}>
               <div class="absolute inset-0 flex items-center justify-center bg-background/50">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-                  <span class="text-xs text-text-secondary font-semibold">{t("fileViewer.loading")}</span>
+                  <span class="text-xs text-text-secondary font-semibold">
+                    {t("fileViewer.loading")}
+                  </span>
                 </div>
               </div>
             </Show>
 
             {/* Allowed Content */}
             <Show when={status() === "allowed"}>
-              <Show 
-                when={isMarkdown()} 
+              <Show
+                when={isMarkdown()}
                 fallback={
-                  <pre dir="ltr" class="w-full text-xs font-mono leading-relaxed text-text-primary/80 overflow-x-auto whitespace-pre p-2 bg-surface/10 rounded-2xl border border-border/20 select-text text-left">
+                  <pre
+                    dir="ltr"
+                    class="w-full text-xs font-mono leading-relaxed text-text-primary/80 overflow-x-auto whitespace-pre p-2 bg-surface/10 rounded-2xl border border-border/20 select-text text-left"
+                  >
                     <code>{content()}</code>
                   </pre>
                 }
@@ -208,11 +216,16 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                   <ShieldAlert class="w-8 h-8 animate-bounce" />
                 </div>
                 <div class="space-y-2">
-                  <h4 class="text-sm font-bold text-text-primary">{t("fileViewer.noPermissionTitle")}</h4>
+                  <h4 class="text-sm font-bold text-text-primary">
+                    {t("fileViewer.noPermissionTitle")}
+                  </h4>
                   <p class="text-xs text-text-secondary leading-relaxed">
                     {confirmReason() || t("fileViewer.noPermissionDesc")}
                   </p>
-                  <pre dir="ltr" class="bg-surface border border-border rounded-xl p-3 text-[0.65625rem] font-mono text-left truncate text-text-primary/90 mt-2 select-all">
+                  <pre
+                    dir="ltr"
+                    class="bg-surface border border-border rounded-xl p-3 text-[0.65625rem] font-mono text-left truncate text-text-primary/90 mt-2 select-all"
+                  >
                     {canonicalPath()}
                   </pre>
                 </div>
@@ -252,7 +265,6 @@ export const FileViewerDialog = (props: FileViewerDialogProps) => {
                 </button>
               </div>
             </Show>
-
           </div>
         </div>
       </div>

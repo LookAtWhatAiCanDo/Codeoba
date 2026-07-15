@@ -4,14 +4,14 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { X, Download, AlertCircle } from "lucide-solid";
 
 const RotateCwClean = (props: { class?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    class={props.class} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    class={props.class}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
     stroke-linejoin="round"
   >
     <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
@@ -35,7 +35,8 @@ export const UpdateModal = (props: UpdateModalProps) => {
   const releaseNotes = createMemo(() => {
     const manifest = props.updateManifest;
     if (!manifest) return "";
-    const rawNotes = manifest.body || manifest.notes || manifest.rawJson?.notes || manifest.rawJson?.body || "";
+    const rawNotes =
+      manifest.body || manifest.notes || manifest.rawJson?.notes || manifest.rawJson?.body || "";
     return rawNotes.trim();
   });
 
@@ -43,10 +44,9 @@ export const UpdateModal = (props: UpdateModalProps) => {
     <Show when={props.isOpen && props.updateManifest}>
       <div class="fixed inset-0 bg-black/75 z-[1000] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
         <div class="w-[600px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
-          
           {/* Close button - only show if NOT currently installing an update */}
           <Show when={!props.isUpdating}>
-            <button 
+            <button
               onClick={props.onClose}
               class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
             >
@@ -57,10 +57,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
           {/* Header info */}
           <div class="flex items-center gap-3">
             <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">
-              <Show
-                when={props.isUpdating}
-                fallback={<RotateCwClean class="w-5 h-5" />}
-              >
+              <Show when={props.isUpdating} fallback={<RotateCwClean class="w-5 h-5" />}>
                 <RotateCwClean class="w-5 h-5 animate-spin origin-center" />
               </Show>
             </div>
@@ -68,7 +65,9 @@ export const UpdateModal = (props: UpdateModalProps) => {
               <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
                 {t("updater.title")}
               </h3>
-              <p class="text-sm text-text-secondary/90">{t("updater.description", { version: props.updateManifest.version })}</p>
+              <p class="text-sm text-text-secondary/90">
+                {t("updater.description", { version: props.updateManifest.version })}
+              </p>
             </div>
           </div>
 
@@ -80,7 +79,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
                 v{props.updateManifest.version}
               </span>
             </div>
-            
+
             <Show when={releaseNotes()}>
               <div class="border-t border-border/30 pt-3 space-y-2">
                 <span class="text-text-secondary font-semibold">Release Notes:</span>
@@ -99,7 +98,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
                 <span class="text-accent">{props.updateProgress}%</span>
               </div>
               <div class="w-full h-1.5 bg-background rounded-full overflow-hidden border border-border/40">
-                <div 
+                <div
                   class="h-full bg-accent transition-all duration-300 rounded-full"
                   style={{ width: `${props.updateProgress}%` }}
                 />
@@ -111,7 +110,9 @@ export const UpdateModal = (props: UpdateModalProps) => {
           <Show when={props.updateError}>
             <div class="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl flex items-center gap-2 text-[0.625rem] text-red-400">
               <AlertCircle class="w-4 h-4 flex-shrink-0" />
-              <span class="truncate flex-1">{t("updater.failed", { error: props.updateError || "" })}</span>
+              <span class="truncate flex-1">
+                {t("updater.failed", { error: props.updateError || "" })}
+              </span>
             </div>
           </Show>
 

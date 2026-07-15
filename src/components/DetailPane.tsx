@@ -1,12 +1,12 @@
 import { createSignal, createMemo, createEffect, onMount, onCleanup, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { invoke } from "@tauri-apps/api/core";
-import { 
-  Folder, 
+import {
+  Folder,
   FolderOpen,
-  Copy, 
-  Check, 
-  Clock, 
+  Copy,
+  Check,
+  Clock,
   ExternalLink,
   MessageSquare,
   Cpu,
@@ -22,14 +22,18 @@ import {
   Edit,
   X,
   ChevronUp,
-  Trash2
+  Trash2,
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { getStatusBadge } from "../utils/sessionStatus";
 import { parseAssistantMessage, MessageToolPart } from "../utils/messageParser";
-import { formatDateWithSetting, formatNumberWithSetting, formatTimeWithSetting } from "../utils/format";
+import {
+  formatDateWithSetting,
+  formatNumberWithSetting,
+  formatTimeWithSetting,
+} from "../utils/format";
 import { Turn, Session } from "../types";
 import { checkTextMatch, highlightContainer } from "../utils/highlighter";
 import { useContextMenuPosition } from "../utils/contextMenu";
@@ -82,7 +86,10 @@ export const DetailPane = (props: DetailPaneProps) => {
   const [detailWholeWord, setDetailWholeWord] = createSignal(false);
   const [detailUseRegex, setDetailUseRegex] = createSignal(false);
   const [activeMatchIndex, setActiveMatchIndex] = createSignal(0);
-  const [activeLightboxImage, setActiveLightboxImage] = createSignal<{ path?: string; src: string } | null>(null);
+  const [activeLightboxImage, setActiveLightboxImage] = createSignal<{
+    path?: string;
+    src: string;
+  } | null>(null);
 
   let detailSearchInputRef: HTMLInputElement | undefined;
 
@@ -147,7 +154,7 @@ export const DetailPane = (props: DetailPaneProps) => {
     const matchesList: SearchMatch[] = [];
     session.turns.forEach((turn, turnIndex) => {
       const turnId = turn.turnId || String(turnIndex);
-      
+
       // Find all matches in userMessage
       let match;
       regex.lastIndex = 0;
@@ -159,7 +166,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         matchesList.push({
           turnIndex,
           turnId,
-          text: match[0]
+          text: match[0],
         });
       }
 
@@ -173,7 +180,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         matchesList.push({
           turnIndex,
           turnId,
-          text: match[0]
+          text: match[0],
         });
       }
     });
@@ -194,18 +201,19 @@ export const DetailPane = (props: DetailPaneProps) => {
     setActiveMatchIndex(targetIndex);
 
     const match = matchesList[targetIndex];
-    
+
     setIsJumping(true);
 
     setTimeout(() => {
       const el = document.getElementById(match.turnId);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
-        
+
         // Correct offset shifts via direct scrollTop setting to override any browser-level layout expansion limits
         setTimeout(() => {
           if (scrollContainerRef) {
-            scrollContainerRef.scrollTop = el.offsetTop - (scrollContainerRef.clientHeight / 2) + (el.offsetHeight / 2);
+            scrollContainerRef.scrollTop =
+              el.offsetTop - scrollContainerRef.clientHeight / 2 + el.offsetHeight / 2;
           }
         }, 250);
 
@@ -213,10 +221,10 @@ export const DetailPane = (props: DetailPaneProps) => {
           setIsJumping(false);
           const allMarks = scrollContainerRef?.querySelectorAll("mark");
           if (allMarks) {
-            allMarks.forEach(m => {
+            allMarks.forEach((m) => {
               m.className = "bg-yellow-500/30 text-text-primary rounded px-0.5";
             });
-            
+
             const turnEl = document.getElementById(match.turnId);
             if (turnEl) {
               const turnMarks = turnEl.querySelectorAll("mark");
@@ -226,10 +234,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                   matchIndexInTurn++;
                 }
               }
-              
+
               const activeMark = turnMarks[matchIndexInTurn];
               if (activeMark) {
-                activeMark.className = "bg-accent text-white font-semibold rounded px-0.5 ring-2 ring-accent/50";
+                activeMark.className =
+                  "bg-accent text-white font-semibold rounded px-0.5 ring-2 ring-accent/50";
                 activeMark.scrollIntoView({ behavior: "smooth", block: "center" });
               }
             }
@@ -260,7 +269,7 @@ export const DetailPane = (props: DetailPaneProps) => {
       y: e.clientY,
       text: selected ? selected : text,
       type,
-      extra: selected ? "selected-text" : undefined
+      extra: selected ? "selected-text" : undefined,
     });
   };
 
@@ -276,7 +285,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         type: "image",
         extra: "selected-text",
         imagePath: path,
-        imageSrc: src
+        imageSrc: src,
       });
     } else {
       setContextMenu({
@@ -284,7 +293,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         y: e.clientY,
         text: path || "",
         type: "image",
-        extra: src
+        extra: src,
       });
     }
   };
@@ -293,7 +302,7 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   const compactionCount = createMemo(() => {
     if (!props.session) return 0;
-    return props.session.turns.filter(t => t.extraData?.isCompaction === "true").length;
+    return props.session.turns.filter((t) => t.extraData?.isCompaction === "true").length;
   });
 
   const dateMilestones = createMemo(() => {
@@ -301,11 +310,15 @@ export const DetailPane = (props: DetailPaneProps) => {
     const milestones: { label: string; index: number; turnId: string }[] = [];
     const turns = props.session.turns;
     if (turns.length === 0) return [];
-    
+
     const isDifferentDay = (t1: number, t2: number) => {
       const d1 = new Date(t1);
       const d2 = new Date(t2);
-      return d1.getDate() !== d2.getDate() || d1.getMonth() !== d2.getMonth() || d1.getFullYear() !== d2.getFullYear();
+      return (
+        d1.getDate() !== d2.getDate() ||
+        d1.getMonth() !== d2.getMonth() ||
+        d1.getFullYear() !== d2.getFullYear()
+      );
     };
 
     const formatMilestoneLabel = (timeMs: number, forceDate: boolean) => {
@@ -327,7 +340,7 @@ export const DetailPane = (props: DetailPaneProps) => {
     milestones.push({
       label: formatMilestoneLabel(firstTime, true),
       index: 0,
-      turnId: turns[0].turnId
+      turnId: turns[0].turnId,
     });
 
     let lastMilestoneTime = firstTime;
@@ -349,7 +362,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         milestones.push({
           label: formatMilestoneLabel(turnTime, diffDay),
           index: i,
-          turnId: turns[i].turnId
+          turnId: turns[i].turnId,
         });
         lastMilestoneTime = turnTime;
         lastMilestoneIndex = i;
@@ -368,15 +381,21 @@ export const DetailPane = (props: DetailPaneProps) => {
       if (diffPct >= 4) {
         // Space is sufficient, push it as a new final milestone
         milestones.push({
-          label: formatMilestoneLabel(lastTurnTime, isDifferentDay(lastTurnTime, lastMilestoneTime)),
+          label: formatMilestoneLabel(
+            lastTurnTime,
+            isDifferentDay(lastTurnTime, lastMilestoneTime)
+          ),
           index: lastIndex,
-          turnId: turns[lastIndex].turnId
+          turnId: turns[lastIndex].turnId,
         });
       } else {
         // Space is too tight, replace the last milestone to point to the final turn instead of overlapping
         const lastM = milestones[milestones.length - 1];
         if (lastM) {
-          lastM.label = formatMilestoneLabel(lastTurnTime, isDifferentDay(lastTurnTime, lastMilestoneTime - 60000));
+          lastM.label = formatMilestoneLabel(
+            lastTurnTime,
+            isDifferentDay(lastTurnTime, lastMilestoneTime - 60000)
+          );
           lastM.index = lastIndex;
           lastM.turnId = turns[lastIndex].turnId;
         }
@@ -389,7 +408,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   const activeMilestone = createMemo(() => {
     const milestones = dateMilestones();
     const activeIdx = activeTurnIdx();
-    
+
     let activeM = milestones[0] || null;
     for (let i = 0; i < milestones.length; i++) {
       if (milestones[i].index <= activeIdx) {
@@ -452,7 +471,7 @@ export const DetailPane = (props: DetailPaneProps) => {
             const idx = parseInt(idxAttr, 10);
             const top = child.offsetTop;
             const height = child.offsetHeight;
-            
+
             if (top + height > scrollTop) {
               activeChildIndex = idx;
               activeChildOffset = top;
@@ -480,7 +499,9 @@ export const DetailPane = (props: DetailPaneProps) => {
         const offsetTop = child.offsetTop;
         const offsetHeight = child.offsetHeight;
         const idxAttr = child.getAttribute("data-turn-index");
-        debugInfo.push(`[${idxAttr}]: id=${turnIdAttr}, offsetTop=${offsetTop}, offsetHeight=${offsetHeight}`);
+        debugInfo.push(
+          `[${idxAttr}]: id=${turnIdAttr}, offsetTop=${offsetTop}, offsetHeight=${offsetHeight}`
+        );
         if (offsetTop + offsetHeight > scrollTop + 40) {
           if (idxAttr !== null) {
             foundIdx = parseInt(idxAttr, 10);
@@ -505,7 +526,7 @@ export const DetailPane = (props: DetailPaneProps) => {
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
     window.addEventListener("click", closeDropdowns);
-    
+
     handleTriggerSearch = () => {
       setShowDetailSearch(true);
       setTimeout(() => {
@@ -516,11 +537,16 @@ export const DetailPane = (props: DetailPaneProps) => {
     window.addEventListener("trigger-detail-search", handleTriggerSearch);
 
     handleKeyDown = (e: KeyboardEvent) => {
-      const isScrollKey = (e.key === "Home" || e.key === "End" || e.key === "PageUp" || e.key === "PageDown") && !e.shiftKey;
+      const isScrollKey =
+        (e.key === "Home" || e.key === "End" || e.key === "PageUp" || e.key === "PageDown") &&
+        !e.shiftKey;
       if (isScrollKey) {
         const activeTag = document.activeElement?.tagName.toLowerCase();
-        const isTyping = activeTag === "input" || activeTag === "textarea" || document.activeElement?.getAttribute("contenteditable") === "true";
-        
+        const isTyping =
+          activeTag === "input" ||
+          activeTag === "textarea" ||
+          document.activeElement?.getAttribute("contenteditable") === "true";
+
         if (!isTyping && scrollContainerRef) {
           e.preventDefault();
           if (e.key === "Home") {
@@ -564,8 +590,6 @@ export const DetailPane = (props: DetailPaneProps) => {
     }
   });
 
-
-
   // Reset pagination, search state, and scroll to bottom when session changes
   createEffect(() => {
     const id = props.session?.id;
@@ -576,7 +600,7 @@ export const DetailPane = (props: DetailPaneProps) => {
       setDetailSearchQuery("");
       setActiveMatchIndex(0);
       setScrollLock(true); // Lock scroll to bottom for the new session
-      
+
       // Perform initial scroll lock scroll
       setTimeout(() => {
         scrollToBottom();
@@ -616,7 +640,6 @@ export const DetailPane = (props: DetailPaneProps) => {
     }
   };
 
-
   const formatFullDate = (timestampMs: number) => {
     let time = timestampMs;
     if (time < 20000000000) {
@@ -624,10 +647,14 @@ export const DetailPane = (props: DetailPaneProps) => {
     }
     const dateObj = new Date(time);
     const dateStr = formatDateWithSetting(dateObj, props.dateFormat || "system", locale());
-    const timeStr = formatTimeWithSetting(dateObj, props.timeFormat || "system", props.showSeconds || false, locale());
+    const timeStr = formatTimeWithSetting(
+      dateObj,
+      props.timeFormat || "system",
+      props.showSeconds || false,
+      locale()
+    );
     return `${dateStr}, ${timeStr}`;
   };
-
 
   const handlePaneClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -640,18 +667,18 @@ export const DetailPane = (props: DetailPaneProps) => {
   };
 
   return (
-    <div 
+    <div
       onClick={handlePaneClick}
       class="flex-grow h-full flex flex-col bg-background/95 min-w-0 relative transition-all duration-200 focus-within:z-[51] group"
     >
       {/* Focus Highlight Border Overlay */}
       <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
-      <Show 
-        when={!props.isLoading} 
+      <Show
+        when={!props.isLoading}
         fallback={
           <div class="flex-grow h-full flex flex-col bg-background/95 min-w-0 animate-pulse">
             {/* Header Skeleton */}
-            <div 
+            <div
               class="px-6 border-b border-border/60 flex items-center justify-between flex-shrink-0"
               style={{ height: "4.75rem" }}
             >
@@ -660,7 +687,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <div class="h-2.5 w-60 bg-surface rounded" />
               </div>
             </div>
-            
+
             {/* Messages Scroll Area Skeleton */}
             <div class="flex-grow px-8 py-6 space-y-6 overflow-y-auto">
               <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex gap-6">
@@ -669,36 +696,40 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <div class="h-4 w-20 bg-surface rounded" />
               </div>
 
-              {[1, 2].map((_i) => (
-                <div class="space-y-4">
-                  <div class="flex flex-col items-start max-w-2xl">
-                    <div class="h-3 w-16 bg-surface rounded mb-2 ml-3" />
-                    <div class="w-96 h-12 bg-surface border border-border/50 rounded-2xl" />
+              <For each={[1, 2]}>
+                {(_i) => (
+                  <div class="space-y-4">
+                    <div class="flex flex-col items-start max-w-2xl">
+                      <div class="h-3 w-16 bg-surface rounded mb-2 ml-3" />
+                      <div class="w-96 h-12 bg-surface border border-border/50 rounded-2xl" />
+                    </div>
+                    <div class="flex flex-col items-start max-w-3xl pl-6">
+                      <div class="h-3 w-20 bg-surface rounded mb-2 ml-3" />
+                      <div class="w-full h-32 bg-surface/50 border border-border/30 rounded-2xl" />
+                    </div>
                   </div>
-                  <div class="flex flex-col items-start max-w-3xl pl-6">
-                    <div class="h-3 w-20 bg-surface rounded mb-2 ml-3" />
-                    <div class="w-full h-32 bg-surface/50 border border-border/30 rounded-2xl" />
-                  </div>
-                </div>
-              ))}
+                )}
+              </For>
             </div>
           </div>
         }
       >
-        <Show 
-          when={props.session} 
+        <Show
+          when={props.session}
           fallback={
             <div class="flex-grow h-full flex flex-col items-center justify-center bg-background/95 text-text-secondary select-none">
               <MessageSquare class="w-16 h-16 mb-4 text-border animate-pulse" />
-              <p class="text-[0.9375rem] font-medium tracking-wide">{t("detailPane.selectSession")}</p>
+              <p class="text-[0.9375rem] font-medium tracking-wide">
+                {t("detailPane.selectSession")}
+              </p>
             </div>
           }
         >
           {/* Top Header / Action Bar */}
-          <div 
+          <div
             class="border-b border-border/60 flex items-center justify-between glass flex-shrink-0 transition-all duration-200 px-6 relative z-50"
-            style={{ 
-              height: "4.75rem"
+            style={{
+              height: "4.75rem",
             }}
           >
             <div class="min-w-0 flex flex-col gap-0.5 pt-2">
@@ -708,10 +739,12 @@ export const DetailPane = (props: DetailPaneProps) => {
                 </span>
                 <span class="text-border">/</span>
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <span 
+                  <span
                     onClick={handleCopyTitle}
                     class={`truncate font-medium transition-all cursor-pointer hover:text-accent select-none ${copiedTitle() ? "text-emerald-400 font-semibold" : "text-text-primary"}`}
-                    title={copiedTitle() ? t("detailPane.titleCopied") : t("detailPane.clickToCopyTitle")}
+                    title={
+                      copiedTitle() ? t("detailPane.titleCopied") : t("detailPane.clickToCopyTitle")
+                    }
                   >
                     {props.session!.threadName || t("detailPane.noSelection")}
                   </span>
@@ -722,7 +755,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                   </Show>
                 </div>
                 <Show when={props.session!.status}>
-                  <div class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${statusBadge(props.session!.status!).class}`}>
+                  <div
+                    class={`flex items-center gap-1 px-1.5 py-0.5 border rounded-md text-[0.5625rem] font-bold select-none leading-none ${statusBadge(props.session!.status!).class}`}
+                  >
                     {statusBadge(props.session!.status!).icon()}
                     <span>{statusBadge(props.session!.status!).label}</span>
                   </div>
@@ -739,14 +774,20 @@ export const DetailPane = (props: DetailPaneProps) => {
                   </span>
                 </Show>
               </div>
-              
+
               <Show when={props.session!.cwd}>
                 <div dir="ltr" class="flex items-center gap-1.5 text-[0.6875rem] text-left">
-                  <Folder class={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${copiedWorkspace() ? "text-emerald-400" : "text-text-secondary/60"}`} />
-                  <span 
+                  <Folder
+                    class={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${copiedWorkspace() ? "text-emerald-400" : "text-text-secondary/60"}`}
+                  />
+                  <span
                     onClick={handleCopyWorkspacePath}
-                    class={`truncate transition-colors cursor-pointer hover:text-accent select-none ${copiedWorkspace() ? "text-emerald-400 font-medium" : "text-text-secondary/60"}`} 
-                    title={copiedWorkspace() ? t("detailPane.workspacePathCopied") : t("detailPane.copyWorkspacePath")}
+                    class={`truncate transition-colors cursor-pointer hover:text-accent select-none ${copiedWorkspace() ? "text-emerald-400 font-medium" : "text-text-secondary/60"}`}
+                    title={
+                      copiedWorkspace()
+                        ? t("detailPane.workspacePathCopied")
+                        : t("detailPane.copyWorkspacePath")
+                    }
                   >
                     {props.session!.cwd}
                   </span>
@@ -774,7 +815,13 @@ export const DetailPane = (props: DetailPaneProps) => {
                         }
                       }
                     }}
-                    title={workspaceAction() === "copy" ? t("detailPane.copyWorkspacePath") : (navigator.userAgent.includes("Mac") ? t("detailPane.showWorkspaceInFinder") : t("detailPane.showWorkspaceInFolder"))}
+                    title={
+                      workspaceAction() === "copy"
+                        ? t("detailPane.copyWorkspacePath")
+                        : navigator.userAgent.includes("Mac")
+                          ? t("detailPane.showWorkspaceInFinder")
+                          : t("detailPane.showWorkspaceInFolder")
+                    }
                     class="pl-3 pr-2 py-2 text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
                   >
                     <Show when={workspaceAction() === "copy"}>
@@ -785,10 +832,14 @@ export const DetailPane = (props: DetailPaneProps) => {
                     </Show>
                     <Show when={workspaceAction() === "show"}>
                       <FolderOpen class="w-3.5 h-3.5" />
-                      <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showWorkspaceInFinder") : t("detailPane.showWorkspaceInFolder")}</span>
+                      <span>
+                        {navigator.userAgent.includes("Mac")
+                          ? t("detailPane.showWorkspaceInFinder")
+                          : t("detailPane.showWorkspaceInFolder")}
+                      </span>
                     </Show>
                   </button>
-                  <div class="w-[1px] h-3 bg-border/80 self-center"></div>
+                  <div class="w-[1px] h-3 bg-border/80 self-center" />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -829,7 +880,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                       >
                         <div class="flex items-center gap-2 whitespace-nowrap">
                           <FolderOpen class="w-3.5 h-3.5" />
-                          <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showWorkspaceInFinder") : t("detailPane.showWorkspaceInFolder")}</span>
+                          <span>
+                            {navigator.userAgent.includes("Mac")
+                              ? t("detailPane.showWorkspaceInFinder")
+                              : t("detailPane.showWorkspaceInFolder")}
+                          </span>
                         </div>
                         <Show when={workspaceAction() === "show"}>
                           <Check class="w-3 h-3 text-text-secondary" />
@@ -853,7 +908,13 @@ export const DetailPane = (props: DetailPaneProps) => {
                       }
                     }
                   }}
-                  title={sessionAction() === "copy" ? t("detailPane.copySessionPath") : (navigator.userAgent.includes("Mac") ? t("detailPane.showSessionInFinder") : t("detailPane.showSessionInFolder"))}
+                  title={
+                    sessionAction() === "copy"
+                      ? t("detailPane.copySessionPath")
+                      : navigator.userAgent.includes("Mac")
+                        ? t("detailPane.showSessionInFinder")
+                        : t("detailPane.showSessionInFolder")
+                  }
                   class="pl-3 pr-2 py-2 text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
                 >
                   <Show when={sessionAction() === "copy"}>
@@ -864,10 +925,14 @@ export const DetailPane = (props: DetailPaneProps) => {
                   </Show>
                   <Show when={sessionAction() === "show"}>
                     <FolderOpen class="w-3.5 h-3.5" />
-                    <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showSessionInFinder") : t("detailPane.showSessionInFolder")}</span>
+                    <span>
+                      {navigator.userAgent.includes("Mac")
+                        ? t("detailPane.showSessionInFinder")
+                        : t("detailPane.showSessionInFolder")}
+                    </span>
                   </Show>
                 </button>
-                <div class="w-[1px] h-3 bg-border/80 self-center"></div>
+                <div class="w-[1px] h-3 bg-border/80 self-center" />
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -908,7 +973,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                     >
                       <div class="flex items-center gap-2 whitespace-nowrap">
                         <FolderOpen class="w-3.5 h-3.5" />
-                        <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showSessionInFinder") : t("detailPane.showSessionInFolder")}</span>
+                        <span>
+                          {navigator.userAgent.includes("Mac")
+                            ? t("detailPane.showSessionInFinder")
+                            : t("detailPane.showSessionInFolder")}
+                        </span>
                       </div>
                       <Show when={sessionAction() === "show"}>
                         <Check class="w-3 h-3 text-text-secondary" />
@@ -917,10 +986,6 @@ export const DetailPane = (props: DetailPaneProps) => {
                   </div>
                 </Show>
               </div>
-
-
-
-
 
               <div class="relative">
                 <button
@@ -933,14 +998,16 @@ export const DetailPane = (props: DetailPaneProps) => {
                 >
                   <MoreVertical class="w-3.5 h-3.5" />
                 </button>
-                
+
                 <Show when={showActionsDropdown()}>
-                  <div 
+                  <div
                     onClick={(e) => e.stopPropagation()}
                     class="absolute right-0 mt-2 bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none text-left flex flex-col"
                   >
                     {/* Pin/Unpin */}
-                    <Show when={props.onTogglePinSession && props.pinnedSessionIds && props.session}>
+                    <Show
+                      when={props.onTogglePinSession && props.pinnedSessionIds && props.session}
+                    >
                       <button
                         class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
                         onClick={() => {
@@ -985,34 +1052,48 @@ export const DetailPane = (props: DetailPaneProps) => {
                       </button>
                     </Show>
 
-
-
                     {/* Assign Group Submenu Header */}
-                    <Show when={props.groups && props.groups.length > 0 && props.onAssignSessionToGroup && props.session}>
-                      <div class="border-t border-border/60 my-1"></div>
+                    <Show
+                      when={
+                        props.groups &&
+                        props.groups.length > 0 &&
+                        props.onAssignSessionToGroup &&
+                        props.session
+                      }
+                    >
+                      <div class="border-t border-border/60 my-1" />
                       <div class="px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider text-text-secondary/55">
                         {t("groups.filterByGroup") || "Groups"}
                       </div>
                       <div class="max-h-36 overflow-y-auto">
-                        <For each={[...(props.groups || [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))}>
+                        <For
+                          each={[...(props.groups || [])].sort((a, b) =>
+                            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+                          )}
+                        >
                           {(g) => {
                             const isAssigned = () => {
-                              const ids = Array.isArray(g.sessionIds) 
-                                ? g.sessionIds 
+                              const ids = Array.isArray(g.sessionIds)
+                                ? g.sessionIds
                                 : Array.from(g.sessionIds || []);
                               return ids.includes(props.session!.id);
                             };
-                            
+
                             return (
                               <button
                                 class={`w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 transition-all flex items-center justify-between cursor-pointer ${
-                                  isAssigned() ? "text-accent font-semibold" : "text-text-secondary hover:text-text-primary"
+                                  isAssigned()
+                                    ? "text-accent font-semibold"
+                                    : "text-text-secondary hover:text-text-primary"
                                 }`}
                                 onClick={async () => {
                                   setShowActionsDropdown(false);
                                   if (isAssigned()) {
                                     if (props.onRemoveSessionFromGroup) {
-                                      await props.onRemoveSessionFromGroup(props.session!.id, g.name);
+                                      await props.onRemoveSessionFromGroup(
+                                        props.session!.id,
+                                        g.name
+                                      );
                                     }
                                   } else {
                                     await props.onAssignSessionToGroup!(props.session!.id, g.name);
@@ -1037,11 +1118,11 @@ export const DetailPane = (props: DetailPaneProps) => {
 
           {/* Floating Search Bar */}
           <Show when={showDetailSearch()}>
-            <div 
+            <div
               id="detail-search-bar"
               class="absolute right-8 z-30 flex items-center gap-2 p-1.5 bg-surface/95 border border-border hover:border-border/80 rounded-xl shadow-xl glass animate-in slide-in-from-top-2 duration-150"
               style={{
-                top: "calc(4.75rem + 8px)"
+                top: "calc(4.75rem + 8px)",
               }}
             >
               <div class="relative flex items-center">
@@ -1072,11 +1153,13 @@ export const DetailPane = (props: DetailPaneProps) => {
                   placeholder="Find in session..."
                   class="w-[200px] bg-background/50 border border-border/60 focus:border-accent text-text-primary pl-8 pr-16 py-1.5 text-xs rounded-lg outline-none transition-all placeholder:text-text-secondary/40 h-[30px]"
                 />
-                
+
                 {/* Match count and clear button */}
                 <div class="absolute right-2 flex items-center gap-1.5 text-[0.625rem] text-text-secondary/60 select-none">
                   <span>
-                    {searchMatches().length > 0 ? `${activeMatchIndex() + 1}/${searchMatches().length}` : "0/0"}
+                    {searchMatches().length > 0
+                      ? `${activeMatchIndex() + 1}/${searchMatches().length}`
+                      : "0/0"}
                   </span>
                   <Show when={detailSearchQuery().length > 0}>
                     <button
@@ -1122,8 +1205,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                   }}
                   title={t("sidebar.matchCase")}
                   class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
-                    detailMatchCase() 
-                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                    detailMatchCase()
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold"
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
                   }`}
                 >
@@ -1138,8 +1221,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                   }}
                   title={t("sidebar.wholeWord")}
                   class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
-                    detailWholeWord() 
-                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                    detailWholeWord()
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold"
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
                   }`}
                 >
@@ -1154,8 +1237,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                   }}
                   title={t("sidebar.useRegex")}
                   class={`w-5 h-5 text-[0.5625rem] font-bold rounded flex items-center justify-center border transition-all cursor-pointer ${
-                    detailUseRegex() 
-                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold" 
+                    detailUseRegex()
+                      ? "bg-accent/15 border-accent/30 text-accent font-extrabold"
                       : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
                   }`}
                 >
@@ -1175,7 +1258,7 @@ export const DetailPane = (props: DetailPaneProps) => {
           </Show>
 
           {/* Main Conversation Turns Scrollable Area */}
-          <div 
+          <div
             id="detail-pane-scroll-container"
             tabindex="-1"
             ref={scrollContainerRef}
@@ -1193,7 +1276,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <div class="flex items-center gap-1.5">
                   <Clock class="w-3.5 h-3.5 text-accent" />
                   <span class="font-semibold text-text-primary">{t("detailPane.startedOn")}:</span>
-                  <span>{formatFullDate(props.session!.turns[0]?.timestamp || props.session!.timestamp)}</span>
+                  <span>
+                    {formatFullDate(props.session!.turns[0]?.timestamp || props.session!.timestamp)}
+                  </span>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <Cpu class="w-3.5 h-3.5 text-accent" />
@@ -1214,7 +1299,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <div class="p-5 bg-accent/5 border border-accent/20 rounded-2xl space-y-2 animate-in fade-in duration-300">
                   <div class="flex items-center gap-2 text-accent">
                     <Cpu class="w-4 h-4" />
-                    <h3 class="text-xs font-bold uppercase tracking-wider">{t("detailPane.aiSummaryTitle")}</h3>
+                    <h3 class="text-xs font-bold uppercase tracking-wider">
+                      {t("detailPane.aiSummaryTitle")}
+                    </h3>
                   </div>
                   <p class="text-[0.8125rem] text-text-secondary leading-relaxed whitespace-pre-wrap select-text">
                     {props.session!.summary}
@@ -1247,17 +1334,19 @@ export const DetailPane = (props: DetailPaneProps) => {
           </div>
 
           {/* Vertical Date Timeline Overlay */}
-          <Show when={props.session && props.session.turns.length > 0 && dateMilestones().length > 1}>
+          <Show
+            when={props.session && props.session.turns.length > 0 && dateMilestones().length > 1}
+          >
             <div class="absolute right-8 top-24 bottom-10 w-24 flex flex-row items-stretch justify-end z-40 pointer-events-none select-none">
               <div class="relative w-full h-full">
                 {/* Vertical Track Line */}
                 <div class="absolute right-[3px] top-0 bottom-0 w-[1px] bg-border/20 rounded-full" />
                 {/* Active Track Highlight */}
-                <div 
+                <div
                   class="absolute right-[3px] top-0 w-[1px] bg-accent rounded-full transition-all duration-150"
                   style={{ height: `${scrollPercent()}%` }}
                 />
-                
+
                 <For each={dateMilestones()}>
                   {(milestone) => {
                     const pct = () => {
@@ -1266,9 +1355,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                       return (milestone.index / (total - 1)) * 100;
                     };
                     const isActive = () => activeMilestone()?.turnId === milestone.turnId;
-                    
+
                     return (
-                      <div 
+                      <div
                         class="absolute right-0 flex items-center gap-2 transform -translate-y-1/2 cursor-pointer group pointer-events-auto py-1.5 px-3 hover:bg-accent/10 hover:border hover:border-accent/20 rounded-md transition-all duration-150"
                         style={{ top: `${pct()}%` }}
                         onClick={(e) => {
@@ -1279,7 +1368,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                             setIsJumping(true);
                             setTimeout(() => {
                               el.scrollIntoView({ behavior: "smooth", block: "start" });
-                              
+
                               // Perform direct scrollTop adjustments to correct layout shifts from slow rendering
                               setTimeout(() => {
                                 if (scrollContainerRef) {
@@ -1298,19 +1387,19 @@ export const DetailPane = (props: DetailPaneProps) => {
                           }
                         }}
                       >
-                        <span 
+                        <span
                           class={`text-[0.5625rem] font-mono font-bold tracking-wider transition-all duration-150 uppercase whitespace-nowrap bg-background/80 px-1 py-0.5 rounded shadow-sm ${
-                            isActive() 
-                              ? "text-accent font-extrabold scale-105 border border-accent/25" 
+                            isActive()
+                              ? "text-accent font-extrabold scale-105 border border-accent/25"
                               : "text-text-secondary/60 group-hover:text-accent"
                           }`}
                         >
                           {milestone.label}
                         </span>
-                        <div 
+                        <div
                           class={`rounded-full border border-background transition-all duration-150 flex-shrink-0 ${
-                            isActive() 
-                              ? "w-2.5 h-2.5 bg-accent scale-110 shadow-sm shadow-accent/50" 
+                            isActive()
+                              ? "w-2.5 h-2.5 bg-accent scale-110 shadow-sm shadow-accent/50"
                               : "w-1.5 h-1.5 bg-border/40 group-hover:bg-accent group-hover:scale-125"
                           }`}
                         />
@@ -1329,7 +1418,7 @@ export const DetailPane = (props: DetailPaneProps) => {
         <Show when={contextMenu()}>
           {(context) => {
             const [copied, setCopied] = createSignal(false);
-            
+
             const handleCopyText = async () => {
               try {
                 await navigator.clipboard.writeText(context().text);
@@ -1351,8 +1440,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                 const blob = await response.blob();
                 await navigator.clipboard.write([
                   new ClipboardItem({
-                    [blob.type]: blob
-                  })
+                    [blob.type]: blob,
+                  }),
                 ]);
                 setCopied(true);
                 setTimeout(() => {
@@ -1393,7 +1482,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                   top: `${menuPosition.pos().top}px`,
                   left: `${menuPosition.pos().left}px`,
                   opacity: menuPosition.pos().visible ? 1 : 0,
-                  "pointer-events": menuPosition.pos().visible ? "auto" : "none"
+                  "pointer-events": menuPosition.pos().visible ? "auto" : "none",
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1412,7 +1501,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                   <button
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                     onClick={() => {
-                      invoke("open_external_url", { url: `https://www.google.com/search?q=${encodeURIComponent(context().text)}` });
+                      invoke("open_external_url", {
+                        url: `https://www.google.com/search?q=${encodeURIComponent(context().text)}`,
+                      });
                       setContextMenu(null);
                     }}
                   >
@@ -1423,7 +1514,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                   <button
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                     onClick={() => {
-                      invoke("open_external_url", { url: `https://translate.google.com/?sl=auto&text=${encodeURIComponent(context().text)}` });
+                      invoke("open_external_url", {
+                        url: `https://translate.google.com/?sl=auto&text=${encodeURIComponent(context().text)}`,
+                      });
                       setContextMenu(null);
                     }}
                   >
@@ -1434,7 +1527,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                   {/* Append Image Operations if selection is inside an image */}
                   <Show when={isImage()}>
                     <div class="h-[1px] bg-border/20 my-1" />
-                    
+
                     <button
                       class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                       onClick={handleCopyImage}
@@ -1451,7 +1544,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                         onClick={handleShowInFolder}
                       >
                         <Folder class="w-3.5 h-3.5" />
-                        <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showInFinder") : t("detailPane.showInFolder")}</span>
+                        <span>
+                          {navigator.userAgent.includes("Mac")
+                            ? t("detailPane.showInFinder")
+                            : t("detailPane.showInFolder")}
+                        </span>
                       </button>
                     </Show>
                   </Show>
@@ -1475,7 +1572,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                       onClick={handleShowInFolder}
                     >
                       <Folder class="w-3.5 h-3.5" />
-                      <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showInFinder") : t("detailPane.showInFolder")}</span>
+                      <span>
+                        {navigator.userAgent.includes("Mac")
+                          ? t("detailPane.showInFinder")
+                          : t("detailPane.showInFolder")}
+                      </span>
                     </button>
                   </Show>
                 </Show>
@@ -1502,23 +1603,23 @@ export const DetailPane = (props: DetailPaneProps) => {
       <Portal>
         <Show when={activeLightboxImage()}>
           {(src) => (
-            <div 
+            <div
               class="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200"
               onClick={() => setActiveLightboxImage(null)}
             >
               {/* Close button */}
-              <button 
+              <button
                 class="absolute top-4 right-4 text-white/70 hover:text-white hover:bg-white/10 p-2.5 rounded-full transition-all cursor-pointer"
                 onClick={() => setActiveLightboxImage(null)}
               >
                 <X class="w-6 h-6" />
               </button>
-              
+
               {/* Fullscreen Image */}
-              <img 
-                src={src().src} 
+              <img
+                src={src().src}
                 class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl border border-white/10 animate-in zoom-in duration-200"
-                onClick={(e) => e.stopPropagation()} 
+                onClick={(e) => e.stopPropagation()}
                 onContextMenu={(e) => handleImageContextMenu(e, src().path, src().src)}
               />
             </div>
@@ -1549,136 +1650,159 @@ const VirtualTurn = (props: VirtualTurnProps) => {
   const turnKey = createMemo(() => props.turn.turnId || String(props.actualIndex));
 
   return (
-    <div 
+    <div
       id={turnKey()}
       data-turn-id={turnKey()}
       data-turn-index={props.actualIndex}
       class="space-y-4 animate-in fade-in duration-200"
     >
+      {/* User message block */}
+      <div class="flex flex-col items-start w-full animate-in fade-in duration-200">
+        <div class="flex items-center gap-2 mb-1.5 pl-3">
+          <div class="w-2 h-2 rounded-full bg-accent" />
+          <span class="text-[0.75rem] font-semibold text-text-primary tracking-wide">
+            {t("common.user")}
+          </span>
+          <span class="text-[0.625rem] text-text-secondary/50">
+            {props.formatFullDate(props.turn.timestamp)}
+          </span>
+        </div>
+        <div
+          onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
+          class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
+        >
+          <Show
+            when={props.turn.userMessage === "[Compacted Request]"}
+            fallback={
+              <div class="space-y-3">
+                <MarkdownRenderer
+                  content={props.turn.userMessage}
+                  searchQuery={props.searchQuery}
+                  matchCase={props.matchCase}
+                  wholeWord={props.wholeWord}
+                  useRegex={props.useRegex}
+                />
+                <Show when={props.turn.images && props.turn.images.length > 0}>
+                  <div class="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-border/30">
+                    <For each={props.turn.images}>
+                      {(image) => {
+                        const [src, setSrc] = createSignal<string>("");
 
-        {/* User message block */}
-        <div class="flex flex-col items-start w-full animate-in fade-in duration-200">
-          <div class="flex items-center gap-2 mb-1.5 pl-3">
-            <div class="w-2 h-2 rounded-full bg-accent" />
+                        createEffect(async () => {
+                          if (image.base64 && image.mediaType) {
+                            setSrc(`data:${image.mediaType};base64,${image.base64}`);
+                          } else if (image.path) {
+                            try {
+                              const base64Data = await invoke<string>("read_session_image", {
+                                path: image.path,
+                              });
+                              setSrc(base64Data);
+                            } catch (err) {
+                              logFE("error", `Failed to load turn image: ${err}`);
+                            }
+                          }
+                        });
+
+                        return (
+                          <Show when={src()}>
+                            <div class="relative group max-w-[200px] rounded-xl overflow-hidden border border-border/50 bg-background/50 hover:shadow-md transition-all duration-200">
+                              <img
+                                src={src()}
+                                class="max-h-40 max-w-full object-contain cursor-zoom-in hover:scale-[1.02] transition-all duration-200"
+                                onClick={() => props.onImageClick({ path: image.path, src: src() })}
+                                onContextMenu={(e) =>
+                                  props.onImageContextMenu(e, image.path, src())
+                                }
+                              />
+                            </div>
+                          </Show>
+                        );
+                      }}
+                    </For>
+                  </div>
+                </Show>
+              </div>
+            }
+          >
+            <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
+              <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"
+                />
+              </svg>
+              <span>{t("detailPane.compactedRequest")}</span>
+            </div>
+          </Show>
+        </div>
+      </div>
+
+      {/* Assistant message block */}
+      <div class="flex flex-col items-start w-full pl-2 md:pl-6 animate-in fade-in duration-200">
+        <div class="flex items-center justify-between w-full mb-1.5 pl-3 pr-2">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-emerald-400" />
             <span class="text-[0.75rem] font-semibold text-text-primary tracking-wide">
-              {t("common.user")}
+              {t("common.assistant")}
             </span>
             <span class="text-[0.625rem] text-text-secondary/50">
               {props.formatFullDate(props.turn.timestamp)}
             </span>
           </div>
-          <div 
-            onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
-            class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
-          >
-            <Show 
-              when={props.turn.userMessage === "[Compacted Request]"}
-              fallback={
-                <div class="space-y-3">
-                  <MarkdownRenderer 
-                    content={props.turn.userMessage} 
-                    searchQuery={props.searchQuery} 
-                    matchCase={props.matchCase} 
-                    wholeWord={props.wholeWord} 
-                    useRegex={props.useRegex} 
-                  />
-                  <Show when={props.turn.images && props.turn.images.length > 0}>
-                    <div class="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-border/30">
-                      <For each={props.turn.images}>
-                        {(image) => {
-                          const [src, setSrc] = createSignal<string>("");
-                          
-                          createEffect(async () => {
-                            if (image.base64 && image.mediaType) {
-                              setSrc(`data:${image.mediaType};base64,${image.base64}`);
-                            } else if (image.path) {
-                              try {
-                                const base64Data = await invoke<string>("read_session_image", { path: image.path });
-                                setSrc(base64Data);
-                              } catch (err) {
-                                logFE("error", `Failed to load turn image: ${err}`);
-                              }
-                            }
-                          });
-
-                          return (
-                            <Show when={src()}>
-                              <div class="relative group max-w-[200px] rounded-xl overflow-hidden border border-border/50 bg-background/50 hover:shadow-md transition-all duration-200">
-                                <img 
-                                  src={src()} 
-                                  class="max-h-40 max-w-full object-contain cursor-zoom-in hover:scale-[1.02] transition-all duration-200" 
-                                  onClick={() => props.onImageClick({ path: image.path, src: src() })}
-                                  onContextMenu={(e) => props.onImageContextMenu(e, image.path, src())}
-                                />
-                              </div>
-                            </Show>
-                          );
-                        }}
-                      </For>
-                    </div>
-                  </Show>
-                </div>
-              }
-            >
-              <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
-                <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
-                </svg>
-                <span>{t("detailPane.compactedRequest")}</span>
-              </div>
-            </Show>
-          </div>
-        </div>
-
-        {/* Assistant message block */}
-        <div class="flex flex-col items-start w-full pl-2 md:pl-6 animate-in fade-in duration-200">
-          <div class="flex items-center justify-between w-full mb-1.5 pl-3 pr-2">
-            <div class="flex items-center gap-2">
-              <div class="w-2 h-2 rounded-full bg-emerald-400" />
-              <span class="text-[0.75rem] font-semibold text-text-primary tracking-wide">
-                {t("common.assistant")}
-              </span>
-              <span class="text-[0.625rem] text-text-secondary/50">
-                {props.formatFullDate(props.turn.timestamp)}
-              </span>
+          <Show when={props.turn.inputTokens || props.turn.outputTokens}>
+            <div class="flex items-center gap-1.5 text-[0.625rem] text-text-secondary/50 font-mono">
+              {props.turn.inputTokens && (
+                <span>
+                  in:{" "}
+                  {formatNumberWithSetting(props.turn.inputTokens, props.numberFormat || "system")}
+                </span>
+              )}
+              {props.turn.inputTokens && props.turn.outputTokens && <span>•</span>}
+              {props.turn.outputTokens && (
+                <span>
+                  out:{" "}
+                  {formatNumberWithSetting(props.turn.outputTokens, props.numberFormat || "system")}
+                </span>
+              )}
             </div>
-            <Show when={props.turn.inputTokens || props.turn.outputTokens}>
-              <div class="flex items-center gap-1.5 text-[0.625rem] text-text-secondary/50 font-mono">
-                {props.turn.inputTokens && <span>in: {formatNumberWithSetting(props.turn.inputTokens, props.numberFormat || "system")}</span>}
-                {props.turn.inputTokens && props.turn.outputTokens && <span>•</span>}
-                {props.turn.outputTokens && <span>out: {formatNumberWithSetting(props.turn.outputTokens, props.numberFormat || "system")}</span>}
-              </div>
-            </Show>
-          </div>
-          <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
-            <Show 
-              when={props.turn.assistantMessage === "[Compacted Response]"}
-              fallback={
-                <AssistantMessageRenderer 
-                  message={props.turn.assistantMessage} 
-                  searchQuery={props.searchQuery} 
-                  matchCase={props.matchCase}
-                  wholeWord={props.wholeWord}
-                  useRegex={props.useRegex}
-                  onContextMenu={props.onContextMenu}
-                />
-              }
-            >
-              <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
-                <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                <span>{t("detailPane.compactedResponse")}</span>
-              </div>
-            </Show>
-          </div>
+          </Show>
         </div>
+        <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
+          <Show
+            when={props.turn.assistantMessage === "[Compacted Response]"}
+            fallback={
+              <AssistantMessageRenderer
+                message={props.turn.assistantMessage}
+                searchQuery={props.searchQuery}
+                matchCase={props.matchCase}
+                wholeWord={props.wholeWord}
+                useRegex={props.useRegex}
+                onContextMenu={props.onContextMenu}
+              />
+            }
+          >
+            <div class="flex items-center gap-2 text-text-secondary/60 italic text-[0.875rem] select-none">
+              <svg class="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                />
+              </svg>
+              <span>{t("detailPane.compactedResponse")}</span>
+            </div>
+          </Show>
+        </div>
+      </div>
     </div>
   );
 };
 
-const AssistantMessageRenderer = (props: { 
-  message: string; 
+const AssistantMessageRenderer = (props: {
+  message: string;
   searchQuery?: string;
   matchCase?: boolean;
   wholeWord?: boolean;
@@ -1686,12 +1810,14 @@ const AssistantMessageRenderer = (props: {
   onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
 }) => {
   const parts = createMemo(() => parseAssistantMessage(props.message));
-  
+
   const groupedParts = createMemo(() => {
     const list = parts();
-    const result: Array<{ type: "text"; content: string } | { type: "toolGroup"; tools: MessageToolPart[] }> = [];
+    const result: Array<
+      { type: "text"; content: string } | { type: "toolGroup"; tools: MessageToolPart[] }
+    > = [];
     let currentToolGroup: MessageToolPart[] = [];
-    
+
     for (const part of list) {
       if (part.type === "tool") {
         currentToolGroup.push(part);
@@ -1703,11 +1829,11 @@ const AssistantMessageRenderer = (props: {
         result.push(part);
       }
     }
-    
+
     if (currentToolGroup.length > 0) {
       result.push({ type: "toolGroup", tools: currentToolGroup });
     }
-    
+
     return result;
   });
 
@@ -1718,8 +1844,8 @@ const AssistantMessageRenderer = (props: {
           if (part.type === "text") {
             return (
               <div onContextMenu={(e) => props.onContextMenu(e, "assistant", part.content)}>
-                <MarkdownRenderer 
-                  content={part.content} 
+                <MarkdownRenderer
+                  content={part.content}
                   searchQuery={props.searchQuery}
                   matchCase={props.matchCase}
                   wholeWord={props.wholeWord}
@@ -1729,9 +1855,9 @@ const AssistantMessageRenderer = (props: {
             );
           } else {
             return (
-              <WorkedForBlock 
-                tools={part.tools} 
-                searchQuery={props.searchQuery} 
+              <WorkedForBlock
+                tools={part.tools}
+                searchQuery={props.searchQuery}
                 matchCase={props.matchCase}
                 wholeWord={props.wholeWord}
                 useRegex={props.useRegex}
@@ -1745,8 +1871,8 @@ const AssistantMessageRenderer = (props: {
   );
 };
 
-const WorkedForBlock = (props: { 
-  tools: MessageToolPart[]; 
+const WorkedForBlock = (props: {
+  tools: MessageToolPart[];
   searchQuery?: string;
   matchCase?: boolean;
   wholeWord?: boolean;
@@ -1756,9 +1882,22 @@ const WorkedForBlock = (props: {
   const matchesSearch = createMemo(() => {
     const q = props.searchQuery;
     if (!q || q.trim() === "") return false;
-    return props.tools.some(tool => 
-      checkTextMatch(tool.header, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false) || 
-      checkTextMatch(tool.content, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false)
+    return props.tools.some(
+      (tool) =>
+        checkTextMatch(
+          tool.header,
+          q,
+          props.matchCase || false,
+          props.wholeWord || false,
+          props.useRegex || false
+        ) ||
+        checkTextMatch(
+          tool.content,
+          q,
+          props.matchCase || false,
+          props.wholeWord || false,
+          props.useRegex || false
+        )
     );
   });
 
@@ -1771,7 +1910,7 @@ const WorkedForBlock = (props: {
   });
 
   const title = createMemo(() => {
-    return `Worked (${props.tools.length} tool execution${props.tools.length > 1 ? 's' : ''})`;
+    return `Worked (${props.tools.length} tool execution${props.tools.length > 1 ? "s" : ""})`;
   });
 
   return (
@@ -1793,17 +1932,17 @@ const WorkedForBlock = (props: {
         <div class="px-4 pb-4 pt-1 space-y-3 relative">
           {/* Thread connector line */}
           <div class="absolute left-6 top-0 bottom-4 w-[1px] bg-border/50 opacity-50" />
-          
+
           <div class="space-y-3 pl-6">
             <For each={props.tools}>
               {(tool) => (
-                <ToolOutputBlock 
-                  tool={tool} 
-                  searchQuery={props.searchQuery} 
+                <ToolOutputBlock
+                  tool={tool}
+                  searchQuery={props.searchQuery}
                   matchCase={props.matchCase}
                   wholeWord={props.wholeWord}
                   useRegex={props.useRegex}
-                  startExpanded={matchesSearch()} 
+                  startExpanded={matchesSearch()}
                   onContextMenu={props.onContextMenu}
                 />
               )}
@@ -1828,8 +1967,20 @@ const ToolOutputBlock = (props: {
     const q = props.searchQuery;
     if (!q || q.trim() === "") return false;
     return (
-      checkTextMatch(props.tool.header, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false) ||
-      checkTextMatch(props.tool.content, q, props.matchCase || false, props.wholeWord || false, props.useRegex || false)
+      checkTextMatch(
+        props.tool.header,
+        q,
+        props.matchCase || false,
+        props.wholeWord || false,
+        props.useRegex || false
+      ) ||
+      checkTextMatch(
+        props.tool.content,
+        q,
+        props.matchCase || false,
+        props.wholeWord || false,
+        props.useRegex || false
+      )
     );
   });
 
@@ -1844,52 +1995,61 @@ const ToolOutputBlock = (props: {
   const getToolMeta = () => {
     const type = props.tool.toolType.toLowerCase();
     const content = props.tool.content.toLowerCase();
-    
-    const isError = content.includes("error:") || content.includes("failed with") || content.includes("exit code:") || content.includes("invalid tool call");
-    const isEdit = type.includes("edit") || type.includes("write") || type.includes("replace") || type.includes("create");
+
+    const isError =
+      content.includes("error:") ||
+      content.includes("failed with") ||
+      content.includes("exit code:") ||
+      content.includes("invalid tool call");
+    const isEdit =
+      type.includes("edit") ||
+      type.includes("write") ||
+      type.includes("replace") ||
+      type.includes("create");
     const isRead = type.includes("view") || type.includes("read") || type.includes("list");
     const isSearch = type.includes("search") || type.includes("find") || type.includes("grep");
-    const isCommand = type.includes("command") || type.includes("shell") || type.includes("terminal");
-    
+    const isCommand =
+      type.includes("command") || type.includes("shell") || type.includes("terminal");
+
     if (isError) {
       return {
         icon: <AlertCircle class="w-3.5 h-3.5 text-red-400" />,
         colorClass: "text-red-400 hover:text-red-300",
-        preBorder: "border-red-500/20 bg-red-500/5 text-red-200/90"
+        preBorder: "border-red-500/20 bg-red-500/5 text-red-200/90",
       };
     }
     if (isEdit) {
       return {
         icon: <Edit class="w-3.5 h-3.5 text-amber-400" />,
         colorClass: "text-amber-400 hover:text-amber-300",
-        preBorder: "border-amber-500/20 bg-amber-500/5 text-amber-200/90"
+        preBorder: "border-amber-500/20 bg-amber-500/5 text-amber-200/90",
       };
     }
     if (isRead) {
       return {
         icon: <FileText class="w-3.5 h-3.5 text-emerald-400" />,
         colorClass: "text-emerald-400 hover:text-emerald-300",
-        preBorder: "border-emerald-500/20 bg-emerald-500/5 text-emerald-200/90"
+        preBorder: "border-emerald-500/20 bg-emerald-500/5 text-emerald-200/90",
       };
     }
     if (isSearch) {
       return {
         icon: <Search class="w-3.5 h-3.5 text-purple-400" />,
         colorClass: "text-purple-400 hover:text-purple-300",
-        preBorder: "border-purple-500/20 bg-purple-500/5 text-purple-200/90"
+        preBorder: "border-purple-500/20 bg-purple-500/5 text-purple-200/90",
       };
     }
     if (isCommand) {
       return {
         icon: <Terminal class="w-3.5 h-3.5 text-sky-400" />,
         colorClass: "text-sky-400 hover:text-sky-300",
-        preBorder: "border-sky-500/20 bg-sky-500/5 text-sky-200/90"
+        preBorder: "border-sky-500/20 bg-sky-500/5 text-sky-200/90",
       };
     }
     return {
       icon: <Cpu class="w-3.5 h-3.5 text-text-secondary/70" />,
       colorClass: "text-text-secondary hover:text-text-primary",
-      preBorder: "border-border/60 bg-background/50 text-text-primary/80"
+      preBorder: "border-border/60 bg-background/50 text-text-primary/80",
     };
   };
 
@@ -1940,9 +2100,9 @@ const ToolOutputBlock = (props: {
 
       <Show when={isOpen()}>
         <div class="ml-4 pl-1">
-          <pre 
+          <pre
             onContextMenu={(e) => props.onContextMenu(e, "tool", props.tool.content)}
-            dir="ltr" 
+            dir="ltr"
             class={`border rounded-xl p-3 text-[0.6875rem] leading-relaxed overflow-x-auto font-mono max-h-96 scrollbar shadow-inner text-left ${meta().preBorder}`}
           >
             <code ref={setCodeRef} />

@@ -56,7 +56,7 @@ export const ERR_GENERIC = 2999;
 
 /**
  * Extracts the numeric error code from a backend error payload or number.
- * 
+ *
  * @param err The error payload returned from the backend (number or object)
  * @returns The parsed numeric error code
  */
@@ -69,14 +69,17 @@ export const getAppErrorCode = (err: any): number => {
 
 /**
  * Maps structured backend error codes to localized translation keys.
- * 
+ *
  * @param err The error code or object returned from the backend (Tauri's invoke promise rejection)
  * @param t The translation function from the localization provider
  * @returns The localized error string to display in the UI
  */
-export const getLocalizedAppError = (err: any, t: (key: string, params?: Record<string, string | number>) => string): string => {
+export const getLocalizedAppError = (
+  err: any,
+  t: (key: string, params?: Record<string, string | number>) => string
+): string => {
   if (!err) return "";
-  
+
   if (typeof err === "string") {
     // If it's a raw string error from legacy backend code or system, return it directly.
     return err;
@@ -91,7 +94,7 @@ export const getLocalizedAppError = (err: any, t: (key: string, params?: Record<
     status: status !== undefined ? String(status) : "",
     message: message !== undefined ? String(message) : "",
     error: message !== undefined ? String(message) : "",
-    reason: message !== undefined ? String(message) : ""
+    reason: message !== undefined ? String(message) : "",
   };
 
   switch (code) {

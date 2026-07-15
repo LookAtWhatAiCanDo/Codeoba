@@ -1,4 +1,8 @@
-export const formatNumberWithSetting = (num: number, setting: string, appLocale?: string): string => {
+export const formatNumberWithSetting = (
+  num: number,
+  setting: string,
+  appLocale?: string
+): string => {
   if (setting === "us") {
     return num.toLocaleString("en-US");
   }
@@ -11,7 +15,11 @@ export const formatNumberWithSetting = (num: number, setting: string, appLocale?
   return num.toLocaleString(appLocale);
 };
 
-export const formatDateWithSetting = (dateObj: Date, setting: string, appLocale?: string): string => {
+export const formatDateWithSetting = (
+  dateObj: Date,
+  setting: string,
+  appLocale?: string
+): string => {
   if (setting === "iso") {
     const yyyy = dateObj.getFullYear();
     const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -40,7 +48,7 @@ export const formatTimeWithSetting = (
   appLocale?: string
 ): string => {
   const timeOptions: Intl.DateTimeFormatOptions = {
-    timeStyle: showSeconds ? "medium" : "short"
+    timeStyle: showSeconds ? "medium" : "short",
   };
   if (timeFormat === "12") {
     timeOptions.hour12 = true;

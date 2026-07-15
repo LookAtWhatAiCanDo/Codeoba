@@ -3,14 +3,14 @@ import { useI18n } from "../i18n/i18n";
 import { X, CheckCircle, AlertTriangle } from "lucide-solid";
 
 const RotateCwClean = (props: { class?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    class={props.class} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    class={props.class}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
     stroke-linejoin="round"
   >
     <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.72 2.78L21 8" />
@@ -32,9 +32,8 @@ export const CheckingUpdatesModal = (props: CheckingUpdatesModalProps) => {
     <Show when={props.isOpen}>
       <div class="fixed inset-0 bg-black/75 z-[1100] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
         <div class="w-[420px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col items-center gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200 text-center">
-          
           {/* Close button */}
-          <button 
+          <button
             onClick={props.onClose}
             class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
           >
@@ -66,12 +65,8 @@ export const CheckingUpdatesModal = (props: CheckingUpdatesModalProps) => {
               {t("settings.updates.checkUpdate")}
             </h3>
             <div class="text-sm text-text-secondary break-words max-h-32 overflow-y-auto px-2">
-              <Show when={props.status === "checking"}>
-                {t("settings.updates.checking")}
-              </Show>
-              <Show when={props.status === "upToDate"}>
-                {t("settings.updates.upToDate")}
-              </Show>
+              <Show when={props.status === "checking"}>{t("settings.updates.checking")}</Show>
+              <Show when={props.status === "upToDate"}>{t("settings.updates.upToDate")}</Show>
               <Show when={props.status === "error"}>
                 {props.errorMsg || t("settings.updates.error", { error: "Unknown error" })}
               </Show>
@@ -87,7 +82,6 @@ export const CheckingUpdatesModal = (props: CheckingUpdatesModalProps) => {
               {t("common.close")}
             </button>
           </div>
-
         </div>
       </div>
     </Show>

@@ -1,24 +1,9 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
 import { useI18n } from "../i18n/i18n";
 import { formatNumberWithSetting } from "../utils/format";
-import { 
-  Folder, 
-  MessageSquare, 
-  Clock, 
-  Cpu, 
-  Settings, 
-  RefreshCw,
-  Bolt,
-  Layers
-} from "lucide-solid";
-import { 
-  getSessionComputeTimeMs, 
-  formatSpeed, 
-  formatDuration 
-} from "./Sidebar";
+import { Folder, MessageSquare, Clock, Cpu, Settings, RefreshCw, Bolt, Layers } from "lucide-solid";
+import { getSessionComputeTimeMs, formatSpeed, formatDuration } from "./Sidebar";
 import { Session } from "../types";
-
-
 
 interface DashboardProps {
   sessions: Session[];
@@ -54,13 +39,16 @@ export const Dashboard = (props: DashboardProps) => {
     let responseTokens = 0;
 
     // Model aggregation
-    const modelMap = new Map<string, {
-      turnCount: number;
-      promptChars: number;
-      responseChars: number;
-      computeTimeMs: number;
-      totalTokens: number;
-    }>();
+    const modelMap = new Map<
+      string,
+      {
+        turnCount: number;
+        promptChars: number;
+        responseChars: number;
+        computeTimeMs: number;
+        totalTokens: number;
+      }
+    >();
 
     for (const session of list) {
       totalTurns += session.turns.length;
@@ -69,7 +57,7 @@ export const Dashboard = (props: DashboardProps) => {
 
       for (const turn of session.turns) {
         const extra = turn.extraData;
-        
+
         // Count compactions
         if (extra && extra["isCompaction"] === "true") {
           totalCompactions++;
@@ -83,32 +71,38 @@ export const Dashboard = (props: DashboardProps) => {
         const modelName = (extra && extra["model"]) || t("dashboard.unknownModel");
         let mStats = modelMap.get(modelName);
         if (!mStats) {
-          mStats = { turnCount: 0, promptChars: 0, responseChars: 0, computeTimeMs: 0, totalTokens: 0 };
+          mStats = {
+            turnCount: 0,
+            promptChars: 0,
+            responseChars: 0,
+            computeTimeMs: 0,
+            totalTokens: 0,
+          };
           modelMap.set(modelName, mStats);
         }
         mStats.turnCount++;
-        
+
         const turnUserLen = (turn.userMessage || "").length;
         const turnAssistantLen = (turn.assistantMessage || "").length;
-        
+
         mStats.promptChars += turnUserLen;
         mStats.responseChars += turnAssistantLen;
-        
+
         let turnInputTokens = 0;
         let turnOutputTokens = 0;
-        
+
         if (turn.inputTokens !== undefined && turn.inputTokens !== null) {
           turnInputTokens = turn.inputTokens;
         } else {
           turnInputTokens = Math.round((turnUserLen + 3) / 4);
         }
-        
+
         if (turn.outputTokens !== undefined && turn.outputTokens !== null) {
           turnOutputTokens = turn.outputTokens;
         } else {
           turnOutputTokens = Math.round((turnAssistantLen + 3) / 4);
         }
-        
+
         mStats.totalTokens += turnInputTokens + turnOutputTokens;
         promptTokens += turnInputTokens;
         responseTokens += turnOutputTokens;
@@ -137,14 +131,14 @@ export const Dashboard = (props: DashboardProps) => {
       if (finalTokens === 0) {
         finalTokens = Math.round((val.promptChars + val.responseChars) / 4);
       }
-      
+
       const speedTps = val.computeTimeMs > 0 ? (finalTokens * 1000.0) / val.computeTimeMs : 0;
       modelStatsList.push({
         modelName: key,
         turnCount: val.turnCount,
         totalTokens: finalTokens,
         computeTimeMs: val.computeTimeMs,
-        speedTps
+        speedTps,
       });
     });
 
@@ -169,7 +163,7 @@ export const Dashboard = (props: DashboardProps) => {
       totalCompactions,
       totalCompactionTimeMs,
       modelStatsList,
-      sourceGroups
+      sourceGroups,
     };
   });
 
@@ -195,7 +189,9 @@ export const Dashboard = (props: DashboardProps) => {
         valA = a.computeTimeMs;
         valB = b.computeTimeMs;
       } else if (dim === "name") {
-        return asc ? a.modelName.localeCompare(b.modelName) : b.modelName.localeCompare(a.modelName);
+        return asc
+          ? a.modelName.localeCompare(b.modelName)
+          : b.modelName.localeCompare(a.modelName);
       }
 
       return asc ? valA - valB : valB - valA;
@@ -227,7 +223,7 @@ export const Dashboard = (props: DashboardProps) => {
   };
 
   return (
-    <div 
+    <div
       id="dashboard-scroll-container"
       tabindex="-1"
       onClick={handleDashboardClick}
@@ -241,8 +237,8 @@ export const Dashboard = (props: DashboardProps) => {
         <button
           onClick={() => setActiveTab("global")}
           class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all capitalize cursor-pointer ${
-            activeTab() === "global" 
-              ? "bg-background text-accent border border-border/80 shadow-sm" 
+            activeTab() === "global"
+              ? "bg-background text-accent border border-border/80 shadow-sm"
               : "text-text-secondary hover:text-text-primary"
           }`}
         >
@@ -251,8 +247,8 @@ export const Dashboard = (props: DashboardProps) => {
         <button
           onClick={() => setActiveTab("groups")}
           class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all capitalize cursor-pointer ${
-            activeTab() === "groups" 
-              ? "bg-background text-accent border border-border/80 shadow-sm" 
+            activeTab() === "groups"
+              ? "bg-background text-accent border border-border/80 shadow-sm"
               : "text-text-secondary hover:text-text-primary"
           }`}
         >
@@ -260,8 +256,8 @@ export const Dashboard = (props: DashboardProps) => {
         </button>
       </div>
 
-      <Show 
-        when={activeTab() === "global"} 
+      <Show
+        when={activeTab() === "global"}
         fallback={
           /* Groups Dashboard View */
           <div class="space-y-4 max-w-4xl">
@@ -278,12 +274,16 @@ export const Dashboard = (props: DashboardProps) => {
                       </div>
                       <div>
                         <h4 class="text-sm font-bold text-text-primary capitalize">{source}</h4>
-                        <span class="text-xs text-text-secondary">{t("settings.sources.desc")}</span>
+                        <span class="text-xs text-text-secondary">
+                          {t("settings.sources.desc")}
+                        </span>
                       </div>
                     </div>
                     <div class="text-right">
                       <div class="text-[1.25rem] font-bold text-text-primary">{count}</div>
-                      <span class="text-xs text-text-secondary">{t("sidebar.title").toLowerCase()}</span>
+                      <span class="text-xs text-text-secondary">
+                        {t("sidebar.title").toLowerCase()}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -339,9 +339,10 @@ export const Dashboard = (props: DashboardProps) => {
           <StatCard
             title={t("dashboard.totalCompactionTime")}
             value={formatDuration(stats().totalCompactionTimeMs)}
-            subtitle={stats().totalCompactions > 0 
-              ? `Avg: ${((stats().totalCompactionTimeMs / stats().totalCompactions) / 1000).toFixed(2)}s`
-              : "Avg: 0s"
+            subtitle={
+              stats().totalCompactions > 0
+                ? `Avg: ${(stats().totalCompactionTimeMs / stats().totalCompactions / 1000).toFixed(2)}s`
+                : "Avg: 0s"
             }
             icon={<RefreshCw class="w-5 h-5" />}
           />
@@ -353,7 +354,7 @@ export const Dashboard = (props: DashboardProps) => {
             <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
               {t("dashboard.topModels")}
             </h3>
-            
+
             {/* Sorting controls */}
             <div class="flex items-center gap-2">
               <span class="text-xs text-text-secondary/70">{t("dashboard.sort")}:</span>
@@ -362,8 +363,8 @@ export const Dashboard = (props: DashboardProps) => {
                   <button
                     onClick={() => toggleSort(dim)}
                     class={`px-2.5 py-1 rounded-lg border text-xs font-semibold capitalize cursor-pointer transition-all ${
-                      sortBy() === dim 
-                        ? "bg-accent/10 border-accent/40 text-accent font-bold" 
+                      sortBy() === dim
+                        ? "bg-accent/10 border-accent/40 text-accent font-bold"
                         : "bg-surface border-border/40 text-text-secondary hover:text-text-primary"
                     }`}
                   >
@@ -378,7 +379,7 @@ export const Dashboard = (props: DashboardProps) => {
           </div>
 
           <div class="space-y-3.5">
-            <For 
+            <For
               each={sortedModelStats()}
               fallback={
                 <div class="p-6 text-center text-text-secondary text-sm">
@@ -401,7 +402,9 @@ export const Dashboard = (props: DashboardProps) => {
                       <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
                         {t("dashboard.tokens")}
                       </div>
-                      <div class="text-sm font-bold text-text-primary">{formatNumber(m.totalTokens)}</div>
+                      <div class="text-sm font-bold text-text-primary">
+                        {formatNumber(m.totalTokens)}
+                      </div>
                     </div>
                     <div>
                       <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
@@ -410,7 +413,11 @@ export const Dashboard = (props: DashboardProps) => {
                       <div class="text-sm font-bold text-text-primary">
                         {m.turnCount} {t("dashboard.turns").toLowerCase()}
                         <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
-                          ({stats().totalTurns > 0 ? ((m.turnCount / stats().totalTurns) * 100).toFixed(1) : 0}%)
+                          (
+                          {stats().totalTurns > 0
+                            ? ((m.turnCount / stats().totalTurns) * 100).toFixed(1)
+                            : 0}
+                          %)
                         </span>
                       </div>
                     </div>
@@ -421,7 +428,11 @@ export const Dashboard = (props: DashboardProps) => {
                       <div class="text-sm font-bold text-text-primary">
                         {formatDuration(m.computeTimeMs)}
                         <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
-                          ({stats().totalDurationMs > 0 ? ((m.computeTimeMs / stats().totalDurationMs) * 100).toFixed(1) : 0}%)
+                          (
+                          {stats().totalDurationMs > 0
+                            ? ((m.computeTimeMs / stats().totalDurationMs) * 100).toFixed(1)
+                            : 0}
+                          %)
                         </span>
                       </div>
                     </div>

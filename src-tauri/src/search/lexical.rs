@@ -1,7 +1,7 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult};
-use regex::{Regex, RegexBuilder};
 use rayon::prelude::*;
+use regex::{Regex, RegexBuilder};
 
 pub fn build_find_regex(
     query: &str,

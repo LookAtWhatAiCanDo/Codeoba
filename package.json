@@ -13,7 +13,17 @@
     "bump": "node scripts/bump-version.cjs",
     "generate-keys": "node scripts/generate-keys.cjs",
     "translate": "node scripts/translate.cjs",
-    "test:menu": "node scripts/test-menu-alignment.js"
+    "test:menu": "node scripts/test-menu-alignment.js",
+    "format:fe": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
+    "format:fe:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
+    "lint:fe": "eslint src",
+    "format:be": "cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "format:be:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
+    "clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --no-default-features -- -D warnings -A clippy::expect_used -A clippy::indexing_slicing -A clippy::panic",
+    "format": "npm run format:fe && npm run format:be",
+    "lint": "npm run format:fe:check && npm run lint:fe && npm run format:be:check && npm run clippy",
+    "qa": "npm run lint && cargo test --manifest-path src-tauri/Cargo.toml && npm run build",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
@@ -29,8 +39,15 @@
     "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/eslint-parser": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@tauri-apps/cli": "^2",
     "@types/prismjs": "^1.26.6",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-solid": "^0.14.5",
+    "prettier": "^3.9.5",
     "typescript": "~7.0.2",
     "vite": "^8.1.4",
     "vite-plugin-solid": "^2.11.12"

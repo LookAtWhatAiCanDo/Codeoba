@@ -13,9 +13,7 @@ export interface MessageToolPart {
 export type MessagePart = MessageTextPart | MessageToolPart;
 
 function unescapeToolTags(text: string): string {
-  return text
-    .replace(/\\\[\\\[\\\[TOOL/g, "[[[TOOL")
-    .replace(/\\\[\\\[\\\[\/TOOL/g, "[[[/TOOL");
+  return text.replace(/\\\[\\\[\\\[TOOL/g, "[[[TOOL").replace(/\\\[\\\[\\\[\/TOOL/g, "[[[/TOOL");
 }
 
 function isEscaped(text: string, index: number): boolean {

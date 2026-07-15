@@ -55,7 +55,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
   const [newTaskTitle, setNewTaskTitle] = createSignal("");
 
   const activeGroup = createMemo(() => {
-    return props.groups.find(g => g.name.toLowerCase() === props.groupName.toLowerCase());
+    return props.groups.find((g) => g.name.toLowerCase() === props.groupName.toLowerCase());
   });
 
   // Sync state whenever the active group updates
@@ -65,34 +65,36 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
       setDescription(group.description || "");
       setStatus(group.status || "Active");
       setPastWorkSummary(group.pastWorkSummary || "");
-      
+
       // Handle set or array sessionIds normalized
       const rawTasks = group.tasks || [];
-      setTasks(rawTasks.map(t => ({
-        id: t.id,
-        title: t.title,
-        isCompleted: !!t.isCompleted,
-        associatedSessionId: t.associatedSessionId || null
-      })));
+      setTasks(
+        rawTasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          isCompleted: !!t.isCompleted,
+          associatedSessionId: t.associatedSessionId || null,
+        }))
+      );
     }
   });
 
   const groupSessions = createMemo(() => {
     const group = activeGroup();
     if (!group) return [];
-    
+
     // Normalise sessionIds as array or Set
-    const ids = Array.isArray(group.sessionIds) 
-      ? group.sessionIds 
+    const ids = Array.isArray(group.sessionIds)
+      ? group.sessionIds
       : Array.from(group.sessionIds || []);
-      
-    return props.sessions.filter(s => ids.includes(s.id));
+
+    return props.sessions.filter((s) => ids.includes(s.id));
   });
 
   const saveChanges = async (updatedTasks?: GroupTask[], updatedStatus?: string) => {
     const group = activeGroup();
     if (!group) return;
-    
+
     try {
       await props.onUpdateGroupDetails(
         group.name,
@@ -109,14 +111,14 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
   const handleAddTask = () => {
     const title = newTaskTitle().trim();
     if (!title) return;
-    
+
     const newTask: GroupTask = {
       id: Math.random().toString(36).substring(2, 9),
       title,
       isCompleted: false,
-      associatedSessionId: null
+      associatedSessionId: null,
     };
-    
+
     const updated = [...tasks(), newTask];
     setTasks(updated);
     setNewTaskTitle("");
@@ -124,7 +126,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
   };
 
   const handleToggleTask = (taskId: string) => {
-    const updated = tasks().map(t => 
+    const updated = tasks().map((t) =>
       t.id === taskId ? { ...t, isCompleted: !t.isCompleted } : t
     );
     setTasks(updated);
@@ -132,15 +134,13 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
   };
 
   const handleRenameTask = (taskId: string, newTitle: string) => {
-    const updated = tasks().map(t => 
-      t.id === taskId ? { ...t, title: newTitle } : t
-    );
+    const updated = tasks().map((t) => (t.id === taskId ? { ...t, title: newTitle } : t));
     setTasks(updated);
     saveChanges(updated);
   };
 
   const handleAssociateSession = (taskId: string, sessionId: string | null) => {
-    const updated = tasks().map(t => 
+    const updated = tasks().map((t) =>
       t.id === taskId ? { ...t, associatedSessionId: sessionId || null } : t
     );
     setTasks(updated);
@@ -148,7 +148,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    const updated = tasks().filter(t => t.id !== taskId);
+    const updated = tasks().filter((t) => t.id !== taskId);
     setTasks(updated);
     saveChanges(updated);
   };
@@ -188,7 +188,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
         </div>
         <div class="flex-grow overflow-y-auto p-2 space-y-1">
           <For each={props.groups}>
-            {g => (
+            {(g) => (
               <div
                 onClick={() => props.onActiveGroupFilterChange(g.name)}
                 class={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all border ${
@@ -198,7 +198,9 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                 }`}
               >
                 <span class="truncate text-xs">{g.name}</span>
-                <span class={`px-1.5 py-0.5 border text-[0.5625rem] font-bold rounded uppercase flex-shrink-0 ${getStatusBadgeClass(g.status || "Active")}`}>
+                <span
+                  class={`px-1.5 py-0.5 border text-[0.5625rem] font-bold rounded uppercase flex-shrink-0 ${getStatusBadgeClass(g.status || "Active")}`}
+                >
                   {g.status || "Active"}
                 </span>
               </div>
@@ -208,8 +210,8 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
       </div>
 
       {/* Right Pane: Details View */}
-      <Show 
-        when={activeGroup()} 
+      <Show
+        when={activeGroup()}
         fallback={
           <div class="flex-grow h-full flex flex-col items-center justify-center text-text-secondary">
             <Folder class="w-12 h-12 text-border mb-3" />
@@ -217,7 +219,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
           </div>
         }
       >
-        <div 
+        <div
           id="group-details-scroll-container"
           tabindex="-1"
           onClick={handleGroupDetailsClick}
@@ -231,13 +233,18 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
             <div class="min-w-0">
               <h1 class="text-lg font-bold text-text-primary truncate">{activeGroup()?.name}</h1>
               <p class="text-[0.625rem] text-text-secondary/50 mt-1">
-                Last updated {activeGroup()?.updatedAt ? new Date(activeGroup()!.updatedAt).toLocaleString() : "Never"}
+                Last updated{" "}
+                {activeGroup()?.updatedAt
+                  ? new Date(activeGroup()!.updatedAt).toLocaleString()
+                  : "Never"}
               </p>
             </div>
-            
+
             <div class="flex items-center gap-2 flex-shrink-0">
               <span class="text-xs text-text-secondary/80 font-medium">Status:</span>
-              <div class={`flex items-center gap-1.5 px-3 py-1 border rounded-lg text-xs font-semibold ${getStatusBadgeClass(status())}`}>
+              <div
+                class={`flex items-center gap-1.5 px-3 py-1 border rounded-lg text-xs font-semibold ${getStatusBadgeClass(status())}`}
+              >
                 {getStatusIcon(status())}
                 <select
                   value={status()}
@@ -247,9 +254,15 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                   }}
                   class="bg-transparent border-none text-xs font-semibold outline-none cursor-pointer p-0"
                 >
-                  <option class="bg-background text-text-primary" value="Active">Active</option>
-                  <option class="bg-background text-text-primary" value="Completed">Completed</option>
-                  <option class="bg-background text-text-primary" value="Paused">Paused</option>
+                  <option class="bg-background text-text-primary" value="Active">
+                    Active
+                  </option>
+                  <option class="bg-background text-text-primary" value="Completed">
+                    Completed
+                  </option>
+                  <option class="bg-background text-text-primary" value="Paused">
+                    Paused
+                  </option>
                 </select>
               </div>
             </div>
@@ -291,7 +304,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
             <label class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Group Checklist & Tasks
             </label>
-            
+
             {/* Add Task Input */}
             <div class="flex items-center gap-2">
               <input
@@ -316,7 +329,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
             {/* Task list list */}
             <div class="space-y-2 mt-2 max-h-64 overflow-y-auto pr-1">
               <For each={tasks()}>
-                {task => (
+                {(task) => (
                   <div class="flex items-center gap-3 p-2 border border-border/40 hover:border-border bg-background/25 rounded-lg text-xs transition-all">
                     {/* Completion checkbox */}
                     <input
@@ -335,20 +348,26 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                         if (e.key === "Enter") e.currentTarget.blur();
                       }}
                       class={`flex-grow bg-transparent border-none p-0 focus:ring-0 outline-none truncate font-medium text-xs ${
-                        task.isCompleted ? "line-through text-text-secondary/45" : "text-text-primary"
+                        task.isCompleted
+                          ? "line-through text-text-secondary/45"
+                          : "text-text-primary"
                       }`}
                     />
 
                     {/* Associated Session Selector */}
                     <select
                       value={task.associatedSessionId || ""}
-                      onChange={(e) => handleAssociateSession(task.id, e.currentTarget.value || null)}
+                      onChange={(e) =>
+                        handleAssociateSession(task.id, e.currentTarget.value || null)
+                      }
                       class="bg-surface/60 border border-border/50 text-[0.625rem] rounded px-1.5 py-0.5 focus:border-accent outline-none max-w-[130px] truncate text-text-secondary hover:text-text-primary cursor-pointer"
                     >
                       <option value="">No Session Link</option>
                       <For each={groupSessions()}>
-                        {session => (
-                          <option value={session.id}>{session.threadName || t("common.untitledSession")}</option>
+                        {(session) => (
+                          <option value={session.id}>
+                            {session.threadName || t("common.untitledSession")}
+                          </option>
                         )}
                       </For>
                     </select>
@@ -364,7 +383,7 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
                   </div>
                 )}
               </For>
-              
+
               <Show when={tasks().length === 0}>
                 <div class="text-center py-6 text-text-secondary/55 text-xs border border-dashed border-border/30 rounded-lg">
                   No tasks defined for this group. Add tasks above to track checklist items.
@@ -380,25 +399,32 @@ export default function GroupDetailsView(props: GroupDetailsViewProps) {
             </label>
             <div class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
               <For each={groupSessions()}>
-                {session => (
+                {(session) => (
                   <div
                     onClick={() => props.onSelectSession(session)}
                     class="flex items-center justify-between p-3.5 bg-surface/30 border border-border/60 hover:border-accent/40 rounded-xl cursor-pointer hover:bg-surface/50 transition-all text-xs"
                   >
                     <div class="min-w-0 flex-grow mr-4">
-                      <span class="font-semibold text-text-primary truncate block">{session.threadName || t("common.untitledSession")}</span>
-                      <span class="text-[0.625rem] text-text-secondary/60 mt-0.5 truncate block">{session.snippet || t("common.noSnippet")}</span>
+                      <span class="font-semibold text-text-primary truncate block">
+                        {session.threadName || t("common.untitledSession")}
+                      </span>
+                      <span class="text-[0.625rem] text-text-secondary/60 mt-0.5 truncate block">
+                        {session.snippet || t("common.noSnippet")}
+                      </span>
                     </div>
                     <span class="text-[0.625rem] text-text-secondary/50 flex-shrink-0">
-                      {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : "Never"}
+                      {session.updatedAt
+                        ? new Date(session.updatedAt).toLocaleDateString()
+                        : "Never"}
                     </span>
                   </div>
                 )}
               </For>
-              
+
               <Show when={groupSessions().length === 0}>
                 <div class="text-center py-8 border border-dashed border-border/40 rounded-xl text-text-secondary/50 text-xs">
-                  No conversation sessions linked to this group. You can drag and drop conversations into this group inside the sidebar to associate them.
+                  No conversation sessions linked to this group. You can drag and drop conversations
+                  into this group inside the sidebar to associate them.
                 </div>
               </Show>
             </div>

@@ -33,11 +33,12 @@ Please read the [Developer & Contributor Guide](./DEVELOPMENT.md) first to set u
 2. Make your changes. Ensure code is clean, commented where necessary, and formatted correctly.
 3. Write/run tests to verify your changes.
 
-### 3. Testing Requirements
-Before submitting a pull request, you **must** run the local test suite to ensure no regressions are introduced:
+### 3. Testing & Pre-Commit Requirements
+Before submitting a pull request or committing changes, you **must** run the local QA pipeline to ensure that formatting, static analysis, unit tests, and frontend build checks all pass:
 ```bash
-cargo test --manifest-path src-tauri/Cargo.toml
+npm run qa
 ```
+*(Or, configure git hooks via `git config core.hooksPath .githooks` to automate the validation on every commit).*
 
 ### 4. Conventional Commits
 All commit messages and pull request titles **must** follow the [Conventional Commits specification](https://www.conventionalcommits.org). This formatting is parsed by our release pipeline to generate release changelogs.

@@ -202,6 +202,51 @@ npm run tauri build
 
 ---
 
+## 🏁 Pre-Commit & Check-in Checklist
+
+To maintain clean code and prevent build regressions, all changes must pass static analysis and formatting tests prior to being committed or pushed. The repository is equipped with a comprehensive validation suite accessible via root-level NPM commands.
+
+### 1. Verification Scripts
+
+Run the following commands in the root of the project to check and format your code:
+
+*   **Run formatting auto-fixes (Frontend & Backend):**
+    ```bash
+    npm run format
+    ```
+    *(Runs `prettier --write` on frontend files and `cargo fmt` on Rust files).*
+*   **Run ESLint static analysis (Frontend):**
+    ```bash
+    npm run lint:fe
+    ```
+*   **Run Clippy static analysis (Backend):**
+    ```bash
+    npm run clippy
+    ```
+*   **Run full lint pipeline (Frontend + Backend formatting and static analysis):**
+    ```bash
+    npm run lint
+    ```
+    *(Checks formatting and runs static analysis on all files. This is the command run by the pre-commit hook).*
+*   **Run complete QA suite (Lints + Cargo Tests + Frontend build validation):**
+    ```bash
+    npm run qa
+    ```
+    *(Always run `npm run qa` before pushing code or submitting a pull request to ensure CI will pass).*
+
+### 2. Automatically Enforcing Checks via Git Hooks
+
+To guarantee formatting and lint checks are run and prevent accidental check-ins of formatting issues, the repository is configured to automatically set up local git hooks when running standard package installation (`npm install`).
+
+The `"prepare"` script in `package.json` executes the path configuration behind the scenes:
+```bash
+git config core.hooksPath .githooks
+```
+
+Once dependencies are installed locally, any `git commit` will automatically invoke `npm run lint` and block the commit if any formatting or static analysis issues are detected.
+
+---
+
 ## 🔄 Auto-Updates & CI/CD Release Pipeline
 
 Codeoba features secure, cryptographically-signed auto-updates hosted on GitHub Releases, powered by the Tauri v2 Updater.

@@ -57,24 +57,21 @@ export function highlightContainer(
     return;
   }
 
-  const walk = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode(node) {
-        const parent = node.parentElement;
-        if (parent && (
-          parent.tagName === "SCRIPT" ||
+  const walk = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (
+        parent &&
+        (parent.tagName === "SCRIPT" ||
           parent.tagName === "STYLE" ||
           parent.tagName === "MARK" ||
-          parent.closest("pre") // Skip inside raw pre formatting or raw code blocks if managed separately
-        )) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        return NodeFilter.FILTER_ACCEPT;
+          parent.closest("pre")) // Skip inside raw pre formatting or raw code blocks if managed separately
+      ) {
+        return NodeFilter.FILTER_REJECT;
       }
-    }
-  );
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
 
   const nodesToReplace: Text[] = [];
   let currentNode = walk.nextNode();
@@ -87,7 +84,7 @@ export function highlightContainer(
     const text = node.nodeValue || "";
     // Reset regex lastIndex to be safe
     regex.lastIndex = 0;
-    
+
     if (regex.test(text)) {
       const parent = node.parentElement;
       if (!parent) continue;
@@ -133,7 +130,7 @@ export function highlightContainer(
 
 export function removeHighlights(container: HTMLElement) {
   const marks = container.querySelectorAll("mark");
-  marks.forEach(mark => {
+  marks.forEach((mark) => {
     const parent = mark.parentNode;
     if (parent) {
       const textNode = document.createTextNode(mark.textContent || "");

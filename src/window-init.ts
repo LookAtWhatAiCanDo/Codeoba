@@ -34,10 +34,13 @@ import { logFE } from "./utils/logger";
       const height = parseFloat(savedHeight);
       const x = parseFloat(savedX);
       const y = parseFloat(savedY);
-      
+
       await appWindow.setSize(new LogicalSize(width, height));
       await appWindow.setPosition(new LogicalPosition(x, y));
-      logFE("info", `Restored window geometry from localStorage: ${width}x${height} at (${x}, ${y}).`);
+      logFE(
+        "info",
+        `Restored window geometry from localStorage: ${width}x${height} at (${x}, ${y}).`
+      );
     } catch (err) {
       logFE("error", `Failed to restore window size and position: ${err}`);
     }
@@ -48,19 +51,19 @@ import { logFE } from "./utils/logger";
       try {
         const width = Math.round(window.screen.width * 0.75);
         const height = Math.round(window.screen.height * 0.75);
-        
+
         await appWindow.setSize(new LogicalSize(width, height));
         await appWindow.center();
         localStorage.setItem("codeoba-window-initialized", "true");
         logFE("info", `First launch window resize triggered: ${width}x${height} and centered.`);
-        
+
         // Store initial geometry in localStorage
         const scaleFactor = await appWindow.scaleFactor();
         const pSize = await appWindow.innerSize();
         const lSize = pSize.toLogical(scaleFactor);
         const pPos = await appWindow.innerPosition();
         const lPos = pPos.toLogical(scaleFactor);
-        
+
         localStorage.setItem("codeoba-window-width", String(lSize.width));
         localStorage.setItem("codeoba-window-height", String(lSize.height));
         localStorage.setItem("codeoba-window-x", String(lPos.x));
@@ -117,16 +120,26 @@ import { logFE } from "./utils/logger";
     if (anchor) {
       const href = anchor.getAttribute("href");
       if (href) {
-        if (href.startsWith("http:") || href.startsWith("https:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        if (
+          href.startsWith("http:") ||
+          href.startsWith("https:") ||
+          href.startsWith("mailto:") ||
+          href.startsWith("tel:")
+        ) {
           e.preventDefault();
           logFE("info", `Global Link Interceptor: Intercepted click to external URL: ${href}`);
-          import("@tauri-apps/plugin-opener").then(({ openUrl }) => {
-            openUrl(href).catch((err) => {
-              logFE("error", `Global Link Interceptor: Failed to open external link: ${err}`);
+          import("@tauri-apps/plugin-opener")
+            .then(({ openUrl }) => {
+              openUrl(href).catch((err) => {
+                logFE("error", `Global Link Interceptor: Failed to open external link: ${err}`);
+              });
+            })
+            .catch((err) => {
+              logFE(
+                "error",
+                `Global Link Interceptor: Failed to load @tauri-apps/plugin-opener: ${err}`
+              );
             });
-          }).catch((err) => {
-            logFE("error", `Global Link Interceptor: Failed to load @tauri-apps/plugin-opener: ${err}`);
-          });
         }
       }
     }

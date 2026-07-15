@@ -31,9 +31,12 @@ import("./App").then(({ default: App }) => {
   if (container) {
     container.innerHTML = "";
   }
-  render(() => (
-    <I18nProvider>
-      <App />
-    </I18nProvider>
-  ), container);
+  render(
+    () => (
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    ),
+    container
+  );
 });

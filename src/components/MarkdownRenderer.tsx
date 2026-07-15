@@ -74,8 +74,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           return `<img class="lazy-local-image" data-src="${href}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" style="max-width: 100%; max-height: 500px; border-radius: 8px; opacity: 0.5; transition: opacity 0.3s; display: block; margin: 8px 0;" alt="${t}" title="${ttl}" />`;
         }
         return `<img src="${href}" title="${ttl}" alt="${t}" style="max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />`;
-      }
-    }
+      },
+    },
   });
 
   const htmlContent = createMemo(() => {
@@ -83,18 +83,23 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       const parseStart = performance.now();
       const html = parser.parse(displayContent()) as string;
       const parseElapsed = performance.now() - parseStart;
-      
+
       // Only log heavy parse operations to avoid flooding
       if (parseElapsed > 5) {
-        logFE("info", `Heavy Markdown parsed in ${parseElapsed.toFixed(1)}ms (content length: ${displayContent().length})`);
+        logFE(
+          "info",
+          `Heavy Markdown parsed in ${parseElapsed.toFixed(1)}ms (content length: ${displayContent().length})`
+        );
       }
       return DOMPurify.sanitize(html, {
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ALLOWED_URI_REGEXP:
+          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
     } catch (e) {
       logFE("error", `Markdown parse error: ${e}`);
       return DOMPurify.sanitize(displayContent(), {
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+        ALLOWED_URI_REGEXP:
+          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
     }
   });
@@ -116,7 +121,10 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       return;
     }
 
-    logFE("debug", `Found ${codeBlocks.length} code blocks to highlight (content length: ${displayContent().length})`);
+    logFE(
+      "debug",
+      `Found ${codeBlocks.length} code blocks to highlight (content length: ${displayContent().length})`
+    );
 
     let processed = 0;
     codeBlocks.forEach((block, idx) => {
@@ -205,10 +213,15 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           e.preventDefault();
           logFE("info", `MarkdownRenderer: Intercepted local file click: ${href}`);
           const event = new CustomEvent("open-local-file", {
-            detail: { href }
+            detail: { href },
           });
           window.dispatchEvent(event);
-        } else if (href.startsWith("http:") || href.startsWith("https:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        } else if (
+          href.startsWith("http:") ||
+          href.startsWith("https:") ||
+          href.startsWith("mailto:") ||
+          href.startsWith("tel:")
+        ) {
           e.preventDefault();
           logFE("info", `MarkdownRenderer: Intercepted external link click: ${href}`);
           openUrl(href).catch((err) => {

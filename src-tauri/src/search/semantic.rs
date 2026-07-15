@@ -1,8 +1,8 @@
 use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
+use rayon::prelude::*;
 use std::path::Path;
 use std::sync::Arc;
-use rayon::prelude::*;
 use tract_onnx::prelude::tract_ndarray::Array2;
 use tract_onnx::prelude::*;
 

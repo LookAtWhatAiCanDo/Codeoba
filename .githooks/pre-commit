@@ -1,0 +1,16 @@
+#!/bin/sh
+echo "🔍 Running pre-commit static analysis and formatting checks (frontend & backend)..."
+
+# Run the lint script
+npm run lint
+
+# Capture exit code
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+  echo "❌ Pre-commit checks failed! Please run 'npm run format' and fix any lint or clippy errors before committing."
+  exit $RESULT
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0

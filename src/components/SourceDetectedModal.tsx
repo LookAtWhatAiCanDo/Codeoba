@@ -18,7 +18,6 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
     <Show when={props.isOpen}>
       <div class="fixed inset-0 bg-black/75 z-[69] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-md">
         <div class="w-[520px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200">
-          
           {/* Header info */}
           <div class="flex items-center gap-3">
             <div class="p-2.5 bg-accent/10 border border-accent/20 text-accent rounded-xl">

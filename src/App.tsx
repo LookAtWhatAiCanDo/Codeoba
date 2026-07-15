@@ -1,4 +1,14 @@
-import { createSignal, createEffect, onMount, onCleanup, Show, createMemo, getOwner, runWithOwner, batch } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  onMount,
+  onCleanup,
+  Show,
+  createMemo,
+  getOwner,
+  runWithOwner,
+  batch,
+} from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { check } from "@tauri-apps/plugin-updater";
@@ -28,10 +38,18 @@ import "./App.css";
 
 function App() {
   const { t, locale } = useI18n();
-  const [appearance, setAppearance] = createSignal(localStorage.getItem("codeoba-appearance") || "dark");
-  const [darkTheme, setDarkTheme] = createSignal(localStorage.getItem("codeoba-dark-theme") || "obsidian");
-  const [lightTheme, setLightTheme] = createSignal(localStorage.getItem("codeoba-light-theme") || "obsidian-light");
-  const [systemDark, setSystemDark] = createSignal(window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const [appearance, setAppearance] = createSignal(
+    localStorage.getItem("codeoba-appearance") || "dark"
+  );
+  const [darkTheme, setDarkTheme] = createSignal(
+    localStorage.getItem("codeoba-dark-theme") || "obsidian"
+  );
+  const [lightTheme, setLightTheme] = createSignal(
+    localStorage.getItem("codeoba-light-theme") || "obsidian-light"
+  );
+  const [systemDark, setSystemDark] = createSignal(
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
 
   const theme = createMemo(() => {
     const appMode = appearance();
@@ -58,12 +76,16 @@ function App() {
   const sidebarWidth = () => Math.round(sidebarWidthRem() * fontSize());
   const setSidebarWidth = (val: number) => setSidebarWidthRem(val / fontSize());
 
-  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(localStorage.getItem("codeoba-sidebar-collapsed") === "true");
+  const [sidebarCollapsed, setSidebarCollapsed] = createSignal(
+    localStorage.getItem("codeoba-sidebar-collapsed") === "true"
+  );
   const [showSettings, setShowSettings] = createSignal(false);
   const [showLicenses, setShowLicenses] = createSignal(false);
   const [showPrivacy, setShowPrivacy] = createSignal(false);
   const [showCheckingModal, setShowCheckingModal] = createSignal(false);
-  const [checkingStatus, setCheckingStatus] = createSignal<"checking" | "upToDate" | "error">("checking");
+  const [checkingStatus, setCheckingStatus] = createSignal<"checking" | "upToDate" | "error">(
+    "checking"
+  );
   const [checkingErrorMsg, setCheckingErrorMsg] = createSignal<string | null>(null);
   const [showFeedback, setShowFeedback] = createSignal(false);
   const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
@@ -71,11 +93,21 @@ function App() {
   const [similarityThreshold, setSimilarityThreshold] = createSignal(
     parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
   );
-  const [dateFormat, setDateFormat] = createSignal(localStorage.getItem("codeoba-date-format") || "system");
-  const [timeFormat, setTimeFormat] = createSignal(localStorage.getItem("codeoba-time-format") || "system");
-  const [showSeconds, setShowSeconds] = createSignal(localStorage.getItem("codeoba-show-seconds") === "true");
-  const [numberFormat, setNumberFormat] = createSignal(localStorage.getItem("codeoba-number-format") || "system");
-  const [excludedPaths, setExcludedPaths] = createSignal(localStorage.getItem("codeoba-excluded-paths") || "");
+  const [dateFormat, setDateFormat] = createSignal(
+    localStorage.getItem("codeoba-date-format") || "system"
+  );
+  const [timeFormat, setTimeFormat] = createSignal(
+    localStorage.getItem("codeoba-time-format") || "system"
+  );
+  const [showSeconds, setShowSeconds] = createSignal(
+    localStorage.getItem("codeoba-show-seconds") === "true"
+  );
+  const [numberFormat, setNumberFormat] = createSignal(
+    localStorage.getItem("codeoba-number-format") || "system"
+  );
+  const [excludedPaths, setExcludedPaths] = createSignal(
+    localStorage.getItem("codeoba-excluded-paths") || ""
+  );
   // Matches the backend default; the real value is loaded from config on mount.
   const [indexSubagents, setIndexSubagents] = createSignal(false);
   const [fontSize, setFontSize] = createSignal(
@@ -153,19 +185,28 @@ function App() {
         }
 
         const currentVersion = await getVersion();
-        logFE("info", `Background Updater: Initiating background check. Current version: v${currentVersion}`);
+        logFE(
+          "info",
+          `Background Updater: Initiating background check. Current version: v${currentVersion}`
+        );
         logFE("info", "Background Updater: Querying the update service...");
         const update = await check({
           headers: {
-            "Accept-Language": locale()
-          }
+            "Accept-Language": locale(),
+          },
         });
         if (update && update.available) {
-          logFE("info", `Background Updater: Update check successful. Found newer version: v${update.version} (released on ${update.date || 'unknown date'})`);
+          logFE(
+            "info",
+            `Background Updater: Update check successful. Found newer version: v${update.version} (released on ${update.date || "unknown date"})`
+          );
           setUpdateManifest(update);
           setShowUpdateModal(true);
         } else {
-          logFE("info", "Background Updater: Update check successful. The application is up to date.");
+          logFE(
+            "info",
+            "Background Updater: Update check successful. The application is up to date."
+          );
         }
       } catch (err: any) {
         logFE("error", `Background Updater: Update check failed. Error details: ${err}`);
@@ -181,16 +222,16 @@ function App() {
 
     try {
       // Set checking indicator text on native menu item
-      await invoke("set_menu_item_text", { 
-        id: "check-updates", 
-        text: t("settings.updates.checking") 
+      await invoke("set_menu_item_text", {
+        id: "check-updates",
+        text: t("settings.updates.checking"),
       });
 
       logFE("info", "Manual Updater: Initiating check...");
       const update = await check({
         headers: {
-          "Accept-Language": locale()
-        }
+          "Accept-Language": locale(),
+        },
       });
       if (update && update.available) {
         logFE("info", `Manual Updater: Update found: v${update.version}`);
@@ -208,9 +249,9 @@ function App() {
       setCheckingErrorMsg(t("settings.updates.error", { error: err.toString() }));
     } finally {
       // Reset text back to standard label on native menu item
-      await invoke("set_menu_item_text", { 
-        id: "check-updates", 
-        text: t("settings.updates.checkUpdate") 
+      await invoke("set_menu_item_text", {
+        id: "check-updates",
+        text: t("settings.updates.checkUpdate"),
       });
     }
   };
@@ -222,26 +263,37 @@ function App() {
   const [sessions, setSessions] = createSignal<Session[]>([]);
   const [searchResults, setSearchResults] = createSignal<SearchResult[] | null>(null);
   const [selectedSession, setSelectedSession] = createSignal<Session | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isSemantic, setIsSemantic] = createSignal(false);
 
-  const [selectedSources, setSelectedSources] = createSignal<Set<string>>((() => {
-    try {
-      const stored = localStorage.getItem("codeoba-selected-sources");
-      return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
-    } catch {
-      return new Set<string>();
-    }
-  })());
-  const [archivalFilter, setArchivalFilter] = createSignal<"all" | "active" | "archived" | "deleted">((() => {
-    const stored = localStorage.getItem("codeoba-archival-filter");
-    if (stored === "all" || stored === "active" || stored === "archived" || stored === "deleted") {
-      return stored;
-    }
-    return "active";
-  })());
-  
+  const [selectedSources, setSelectedSources] = createSignal<Set<string>>(
+    (() => {
+      try {
+        const stored = localStorage.getItem("codeoba-selected-sources");
+        return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+      } catch {
+        return new Set<string>();
+      }
+    })()
+  );
+  const [archivalFilter, setArchivalFilter] = createSignal<
+    "all" | "active" | "archived" | "deleted"
+  >(
+    (() => {
+      const stored = localStorage.getItem("codeoba-archival-filter");
+      if (
+        stored === "all" ||
+        stored === "active" ||
+        stored === "archived" ||
+        stored === "deleted"
+      ) {
+        return stored;
+      }
+      return "active";
+    })()
+  );
+
   const [isLoading, setIsLoading] = createSignal(true);
   const [isRebuilding, setIsRebuilding] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
@@ -255,23 +307,46 @@ function App() {
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
 
-  const [matchCase, setMatchCase] = createSignal(localStorage.getItem("codeoba-search-match-case") === "true");
-  const [wholeWord, setWholeWord] = createSignal(localStorage.getItem("codeoba-search-whole-word") === "true");
-  const [useRegex, setUseRegex] = createSignal(localStorage.getItem("codeoba-search-use-regex") === "true");
-  const [multiline, setMultiline] = createSignal(localStorage.getItem("codeoba-search-multiline") === "true");
+  const [matchCase, setMatchCase] = createSignal(
+    localStorage.getItem("codeoba-search-match-case") === "true"
+  );
+  const [wholeWord, setWholeWord] = createSignal(
+    localStorage.getItem("codeoba-search-whole-word") === "true"
+  );
+  const [useRegex, setUseRegex] = createSignal(
+    localStorage.getItem("codeoba-search-use-regex") === "true"
+  );
+  const [multiline, setMultiline] = createSignal(
+    localStorage.getItem("codeoba-search-multiline") === "true"
+  );
 
   const [groups, setGroups] = createSignal<any[]>([]);
   const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
     localStorage.getItem("codeoba-active-group-filter") || null
   );
-  const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(new Set(
-    JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]")
-  ));
+  const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(
+    new Set(JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]"))
+  );
 
-  const getStoredHsl = (mode: "dark" | "light", prefix: string, defH: number, defS: number, defL: number) => {
-    const h = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-h`) || String(defH), 10);
-    const s = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-s`) || String(defS), 10);
-    const l = parseInt(localStorage.getItem(`codeoba-custom-${mode}-${prefix}-l`) || String(defL), 10);
+  const getStoredHsl = (
+    mode: "dark" | "light",
+    prefix: string,
+    defH: number,
+    defS: number,
+    defL: number
+  ) => {
+    const h = parseInt(
+      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-h`) || String(defH),
+      10
+    );
+    const s = parseInt(
+      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-s`) || String(defS),
+      10
+    );
+    const l = parseInt(
+      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-l`) || String(defL),
+      10
+    );
     return { h, s, l };
   };
 
@@ -279,14 +354,14 @@ function App() {
     bg: getStoredHsl("dark", "bg", 228, 15, 8),
     surface: getStoredHsl("dark", "surface", 228, 15, 11),
     accent1: getStoredHsl("dark", "accent1", 238, 82, 66),
-    accent2: getStoredHsl("dark", "accent2", 244, 79, 58)
+    accent2: getStoredHsl("dark", "accent2", 244, 79, 58),
   });
 
   const [customLightTheme, setCustomLightTheme] = createSignal({
     bg: getStoredHsl("light", "bg", 210, 20, 95),
     surface: getStoredHsl("light", "surface", 210, 20, 98),
     accent1: getStoredHsl("light", "accent1", 238, 82, 66),
-    accent2: getStoredHsl("light", "accent2", 244, 79, 58)
+    accent2: getStoredHsl("light", "accent2", 244, 79, 58),
   });
 
   createEffect(() => {
@@ -413,7 +488,7 @@ function App() {
         description,
         status,
         pastWorkSummary,
-        tasks
+        tasks,
       });
       await loadGroups();
     } catch (err) {
@@ -421,7 +496,10 @@ function App() {
     }
   };
 
-  const handleAssignSessionToGroup = async (sessionId: string, groupName: string): Promise<void> => {
+  const handleAssignSessionToGroup = async (
+    sessionId: string,
+    groupName: string
+  ): Promise<void> => {
     try {
       await invoke("assign_session_to_group", { sessionId, groupName });
       await loadGroups();
@@ -430,7 +508,10 @@ function App() {
     }
   };
 
-  const handleRemoveSessionFromGroup = async (sessionId: string, groupName: string): Promise<void> => {
+  const handleRemoveSessionFromGroup = async (
+    sessionId: string,
+    groupName: string
+  ): Promise<void> => {
     try {
       await invoke("remove_session_from_group", { sessionId, groupName });
       await loadGroups();
@@ -439,7 +520,10 @@ function App() {
     }
   };
 
-  const getSessionIdsForGroupAndDescendants = (groupName: string | null, groupsList: any[]): string[] | null => {
+  const getSessionIdsForGroupAndDescendants = (
+    groupName: string | null,
+    groupsList: any[]
+  ): string[] | null => {
     if (!groupName) return null;
     if (groupName === "_none_") {
       const assigned = new Set<string>();
@@ -450,8 +534,8 @@ function App() {
           }
         }
       }
-      const allSessionIds = sessions().map(s => s.id);
-      return allSessionIds.filter(id => !assigned.has(id));
+      const allSessionIds = sessions().map((s) => s.id);
+      return allSessionIds.filter((id) => !assigned.has(id));
     }
     const ids = new Set<string>();
     const target = groupName.toLowerCase();
@@ -476,8 +560,8 @@ function App() {
       invoke("save_theme_settings", {
         appearance: appearance(),
         darkTheme: darkTheme(),
-        lightTheme: lightTheme()
-      }).catch(err => console.error("Failed to save theme settings to backend config:", err));
+        lightTheme: lightTheme(),
+      }).catch((err) => console.error("Failed to save theme settings to backend config:", err));
 
       const activeTheme = theme();
       if (activeTheme === "custom") {
@@ -487,8 +571,8 @@ function App() {
           mode: isDark ? "dark" : "light",
           h: colors.bg.h,
           s: colors.bg.s,
-          l: colors.bg.l
-        }).catch(err => console.error("Failed to save custom theme bg to backend config:", err));
+          l: colors.bg.l,
+        }).catch((err) => console.error("Failed to save custom theme bg to backend config:", err));
       }
     }, 250);
   };
@@ -520,7 +604,10 @@ function App() {
       document.documentElement.style.setProperty("--accent-hover", accentHoverStr);
       document.documentElement.style.setProperty("--accent-light", accentLightStr);
       document.documentElement.style.setProperty("--text-primary", isDark ? "#f3f4f6" : "#0f172a");
-      document.documentElement.style.setProperty("--text-secondary", isDark ? "#9ca3af" : "#475569");
+      document.documentElement.style.setProperty(
+        "--text-secondary",
+        isDark ? "#9ca3af" : "#475569"
+      );
     } else {
       document.documentElement.style.removeProperty("--background");
       document.documentElement.style.removeProperty("--surface");
@@ -661,21 +748,25 @@ function App() {
       const sessionViewChanged = (a: Session, b: Session): boolean => {
         if (a.turns.length !== b.turns.length) return true;
         for (let i = 0; i < a.turns.length; i++) {
-          if (a.turns[i].turnId !== b.turns[i].turnId
-              || a.turns[i].userMessage !== b.turns[i].userMessage
-              || a.turns[i].assistantMessage !== b.turns[i].assistantMessage) {
+          if (
+            a.turns[i].turnId !== b.turns[i].turnId ||
+            a.turns[i].userMessage !== b.turns[i].userMessage ||
+            a.turns[i].assistantMessage !== b.turns[i].assistantMessage
+          ) {
             return true;
           }
         }
-        return a.status !== b.status
-          || a.isArchived !== b.isArchived
-          || a.isDeleted !== b.isDeleted
-          || a.isPinned !== b.isPinned
-          || a.threadName !== b.threadName
-          || a.workspaceName !== b.workspaceName
-          || a.cwd !== b.cwd
-          || a.updatedAt !== b.updatedAt
-          || JSON.stringify(a.summary ?? null) !== JSON.stringify(b.summary ?? null);
+        return (
+          a.status !== b.status ||
+          a.isArchived !== b.isArchived ||
+          a.isDeleted !== b.isDeleted ||
+          a.isPinned !== b.isPinned ||
+          a.threadName !== b.threadName ||
+          a.workspaceName !== b.workspaceName ||
+          a.cwd !== b.cwd ||
+          a.updatedAt !== b.updatedAt ||
+          JSON.stringify(a.summary ?? null) !== JSON.stringify(b.summary ?? null)
+        );
       };
 
       // Apply all buffered updates/deletes in a single reactive batch. Runs at
@@ -696,7 +787,7 @@ function App() {
         logFE("debug", `Live update flush: ${updates.size} updated, ${deletes.size} deleted`);
 
         batch(() => {
-          setSessions(prev => {
+          setSessions((prev) => {
             const seen = new Set<string>();
             const list: Session[] = [];
             for (const s of prev) {
@@ -725,8 +816,9 @@ function App() {
           if (current) {
             if (deletes.has(current.id)) {
               setSelectedSession(null);
-              invoke("set_selected_session", { sessionId: null })
-                .catch(err => console.error("Failed to clear selected session:", err));
+              invoke("set_selected_session", { sessionId: null }).catch((err) =>
+                console.error("Failed to clear selected session:", err)
+              );
             } else if (full && full.id === current.id && sessionViewChanged(current, full)) {
               setSelectedSession(full);
             }
@@ -762,9 +854,9 @@ function App() {
       unlistenStatus = await listen<Record<string, string>>("session-status-changed", (event) => {
         const statuses = event.payload;
         batch(() => {
-          setSessions(prev => {
+          setSessions((prev) => {
             let changed = false;
-            const next = prev.map(s => {
+            const next = prev.map((s) => {
               const status = statuses[s.id];
               if (status && status !== s.status) {
                 changed = true;
@@ -830,7 +922,7 @@ function App() {
           return;
         }
         logFE("info", `Detected new source installation: ${sourceId}`);
-        setDetectedSources(prev => {
+        setDetectedSources((prev) => {
           if (sourceId in prev) return prev;
           return { ...prev, [sourceId]: true };
         });
@@ -864,7 +956,9 @@ function App() {
           setSidebarCollapsed(false);
         }
         setTimeout(() => {
-          const searchInput = document.getElementById("sidebar-search-input") || document.getElementById("sidebar-search-textarea");
+          const searchInput =
+            document.getElementById("sidebar-search-input") ||
+            document.getElementById("sidebar-search-textarea");
           if (searchInput) {
             (searchInput as HTMLInputElement | HTMLTextAreaElement).focus();
             (searchInput as HTMLInputElement | HTMLTextAreaElement).select();
@@ -897,9 +991,10 @@ function App() {
         logFE("info", "App.tsx: received menu-focus-detail");
         window.focus();
         setTimeout(() => {
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
             container.focus();
           }
@@ -911,7 +1006,7 @@ function App() {
         const items = filteredSessions();
         if (items.length === 0) return;
         const curSelId = selectedSession()?.id;
-        const curIndex = items.findIndex(s => s.id === curSelId);
+        const curIndex = items.findIndex((s) => s.id === curSelId);
         const nextIndex = Math.min(items.length - 1, curIndex + 1);
         if (nextIndex >= 0) {
           handleSelectSession(items[nextIndex]);
@@ -928,7 +1023,7 @@ function App() {
         const items = filteredSessions();
         if (items.length === 0) return;
         const curSelId = selectedSession()?.id;
-        const curIndex = items.findIndex(s => s.id === curSelId);
+        const curIndex = items.findIndex((s) => s.id === curSelId);
         const targetIndex = curIndex === -1 ? 0 : curIndex;
         const prevIndex = Math.max(0, targetIndex - 1);
         if (prevIndex >= 0) {
@@ -968,9 +1063,10 @@ function App() {
         logFE("info", "App.tsx: received menu-scroll-top");
         window.focus();
         setTimeout(() => {
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
             logFE("info", `App.tsx: scroll-top container found (${container.id}). Focus & scroll.`);
             container.focus();
@@ -984,11 +1080,15 @@ function App() {
         logFE("info", "App.tsx: received menu-scroll-bottom");
         window.focus();
         setTimeout(() => {
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
-            logFE("info", `App.tsx: scroll-bottom container found (${container.id}). Focus & scroll.`);
+            logFE(
+              "info",
+              `App.tsx: scroll-bottom container found (${container.id}). Focus & scroll.`
+            );
             container.focus();
             container.scrollTop = container.scrollHeight;
           } else {
@@ -1000,11 +1100,15 @@ function App() {
         logFE("info", "App.tsx: received menu-scroll-page-up");
         window.focus();
         setTimeout(() => {
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
-            logFE("info", `App.tsx: scroll-page-up container found (${container.id}). Focus & scroll.`);
+            logFE(
+              "info",
+              `App.tsx: scroll-page-up container found (${container.id}). Focus & scroll.`
+            );
             container.focus();
             container.scrollTop -= container.clientHeight * 0.85;
           } else {
@@ -1016,11 +1120,15 @@ function App() {
         logFE("info", "App.tsx: received menu-scroll-page-down");
         window.focus();
         setTimeout(() => {
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
-            logFE("info", `App.tsx: scroll-page-down container found (${container.id}). Focus & scroll.`);
+            logFE(
+              "info",
+              `App.tsx: scroll-page-down container found (${container.id}). Focus & scroll.`
+            );
             container.focus();
             container.scrollTop += container.clientHeight * 0.85;
           } else {
@@ -1061,7 +1169,7 @@ function App() {
         const items = filteredSessions();
         if (items.length > 0) {
           const curId = selectedSession()?.id;
-          const curIdx = items.findIndex(s => s.id === curId);
+          const curIdx = items.findIndex((s) => s.id === curId);
           const startIdx = curIdx === -1 ? 0 : curIdx;
           const prevIdx = Math.max(0, startIdx - 8);
           handleSelectSession(items[prevIdx]);
@@ -1078,7 +1186,7 @@ function App() {
         const items = filteredSessions();
         if (items.length > 0) {
           const curId = selectedSession()?.id;
-          const curIdx = items.findIndex(s => s.id === curId);
+          const curIdx = items.findIndex((s) => s.id === curId);
           const nextIdx = Math.min(items.length - 1, curIdx + 8);
           handleSelectSession(items[nextIdx]);
           setTimeout(() => {
@@ -1095,7 +1203,7 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
       const isMac = navigator.userAgent.includes("Mac");
-      
+
       if (isCmdOrCtrl && e.key.toLowerCase() === "r") {
         e.preventDefault();
         const bypassCache = e.shiftKey;
@@ -1110,7 +1218,9 @@ function App() {
           setSidebarCollapsed(false);
         }
         setTimeout(() => {
-          const searchInput = document.getElementById("sidebar-search-input") || document.getElementById("sidebar-search-textarea");
+          const searchInput =
+            document.getElementById("sidebar-search-input") ||
+            document.getElementById("sidebar-search-textarea");
           if (searchInput) {
             (searchInput as HTMLInputElement | HTMLTextAreaElement).focus();
             (searchInput as HTMLInputElement | HTMLTextAreaElement).select();
@@ -1133,9 +1243,10 @@ function App() {
       }
 
       // Ctrl/Cmd-Shift-H, Ctrl/Cmd-0 or Alt-Home -> Go Home
-      const isGoHomeKey = (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === "h") ||
-                           (isCmdOrCtrl && e.key === "0") ||
-                           (e.altKey && e.key === "Home");
+      const isGoHomeKey =
+        (isCmdOrCtrl && e.shiftKey && e.key.toLowerCase() === "h") ||
+        (isCmdOrCtrl && e.key === "0") ||
+        (e.altKey && e.key === "Home");
       if (isGoHomeKey) {
         e.preventDefault();
         handleGoHome();
@@ -1166,9 +1277,10 @@ function App() {
       // Ctrl/Cmd-2 -> Focus Detail Pane / Dashboard / Group details
       if (isCmdOrCtrl && e.key === "2") {
         e.preventDefault();
-        const container = document.getElementById("detail-pane-scroll-container") ||
-                          document.getElementById("dashboard-scroll-container") ||
-                          document.getElementById("group-details-scroll-container");
+        const container =
+          document.getElementById("detail-pane-scroll-container") ||
+          document.getElementById("dashboard-scroll-container") ||
+          document.getElementById("group-details-scroll-container");
         if (container) {
           logFE("info", `App.tsx: focusing detail/overview pane (${container.id}) via CmdOrCtrl+2`);
           container.focus();
@@ -1178,11 +1290,12 @@ function App() {
       // ArrowLeft key pressed on detail/overview pane -> Focus Sidebar
       if (e.key === "ArrowLeft") {
         const active = document.activeElement;
-        if (active && (
-          active.id === "detail-pane-scroll-container" || 
-          active.id === "dashboard-scroll-container" || 
-          active.id === "group-details-scroll-container"
-        )) {
+        if (
+          active &&
+          (active.id === "detail-pane-scroll-container" ||
+            active.id === "dashboard-scroll-container" ||
+            active.id === "group-details-scroll-container")
+        ) {
           e.preventDefault();
           const sidebar = document.getElementById("sidebar-scroll-container");
           if (sidebar) {
@@ -1197,11 +1310,15 @@ function App() {
         const active = document.activeElement;
         if (active && active.id === "sidebar-scroll-container") {
           e.preventDefault();
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           if (container) {
-            logFE("info", `App.tsx: ArrowRight swaps focus to detail/overview pane (${container.id})`);
+            logFE(
+              "info",
+              `App.tsx: ArrowRight swaps focus to detail/overview pane (${container.id})`
+            );
             container.focus();
           }
         }
@@ -1209,14 +1326,20 @@ function App() {
 
       // Shift+Ctrl+Up/Down (macOS) or Ctrl+Up/Down (Windows) -> Highlight Prev/Next Session globally
       const isSidebarFocused = document.activeElement?.id === "sidebar-scroll-container";
-      const isHighlightPrev = (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowUp") ||
-                              (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowUp");
-      const isHighlightNext = (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowDown") ||
-                              (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowDown");
+      const isHighlightPrev =
+        (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowUp") ||
+        (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowUp");
+      const isHighlightNext =
+        (isMac && e.ctrlKey && e.shiftKey && e.key === "ArrowDown") ||
+        (!isMac && e.ctrlKey && !e.shiftKey && e.key === "ArrowDown");
 
       if (isHighlightPrev && !isSidebarFocused) {
         const active = document.activeElement;
-        const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.getAttribute("contenteditable") === "true");
+        const isInput =
+          active &&
+          (active.tagName === "INPUT" ||
+            active.tagName === "TEXTAREA" ||
+            active.getAttribute("contenteditable") === "true");
         if (!isInput) {
           e.preventDefault();
           logFE("info", "App.tsx: global highlight prev triggered");
@@ -1229,7 +1352,11 @@ function App() {
 
       if (isHighlightNext && !isSidebarFocused) {
         const active = document.activeElement;
-        const isInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.getAttribute("contenteditable") === "true");
+        const isInput =
+          active &&
+          (active.tagName === "INPUT" ||
+            active.tagName === "TEXTAREA" ||
+            active.getAttribute("contenteditable") === "true");
         if (!isInput) {
           e.preventDefault();
           logFE("info", "App.tsx: global highlight next triggered");
@@ -1260,44 +1387,46 @@ function App() {
     };
     window.addEventListener("focusin", handleFocusIn);
 
-    runWithOwner(owner, () => onCleanup(() => {
-      if (flushHandle !== null) cancelAnimationFrame(flushHandle);
-      if (unlistenSession) unlistenSession();
-      if (unlistenSessionFull) unlistenSessionFull();
-      if (unlistenStatus) unlistenStatus();
-      if (unlistenDeleted) unlistenDeleted();
-      if (unlistenProgress) unlistenProgress();
-      if (unlistenDetectedSource) unlistenDetectedSource();
-      if (unlistenMenuSettings) unlistenMenuSettings();
-      if (unlistenMenuLicenses) unlistenMenuLicenses();
-      if (unlistenMenuPrivacy) unlistenMenuPrivacy();
-      if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
-      if (unlistenMenuRebuild) unlistenMenuRebuild();
-      if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
-      if (unlistenMenuFindDetail) unlistenMenuFindDetail();
-      if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
-      if (unlistenMenuGoHome) unlistenMenuGoHome();
-      if (unlistenMenuNavBack) unlistenMenuNavBack();
-      if (unlistenMenuNavForward) unlistenMenuNavForward();
-      if (unlistenMenuFeedback) unlistenMenuFeedback();
-      if (unlistenMenuScrollTop) unlistenMenuScrollTop();
-      if (unlistenMenuScrollBottom) unlistenMenuScrollBottom();
-      if (unlistenMenuScrollPageUp) unlistenMenuScrollPageUp();
-      if (unlistenMenuScrollPageDown) unlistenMenuScrollPageDown();
-      if (unlistenMenuSidebarScrollTop) unlistenMenuSidebarScrollTop();
-      if (unlistenMenuSidebarScrollBottom) unlistenMenuSidebarScrollBottom();
-      if (unlistenMenuSidebarScrollPageUp) unlistenMenuSidebarScrollPageUp();
-      if (unlistenMenuSidebarScrollPageDown) unlistenMenuSidebarScrollPageDown();
-      if (unlistenMenuFocusSidebar) unlistenMenuFocusSidebar();
-      if (unlistenMenuFocusDetail) unlistenMenuFocusDetail();
-      if (unlistenMenuGoNextSession) unlistenMenuGoNextSession();
-      if (unlistenMenuGoPrevSession) unlistenMenuGoPrevSession();
-      if (unlistenMenuGoHighlightNext) unlistenMenuGoHighlightNext();
-      if (unlistenMenuGoHighlightPrev) unlistenMenuGoHighlightPrev();
-      if (unlistenMenuGoSelectHighlighted) unlistenMenuGoSelectHighlighted();
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("focusin", handleFocusIn);
-    }));
+    runWithOwner(owner, () =>
+      onCleanup(() => {
+        if (flushHandle !== null) cancelAnimationFrame(flushHandle);
+        if (unlistenSession) unlistenSession();
+        if (unlistenSessionFull) unlistenSessionFull();
+        if (unlistenStatus) unlistenStatus();
+        if (unlistenDeleted) unlistenDeleted();
+        if (unlistenProgress) unlistenProgress();
+        if (unlistenDetectedSource) unlistenDetectedSource();
+        if (unlistenMenuSettings) unlistenMenuSettings();
+        if (unlistenMenuLicenses) unlistenMenuLicenses();
+        if (unlistenMenuPrivacy) unlistenMenuPrivacy();
+        if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
+        if (unlistenMenuRebuild) unlistenMenuRebuild();
+        if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
+        if (unlistenMenuFindDetail) unlistenMenuFindDetail();
+        if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
+        if (unlistenMenuGoHome) unlistenMenuGoHome();
+        if (unlistenMenuNavBack) unlistenMenuNavBack();
+        if (unlistenMenuNavForward) unlistenMenuNavForward();
+        if (unlistenMenuFeedback) unlistenMenuFeedback();
+        if (unlistenMenuScrollTop) unlistenMenuScrollTop();
+        if (unlistenMenuScrollBottom) unlistenMenuScrollBottom();
+        if (unlistenMenuScrollPageUp) unlistenMenuScrollPageUp();
+        if (unlistenMenuScrollPageDown) unlistenMenuScrollPageDown();
+        if (unlistenMenuSidebarScrollTop) unlistenMenuSidebarScrollTop();
+        if (unlistenMenuSidebarScrollBottom) unlistenMenuSidebarScrollBottom();
+        if (unlistenMenuSidebarScrollPageUp) unlistenMenuSidebarScrollPageUp();
+        if (unlistenMenuSidebarScrollPageDown) unlistenMenuSidebarScrollPageDown();
+        if (unlistenMenuFocusSidebar) unlistenMenuFocusSidebar();
+        if (unlistenMenuFocusDetail) unlistenMenuFocusDetail();
+        if (unlistenMenuGoNextSession) unlistenMenuGoNextSession();
+        if (unlistenMenuGoPrevSession) unlistenMenuGoPrevSession();
+        if (unlistenMenuGoHighlightNext) unlistenMenuGoHighlightNext();
+        if (unlistenMenuGoHighlightPrev) unlistenMenuGoHighlightPrev();
+        if (unlistenMenuGoSelectHighlighted) unlistenMenuGoSelectHighlighted();
+        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("focusin", handleFocusIn);
+      })
+    );
 
     try {
       setIsLoading(true);
@@ -1323,13 +1452,13 @@ function App() {
 
       const list = await invoke<Session[]>("get_all_sessions");
       setSessions(list);
-      
+
       setErrorMsg(null);
 
       // Restore last selected session if present
       const lastSessionId = localStorage.getItem("codeoba-last-selected-session-id");
       if (lastSessionId) {
-        const found = list.find(s => s.id === lastSessionId);
+        const found = list.find((s) => s.id === lastSessionId);
         if (found) {
           logFE("info", `App.tsx: restoring last selected session: ${lastSessionId}`);
           await handleSelectSession(found);
@@ -1344,9 +1473,10 @@ function App() {
           document.getElementById("sidebar-scroll-container")?.focus();
         } else if (lastFocusedPane === "detailpane") {
           logFE("info", "App.tsx: restoring last focused pane to detail/overview pane");
-          const container = document.getElementById("detail-pane-scroll-container") ||
-                            document.getElementById("dashboard-scroll-container") ||
-                            document.getElementById("group-details-scroll-container");
+          const container =
+            document.getElementById("detail-pane-scroll-container") ||
+            document.getElementById("dashboard-scroll-container") ||
+            document.getElementById("group-details-scroll-container");
           container?.focus();
         }
       }, 150);
@@ -1360,7 +1490,7 @@ function App() {
             setIsRebuilding(false);
             // Wait 4 seconds then clear
             setTimeout(() => {
-              setIndexingProgress(current => {
+              setIndexingProgress((current) => {
                 if (current && current.step === "complete") {
                   return null;
                 }
@@ -1410,8 +1540,9 @@ function App() {
 
   createEffect(() => {
     const paneName = selectedSession() ? "Detail Pane" : "Dashboard";
-    invoke("update_scroll_menu_labels", { paneName })
-      .catch(err => console.error("Failed to update scroll menu labels:", err));
+    invoke("update_scroll_menu_labels", { paneName }).catch((err) =>
+      console.error("Failed to update scroll menu labels:", err)
+    );
   });
 
   const handleStartUpdate = async () => {
@@ -1424,10 +1555,10 @@ function App() {
 
     try {
       logFE("info", `Starting download and installation for v${update.version}...`);
-      
+
       let downloaded = 0;
       let contentLength = 0;
-      
+
       await update.downloadAndInstall((event: any) => {
         switch (event.event) {
           case "Started":
@@ -1478,11 +1609,7 @@ function App() {
     onCleanup(() => clearTimeout(delayDebounce));
   });
 
-  const performSearch = async (
-    query: string,
-    sem: boolean,
-    thresh: number
-  ) => {
+  const performSearch = async (query: string, sem: boolean, thresh: number) => {
     try {
       setErrorMsg(null);
       const filter = {
@@ -1497,14 +1624,14 @@ function App() {
         wholeWord: wholeWord(),
         useRegex: useRegex(),
         archivalFilter: "all",
-        sessionIds: getSessionIdsForGroupAndDescendants(activeGroupFilter(), groups())
+        sessionIds: getSessionIdsForGroupAndDescendants(activeGroupFilter(), groups()),
       };
 
       const results = await invoke<SearchResult[]>("search_sessions", {
         query,
         filter,
         useSemantic: sem,
-        similarityThreshold: thresh
+        similarityThreshold: thresh,
       });
       setSearchResults(results);
     } catch (err: any) {
@@ -1527,7 +1654,10 @@ function App() {
     setSelectedSources(next);
   };
 
-  const handleRebuildIndex = async (bypassCache: boolean | any = false, isStartup: boolean = false) => {
+  const handleRebuildIndex = async (
+    bypassCache: boolean | any = false,
+    isStartup: boolean = false
+  ) => {
     const shouldBypass = bypassCache === true;
     try {
       setIsRebuilding(true);
@@ -1544,7 +1674,7 @@ function App() {
     try {
       const list = await invoke<Session[]>("get_all_sessions");
       setSessions(list);
-      
+
       const query = searchQuery();
       if (query.trim() !== "") {
         performSearch(query, isSemantic(), similarityThreshold());
@@ -1567,12 +1697,13 @@ function App() {
 
     // Register the selection before fetching, so any live update that lands while
     // the session is loading already arrives on the full-turn channel.
-    invoke("set_selected_session", { sessionId: session.id })
-      .catch(err => console.error("Failed to register selected session:", err));
+    invoke("set_selected_session", { sessionId: session.id }).catch((err) =>
+      console.error("Failed to register selected session:", err)
+    );
 
     const start = performance.now();
     (window as any).sessionSelectionStart = start;
-    logFE("info", `Selecting session: ${session.id} (${session.threadName || 'Untitled'})`);
+    logFE("info", `Selecting session: ${session.id} (${session.threadName || "Untitled"})`);
     setLoadTime(t("common.loading"));
     setLoadingSessionId(session.id);
     try {
@@ -1585,12 +1716,15 @@ function App() {
 
       if (fullSession) {
         setSelectedSession(fullSession);
-        
+
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             const paintTime = performance.now() - start;
             const msg = `${paintTime.toFixed(0)}ms (fetch: ${fetchTime.toFixed(0)}ms, render: ${(paintTime - fetchTime).toFixed(0)}ms)`;
-            logFE("info", `Rendered and painted session ${session.id} in ${paintTime.toFixed(1)}ms total. Detail metrics: ${msg}`);
+            logFE(
+              "info",
+              `Rendered and painted session ${session.id} in ${paintTime.toFixed(1)}ms total. Detail metrics: ${msg}`
+            );
             setLoadTime(msg);
             setLoadingSessionId(null);
           });
@@ -1609,8 +1743,9 @@ function App() {
 
   const handleGoHome = (skipHistory = false) => {
     localStorage.removeItem("codeoba-last-selected-session-id");
-    invoke("set_selected_session", { sessionId: null })
-      .catch(err => console.error("Failed to clear selected session:", err));
+    invoke("set_selected_session", { sessionId: null }).catch((err) =>
+      console.error("Failed to clear selected session:", err)
+    );
     if (!skipHistory) {
       const history = [...navHistory().slice(0, historyIndex() + 1)];
       if (history[history.length - 1] !== "dashboard") {
@@ -1630,8 +1765,9 @@ function App() {
       if (target === "dashboard") {
         handleGoHome(true);
       } else {
-        const found = sessions().find(s => s.id === target) || 
-                      (searchResults()?.find(r => r.session.id === target)?.session);
+        const found =
+          sessions().find((s) => s.id === target) ||
+          searchResults()?.find((r) => r.session.id === target)?.session;
         if (found) {
           handleSelectSession(found, true);
         } else {
@@ -1649,8 +1785,9 @@ function App() {
       if (target === "dashboard") {
         handleGoHome(true);
       } else {
-        const found = sessions().find(s => s.id === target) || 
-                      (searchResults()?.find(r => r.session.id === target)?.session);
+        const found =
+          sessions().find((s) => s.id === target) ||
+          searchResults()?.find((r) => r.session.id === target)?.session;
         if (found) {
           handleSelectSession(found, true);
         } else {
@@ -1663,33 +1800,35 @@ function App() {
   const filteredSessions = createMemo(() => {
     const exclusions = excludedPaths()
       .split(/[,\n]/)
-      .map(p => p.trim().toLowerCase())
+      .map((p) => p.trim().toLowerCase())
       .filter(Boolean);
 
     const isExcluded = (filePath?: string | null) => {
       if (!filePath) return false;
       const pathLower = filePath.toLowerCase();
-      return exclusions.some(pattern => pathLower.includes(pattern));
+      return exclusions.some((pattern) => pathLower.includes(pattern));
     };
 
     if (searchResults() !== null) {
       return searchResults()!
-        .filter(r => {
+        .filter((r) => {
           // Source filter
           if (selectedSources().size > 0 && !selectedSources().has(r.session.sourceId)) {
             return false;
           }
           // Archival filter
-          if (archivalFilter() === "active" && (r.session.isArchived || r.session.isDeleted)) return false;
-          if (archivalFilter() === "archived" && (!r.session.isArchived || r.session.isDeleted)) return false;
+          if (archivalFilter() === "active" && (r.session.isArchived || r.session.isDeleted))
+            return false;
+          if (archivalFilter() === "archived" && (!r.session.isArchived || r.session.isDeleted))
+            return false;
           if (archivalFilter() === "deleted" && !r.session.isDeleted) return false;
           // Excluded paths filter
           if (isExcluded(r.session.filePath)) return false;
           return true;
         })
-        .map(r => r.session);
+        .map((r) => r.session);
     }
-    return sessions().filter(s => {
+    return sessions().filter((s) => {
       // Source filter
       if (selectedSources().size > 0 && !selectedSources().has(s.sourceId)) {
         return false;
@@ -1716,21 +1855,21 @@ function App() {
   };
 
   const getSourceDisplayNameById = (id: string) => {
-    const found = sources().find(s => s.id === id);
+    const found = sources().find((s) => s.id === id);
     return found ? found.displayName : id;
   };
 
   const handleToggleDetectedSource = (sourceId: string) => {
-    setDetectedSources(prev => ({
+    setDetectedSources((prev) => ({
       ...prev,
-      [sourceId]: !prev[sourceId]
+      [sourceId]: !prev[sourceId],
     }));
   };
 
   const handleSaveDetectedSources = async () => {
     const list = Object.entries(detectedSources());
     setDetectedSources({});
-    
+
     let hasAnyAllowed = false;
     for (const [sourceId, allowed] of list) {
       const decision = allowed ? "allow" : "deny";
@@ -1741,7 +1880,9 @@ function App() {
         await invoke("save_source_decision", { sourceId, decision });
         logFE("info", `User prompt response: ${sourceId} set to ${decision}`);
 
-        const currentDecisions = JSON.parse(localStorage.getItem("codeoba-source-decisions") || "{}");
+        const currentDecisions = JSON.parse(
+          localStorage.getItem("codeoba-source-decisions") || "{}"
+        );
         currentDecisions[sourceId] = decision;
         localStorage.setItem("codeoba-source-decisions", JSON.stringify(currentDecisions));
       } catch (err: any) {
@@ -1759,7 +1900,10 @@ function App() {
 
   const handleIgnoreAllDetectedSources = () => {
     setDetectedSources({});
-    logFE("info", "User postponed setup (Configure Later chosen). Prompts dismissed for this session.");
+    logFE(
+      "info",
+      "User postponed setup (Configure Later chosen). Prompts dismissed for this session."
+    );
   };
 
   return (
@@ -1785,10 +1929,10 @@ function App() {
       />
 
       {/* Main Grid: Sidebar + Detail Pane */}
-      <div 
+      <div
         class="flex w-full h-full min-h-0 min-w-0"
         style={{
-          "padding-top": "var(--sk-header-height, 48px)"
+          "padding-top": "var(--sk-header-height, 48px)",
         }}
       >
         <Sidebar
@@ -1843,7 +1987,7 @@ function App() {
             <div class="bg-red-500/10 border-b border-red-500/20 px-6 py-2.5 flex items-center gap-2 text-xs text-red-400 flex-shrink-0 animate-in fade-in slide-in-from-top-1 duration-150">
               <AlertCircle class="w-4 h-4 flex-shrink-0" />
               <span class="truncate">{errorMsg()}</span>
-              <button 
+              <button
                 onClick={() => setErrorMsg(null)}
                 class="ml-auto hover:text-white font-medium cursor-pointer"
               >
@@ -1852,8 +1996,8 @@ function App() {
             </div>
           </Show>
 
-          <Show 
-            when={!isLoading()} 
+          <Show
+            when={!isLoading()}
             fallback={
               <div class="flex-grow flex flex-col items-center justify-center text-text-secondary select-none animate-pulse">
                 <Layers class="w-12 h-12 text-border animate-bounce mb-3" />
@@ -1861,12 +2005,14 @@ function App() {
               </div>
             }
           >
-            <Show 
-              when={selectedSession()} 
+            <Show
+              when={selectedSession()}
               fallback={
-                <Show 
-                  when={activeGroupFilter()} 
-                  fallback={<Dashboard sessions={filteredSessions()} numberFormat={numberFormat()} />}
+                <Show
+                  when={activeGroupFilter()}
+                  fallback={
+                    <Dashboard sessions={filteredSessions()} numberFormat={numberFormat()} />
+                  }
                 >
                   <GroupDetailsView
                     groupName={activeGroupFilter()!}
@@ -1920,13 +2066,17 @@ function App() {
         appearance={appearance()}
         onAppearanceChange={setAppearance}
         customTheme={activeColorMode() === "dark" ? customDarkTheme() : customLightTheme()}
-        onCustomThemeChange={activeColorMode() === "dark" ? setCustomDarkTheme : setCustomLightTheme}
+        onCustomThemeChange={
+          activeColorMode() === "dark" ? setCustomDarkTheme : setCustomLightTheme
+        }
         sources={sources()}
         onRefreshSources={async () => {
           const metadata = await invoke<SourceMetadata[]>("get_sources");
           setSources(metadata);
           try {
-            const val = await invoke<string | null>("get_credential", { key: "prune_deleted_sessions" });
+            const val = await invoke<string | null>("get_credential", {
+              key: "prune_deleted_sessions",
+            });
             setPruneDeleted(val === "true");
           } catch (err) {
             console.error("Failed to load prune_deleted_sessions setting:", err);
@@ -1957,10 +2107,7 @@ function App() {
       <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
 
       {/* GDPR/CCPA Consent Modal */}
-      <ConsentModal
-        isOpen={showConsentModal()}
-        onDecision={handleConsentDecision}
-      />
+      <ConsentModal isOpen={showConsentModal()} onDecision={handleConsentDecision} />
 
       {/* Update Modal Overlay */}
       <UpdateModal
@@ -1999,17 +2146,10 @@ function App() {
       />
 
       {/* Licenses Modal */}
-      <LicensesDialog
-        isOpen={showLicenses()}
-        onClose={() => setShowLicenses(false)}
-      />
+      <LicensesDialog isOpen={showLicenses()} onClose={() => setShowLicenses(false)} />
 
       {/* Privacy Modal */}
-      <PrivacyDialog
-        isOpen={showPrivacy()}
-        onClose={() => setShowPrivacy(false)}
-      />
-
+      <PrivacyDialog isOpen={showPrivacy()} onClose={() => setShowPrivacy(false)} />
     </div>
   );
 }

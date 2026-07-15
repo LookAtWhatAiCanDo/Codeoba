@@ -16,8 +16,22 @@ import nl from "./locales/nl.json";
 import ar from "./locales/ar.json";
 import ru from "./locales/ru.json";
 
-export const LOCALES = ["en", "ar", "de", "es", "fr", "it", "ja", "ko", "nl", "pt", "ru", "zh", "zh-TW"] as const;
-export type Locale = typeof LOCALES[number];
+export const LOCALES = [
+  "en",
+  "ar",
+  "de",
+  "es",
+  "fr",
+  "it",
+  "ja",
+  "ko",
+  "nl",
+  "pt",
+  "ru",
+  "zh",
+  "zh-TW",
+] as const;
+export type Locale = (typeof LOCALES)[number];
 
 export const LOCALE_NAMES: Record<Locale, string> = {
   en: "English",
@@ -32,11 +46,23 @@ export const LOCALE_NAMES: Record<Locale, string> = {
   pt: "Português",
   ru: "Русский",
   zh: "简体中文",
-  "zh-TW": "繁體中文"
+  "zh-TW": "繁體中文",
 };
 
 const DICTIONARIES: Record<Locale, any> = {
-  en, ar, de, es, fr, it, ja, ko, nl, pt, ru, zh, "zh-TW": zhTW
+  en,
+  ar,
+  de,
+  es,
+  fr,
+  it,
+  ja,
+  ko,
+  nl,
+  pt,
+  ru,
+  zh,
+  "zh-TW": zhTW,
 };
 
 function detectSystemLanguage(): Locale {
@@ -100,7 +126,7 @@ export function I18nProvider(props: { children: JSX.Element }) {
     localStorage.setItem("codeoba-language", current);
 
     // Save language to backend fallback config and reload menu bar in real-time
-    invoke("save_language_setting", { lang: current }).catch(err => {
+    invoke("save_language_setting", { lang: current }).catch((err) => {
       console.error("Failed to save language setting to backend:", err);
     });
   });
@@ -124,7 +150,7 @@ export function I18nProvider(props: { children: JSX.Element }) {
   const t = (key: string, params?: Record<string, string | number>): string => {
     const dict = DICTIONARIES[locale()] || en;
     let val = getNestedValue(dict, key);
-    
+
     // Fallback to English dictionary if key is missing in active locale
     if (val === key && locale() !== "en") {
       val = getNestedValue(en, key);
@@ -144,9 +170,7 @@ export function I18nProvider(props: { children: JSX.Element }) {
   };
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t }}>
-      {props.children}
-    </I18nContext.Provider>
+    <I18nContext.Provider value={{ locale, setLocale, t }}>{props.children}</I18nContext.Provider>
   );
 }
 
