@@ -1338,11 +1338,7 @@ impl SourceAdapter for AntigravitySource {
                         clean_content = caps[1].trim().to_string();
                     }
                     clean_content = clean(&clean_content);
-                    let text_to_push = if clean_content.is_empty() {
-                        "[Compacted Request]".to_string()
-                    } else {
-                        clean_content
-                    };
+                    let text_to_push = clean_content;
                     events.push(Event {
                         is_user: true,
                         text: text_to_push,
@@ -1381,11 +1377,7 @@ impl SourceAdapter for AntigravitySource {
                     }
 
                     let clean_content = escape_tool_tags(&clean(content));
-                    let text_to_push = if clean_content.is_empty() {
-                        "[Compacted Response]".to_string()
-                    } else {
-                        clean_content
-                    };
+                    let text_to_push = clean_content;
                     events.push(Event {
                         is_user: false,
                         text: text_to_push,
