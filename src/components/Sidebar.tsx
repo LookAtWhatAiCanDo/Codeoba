@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ChevronDown,
   Folder,
+  FolderOpen,
   Layers,
   Activity,
   ExternalLink,
@@ -1642,17 +1643,16 @@ export const Sidebar = (props: SidebarProps) => {
                           onClick={async () => {
                             setContextMenu(null);
                             try {
-                              await invoke("open_file_externally", {
-                                rawPath: session().filePath,
-                                sessionCwd: session().cwd || null
+                              await invoke("reveal_in_folder", {
+                                path: session().filePath
                               });
                             } catch (e) {
-                              console.error("Failed to open file externally", e);
+                              console.error("Failed to reveal session file in folder", e);
                             }
                           }}
                         >
-                          <HelpCircle class="w-3.5 h-3.5" />
-                          <span>{t("groups.openSessionFile")}</span>
+                          <FolderOpen class="w-3.5 h-3.5" />
+                          <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showSessionInFinder") : t("detailPane.showSessionInFolder")}</span>
                         </button>
                         
                         <button
@@ -1678,6 +1678,36 @@ export const Sidebar = (props: SidebarProps) => {
                           <span>{t("detailPane.copyTitle")}</span>
                         </button>
                         
+                        <button
+                          class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                          onClick={() => {
+                            navigator.clipboard.writeText(session().filePath);
+                            setContextMenu(null);
+                          }}
+                        >
+                          <ExternalLink class="w-3.5 h-3.5" />
+                          <span>{t("detailPane.copySessionPath")}</span>
+                        </button>
+
+                        <Show when={session().cwd}>
+                          <button
+                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                            onClick={async () => {
+                              setContextMenu(null);
+                              try {
+                                await invoke("reveal_in_folder", {
+                                  path: session().cwd!
+                                });
+                              } catch (e) {
+                                console.error("Failed to reveal workspace in folder", e);
+                              }
+                            }}
+                          >
+                            <FolderOpen class="w-3.5 h-3.5" />
+                            <span>{navigator.userAgent.includes("Mac") ? t("detailPane.showWorkspaceInFinder") : t("detailPane.showWorkspaceInFolder")}</span>
+                          </button>
+                        </Show>
+
                         <Show when={session().cwd}>
                           <button
                             class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
@@ -1690,17 +1720,6 @@ export const Sidebar = (props: SidebarProps) => {
                             <span>{t("detailPane.copyWorkspacePath")}</span>
                           </button>
                         </Show>
-
-                        <button
-                          class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
-                          onClick={() => {
-                            navigator.clipboard.writeText(session().filePath);
-                            setContextMenu(null);
-                          }}
-                        >
-                          <ExternalLink class="w-3.5 h-3.5" />
-                          <span>{t("detailPane.copySessionPath")}</span>
-                        </button>
                         
                         <div class="border-t border-border/60 my-1" />
                         <div class="px-3 py-1 text-[0.625rem] font-semibold text-text-secondary uppercase tracking-wider">

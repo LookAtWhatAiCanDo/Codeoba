@@ -325,6 +325,7 @@ pub fn run() {
             commands::resolve_and_read_file,
             commands::read_session_image,
             commands::reveal_image_in_folder,
+            commands::reveal_in_folder,
             commands::open_external_url,
             commands::save_file_permission,
             commands::get_all_permissions,

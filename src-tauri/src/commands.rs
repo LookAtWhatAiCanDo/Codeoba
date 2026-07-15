@@ -1284,43 +1284,75 @@ pub fn read_session_image(path: String) -> Result<String, AppErrorPayload> {
     Ok(format!("data:{};base64,{}", mime, b64))
 }
 
-#[tauri::command]
-pub fn reveal_image_in_folder(path: String) -> Result<(), AppErrorPayload> {
-    let path_buf = PathBuf::from(&path);
-    validate_image_path(&path_buf)
-        .map_err(|e| AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, e))?;
-
+fn reveal_path_in_system_explorer<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    path_buf: &Path,
+) -> Result<(), AppErrorPayload> {
     if !path_buf.exists() {
         return Err(AppErrorPayload::with_msg(
             ERR_FILE_READ_FAILED,
-            "File does not exist",
+            "File or folder does not exist",
         ));
     }
 
+    let path_str = path_buf.to_string_lossy().to_string();
+
     #[cfg(target_os = "macos")]
     {
-        let _ = std::process::Command::new("open")
-            .arg("-R")
-            .arg(&path)
-            .spawn();
+        if path_buf.is_dir() {
+            let _ = app.opener().open_path(path_str, None::<&str>);
+        } else {
+            let _ = std::process::Command::new("open")
+                .arg("-R")
+                .arg(&path_str)
+                .spawn();
+        }
     }
 
     #[cfg(target_os = "windows")]
     {
-        let win_path = path.replace('/', "\\");
-        let _ = std::process::Command::new("explorer.exe")
-            .arg(format!("/select,\"{}\"", win_path))
-            .spawn();
+        if path_buf.is_dir() {
+            let _ = app.opener().open_path(path_str, None::<&str>);
+        } else {
+            let win_path = path_str.replace('/', "\\");
+            let _ = std::process::Command::new("explorer.exe")
+                .arg(format!("/select,\"{}\"", win_path))
+                .spawn();
+        }
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        if let Some(parent) = path_buf.parent() {
-            let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
+        if path_buf.is_dir() {
+            let _ = app.opener().open_path(path_str, None::<&str>);
+        } else {
+            if let Some(parent) = path_buf.parent() {
+                let _ = std::process::Command::new("xdg-open").arg(parent).spawn();
+            }
         }
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn reveal_image_in_folder<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    path: String,
+) -> Result<(), AppErrorPayload> {
+    let path_buf = PathBuf::from(&path);
+    validate_image_path(&path_buf)
+        .map_err(|e| AppErrorPayload::with_msg(ERR_PERMISSION_DENIED, e))?;
+
+    reveal_path_in_system_explorer(&app, &path_buf)
+}
+
+#[tauri::command]
+pub fn reveal_in_folder<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    path: String,
+) -> Result<(), AppErrorPayload> {
+    reveal_path_in_system_explorer(&app, Path::new(&path))
 }
 
 #[tauri::command]
