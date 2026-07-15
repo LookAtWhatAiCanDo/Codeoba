@@ -1,13 +1,32 @@
-import { createSignal, createMemo, For, Show } from "solid-js";
+import { createSignal, createMemo, createEffect, For, Show, Switch, Match } from "solid-js";
 import { useI18n } from "../i18n/i18n";
-import { formatNumberWithSetting } from "../utils/format";
-import { Folder, MessageSquare, Clock, Cpu, Settings, RefreshCw, Bolt, Layers } from "lucide-solid";
+import {
+  formatNumberWithSetting,
+  formatDateWithSetting,
+  formatTimeWithSetting,
+} from "../utils/format";
+import {
+  Folder,
+  MessageSquare,
+  Clock,
+  Cpu,
+  Settings,
+  RefreshCw,
+  Bolt,
+  Layers,
+} from "lucide-solid";
 import { getSessionComputeTimeMs, formatSpeed, formatDuration } from "./Sidebar";
-import { Session } from "../types";
+import { Session, DashboardTab } from "../types";
 
 interface DashboardProps {
   sessions: Session[];
   numberFormat?: string;
+  dateFormat?: string;
+  timeFormat?: string;
+  showSeconds?: boolean;
+  activeTab?: DashboardTab;
+  onActiveTabChange?: (tab: DashboardTab) => void;
+  onSelectSession?: (session: Session) => void;
 }
 
 interface ModelItemStats {
@@ -22,7 +41,39 @@ type SortDimension = "turns" | "tokens" | "speed" | "duration" | "name";
 
 export const Dashboard = (props: DashboardProps) => {
   const { t, locale } = useI18n();
-  const [activeTab, setActiveTab] = createSignal<"global" | "groups">("global");
+  const [localActiveTab, setLocalActiveTab] = createSignal<DashboardTab>(DashboardTab.Global);
+  const activeTab = () => props.activeTab || localActiveTab();
+  const setActiveTab = (tab: DashboardTab) => {
+    if (props.onActiveTabChange) {
+      props.onActiveTabChange(tab);
+    } else {
+      setLocalActiveTab(tab);
+    }
+  };
+
+  const formatGeneratedTime = (timestamp?: number) => {
+    if (!timestamp) return "";
+    const dateObj = new Date(timestamp);
+    const now = new Date();
+
+    const isToday =
+      dateObj.getDate() === now.getDate() &&
+      dateObj.getMonth() === now.getMonth() &&
+      dateObj.getFullYear() === now.getFullYear();
+
+    const df = props.dateFormat || "system";
+    const tf = props.timeFormat || "system";
+    const sec = props.showSeconds || false;
+
+    const timeStr = formatTimeWithSetting(dateObj, tf, sec, locale());
+
+    if (isToday) {
+      return timeStr;
+    }
+
+    const dateStr = formatDateWithSetting(dateObj, df, locale());
+    return `${dateStr} ${timeStr}`;
+  };
   const [sortBy, setSortBy] = createSignal<SortDimension>("turns");
   const [sortAscending, setSortAscending] = createSignal(false);
 
@@ -233,33 +284,196 @@ export const Dashboard = (props: DashboardProps) => {
       <div class="pointer-events-none absolute inset-0 border-2 border-transparent group-focus-within:border-accent/35 z-[100] transition-all duration-200" />
 
       {/* Overview Tabs Navigation */}
-      <div class="flex bg-surface p-1 rounded-xl border border-border/60 max-w-sm flex-shrink-0">
-        <button
-          onClick={() => setActiveTab("global")}
-          class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all capitalize cursor-pointer ${
-            activeTab() === "global"
-              ? "bg-background text-accent border border-border/80 shadow-sm"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          {t("dashboard.globalStats")}
-        </button>
-        <button
-          onClick={() => setActiveTab("groups")}
-          class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all capitalize cursor-pointer ${
-            activeTab() === "groups"
-              ? "bg-background text-accent border border-border/80 shadow-sm"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          {t("dashboard.adapterGroups")}
-        </button>
+      {/* Overview Tabs Navigation */}
+      <div class="flex items-center justify-between max-w-xl flex-shrink-0 gap-4">
+        <div class="flex bg-surface p-1 rounded-xl border border-border/60 max-w-md flex-grow">
+          <button
+            onClick={() => setActiveTab(DashboardTab.Global)}
+            class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              activeTab() === DashboardTab.Global
+                ? "bg-background text-accent border border-border/80 shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {t("dashboard.globalStats")}
+          </button>
+          <button
+            onClick={() => setActiveTab(DashboardTab.Groups)}
+            class={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+              activeTab() === DashboardTab.Groups
+                ? "bg-background text-accent border border-border/80 shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            {t("dashboard.adapterGroups")}
+          </button>
+        </div>
       </div>
 
-      <Show
-        when={activeTab() === "global"}
-        fallback={
-          /* Groups Dashboard View */
+      <Switch>
+        <Match when={activeTab() === DashboardTab.Global}>
+          {/* Global Stats Grid View */}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl flex-shrink-0">
+            <StatCard
+              title={t("dashboard.totalConversations")}
+              value={formatNumber(stats().totalConversations)}
+              subtitle={t("detailPane.selectSession")}
+              icon={<Folder class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.totalTurns")}
+              value={formatNumber(stats().totalTurns)}
+              subtitle={`${t("dashboard.avgTurns")}: ${stats().avgTurns.toFixed(1)}`}
+              icon={<MessageSquare class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.avgSpeed")}
+              value={stats().avgSpeedText}
+              subtitle={t("settings.general.logModeDesc")}
+              icon={<Bolt class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.totalEstTokens")}
+              value={formatNumber(stats().totalEstTokens)}
+              subtitle={`${formatNumber(stats().promptTokens)} in / ${formatNumber(stats().responseTokens)} out`}
+              icon={<Cpu class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.totalComputeTime")}
+              value={formatDuration(stats().totalDurationMs)}
+              subtitle={t("settings.general.cacheDesc")}
+              icon={<Clock class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.avgSessionDuration")}
+              value={formatDuration(stats().avgDurationMs)}
+              subtitle={t("settings.general.logModeDesc")}
+              icon={<Clock class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.totalCompactions")}
+              value={formatNumber(stats().totalCompactions)}
+              subtitle={t("settings.general.logMode")}
+              icon={<Settings class="w-5 h-5" />}
+            />
+            <StatCard
+              title={t("dashboard.totalCompactionTime")}
+              value={formatDuration(stats().totalCompactionTimeMs)}
+              subtitle={
+                stats().totalCompactions > 0
+                  ? `Avg: ${(stats().totalCompactionTimeMs / stats().totalCompactions / 1000).toFixed(2)}s`
+                  : "Avg: 0s"
+              }
+              icon={<RefreshCw class="w-5 h-5" />}
+            />
+          </div>
+
+          {/* Model Performance List */}
+          <div class="space-y-4 max-w-5xl">
+            <div class="flex items-center justify-between border-b border-border/40 pb-2 flex-shrink-0">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
+                {t("dashboard.topModels")}
+              </h3>
+
+              {/* Sorting controls */}
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-text-secondary/70">{t("dashboard.sort")}:</span>
+                <For each={["turns", "tokens", "speed", "duration", "name"] as const}>
+                  {(dim) => (
+                    <button
+                      onClick={() => toggleSort(dim)}
+                      class={`px-2.5 py-1 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
+                        sortBy() === dim
+                          ? "bg-accent/10 border-accent/40 text-accent font-bold"
+                          : "bg-surface border-border/40 text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {
+                        {
+                          turns: t("dashboard.turns"),
+                          tokens: t("dashboard.tokens"),
+                          speed: t("dashboard.speed"),
+                          duration: t("dashboard.duration"),
+                          name: t("dashboard.name"),
+                        }[dim]
+                      }
+                      <Show when={sortBy() === dim}>
+                        <span class="ml-1 text-[0.625rem]">{sortAscending() ? "▲" : "▼"}</span>
+                      </Show>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+
+            <div class="space-y-3.5">
+              <For
+                each={sortedModelStats()}
+                fallback={
+                  <div class="p-6 text-center text-text-secondary text-sm">
+                    {t("detailPane.noPermissions")}
+                  </div>
+                }
+              >
+                {(m) => (
+                  <div class="bg-surface/40 border border-border/40 rounded-2xl p-5 hover:bg-surface/60 transition-all shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="text-sm font-bold text-text-primary">{m.modelName}</span>
+                      <div class="flex items-center gap-1 text-xs text-accent font-semibold bg-accent-light/10 border border-accent/25 px-2 py-0.5 rounded-lg">
+                        <Bolt class="w-3.5 h-3.5" />
+                        <span>{m.speedTps.toFixed(1)} t/s</span>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-6 text-xs text-text-secondary">
+                      <div>
+                        <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                          {t("dashboard.tokens")}
+                        </div>
+                        <div class="text-sm font-bold text-text-primary">
+                          {formatNumber(m.totalTokens)}
+                        </div>
+                      </div>
+                      <div>
+                        <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                          {t("dashboard.turns")}
+                        </div>
+                        <div class="text-sm font-bold text-text-primary">
+                          {m.turnCount} {t("dashboard.turns").toLowerCase()}
+                          <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
+                            (
+                            {stats().totalTurns > 0
+                              ? ((m.turnCount / stats().totalTurns) * 100).toFixed(1)
+                              : 0}
+                            %)
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
+                          {t("dashboard.duration")}
+                        </div>
+                        <div class="text-sm font-bold text-text-primary">
+                          {formatDuration(m.computeTimeMs)}
+                          <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
+                            (
+                            {stats().totalDurationMs > 0
+                              ? ((m.computeTimeMs / stats().totalDurationMs) * 100).toFixed(1)
+                              : 0}
+                            %)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </Match>
+
+        <Match when={activeTab() === DashboardTab.Groups}>
+          {/* Groups Dashboard View */}
           <div class="space-y-4 max-w-4xl">
             <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
               {t("dashboard.adapterGroups")}
@@ -290,159 +504,9 @@ export const Dashboard = (props: DashboardProps) => {
               </For>
             </div>
           </div>
-        }
-      >
-        {/* Global Stats Grid View */}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl flex-shrink-0">
-          <StatCard
-            title={t("dashboard.totalConversations")}
-            value={formatNumber(stats().totalConversations)}
-            subtitle={t("detailPane.selectSession")}
-            icon={<Folder class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.totalTurns")}
-            value={formatNumber(stats().totalTurns)}
-            subtitle={`${t("dashboard.avgTurns")}: ${stats().avgTurns.toFixed(1)}`}
-            icon={<MessageSquare class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.avgSpeed")}
-            value={stats().avgSpeedText}
-            subtitle={t("settings.general.logModeDesc")}
-            icon={<Bolt class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.totalEstTokens")}
-            value={formatNumber(stats().totalEstTokens)}
-            subtitle={`${formatNumber(stats().promptTokens)} in / ${formatNumber(stats().responseTokens)} out`}
-            icon={<Cpu class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.totalComputeTime")}
-            value={formatDuration(stats().totalDurationMs)}
-            subtitle={t("settings.general.cacheDesc")}
-            icon={<Clock class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.avgSessionDuration")}
-            value={formatDuration(stats().avgDurationMs)}
-            subtitle={t("settings.general.logModeDesc")}
-            icon={<Clock class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.totalCompactions")}
-            value={formatNumber(stats().totalCompactions)}
-            subtitle={t("settings.general.logMode")}
-            icon={<Settings class="w-5 h-5" />}
-          />
-          <StatCard
-            title={t("dashboard.totalCompactionTime")}
-            value={formatDuration(stats().totalCompactionTimeMs)}
-            subtitle={
-              stats().totalCompactions > 0
-                ? `Avg: ${(stats().totalCompactionTimeMs / stats().totalCompactions / 1000).toFixed(2)}s`
-                : "Avg: 0s"
-            }
-            icon={<RefreshCw class="w-5 h-5" />}
-          />
-        </div>
+        </Match>
 
-        {/* Model Performance List */}
-        <div class="space-y-4 max-w-5xl">
-          <div class="flex items-center justify-between border-b border-border/40 pb-2 flex-shrink-0">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-              {t("dashboard.topModels")}
-            </h3>
-
-            {/* Sorting controls */}
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-text-secondary/70">{t("dashboard.sort")}:</span>
-              <For each={["turns", "tokens", "speed", "duration", "name"] as const}>
-                {(dim) => (
-                  <button
-                    onClick={() => toggleSort(dim)}
-                    class={`px-2.5 py-1 rounded-lg border text-xs font-semibold capitalize cursor-pointer transition-all ${
-                      sortBy() === dim
-                        ? "bg-accent/10 border-accent/40 text-accent font-bold"
-                        : "bg-surface border-border/40 text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    {t(`dashboard.${dim}`)}
-                    <Show when={sortBy() === dim}>
-                      <span class="ml-1 text-[0.625rem]">{sortAscending() ? "▲" : "▼"}</span>
-                    </Show>
-                  </button>
-                )}
-              </For>
-            </div>
-          </div>
-
-          <div class="space-y-3.5">
-            <For
-              each={sortedModelStats()}
-              fallback={
-                <div class="p-6 text-center text-text-secondary text-sm">
-                  {t("detailPane.noPermissions")}
-                </div>
-              }
-            >
-              {(m) => (
-                <div class="bg-surface/40 border border-border/40 rounded-2xl p-5 hover:bg-surface/60 transition-all shadow-sm">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class="text-sm font-bold text-text-primary">{m.modelName}</span>
-                    <div class="flex items-center gap-1 text-xs text-accent font-semibold bg-accent-light/10 border border-accent/25 px-2 py-0.5 rounded-lg">
-                      <Bolt class="w-3.5 h-3.5" />
-                      <span>{m.speedTps.toFixed(1)} t/s</span>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-3 gap-6 text-xs text-text-secondary">
-                    <div>
-                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        {t("dashboard.tokens")}
-                      </div>
-                      <div class="text-sm font-bold text-text-primary">
-                        {formatNumber(m.totalTokens)}
-                      </div>
-                    </div>
-                    <div>
-                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        {t("dashboard.turns")}
-                      </div>
-                      <div class="text-sm font-bold text-text-primary">
-                        {m.turnCount} {t("dashboard.turns").toLowerCase()}
-                        <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
-                          (
-                          {stats().totalTurns > 0
-                            ? ((m.turnCount / stats().totalTurns) * 100).toFixed(1)
-                            : 0}
-                          %)
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="text-[0.625rem] font-semibold uppercase tracking-wider text-text-secondary/50 mb-1">
-                        {t("dashboard.duration")}
-                      </div>
-                      <div class="text-sm font-bold text-text-primary">
-                        {formatDuration(m.computeTimeMs)}
-                        <span class="text-xs text-text-secondary/60 font-normal ml-1.5">
-                          (
-                          {stats().totalDurationMs > 0
-                            ? ((m.computeTimeMs / stats().totalDurationMs) * 100).toFixed(1)
-                            : 0}
-                          %)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </For>
-          </div>
-        </div>
-      </Show>
+      </Switch>
     </div>
   );
 };

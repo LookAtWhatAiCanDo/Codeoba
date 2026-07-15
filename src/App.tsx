@@ -34,7 +34,7 @@ import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
 import { getLocalizedAppError } from "./utils/errorHelper";
 import { Layers, AlertCircle } from "lucide-solid";
-import { Session, SearchResult, SourceMetadata } from "./types";
+import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
 import "./App.css";
 
 function App() {
@@ -278,20 +278,13 @@ function App() {
       }
     })()
   );
-  const [archivalFilter, setArchivalFilter] = createSignal<
-    "all" | "active" | "archived" | "deleted"
-  >(
+  const [archivalFilter, setArchivalFilter] = createSignal<ArchivalFilter>(
     (() => {
-      const stored = localStorage.getItem("codeoba-archival-filter");
-      if (
-        stored === "all" ||
-        stored === "active" ||
-        stored === "archived" ||
-        stored === "deleted"
-      ) {
+      const stored = localStorage.getItem("codeoba-archival-filter") as ArchivalFilter;
+      if (Object.values(ArchivalFilter).includes(stored)) {
         return stored;
       }
-      return "active";
+      return ArchivalFilter.Active;
     })()
   );
 
@@ -2013,7 +2006,16 @@ function App() {
                 <Show
                   when={activeGroupFilter()}
                   fallback={
-                    <Dashboard sessions={filteredSessions()} numberFormat={numberFormat()} />
+                    <Dashboard
+                      sessions={filteredSessions()}
+                      numberFormat={numberFormat()}
+                      dateFormat={dateFormat()}
+                      timeFormat={timeFormat()}
+                      showSeconds={showSeconds()}
+                      activeTab={dashboardTab()}
+                      onActiveTabChange={setDashboardTab}
+                      onSelectSession={handleSelectSession}
+                    />
                   }
                 >
                   <GroupDetailsView

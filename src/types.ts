@@ -47,3 +47,15 @@ export interface SourceMetadata {
   isAppInstalled: boolean;
   productUrl?: string;
 }
+
+export enum ArchivalFilter {
+  All = "all",
+  Active = "active",
+  Archived = "archived",
+  Deleted = "deleted",
+}
+
+export enum DashboardTab {
+  Global = "global",
+  Groups = "groups",
+}

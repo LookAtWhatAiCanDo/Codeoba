@@ -30,7 +30,7 @@ import {
   Trash2,
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
-import { Session, SearchResult, SourceMetadata } from "../types";
+import { Session, SearchResult, SourceMetadata, ArchivalFilter } from "../types";
 import { useContextMenuPosition } from "../utils/contextMenu";
 
 export interface GroupTask {
@@ -217,8 +217,8 @@ interface SidebarProps {
   onSemanticToggle: () => void;
   selectedSources: Set<string>;
   onToggleSource: (sourceId: string) => void;
-  archivalFilter: "all" | "active" | "archived" | "deleted";
-  onArchivalFilterChange: (filter: "all" | "active" | "archived" | "deleted") => void;
+  archivalFilter: ArchivalFilter;
+  onArchivalFilterChange: (filter: ArchivalFilter) => void;
   pruneDeleted: boolean;
   sources: SourceMetadata[];
   indexingProgress: {
@@ -687,9 +687,10 @@ export const Sidebar = (props: SidebarProps) => {
       counts[src.id] = 0;
     }
     for (const s of searchedAndGroupedSessions()) {
-      if (props.archivalFilter === "active" && (s.isArchived || s.isDeleted)) continue;
-      if (props.archivalFilter === "archived" && (!s.isArchived || s.isDeleted)) continue;
-      if (props.archivalFilter === "deleted" && !s.isDeleted) continue;
+      if (props.archivalFilter === ArchivalFilter.Active && (s.isArchived || s.isDeleted)) continue;
+      if (props.archivalFilter === ArchivalFilter.Archived && (!s.isArchived || s.isDeleted))
+        continue;
+      if (props.archivalFilter === ArchivalFilter.Deleted && !s.isDeleted) continue;
       if (counts[s.sourceId] !== undefined) {
         counts[s.sourceId]++;
       }
@@ -723,8 +724,17 @@ export const Sidebar = (props: SidebarProps) => {
 
   const tabOptions = createMemo(() => {
     return props.pruneDeleted
-      ? (["all", "active", "archived"] as const)
-      : (["all", "active", "archived", "deleted"] as const);
+      ? ([
+          ArchivalFilter.All,
+          ArchivalFilter.Active,
+          ArchivalFilter.Archived,
+        ] as const)
+      : ([
+          ArchivalFilter.All,
+          ArchivalFilter.Active,
+          ArchivalFilter.Archived,
+          ArchivalFilter.Deleted,
+        ] as const);
   });
 
   const gridClasses = createMemo(() => {
@@ -784,11 +794,17 @@ export const Sidebar = (props: SidebarProps) => {
             return false;
           }
           // Archival filter
-          if (props.archivalFilter === "active" && (r.session.isArchived || r.session.isDeleted))
+          if (
+            props.archivalFilter === ArchivalFilter.Active &&
+            (r.session.isArchived || r.session.isDeleted)
+          )
             return false;
-          if (props.archivalFilter === "archived" && (!r.session.isArchived || r.session.isDeleted))
+          if (
+            props.archivalFilter === ArchivalFilter.Archived &&
+            (!r.session.isArchived || r.session.isDeleted)
+          )
             return false;
-          if (props.archivalFilter === "deleted" && !r.session.isDeleted) return false;
+          if (props.archivalFilter === ArchivalFilter.Deleted && !r.session.isDeleted) return false;
           return true;
         })
         .map((r) => stableItem(r.session, r.matchedTurnIndexes, r.score));
@@ -800,9 +816,11 @@ export const Sidebar = (props: SidebarProps) => {
             return false;
           }
           // Archival filter
-          if (props.archivalFilter === "active" && (s.isArchived || s.isDeleted)) return false;
-          if (props.archivalFilter === "archived" && (!s.isArchived || s.isDeleted)) return false;
-          if (props.archivalFilter === "deleted" && !s.isDeleted) return false;
+          if (props.archivalFilter === ArchivalFilter.Active && (s.isArchived || s.isDeleted))
+            return false;
+          if (props.archivalFilter === ArchivalFilter.Archived && (!s.isArchived || s.isDeleted))
+            return false;
+          if (props.archivalFilter === ArchivalFilter.Deleted && !s.isDeleted) return false;
           return true;
         })
         .map((s) => stableItem(s));
@@ -1304,7 +1322,7 @@ export const Sidebar = (props: SidebarProps) => {
                     <button
                       onClick={() => {
                         if (props.archivalFilter === tab) {
-                          props.onArchivalFilterChange("all");
+                          props.onArchivalFilterChange(ArchivalFilter.All);
                         } else {
                           props.onArchivalFilterChange(tab);
                         }
@@ -1316,25 +1334,25 @@ export const Sidebar = (props: SidebarProps) => {
                       }`}
                     >
                       <span class="flex items-center justify-center gap-1.5">
-                        <Show when={tab === "all"}>
+                        <Show when={tab === ArchivalFilter.All}>
                           <Layers class="w-3.5 h-3.5 shrink-0" />
                         </Show>
-                        <Show when={tab === "active"}>
+                        <Show when={tab === ArchivalFilter.Active}>
                           <Activity class="w-3.5 h-3.5 shrink-0" />
                         </Show>
-                        <Show when={tab === "archived"}>
+                        <Show when={tab === ArchivalFilter.Archived}>
                           <Archive class="w-3.5 h-3.5 shrink-0" />
                         </Show>
-                        <Show when={tab === "deleted"}>
+                        <Show when={tab === ArchivalFilter.Deleted}>
                           <Trash2 class="w-3.5 h-3.5 text-red-500 shrink-0" />
                         </Show>
                         <span>
                           {
                             {
-                              all: t("sidebar.filterAll"),
-                              active: t("sidebar.filterActive"),
-                              archived: t("sidebar.filterArchived"),
-                              deleted: t("sidebar.filterDeleted"),
+                              [ArchivalFilter.All]: t("sidebar.filterAll"),
+                              [ArchivalFilter.Active]: t("sidebar.filterActive"),
+                              [ArchivalFilter.Archived]: t("sidebar.filterArchived"),
+                              [ArchivalFilter.Deleted]: t("sidebar.filterDeleted"),
                             }[tab]
                           }
                         </span>
@@ -1492,7 +1510,7 @@ export const Sidebar = (props: SidebarProps) => {
                   {/* Active */}
                   <span
                     class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
-                      props.archivalFilter === "active"
+                      props.archivalFilter === ArchivalFilter.Active
                         ? "bg-accent/10 border-accent/20 text-accent font-semibold"
                         : "bg-surface-light border-border/40 text-text-secondary/60"
                     }`}
@@ -2067,7 +2085,7 @@ const SessionCard = (props: SessionCardProps) => {
                   e.stopPropagation();
                   if (props.onTogglePin) props.onTogglePin(props.session.id);
                 }}
-                class="text-text-secondary/35 hover:text-accent opacity-0 group-hover:opacity-100 transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
+                class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
                 title={t("groups.pinConversation") || "Pin Conversation"}
               >
                 <Pin class="w-3.5 h-3.5" />
@@ -2172,7 +2190,7 @@ interface GroupTreeItemProps {
   node: GroupTreeNode;
   depth: number;
   activeGroupFilter: string | null;
-  archivalFilter: "all" | "active" | "archived" | "deleted";
+  archivalFilter: ArchivalFilter;
   onSelect: (filter: string | null) => void;
   onContextMenu: (e: MouseEvent, node: GroupTreeNode) => void;
   renamingGroupPath: string | null;
@@ -2316,7 +2334,7 @@ export const GroupTreeItem = (props: GroupTreeItemProps) => {
                   class={`flex items-center gap-0.5 px-1 py-0.5 rounded border transition-all ${
                     isDragOver()
                       ? "bg-white/20 border-white/30 text-white"
-                      : props.archivalFilter === "active"
+                      : props.archivalFilter === ArchivalFilter.Active
                         ? "bg-accent/10 border-accent/20 text-accent font-semibold"
                         : "bg-surface-light border-border/40 text-text-secondary/60"
                   }`}
