@@ -2,14 +2,13 @@ import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup }
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n/i18n";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
-import { getStatusBadge } from "../utils/sessionStatus";
+import { getStatusBadge, ActiveSpinner } from "../utils/sessionStatus";
 import {
   Search,
   Sparkles,
   Filter,
   Pin,
   Archive,
-  Loader2,
   Clock,
   MessageSquare,
   Cpu,
@@ -2117,7 +2116,7 @@ const SessionCard = (props: SessionCardProps) => {
             {props.sessionTimesText}
           </span>
           <Show when={props.isLoading}>
-            <Loader2 class="w-3.5 h-3.5 text-accent animate-spin" />
+            <ActiveSpinner class="w-3.5 h-3.5 text-accent" />
           </Show>
           <Show
             when={props.isPinned}

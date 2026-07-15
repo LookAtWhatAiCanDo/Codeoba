@@ -1,11 +1,29 @@
 import type { JSX } from "solid-js";
-import { Loader2, HelpCircle, Clock } from "lucide-solid";
+import { HelpCircle, Clock } from "lucide-solid";
 
 export interface StatusBadge {
   label: string;
   class: string;
   icon: () => JSX.Element;
 }
+
+/**
+ * A perfectly centered, non-wobbly circular progress spinner.
+ * Uses a symmetric SVG with a subtle background track to guarantee
+ * stable, balance-wheel-like rotation without subpixel offset wobble.
+ */
+export const ActiveSpinner = (props: { class?: string }) => (
+  <svg
+    class={`animate-spin origin-center ${props.class || ""}`}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="3"
+  >
+    <circle class="opacity-25" cx="12" cy="12" r="10" />
+    <path class="opacity-80" d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round" />
+  </svg>
+);
 
 /**
  * Single source of truth for the session status badge (label + colors +
@@ -24,7 +42,7 @@ export const getStatusBadge = (status: string, t: (key: string) => string): Stat
       return {
         label: t("sidebar.statusActive"),
         class: "bg-emerald-500/10 border-emerald-500/30 text-emerald-500",
-        icon: () => <Loader2 class="w-3 h-3 flex-shrink-0 animate-spin" />,
+        icon: () => <ActiveSpinner class="w-3 h-3 flex-shrink-0" />,
       };
     case "waiting":
       return {
