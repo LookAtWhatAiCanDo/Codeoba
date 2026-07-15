@@ -8,6 +8,7 @@ import {
   getOwner,
   runWithOwner,
   batch,
+  untrack,
 } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -867,7 +868,7 @@ function App() {
             return changed ? next : prev;
           });
 
-          const current = selectedSession();
+          const current = untrack(selectedSession);
           if (current) {
             const status = statuses[current.id];
             if (status && status !== current.status) {
@@ -918,7 +919,7 @@ function App() {
 
       unlistenDetectedSource = await listen<string>("source-detected", (event) => {
         const sourceId = event.payload;
-        if (showSettings()) {
+        if (untrack(showSettings)) {
           return;
         }
         logFE("info", `Detected new source installation: ${sourceId}`);
@@ -947,12 +948,12 @@ function App() {
         handleRebuildIndex(true);
       });
       unlistenMenuFindDetail = await listen("menu-find-detail", () => {
-        if (selectedSession()) {
+        if (untrack(selectedSession)) {
           window.dispatchEvent(new CustomEvent("trigger-detail-search"));
         }
       });
       unlistenMenuFindSidebar = await listen("menu-find-sidebar", () => {
-        if (sidebarCollapsed()) {
+        if (untrack(sidebarCollapsed)) {
           setSidebarCollapsed(false);
         }
         setTimeout(() => {
@@ -1003,9 +1004,9 @@ function App() {
       unlistenMenuGoNextSession = await listen("menu-go-next-session", () => {
         logFE("info", "App.tsx: received menu-go-next-session");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length === 0) return;
-        const curSelId = selectedSession()?.id;
+        const curSelId = untrack(selectedSession)?.id;
         const curIndex = items.findIndex((s) => s.id === curSelId);
         const nextIndex = Math.min(items.length - 1, curIndex + 1);
         if (nextIndex >= 0) {
@@ -1020,9 +1021,9 @@ function App() {
       unlistenMenuGoPrevSession = await listen("menu-go-prev-session", () => {
         logFE("info", "App.tsx: received menu-go-prev-session");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length === 0) return;
-        const curSelId = selectedSession()?.id;
+        const curSelId = untrack(selectedSession)?.id;
         const curIndex = items.findIndex((s) => s.id === curSelId);
         const targetIndex = curIndex === -1 ? 0 : curIndex;
         const prevIndex = Math.max(0, targetIndex - 1);
@@ -1139,7 +1140,7 @@ function App() {
       unlistenMenuSidebarScrollTop = await listen("menu-sidebar-scroll-top", () => {
         logFE("info", "App.tsx: received menu-sidebar-scroll-top");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length > 0) {
           handleSelectSession(items[0]);
           setTimeout(() => {
@@ -1152,7 +1153,7 @@ function App() {
       unlistenMenuSidebarScrollBottom = await listen("menu-sidebar-scroll-bottom", () => {
         logFE("info", "App.tsx: received menu-sidebar-scroll-bottom");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length > 0) {
           const lastIdx = items.length - 1;
           handleSelectSession(items[lastIdx]);
@@ -1166,9 +1167,9 @@ function App() {
       unlistenMenuSidebarScrollPageUp = await listen("menu-sidebar-scroll-page-up", () => {
         logFE("info", "App.tsx: received menu-sidebar-scroll-page-up");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length > 0) {
-          const curId = selectedSession()?.id;
+          const curId = untrack(selectedSession)?.id;
           const curIdx = items.findIndex((s) => s.id === curId);
           const startIdx = curIdx === -1 ? 0 : curIdx;
           const prevIdx = Math.max(0, startIdx - 8);
@@ -1183,9 +1184,9 @@ function App() {
       unlistenMenuSidebarScrollPageDown = await listen("menu-sidebar-scroll-page-down", () => {
         logFE("info", "App.tsx: received menu-sidebar-scroll-page-down");
         window.focus();
-        const items = filteredSessions();
+        const items = untrack(filteredSessions);
         if (items.length > 0) {
-          const curId = selectedSession()?.id;
+          const curId = untrack(selectedSession)?.id;
           const curIdx = items.findIndex((s) => s.id === curId);
           const nextIdx = Math.min(items.length - 1, curIdx + 8);
           handleSelectSession(items[nextIdx]);
@@ -2070,17 +2071,19 @@ function App() {
           activeColorMode() === "dark" ? setCustomDarkTheme : setCustomLightTheme
         }
         sources={sources()}
-        onRefreshSources={async () => {
-          const metadata = await invoke<SourceMetadata[]>("get_sources");
-          setSources(metadata);
-          try {
-            const val = await invoke<string | null>("get_credential", {
-              key: "prune_deleted_sessions",
+        onRefreshSources={() => {
+          invoke<SourceMetadata[]>("get_sources").then((metadata) => {
+            setSources(metadata);
+          });
+          invoke<string | null>("get_credential", {
+            key: "prune_deleted_sessions",
+          })
+            .then((val) => {
+              setPruneDeleted(val === "true");
+            })
+            .catch((err) => {
+              console.error("Failed to load prune_deleted_sessions setting:", err);
             });
-            setPruneDeleted(val === "true");
-          } catch (err) {
-            console.error("Failed to load prune_deleted_sessions setting:", err);
-          }
         }}
         similarityThreshold={similarityThreshold()}
         onSimilarityThresholdChange={setSimilarityThreshold}

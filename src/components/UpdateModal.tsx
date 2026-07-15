@@ -47,7 +47,7 @@ export const UpdateModal = (props: UpdateModalProps) => {
           {/* Close button - only show if NOT currently installing an update */}
           <Show when={!props.isUpdating}>
             <button
-              onClick={props.onClose}
+              onClick={() => props.onClose()}
               class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
             >
               <X class="w-4 h-4" />
@@ -120,13 +120,13 @@ export const UpdateModal = (props: UpdateModalProps) => {
           <div class="flex gap-3 w-full pt-1">
             <Show when={!props.isUpdating}>
               <button
-                onClick={props.onClose}
+                onClick={() => props.onClose()}
                 class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
               >
                 {t("updater.later")}
               </button>
               <button
-                onClick={props.onStartUpdate}
+                onClick={() => props.onStartUpdate()}
                 class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
               >
                 <Download class="w-3.5 h-3.5" />

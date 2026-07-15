@@ -71,13 +71,13 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
           {/* Actions */}
           <div class="flex gap-3 w-full pt-1">
             <button
-              onClick={props.onIgnoreAll}
+              onClick={() => props.onIgnoreAll()}
               class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
             >
               {t("settings.sources.detectedMultiPromptDenyAll")}
             </button>
             <button
-              onClick={props.onSave}
+              onClick={() => props.onSave()}
               class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
             >
               <span>{t("settings.sources.detectedMultiPromptAllowSelected")}</span>

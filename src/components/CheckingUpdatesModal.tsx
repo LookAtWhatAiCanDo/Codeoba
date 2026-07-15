@@ -34,7 +34,7 @@ export const CheckingUpdatesModal = (props: CheckingUpdatesModalProps) => {
         <div class="w-[420px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col items-center gap-5 shadow-2xl relative animate-in zoom-in-95 duration-200 text-center">
           {/* Close button */}
           <button
-            onClick={props.onClose}
+            onClick={() => props.onClose()}
             class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
           >
             <X class="w-4 h-4" />
@@ -76,7 +76,7 @@ export const CheckingUpdatesModal = (props: CheckingUpdatesModalProps) => {
           {/* Action button */}
           <div class="w-full pt-2">
             <button
-              onClick={props.onClose}
+              onClick={() => props.onClose()}
               class="w-full py-2 bg-background hover:bg-surface border border-border rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
             >
               {t("common.close")}

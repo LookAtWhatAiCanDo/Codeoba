@@ -93,13 +93,13 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       }
       return DOMPurify.sanitize(html, {
         ALLOWED_URI_REGEXP:
-          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.-]+(?:[^a-z+.:-]|$))/i,
       });
     } catch (e) {
       logFE("error", `Markdown parse error: ${e}`);
       return DOMPurify.sanitize(displayContent(), {
         ALLOWED_URI_REGEXP:
-          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+          /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.-]+(?:[^a-z+.:-]|$))/i,
       });
     }
   });
@@ -238,6 +238,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         ref={containerRef}
         onClick={handleLinkClick}
         class="markdown-body text-text-primary overflow-x-hidden break-words font-sans"
+        // Safe: htmlContent() is pre-sanitized by DOMPurify in htmlContent memo
+        // eslint-disable-next-line solid/no-innerhtml
         innerHTML={htmlContent()}
       />
       {isTooLarge() && !isExpanded() && (

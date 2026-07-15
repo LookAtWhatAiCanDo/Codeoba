@@ -2127,7 +2127,10 @@ interface GroupTreeItemProps {
 export const GroupTreeItem = (props: GroupTreeItemProps) => {
   const { t } = useI18n();
   const [isExpanded, setIsExpanded] = createSignal(true);
-  const [tempName, setTempName] = createSignal(props.node.segment);
+  const [tempName, setTempName] = createSignal("");
+  createEffect(() => {
+    setTempName(props.node.segment);
+  });
   const [isDragOver, setIsDragOver] = createSignal(false);
   const isSelected = () =>
     props.activeGroupFilter !== null &&

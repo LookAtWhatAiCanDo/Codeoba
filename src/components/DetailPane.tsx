@@ -1688,18 +1688,21 @@ const VirtualTurn = (props: VirtualTurnProps) => {
                       {(image) => {
                         const [src, setSrc] = createSignal<string>("");
 
-                        createEffect(async () => {
-                          if (image.base64 && image.mediaType) {
-                            setSrc(`data:${image.mediaType};base64,${image.base64}`);
-                          } else if (image.path) {
-                            try {
-                              const base64Data = await invoke<string>("read_session_image", {
-                                path: image.path,
+                        createEffect(() => {
+                          const base64 = image.base64;
+                          const mediaType = image.mediaType;
+                          const path = image.path;
+
+                          if (base64 && mediaType) {
+                            setSrc(`data:${mediaType};base64,${base64}`);
+                          } else if (path) {
+                            invoke<string>("read_session_image", { path })
+                              .then((base64Data) => {
+                                setSrc(base64Data);
+                              })
+                              .catch((err) => {
+                                logFE("error", `Failed to load turn image: ${err}`);
                               });
-                              setSrc(base64Data);
-                            } catch (err) {
-                              logFE("error", `Failed to load turn image: ${err}`);
-                            }
                           }
                         });
 
@@ -1984,10 +1987,10 @@ const ToolOutputBlock = (props: {
     );
   });
 
-  const [isOpen, setIsOpen] = createSignal(props.startExpanded || matchesSearch());
+  const [isOpen, setIsOpen] = createSignal(false);
 
   createEffect(() => {
-    if (matchesSearch()) {
+    if (props.startExpanded || matchesSearch()) {
       setIsOpen(true);
     }
   });

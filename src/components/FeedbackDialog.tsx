@@ -119,7 +119,7 @@ export default function FeedbackDialog(props: FeedbackDialogProps) {
       {/* Modal scrim background */}
       <div
         class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
-        onClick={props.onClose}
+        onClick={() => props.onClose()}
       >
         {/* Dialog Box */}
         <div
@@ -128,7 +128,7 @@ export default function FeedbackDialog(props: FeedbackDialogProps) {
         >
           {/* Close Button */}
           <button
-            onClick={props.onClose}
+            onClick={() => props.onClose()}
             class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
           >
             <X class="w-4 h-4" />
@@ -197,7 +197,7 @@ export default function FeedbackDialog(props: FeedbackDialogProps) {
                 <div class="flex gap-3 justify-end mt-2">
                   <button
                     type="button"
-                    onClick={props.onClose}
+                    onClick={() => props.onClose()}
                     class="px-4 py-2 border border-border/60 hover:border-border text-text-secondary hover:text-text-primary rounded-xl text-xs font-semibold cursor-pointer transition-all"
                   >
                     {t("feedback.cancel")}

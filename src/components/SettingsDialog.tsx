@@ -513,7 +513,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       {/* Modal scrim background */}
       <div
         class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
-        onClick={props.onClose}
+        onClick={() => props.onClose()}
       >
         {/* Settings Dialog box */}
         <div
@@ -522,7 +522,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
         >
           {/* Close button in top-right */}
           <button
-            onClick={props.onClose}
+            onClick={() => props.onClose()}
             class="absolute top-4 right-4 p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
           >
             <X class="w-4 h-4" />
