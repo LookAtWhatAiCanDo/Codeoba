@@ -444,9 +444,14 @@ export const DetailPane = (props: DetailPaneProps) => {
     const formatMilestoneLabel = (timeMs: number, forceDate: boolean) => {
       const d = new Date(timeMs);
       if (forceDate) {
-        return d.toLocaleDateString(locale() || "en", { month: "short", day: "numeric" });
+        return formatDateWithSetting(d, props.dateFormat || "system", locale());
       }
-      return d.toLocaleTimeString(locale() || "en", { hour: "numeric", minute: "2-digit" });
+      return formatTimeWithSetting(
+        d,
+        props.timeFormat || "system",
+        props.showSeconds || false,
+        locale()
+      );
     };
 
     let firstTime = turns[0].timestamp;
