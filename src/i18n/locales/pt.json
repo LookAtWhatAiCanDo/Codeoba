@@ -32,6 +32,7 @@
     "filterActive": "Ativo",
     "filterArchived": "Arquivado",
     "filterDeleted": "Excluído",
+    "filterReadAloud": "Leitura em voz alta",
     "noMessages": "Nenhuma mensagem nesta sessão",
     "yesterday": "Ontem",
     "statusActive": "Ativo",
@@ -69,11 +70,20 @@
     "speed": "Velocidade",
     "duration": "Duração",
     "name": "Nome",
+    "text": "Texto",
+    "session": "Sessão",
     "sort": "Ordenar",
     "unknownModel": "Modelo desconhecido",
     "scanning": "Verificando adaptadores de sessão locais...",
     "totalComputeTime": "Tempo total de computação",
-    "avgSessionDuration": "Duração média da sessão"
+    "avgSessionDuration": "Duração média da sessão",
+    "readAloud": "Leitura em voz alta",
+    "readAloudHistory": "Histórico de leitura",
+    "clearHistory": "Limpar histórico",
+    "clearReadAloudHistory": "Limpar histórico de leitura",
+    "confirmClearHistory": "Tem certeza de que deseja limpar todo o histórico de texto lido em voz alta? Esta ação não pode ser desfeita.",
+    "noSpokenHistory": "Nenhum histórico de texto falado ainda.",
+    "time": "Hora"
   },
   "detailPane": {
     "noSelection": "Nenhuma conversa selecionada",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "Região e idioma"
+    },
+    "readAloud": {
+      "title": "Leitura em voz alta",
+      "voice": "Voz de texto para fala",
+      "voiceDesc": "Selecione o sintetizador de voz para ler o texto descritivo.",
+      "defaultVoice": "Voz do sistema padrão",
+      "rate": "Velocidade da fala",
+      "rateDesc": "Ajuste a velocidade em que o texto é falado.",
+      "pitch": "Tom da fala",
+      "pitchDesc": "Ajuste o tom da voz falada.",
+      "reset": "Redefinir para padrões"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "Enviar feedback para a equipe do Codeoba...",
       "licenses": "Licenças de terceiros...",
       "privacy": "Política de privacidade..."
+    },
+    "readAloud": {
+      "title": "Leitura em voz alta",
+      "playPause": "Reproduzir / Pausar",
+      "stop": "Parar",
+      "previous": "Frase anterior",
+      "next": "Próxima frase"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "Política de privacidade",
     "viewOnline": "Ler online"
+  },
+  "readAloud": {
+    "speechPlay": "Reproduzir fala",
+    "speechPause": "Pausar fala",
+    "speechStop": "Parar fala",
+    "speechNext": "Próxima frase",
+    "speechPrev": "Frase anterior",
+    "readSessionAloud": "Ler sessão em voz alta",
+    "stopReading": "Parar leitura"
   }
 }

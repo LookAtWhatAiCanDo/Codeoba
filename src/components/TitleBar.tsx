@@ -1,8 +1,9 @@
-import { createSignal, onMount, onCleanup, Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Show, For } from "solid-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n/i18n";
 import { Session } from "../types";
+import { useSpeech } from "../utils/useSpeech";
 import {
   Layers,
   Terminal,
@@ -13,6 +14,12 @@ import {
   Home,
   Settings,
   Bug,
+  SkipBack,
+  Play,
+  Pause,
+  Square,
+  SkipForward,
+  Volume2,
 } from "lucide-solid";
 
 const RotateCwClean = (props: { class?: string }) => (
@@ -55,11 +62,15 @@ interface TitleBarProps {
   } | null;
   fontSize?: number;
   onFontSizeChange?: (val: number) => void;
+  onGoToReadAloud?: () => void;
 }
 
 export const TitleBar = (props: TitleBarProps) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const speech = useSpeech();
   const [isMaximized, setIsMaximized] = createSignal(false);
+  const [showPrevDropdown, setShowPrevDropdown] = createSignal(false);
+  const [showNextDropdown, setShowNextDropdown] = createSignal(false);
   let unlistenResize: (() => void) | undefined;
 
   const handleMinimize = () => {
@@ -194,6 +205,116 @@ export const TitleBar = (props: TitleBarProps) => {
       >
         <Settings class="w-[16px] h-[16px]" />
       </button>
+
+      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
+      <div class="flex items-center" style={{ gap: "2px" }}>
+        <button
+          onClick={() => props.onGoToReadAloud?.()}
+          title={t("dashboard.readAloud")}
+          class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+        >
+          <Volume2 class="w-[14px] h-[14px]" />
+        </button>
+        <div
+          class="relative inline-block"
+          onMouseEnter={() => setShowPrevDropdown(true)}
+          onMouseLeave={() => setShowPrevDropdown(false)}
+        >
+          <button
+            onClick={() => speech.prev()}
+            title={showPrevDropdown() ? "" : t("readAloud.speechPrev")}
+            class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+          >
+            <SkipBack class="w-[14px] h-[14px]" />
+          </button>
+          <Show when={showPrevDropdown() && speech.pastHistory().length > 0}>
+            <div class="absolute top-full left-0 pt-1 z-[9999]">
+              <div class="bg-surface border border-border rounded-xl shadow-xl py-1.5 w-64 select-none text-left no-drag">
+                <For each={speech.pastHistory()}>
+                  {(item) => (
+                    <button
+                      onClick={() => {
+                        speech.goToIndex(item.index);
+                        setShowPrevDropdown(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 text-[11px] hover:bg-accent/10 hover:text-accent text-text-primary transition-all truncate block cursor-pointer"
+                      title={item.text}
+                    >
+                      {item.text}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+        </div>
+
+        <button
+          onClick={() => {
+            if (speech.isPlaying()) {
+              speech.play();
+            } else if (props.selectedSession) {
+              speech.play(props.selectedSession, locale());
+            } else {
+              speech.play();
+            }
+          }}
+          title={
+            speech.isPlaying() && !speech.isPaused()
+              ? t("readAloud.speechPause")
+              : t("readAloud.speechPlay")
+          }
+          class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+        >
+          {speech.isPlaying() && !speech.isPaused() ? (
+            <Pause class="w-[14px] h-[14px]" />
+          ) : (
+            <Play class="w-[14px] h-[14px]" />
+          )}
+        </button>
+
+        <button
+          onClick={() => speech.stop()}
+          title={t("readAloud.speechStop")}
+          class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+        >
+          <Square class="w-[12px] h-[12px]" />
+        </button>
+
+        <div
+          class="relative inline-block"
+          onMouseEnter={() => setShowNextDropdown(true)}
+          onMouseLeave={() => setShowNextDropdown(false)}
+        >
+          <button
+            onClick={() => speech.next()}
+            title={showNextDropdown() ? "" : t("readAloud.speechNext")}
+            class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
+          >
+            <SkipForward class="w-[14px] h-[14px]" />
+          </button>
+          <Show when={showNextDropdown() && speech.futureHistory().length > 0}>
+            <div class="absolute top-full right-0 pt-1 z-[9999]">
+              <div class="bg-surface border border-border rounded-xl shadow-xl py-1.5 w-64 select-none text-left no-drag">
+                <For each={speech.futureHistory()}>
+                  {(item) => (
+                    <button
+                      onClick={() => {
+                        speech.goToIndex(item.index);
+                        setShowNextDropdown(false);
+                      }}
+                      class="w-full text-left px-3 py-1.5 text-[11px] hover:bg-accent/10 hover:text-accent text-text-primary transition-all truncate block cursor-pointer"
+                      title={item.text}
+                    >
+                      {item.text}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+        </div>
+      </div>
     </div>
   );
 

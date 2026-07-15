@@ -32,6 +32,7 @@
     "filterActive": "Active",
     "filterArchived": "Archived",
     "filterDeleted": "Deleted",
+    "filterReadAloud": "Read Aloud",
     "noMessages": "No messages in this session",
     "yesterday": "Yesterday",
     "statusActive": "Active",
@@ -69,11 +70,20 @@
     "speed": "Speed",
     "duration": "Duration",
     "name": "Name",
+    "text": "Text",
+    "session": "Session",
     "sort": "Sort",
     "unknownModel": "Unknown Model",
     "scanning": "Scanning local session adapters...",
     "totalComputeTime": "Total Compute Time",
-    "avgSessionDuration": "Avg. Session Duration"
+    "avgSessionDuration": "Avg. Session Duration",
+    "readAloud": "Read Aloud",
+    "readAloudHistory": "Read Aloud History",
+    "clearHistory": "Clear History",
+    "clearReadAloudHistory": "Clear Read Aloud History",
+    "confirmClearHistory": "Are you sure you want to clear your entire spoken text read aloud history? This action cannot be undone.",
+    "noSpokenHistory": "No spoken text history yet.",
+    "time": "Time"
   },
   "detailPane": {
     "noSelection": "No conversation selected",
@@ -279,6 +289,17 @@
     },
     "regional": {
       "title": "Region & Language"
+    },
+    "readAloud": {
+      "title": "Read Aloud",
+      "voice": "Text-to-Speech Voice",
+      "voiceDesc": "Select the voice synthesizer for reading transcript narrative text.",
+      "defaultVoice": "Default System Voice",
+      "rate": "Speech Rate",
+      "rateDesc": "Adjust the speed at which text is spoken.",
+      "pitch": "Speech Pitch",
+      "pitchDesc": "Adjust the tone pitch of the voice.",
+      "reset": "Reset to Defaults"
     }
   },
   "updater": {
@@ -374,6 +395,13 @@
       "feedback": "Send Feedback to Codeoba Team...",
       "licenses": "Third-Party Licenses...",
       "privacy": "Privacy Policy..."
+    },
+    "readAloud": {
+      "title": "Read Aloud",
+      "playPause": "Play / Pause",
+      "stop": "Stop",
+      "previous": "Previous Sentence",
+      "next": "Next Sentence"
     }
   },
   "errors": {
@@ -406,5 +434,14 @@
   "privacy": {
     "title": "Privacy Policy",
     "viewOnline": "Read Online"
+  },
+  "readAloud": {
+    "speechPlay": "Play speech",
+    "speechPause": "Pause speech",
+    "speechStop": "Stop speech",
+    "speechNext": "Next sentence",
+    "speechPrev": "Previous sentence",
+    "readSessionAloud": "Read Session Aloud",
+    "stopReading": "Stop Reading"
   }
 }

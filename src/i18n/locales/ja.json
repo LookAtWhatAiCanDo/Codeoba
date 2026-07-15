@@ -32,6 +32,7 @@
     "filterActive": "アクティブ",
     "filterArchived": "アーカイブ済み",
     "filterDeleted": "削除済み",
+    "filterReadAloud": "読み上げ",
     "noMessages": "このセッションにはメッセージがありません",
     "yesterday": "昨日",
     "statusActive": "アクティブ",
@@ -69,11 +70,20 @@
     "speed": "速度",
     "duration": "所要時間",
     "name": "名前",
+    "text": "テキスト",
+    "session": "セッション",
     "sort": "並び替え",
     "unknownModel": "不明なモデル",
     "scanning": "ローカルセッションアダプターをスキャン中...",
     "totalComputeTime": "総計算時間",
-    "avgSessionDuration": "平均セッション時間"
+    "avgSessionDuration": "平均セッション時間",
+    "readAloud": "読み上げ",
+    "readAloudHistory": "読み上げ履歴",
+    "clearHistory": "履歴をクリア",
+    "clearReadAloudHistory": "読み上げ履歴をクリア",
+    "confirmClearHistory": "読み上げられたテキストの履歴をすべてクリアしてもよろしいですか？この操作は取り消せません。",
+    "noSpokenHistory": "発話されたテキストの履歴はまだありません。",
+    "time": "時間"
   },
   "detailPane": {
     "noSelection": "会話が選択されていません",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "地域と言語"
+    },
+    "readAloud": {
+      "title": "読み上げ",
+      "voice": "音声合成の音声",
+      "voiceDesc": "トランスクリプトのテキストを読み上げるための音声合成エンジンを選択します。",
+      "defaultVoice": "システムのデフォルト音声",
+      "rate": "読み上げ速度",
+      "rateDesc": "テキストを読み上げる速度を調整します。",
+      "pitch": "音声のピッチ",
+      "pitchDesc": "読み上げ音声のトーン（ピッチ）を調整します。",
+      "reset": "デフォルトに戻す"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "Codeobaチームにフィードバックを送信...",
       "licenses": "サードパーティライセンス...",
       "privacy": "プライバシーポリシー..."
+    },
+    "readAloud": {
+      "title": "読み上げ",
+      "playPause": "再生 / 一時停止",
+      "stop": "停止",
+      "previous": "前の文章",
+      "next": "次の文章"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "プライバシーポリシー",
     "viewOnline": "オンラインで読む"
+  },
+  "readAloud": {
+    "speechPlay": "音声再生",
+    "speechPause": "音声一時停止",
+    "speechStop": "音声停止",
+    "speechNext": "次の文章",
+    "speechPrev": "前の文章",
+    "readSessionAloud": "セッションを読み上げる",
+    "stopReading": "読み上げを停止"
   }
 }

@@ -53,9 +53,11 @@ export enum ArchivalFilter {
   Active = "active",
   Archived = "archived",
   Deleted = "deleted",
+  ReadAloud = "read-aloud",
 }
 
 export enum DashboardTab {
   Global = "global",
   Groups = "groups",
+  ReadAloud = "read-aloud",
 }

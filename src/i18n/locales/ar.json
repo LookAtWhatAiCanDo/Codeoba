@@ -32,6 +32,7 @@
     "filterActive": "نشط",
     "filterArchived": "مؤرشف",
     "filterDeleted": "محذوف",
+    "filterReadAloud": "القراءة بصوت عالٍ",
     "noMessages": "لا توجد رسائل في هذه الجلسة",
     "yesterday": "أمس",
     "statusActive": "نشط",
@@ -69,11 +70,20 @@
     "speed": "السرعة",
     "duration": "المدة",
     "name": "الاسم",
+    "text": "النص",
+    "session": "الجلسة",
     "sort": "فرز",
     "unknownModel": "نموذج غير معروف",
     "scanning": "جاري فحص محولات الجلسات المحلية...",
     "totalComputeTime": "إجمالي وقت الحوسبة",
-    "avgSessionDuration": "متوسط مدة الجلسة"
+    "avgSessionDuration": "متوسط مدة الجلسة",
+    "readAloud": "القراءة بصوت عالٍ",
+    "readAloudHistory": "سجل القراءة",
+    "clearHistory": "مسح السجل",
+    "clearReadAloudHistory": "مسح سجل القراءة",
+    "confirmClearHistory": "هل أنت متأكد من رغبتك في مسح سجل قراءة النص بصوت عالٍ بالكامل؟ لا يمكن التراجع عن هذا الإجراء.",
+    "noSpokenHistory": "لا يوجد سجل نصوص منطوقة بعد.",
+    "time": "الوقت"
   },
   "detailPane": {
     "noSelection": "لم يتم تحديد محادثة",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "المنطقة واللغة"
+    },
+    "readAloud": {
+      "title": "القراءة بصوت عالٍ",
+      "voice": "صوت تحويل النص إلى كلام",
+      "voiceDesc": "اختر محرك توليد الصوت لقراءة النص الوصفي.",
+      "defaultVoice": "صوت النظام الافتراضي",
+      "rate": "سرعة الكلام",
+      "rateDesc": "اضبط السرعة التي يتم بها نطق النص.",
+      "pitch": "طبقة الصوت",
+      "pitchDesc": "اضبط نغمة الصوت المنطوق.",
+      "reset": "إعادة التعيين للافتراضي"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "إرسال ملاحظات إلى فريق Codeoba...",
       "licenses": "تراخيص الطرف الثالث...",
       "privacy": "سياسة الخصوصية..."
+    },
+    "readAloud": {
+      "title": "القراءة بصوت عالٍ",
+      "playPause": "تشغيل / إيقاف مؤقت",
+      "stop": "إيقاف",
+      "previous": "الجملة السابقة",
+      "next": "الجملة التالية"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "سياسة الخصوصية",
     "viewOnline": "اقرأ على الإنترنت"
+  },
+  "readAloud": {
+    "speechPlay": "تشغيل الصوت",
+    "speechPause": "إيقاف مؤقت للصوت",
+    "speechStop": "إيقاف الصوت",
+    "speechNext": "الجملة التالية",
+    "speechPrev": "الجملة السابقة",
+    "readSessionAloud": "قراءة الجلسة بصوت عالٍ",
+    "stopReading": "إيقاف القراءة"
   }
 }

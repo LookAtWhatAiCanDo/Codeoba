@@ -32,6 +32,7 @@
     "filterActive": "Aktiv",
     "filterArchived": "Archiviert",
     "filterDeleted": "Gelöscht",
+    "filterReadAloud": "Vorlesen",
     "noMessages": "Keine Nachrichten in dieser Sitzung",
     "yesterday": "Gestern",
     "statusActive": "Aktiv",
@@ -69,11 +70,20 @@
     "speed": "Geschwindigkeit",
     "duration": "Dauer",
     "name": "Name",
+    "text": "Text",
+    "session": "Sitzung",
     "sort": "Sortieren",
     "unknownModel": "Unbekanntes Modell",
     "scanning": "Lokale Sitzungsadapter werden gescannt...",
     "totalComputeTime": "Rechenzeit insgesamt",
-    "avgSessionDuration": "Durchschnittliche Sitzungsdauer"
+    "avgSessionDuration": "Durchschnittliche Sitzungsdauer",
+    "readAloud": "Vorlesen",
+    "readAloudHistory": "Vorleseverlauf",
+    "clearHistory": "Verlauf löschen",
+    "clearReadAloudHistory": "Vorleseverlauf löschen",
+    "confirmClearHistory": "Sind Sie sicher, dass Sie Ihren gesamten Verlauf der vorgelesenen Texte löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "noSpokenHistory": "Noch kein gesprochener Textverlauf vorhanden.",
+    "time": "Zeit"
   },
   "detailPane": {
     "noSelection": "Keine Unterhaltung ausgewählt",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "Region & Sprache"
+    },
+    "readAloud": {
+      "title": "Vorlesen",
+      "voice": "Text-to-Speech-Stimme",
+      "voiceDesc": "Wählen Sie den Stimmensynthesizer zum Vorlesen von Transkripttexten.",
+      "defaultVoice": "Standardsystemstimme",
+      "rate": "Sprechgeschwindigkeit",
+      "rateDesc": "Passen Sie die Geschwindigkeit an, mit der Text gesprochen wird.",
+      "pitch": "Stimmhöhe",
+      "pitchDesc": "Passen Sie die Tonhöhe der gesprochenen Stimme an.",
+      "reset": "Auf Standardwerte zurücksetzen"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "Feedback an das Codeoba-Team senden...",
       "licenses": "Drittanbieter-Lizenzen...",
       "privacy": "Datenschutzerklärung..."
+    },
+    "readAloud": {
+      "title": "Vorlesen",
+      "playPause": "Wiedergabe / Pause",
+      "stop": "Stoppen",
+      "previous": "Vorheriger Satz",
+      "next": "Nächster Satz"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "Datenschutzerklärung",
     "viewOnline": "Online lesen"
+  },
+  "readAloud": {
+    "speechPlay": "Sprachausgabe starten",
+    "speechPause": "Sprachausgabe anhalten",
+    "speechStop": "Sprachausgabe stoppen",
+    "speechNext": "Nächster Satz",
+    "speechPrev": "Vorheriger Satz",
+    "readSessionAloud": "Sitzung vorlesen",
+    "stopReading": "Vorlesen stoppen"
   }
 }

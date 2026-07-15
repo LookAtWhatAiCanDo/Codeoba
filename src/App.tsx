@@ -33,6 +33,7 @@ import FeedbackDialog from "./components/FeedbackDialog";
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
 import { getLocalizedAppError } from "./utils/errorHelper";
+import { useSpeech } from "./utils/useSpeech";
 import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
 import "./App.css";
@@ -264,6 +265,10 @@ function App() {
   const [sessions, setSessions] = createSignal<Session[]>([]);
   const [searchResults, setSearchResults] = createSignal<SearchResult[] | null>(null);
   const [selectedSession, setSelectedSession] = createSignal<Session | null>(null);
+  const speech = useSpeech();
+  createEffect(() => {
+    speech.setLanguage(locale());
+  });
 
   const [searchQuery, setSearchQuery] = createSignal("");
   const [isSemantic, setIsSemantic] = createSignal(false);
@@ -289,6 +294,7 @@ function App() {
   );
 
   const [isLoading, setIsLoading] = createSignal(true);
+  const [dashboardTab, setDashboardTab] = createSignal<DashboardTab>(DashboardTab.Global);
   const [isRebuilding, setIsRebuilding] = createSignal(false);
   const [errorMsg, setErrorMsg] = createSignal<string | null>(null);
   const [pruneDeleted, setPruneDeleted] = createSignal(false);
@@ -730,6 +736,10 @@ function App() {
     let unlistenMenuGoHighlightNext: (() => void) | undefined;
     let unlistenMenuGoHighlightPrev: (() => void) | undefined;
     let unlistenMenuGoSelectHighlighted: (() => void) | undefined;
+    let unlistenMenuReadAloudPlayPause: (() => void) | undefined;
+    let unlistenMenuReadAloudStop: (() => void) | undefined;
+    let unlistenMenuReadAloudPrev: (() => void) | undefined;
+    let unlistenMenuReadAloudNext: (() => void) | undefined;
 
     // Register progress and live listeners immediately
     try {
@@ -779,6 +789,20 @@ function App() {
         pendingFull = null;
 
         logFE("debug", `Live update flush: ${updates.size} updated, ${deletes.size} deleted`);
+
+        // Check if any of the updated sessions are in the "read-aloud" list
+        for (const [id, s] of updates) {
+          if (speech.isReadAloudActive(id)) {
+            invoke<Session | null>("get_session", {
+              sourceId: s.sourceId,
+              filePath: s.filePath,
+            }).then((fullSession) => {
+              if (fullSession) {
+                speech.handleReadAloudSessionUpdate(fullSession);
+              }
+            });
+          }
+        }
 
         batch(() => {
           setSessions((prev) => {
@@ -920,6 +944,28 @@ function App() {
           if (sourceId in prev) return prev;
           return { ...prev, [sourceId]: true };
         });
+      });
+
+      unlistenMenuReadAloudPlayPause = await listen("menu-read-aloud-play-pause", () => {
+        untrack(() => {
+          const session = selectedSession();
+          if (session) {
+            if (speech.isPlaying()) {
+              speech.play();
+            } else {
+              speech.play(session, locale());
+            }
+          }
+        });
+      });
+      unlistenMenuReadAloudStop = await listen("menu-read-aloud-stop", () => {
+        speech.stop();
+      });
+      unlistenMenuReadAloudPrev = await listen("menu-read-aloud-prev", () => {
+        speech.prev();
+      });
+      unlistenMenuReadAloudNext = await listen("menu-read-aloud-next", () => {
+        speech.next();
       });
 
       unlistenMenuSettings = await listen("menu-settings", () => {
@@ -1390,6 +1436,10 @@ function App() {
         if (unlistenDeleted) unlistenDeleted();
         if (unlistenProgress) unlistenProgress();
         if (unlistenDetectedSource) unlistenDetectedSource();
+        if (unlistenMenuReadAloudPlayPause) unlistenMenuReadAloudPlayPause();
+        if (unlistenMenuReadAloudStop) unlistenMenuReadAloudStop();
+        if (unlistenMenuReadAloudPrev) unlistenMenuReadAloudPrev();
+        if (unlistenMenuReadAloudNext) unlistenMenuReadAloudNext();
         if (unlistenMenuSettings) unlistenMenuSettings();
         if (unlistenMenuLicenses) unlistenMenuLicenses();
         if (unlistenMenuPrivacy) unlistenMenuPrivacy();
@@ -1920,6 +1970,11 @@ function App() {
         indexingProgress={indexingProgress()}
         fontSize={fontSize()}
         onFontSizeChange={handleFontSizeChange}
+        onGoToReadAloud={() => {
+          handleGoHome();
+          setActiveGroupFilter(null);
+          setDashboardTab(DashboardTab.ReadAloud);
+        }}
       />
 
       {/* Main Grid: Sidebar + Detail Pane */}

@@ -25,6 +25,7 @@ import {
   Trash2,
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { useSpeech } from "../utils/useSpeech";
 import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { getStatusBadge } from "../utils/sessionStatus";
@@ -63,6 +64,7 @@ interface DetailPaneProps {
 
 export const DetailPane = (props: DetailPaneProps) => {
   const { t, locale } = useI18n();
+  const speech = useSpeech();
   const [copiedPath, setCopiedPath] = createSignal(false);
   const [copiedWorkspace, setCopiedWorkspace] = createSignal(false);
   const [copiedTitle, setCopiedTitle] = createSignal(false);
@@ -522,6 +524,7 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   let handleTriggerSearch: () => void;
   let handleKeyDown: (e: KeyboardEvent) => void;
+  let handleDeeplink: (e: any) => void;
 
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
@@ -540,6 +543,7 @@ export const DetailPane = (props: DetailPaneProps) => {
       const isScrollKey =
         (e.key === "Home" || e.key === "End" || e.key === "PageUp" || e.key === "PageDown") &&
         !e.shiftKey;
+
       if (isScrollKey) {
         const activeTag = document.activeElement?.tagName.toLowerCase();
         const isTyping =
@@ -567,6 +571,44 @@ export const DetailPane = (props: DetailPaneProps) => {
     };
     window.addEventListener("keydown", handleKeyDown);
 
+    handleDeeplink = (evt: any) => {
+      const { sessionId, turnIndex } = evt.detail;
+      if (!props.session || props.session.id !== sessionId) return;
+
+      const turn = props.session.turns[turnIndex];
+      if (!turn) return;
+
+      const turnKey = turn.turnId || String(turnIndex);
+      setTimeout(() => {
+        const el = document.getElementById(turnKey);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+
+          // Flash highlight the assistant bubble briefly to draw focus!
+          const assistantBubble = el.querySelector(".bg-accent\\/5, .bg-accent-light\\/10");
+          if (assistantBubble) {
+            assistantBubble.classList.add(
+              "ring-2",
+              "ring-accent",
+              "ring-offset-2",
+              "ring-offset-background",
+              "transition-all",
+              "duration-1000"
+            );
+            setTimeout(() => {
+              assistantBubble.classList.remove(
+                "ring-2",
+                "ring-accent",
+                "ring-offset-2",
+                "ring-offset-background"
+              );
+            }, 2500);
+          }
+        }
+      }, 250);
+    };
+    window.addEventListener("deeplink-turn", handleDeeplink);
+
     // Set up ResizeObserver on the inner wrapper to maintain scroll lock during mounts
     if (scrollInnerRef) {
       const ro = new ResizeObserver(() => {
@@ -587,6 +629,9 @@ export const DetailPane = (props: DetailPaneProps) => {
     }
     if (handleKeyDown) {
       window.removeEventListener("keydown", handleKeyDown);
+    }
+    if (handleDeeplink) {
+      window.removeEventListener("deeplink-turn", handleDeeplink);
     }
   });
 
@@ -1318,6 +1363,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                       actualIndex={index()}
                       formatFullDate={formatFullDate}
                       sourceId={props.session!.sourceId}
+                      sessionId={props.session!.id}
                       searchQuery={activeSearchQuery()}
                       matchCase={activeMatchCase()}
                       wholeWord={activeWholeWord()}
@@ -1326,6 +1372,11 @@ export const DetailPane = (props: DetailPaneProps) => {
                       onContextMenu={handleContextMenu}
                       onImageClick={setActiveLightboxImage}
                       onImageContextMenu={handleImageContextMenu}
+                      isActiveSpeechTurn={
+                        speech.isPlaying() &&
+                        speech.activeSessionId() === props.session!.id &&
+                        speech.activeTurnIndex() === index()
+                      }
                     />
                   );
                 }}
@@ -1635,6 +1686,7 @@ interface VirtualTurnProps {
   actualIndex: number;
   formatFullDate: (timestamp: number) => string;
   sourceId: string;
+  sessionId: string;
   searchQuery?: string;
   matchCase?: boolean;
   wholeWord?: boolean;
@@ -1643,6 +1695,7 @@ interface VirtualTurnProps {
   onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
   onImageClick: (img: { path?: string; src: string }) => void;
   onImageContextMenu: (e: MouseEvent, path?: string, src?: string) => void;
+  isActiveSpeechTurn?: boolean;
 }
 
 const VirtualTurn = (props: VirtualTurnProps) => {
@@ -1772,7 +1825,13 @@ const VirtualTurn = (props: VirtualTurnProps) => {
             </div>
           </Show>
         </div>
-        <div class="w-full bg-accent-light/10 border border-accent/20 p-5 rounded-2xl shadow-sm">
+        <div
+          class={`w-full p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+            props.isActiveSpeechTurn
+              ? "bg-accent/5 border-2 border-accent shadow-md shadow-accent/15"
+              : "bg-accent-light/10 border border-accent/20"
+          }`}
+        >
           <Show
             when={props.turn.assistantMessage === "[Compacted Response]"}
             fallback={
@@ -1783,6 +1842,8 @@ const VirtualTurn = (props: VirtualTurnProps) => {
                 wholeWord={props.wholeWord}
                 useRegex={props.useRegex}
                 onContextMenu={props.onContextMenu}
+                sessionId={props.sessionId}
+                turnIndex={props.actualIndex}
               />
             }
           >
@@ -1811,6 +1872,8 @@ const AssistantMessageRenderer = (props: {
   wholeWord?: boolean;
   useRegex?: boolean;
   onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
+  sessionId?: string;
+  turnIndex?: number;
 }) => {
   const parts = createMemo(() => parseAssistantMessage(props.message));
 
@@ -1853,6 +1916,8 @@ const AssistantMessageRenderer = (props: {
                   matchCase={props.matchCase}
                   wholeWord={props.wholeWord}
                   useRegex={props.useRegex}
+                  sessionId={props.sessionId}
+                  turnIndex={props.turnIndex}
                 />
               </div>
             );

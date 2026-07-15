@@ -28,10 +28,12 @@ import {
   ExternalLink,
   Copy,
   Trash2,
+  Volume2,
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter } from "../types";
 import { useContextMenuPosition } from "../utils/contextMenu";
+import { useSpeech } from "../utils/useSpeech";
 
 export interface GroupTask {
   id: string;
@@ -323,6 +325,7 @@ export const getSessionModels = (session: Session): string[] => {
 
 export const Sidebar = (props: SidebarProps) => {
   const { t, locale } = useI18n();
+  const speech = useSpeech();
   const [showFilters, setShowFilters] = createSignal(false);
 
   const [sortBy, setSortBy] = createSignal<
@@ -702,9 +705,13 @@ export const Sidebar = (props: SidebarProps) => {
     let active = 0;
     let archived = 0;
     let deleted = 0;
+    let readAloud = 0;
     for (const s of searchedAndGroupedSessions()) {
       if (props.selectedSources.size > 0 && !props.selectedSources.has(s.sourceId)) {
         continue;
+      }
+      if (speech.isReadAloudActive(s.id)) {
+        readAloud++;
       }
       if (s.isDeleted) {
         deleted++;
@@ -719,6 +726,7 @@ export const Sidebar = (props: SidebarProps) => {
       active,
       archived,
       deleted,
+      "read-aloud": readAloud,
     };
   });
 
@@ -728,12 +736,14 @@ export const Sidebar = (props: SidebarProps) => {
           ArchivalFilter.All,
           ArchivalFilter.Active,
           ArchivalFilter.Archived,
+          ArchivalFilter.ReadAloud,
         ] as const)
       : ([
           ArchivalFilter.All,
           ArchivalFilter.Active,
           ArchivalFilter.Archived,
           ArchivalFilter.Deleted,
+          ArchivalFilter.ReadAloud,
         ] as const);
   });
 
@@ -805,6 +815,11 @@ export const Sidebar = (props: SidebarProps) => {
           )
             return false;
           if (props.archivalFilter === ArchivalFilter.Deleted && !r.session.isDeleted) return false;
+          if (
+            props.archivalFilter === ArchivalFilter.ReadAloud &&
+            !speech.isReadAloudActive(r.session.id)
+          )
+            return false;
           return true;
         })
         .map((r) => stableItem(r.session, r.matchedTurnIndexes, r.score));
@@ -821,6 +836,8 @@ export const Sidebar = (props: SidebarProps) => {
           if (props.archivalFilter === ArchivalFilter.Archived && (!s.isArchived || s.isDeleted))
             return false;
           if (props.archivalFilter === ArchivalFilter.Deleted && !s.isDeleted) return false;
+          if (props.archivalFilter === ArchivalFilter.ReadAloud && !speech.isReadAloudActive(s.id))
+            return false;
           return true;
         })
         .map((s) => stableItem(s));
@@ -1346,6 +1363,9 @@ export const Sidebar = (props: SidebarProps) => {
                         <Show when={tab === ArchivalFilter.Deleted}>
                           <Trash2 class="w-3.5 h-3.5 text-red-500 shrink-0" />
                         </Show>
+                        <Show when={tab === ArchivalFilter.ReadAloud}>
+                          <Volume2 class="w-3.5 h-3.5 shrink-0" />
+                        </Show>
                         <span>
                           {
                             {
@@ -1353,6 +1373,7 @@ export const Sidebar = (props: SidebarProps) => {
                               [ArchivalFilter.Active]: t("sidebar.filterActive"),
                               [ArchivalFilter.Archived]: t("sidebar.filterArchived"),
                               [ArchivalFilter.Deleted]: t("sidebar.filterDeleted"),
+                              [ArchivalFilter.ReadAloud]: t("sidebar.filterReadAloud"),
                             }[tab]
                           }
                         </span>
@@ -1687,6 +1708,7 @@ export const Sidebar = (props: SidebarProps) => {
                 <SessionCard
                   session={session}
                   isPinned={props.pinnedSessionIds.has(session.id)}
+                  isReadAloudActive={speech.isReadAloudActive(session.id)}
                   isSelected={isSelected()}
                   isHighlighted={isHighlighted()}
                   isLoading={props.loadingSessionId === session.id}
@@ -1728,6 +1750,24 @@ export const Sidebar = (props: SidebarProps) => {
 
                     return (
                       <>
+                        <button
+                          class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
+                          onClick={() => {
+                            speech.toggleReadAloud(session().id, {
+                              sourceId: session().sourceId,
+                              filePath: session().filePath,
+                            });
+                            setContextMenu(null);
+                          }}
+                        >
+                          <Volume2 class="w-3.5 h-3.5" />
+                          <span>
+                            {speech.isReadAloudActive(session().id)
+                              ? t("readAloud.stopReading")
+                              : t("readAloud.readSessionAloud")}
+                          </span>
+                        </button>
+
                         <button
                           class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
                           onClick={() => {
@@ -2002,12 +2042,14 @@ interface SessionCardProps {
   getSourceLabel: (sourceId: string) => string;
   groups: ConversationGroup[];
   isPinned: boolean;
+  isReadAloudActive: boolean;
   onContextMenu: (e: MouseEvent, session: Session) => void;
   onTogglePin?: (sessionId: string) => void;
 }
 
 const SessionCard = (props: SessionCardProps) => {
   const { t } = useI18n();
+  const speech = useSpeech();
   const title = createMemo(() => props.session.threadName || "Untitled Session");
   const models = createMemo(() => getSessionModels(props.session));
   const durationMs = createMemo(() => getSessionComputeTimeMs(props.session));
@@ -2101,6 +2143,38 @@ const SessionCard = (props: SessionCardProps) => {
               title={t("groups.unpinConversation") || "Unpin Conversation"}
             >
               <Pin class="w-3.5 h-3.5" />
+            </button>
+          </Show>
+          <Show
+            when={props.isReadAloudActive}
+            fallback={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speech.toggleReadAloud(props.session.id, {
+                    sourceId: props.session.sourceId,
+                    filePath: props.session.filePath,
+                  });
+                }}
+                class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
+                title={t("readAloud.readSessionAloud") || "Read Session Aloud"}
+              >
+                <Volume2 class="w-3.5 h-3.5" />
+              </button>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                speech.toggleReadAloud(props.session.id, {
+                  sourceId: props.session.sourceId,
+                  filePath: props.session.filePath,
+                });
+              }}
+              class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center animate-pulse"
+              title={t("readAloud.stopReading") || "Stop Reading"}
+            >
+              <Volume2 class="w-3.5 h-3.5" />
             </button>
           </Show>
           <Show when={props.session.isArchived}>

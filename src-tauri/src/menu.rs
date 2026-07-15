@@ -561,11 +561,41 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         menu_builder = menu_builder.item(&app_menu);
     }
 
+    // Read Aloud Submenu
+    let read_aloud_menu = SubmenuBuilder::new(app_handle, t("menu.readAloud.title"))
+        .item(
+            &MenuItemBuilder::new(t("menu.readAloud.playPause"))
+                .accelerator("CmdOrCtrl+Alt+Space")
+                .id("read-aloud-play-pause")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.readAloud.stop"))
+                .accelerator("CmdOrCtrl+Alt+S")
+                .id("read-aloud-stop")
+                .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::new(t("menu.readAloud.previous"))
+                .accelerator("CmdOrCtrl+Alt+Left")
+                .id("read-aloud-prev")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.readAloud.next"))
+                .accelerator("CmdOrCtrl+Alt+Right")
+                .id("read-aloud-next")
+                .build(app_handle)?,
+        )
+        .build()?;
+
     #[allow(unused_mut)]
     let mut menu_builder = menu_builder
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
+        .item(&read_aloud_menu)
         .item(&go_menu)
         .item(&window_menu);
 
@@ -825,6 +855,10 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
     };
 
     match id {
+        "read-aloud-play-pause" => emit_event("menu-read-aloud-play-pause"),
+        "read-aloud-stop" => emit_event("menu-read-aloud-stop"),
+        "read-aloud-prev" => emit_event("menu-read-aloud-prev"),
+        "read-aloud-next" => emit_event("menu-read-aloud-next"),
         "settings" => emit_event("menu-settings"),
         "check-updates" => emit_event("menu-check-updates"),
         "rebuild-index" => emit_event("menu-rebuild-index"),

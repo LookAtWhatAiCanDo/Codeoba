@@ -32,6 +32,7 @@
     "filterActive": "活跃",
     "filterArchived": "已归档",
     "filterDeleted": "已删除",
+    "filterReadAloud": "朗读",
     "noMessages": "此会话中没有消息",
     "yesterday": "昨天",
     "statusActive": "运行中",
@@ -69,11 +70,20 @@
     "speed": "速度",
     "duration": "时长",
     "name": "名称",
+    "text": "文本",
+    "session": "会话",
     "sort": "排序",
     "unknownModel": "未知模型",
     "scanning": "正在扫描本地会话适配器...",
     "totalComputeTime": "总计算时间",
-    "avgSessionDuration": "平均会话时长"
+    "avgSessionDuration": "平均会话时长",
+    "readAloud": "朗读",
+    "readAloudHistory": "朗读历史",
+    "clearHistory": "清除历史",
+    "clearReadAloudHistory": "清除朗读历史",
+    "confirmClearHistory": "您确定要清除所有已朗读的文本历史记录吗？此操作无法撤销。",
+    "noSpokenHistory": "暂无已朗读的文本历史记录。",
+    "time": "时间"
   },
   "detailPane": {
     "noSelection": "未选择对话",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "区域与语言"
+    },
+    "readAloud": {
+      "title": "朗读",
+      "voice": "语音合成声音",
+      "voiceDesc": "选择朗读转录文本的语音合成引擎。",
+      "defaultVoice": "系统默认声音",
+      "rate": "朗读速度",
+      "rateDesc": "调整文本朗读的速度。",
+      "pitch": "朗读音调",
+      "pitchDesc": "调整说话声音的音调。",
+      "reset": "恢复默认值"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "向 Codeoba 团队发送反馈...",
       "licenses": "第三方许可...",
       "privacy": "隐私政策..."
+    },
+    "readAloud": {
+      "title": "朗读",
+      "playPause": "播放 / 暂停",
+      "stop": "停止",
+      "previous": "上一句",
+      "next": "下一句"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "隐私政策",
     "viewOnline": "在线阅读"
+  },
+  "readAloud": {
+    "speechPlay": "播放语音",
+    "speechPause": "暂停语音",
+    "speechStop": "停止语音",
+    "speechNext": "下一句",
+    "speechPrev": "上一句",
+    "readSessionAloud": "朗读会话",
+    "stopReading": "停止朗读"
   }
 }

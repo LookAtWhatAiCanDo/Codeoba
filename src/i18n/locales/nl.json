@@ -32,6 +32,7 @@
     "filterActive": "Actief",
     "filterArchived": "Gearchiveerd",
     "filterDeleted": "Verwijderd",
+    "filterReadAloud": "Voorlezen",
     "noMessages": "Geen berichten in deze sessie",
     "yesterday": "Gisteren",
     "statusActive": "Actief",
@@ -69,11 +70,20 @@
     "speed": "Snelheid",
     "duration": "Duur",
     "name": "Naam",
+    "text": "Tekst",
+    "session": "Sessie",
     "sort": "Sorteren",
     "unknownModel": "Onbekend model",
     "scanning": "Lokale sessie-adapters scannen...",
     "totalComputeTime": "Totale rekentijd",
-    "avgSessionDuration": "Gemiddelde sessieduur"
+    "avgSessionDuration": "Gemiddelde sessieduur",
+    "readAloud": "Voorlezen",
+    "readAloudHistory": "Voorleesgeschiedenis",
+    "clearHistory": "Geschiedenis wissen",
+    "clearReadAloudHistory": "Voorleesgeschiedenis wissen",
+    "confirmClearHistory": "Weet u zeker dat u uw gehele geschiedenis van voorgelezen tekst wilt wissen? Deze actie kan niet ongedaan gemaakt worden.",
+    "noSpokenHistory": "Nog geen geschiedenis van gesproken tekst.",
+    "time": "Tijd"
   },
   "detailPane": {
     "noSelection": "Geen gesprek geselecteerd",
@@ -274,6 +284,17 @@
     },
     "regional": {
       "title": "Regio & taal"
+    },
+    "readAloud": {
+      "title": "Voorlezen",
+      "voice": "Tekst-naar-spraakstem",
+      "voiceDesc": "Selecteer de stemsynthesizer voor het voorlezen van tekst.",
+      "defaultVoice": "Standaard systeemstem",
+      "rate": "Spraaksnelheid",
+      "rateDesc": "Pas de snelheid aan waarmee tekst wordt uitgesproken.",
+      "pitch": "Spraaktoonhoogte",
+      "pitchDesc": "Pas de toonhoogte van de gesproken stem aan.",
+      "reset": "Standaardwaarden herstellen"
     }
   },
   "updater": {
@@ -368,6 +389,13 @@
       "feedback": "Feedback naar het Codeoba-team sturen...",
       "licenses": "Licenties van derden...",
       "privacy": "Privacybeleid..."
+    },
+    "readAloud": {
+      "title": "Voorlezen",
+      "playPause": "Afspelen / Pauzeren",
+      "stop": "Stoppen",
+      "previous": "Vorige zin",
+      "next": "Volgende zin"
     }
   },
   "errors": {
@@ -400,5 +428,14 @@
   "privacy": {
     "title": "Privacybeleid",
     "viewOnline": "Online lezen"
+  },
+  "readAloud": {
+    "speechPlay": "Spraak afspelen",
+    "speechPause": "Spraak pauzeren",
+    "speechStop": "Spraak stoppen",
+    "speechNext": "Volgende zin",
+    "speechPrev": "Vorige zin",
+    "readSessionAloud": "Sessie voorlezen",
+    "stopReading": "Voorlezen stoppen"
   }
 }

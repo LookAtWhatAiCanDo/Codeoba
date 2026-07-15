@@ -19,6 +19,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import DOMPurify from "dompurify";
 import { highlightContainer } from "../utils/highlighter";
 import { invoke } from "@tauri-apps/api/core";
+import { useSpeech } from "../utils/useSpeech";
 
 interface MarkdownRendererProps {
   content: string;
@@ -26,10 +27,13 @@ interface MarkdownRendererProps {
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
+  sessionId?: string;
+  turnIndex?: number;
 }
 
 export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   const { t } = useI18n();
+  const speech = useSpeech();
   let containerRef: HTMLDivElement | undefined;
   const [isExpanded, setIsExpanded] = createSignal(false);
 
@@ -231,6 +235,72 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       }
     }
   };
+
+  // Apply speech-active block highlighting
+  createEffect(() => {
+    const idx = speech.currentSentenceIndex();
+    const isPlaying = speech.isPlaying();
+
+    // Clear any previous speech highlights in this container
+    if (containerRef) {
+      const highlighted = containerRef.querySelectorAll(".speech-highlight");
+      highlighted.forEach((el) => {
+        el.classList.remove(
+          "speech-highlight",
+          "bg-accent/5",
+          "border-l-2",
+          "border-accent",
+          "pl-2",
+          "transition-all",
+          "duration-200"
+        );
+      });
+    }
+
+    if (!isPlaying || !containerRef || !props.sessionId || props.turnIndex === undefined) {
+      return;
+    }
+
+    const list = speech.sentences();
+    if (idx < 0 || idx >= list.length) return;
+    const currentItem = list[idx]!;
+
+    if (currentItem.sessionId !== props.sessionId || currentItem.turnIndex !== props.turnIndex) {
+      return;
+    }
+
+    // Select text block elements in document order
+    const elements = Array.from(
+      containerRef.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+    );
+    const narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
+
+    let targetEl: HTMLElement | null = null;
+
+    if (currentItem.blockIndex !== undefined && currentItem.blockIndex < narrativeElements.length) {
+      targetEl = narrativeElements[currentItem.blockIndex] as HTMLElement;
+    } else {
+      // Fallback matching
+      const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^a-z0-9]/g, "");
+      targetEl =
+        (narrativeElements.find((el) => {
+          const cleanElText = el.textContent?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
+          return cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText);
+        }) as HTMLElement) || null;
+    }
+
+    if (targetEl) {
+      targetEl.classList.add(
+        "speech-highlight",
+        "bg-accent/5",
+        "border-l-2",
+        "border-accent",
+        "pl-2",
+        "transition-all",
+        "duration-200"
+      );
+    }
+  });
 
   return (
     <div class="flex flex-col gap-3 w-full">

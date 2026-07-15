@@ -12,6 +12,7 @@ import {
   FolderMinus,
   Globe,
   SlidersHorizontal,
+  Volume2,
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -60,7 +61,14 @@ interface SettingsDialogProps {
 }
 
 type Category =
-  "general" | "regional" | "theme" | "sources" | "exclusions" | "permissions" | "updates";
+  | "general"
+  | "regional"
+  | "read-aloud"
+  | "theme"
+  | "sources"
+  | "exclusions"
+  | "permissions"
+  | "updates";
 
 const DARK_THEMES = [
   { id: "obsidian", nameKey: "themeObsidian", color: "bg-[#0d0e12] border-slate-700" },
@@ -114,6 +122,41 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [updateCheckResult, setUpdateCheckResult] = createSignal<string | null>(null);
   const [updaterActive, setUpdaterActive] = createSignal(false);
   const [appVersion, setAppVersion] = createSignal("0.1.0");
+
+  const [voices, setVoices] = createSignal<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = createSignal("");
+  const [speechRate, setSpeechRate] = createSignal(1.0);
+  const [speechPitch, setSpeechPitch] = createSignal(1.0);
+
+  const loadVoices = () => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      setVoices(window.speechSynthesis.getVoices());
+    }
+  };
+
+  const handleVoiceChange = (val: string) => {
+    setSelectedVoiceName(val);
+    localStorage.setItem("codeoba-tts-voice", val);
+  };
+
+  const handleRateChange = (val: number) => {
+    setSpeechRate(val);
+    localStorage.setItem("codeoba-tts-rate", String(val));
+  };
+
+  const handlePitchChange = (val: number) => {
+    setSpeechPitch(val);
+    localStorage.setItem("codeoba-tts-pitch", String(val));
+  };
+
+  const handleResetReadAloudDefaults = () => {
+    setSelectedVoiceName("");
+    setSpeechRate(1.0);
+    setSpeechPitch(1.0);
+    localStorage.removeItem("codeoba-tts-voice");
+    localStorage.removeItem("codeoba-tts-rate");
+    localStorage.removeItem("codeoba-tts-pitch");
+  };
 
   // Custom Theme HSL Adjusters
   const [activeColorIndex, setActiveColorIndex] = createSignal<string>("bg");
@@ -263,6 +306,23 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     } catch (err) {
       logFE("error", `Failed to load prune_deleted_sessions setting: ${err}`);
     }
+
+    // 7. Initialize Read Aloud Settings
+    loadVoices();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    setSelectedVoiceName(localStorage.getItem("codeoba-tts-voice") || "");
+    setSpeechRate(
+      localStorage.getItem("codeoba-tts-rate")
+        ? parseFloat(localStorage.getItem("codeoba-tts-rate")!)
+        : 1.0
+    );
+    setSpeechPitch(
+      localStorage.getItem("codeoba-tts-pitch")
+        ? parseFloat(localStorage.getItem("codeoba-tts-pitch")!)
+        : 1.0
+    );
   });
 
   // General Settings
@@ -278,7 +338,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [keyringDisabled, setKeyringDisabled] = createSignal(false);
   const [premiumActive, setPremiumActive] = createSignal(false);
   const [pruneDeleted, setPruneDeleted] = createSignal(false);
-
   const handleToggleKeyring = async (checked: boolean) => {
     // Prevent toggling if premium is inactive
     if (!premiumActive()) return;
@@ -559,6 +618,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <span>{t("settings.regional.title")}</span>
               </button>
               <button
+                onClick={() => setActiveCategory("read-aloud")}
+                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
+                  activeCategory() === "read-aloud"
+                    ? "bg-accent-light/20 text-accent border border-accent/20"
+                    : "text-text-secondary hover:text-text-primary border border-transparent"
+                }`}
+              >
+                <Volume2 class="w-3.5 h-3.5" />
+                <span>{t("settings.readAloud.title")}</span>
+              </button>
+              <button
                 onClick={() => setActiveCategory("theme")}
                 class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
                   activeCategory() === "theme"
@@ -603,6 +673,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <Shield class="w-3.5 h-3.5" />
                 <span>{t("settings.permissions.tab")}</span>
               </button>
+
               <Show when={updaterActive()}>
                 <button
                   onClick={() => setActiveCategory("updates")}
@@ -926,6 +997,106 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <option value="eu">{t("settings.general.numberFormatEU")}</option>
                     <option value="fr">{t("settings.general.numberFormatFR")}</option>
                   </select>
+                </div>
+              </div>
+            </Show>
+
+            <Show when={activeCategory() === "read-aloud"}>
+              {/* Read Aloud Settings Tab */}
+              <div class="space-y-5 animate-in fade-in duration-200">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2 select-none">
+                  {t("settings.readAloud.title")}
+                </h3>
+
+                {/* Voice Selector */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">
+                      {t("settings.readAloud.voice")}
+                    </h4>
+                    <p class="text-[0.625rem] text-text-secondary/70">
+                      {t("settings.readAloud.voiceDesc")}
+                    </p>
+                  </div>
+                  <select
+                    value={selectedVoiceName()}
+                    onChange={(e) => handleVoiceChange(e.currentTarget.value)}
+                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
+                  >
+                    <option value="">{t("settings.readAloud.defaultVoice")}</option>
+                    <For each={voices()}>
+                      {(voice) => (
+                        <option value={voice.name}>
+                          {voice.name} ({voice.lang})
+                        </option>
+                      )}
+                    </For>
+                  </select>
+                </div>
+
+                {/* Speech Rate Slider */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="text-xs font-bold text-text-primary">
+                        {t("settings.readAloud.rate")}
+                      </h4>
+                      <p class="text-[0.625rem] text-text-secondary/70">
+                        {t("settings.readAloud.rateDesc")}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.1"
+                      value={speechRate()}
+                      onInput={(e) => handleRateChange(parseFloat(e.currentTarget.value))}
+                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
+                      {speechRate().toFixed(1)}x
+                    </div>
+                  </div>
+                </div>
+
+                {/* Speech Pitch Slider */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="text-xs font-bold text-text-primary">
+                        {t("settings.readAloud.pitch")}
+                      </h4>
+                      <p class="text-[0.625rem] text-text-secondary/70">
+                        {t("settings.readAloud.pitchDesc")}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.5"
+                      step="0.1"
+                      value={speechPitch()}
+                      onInput={(e) => handlePitchChange(parseFloat(e.currentTarget.value))}
+                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
+                      {speechPitch().toFixed(1)}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex justify-end pt-1 border-t border-border/20">
+                  <button
+                    onClick={handleResetReadAloudDefaults}
+                    class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
+                  >
+                    {t("settings.readAloud.reset")}
+                  </button>
                 </div>
               </div>
             </Show>
