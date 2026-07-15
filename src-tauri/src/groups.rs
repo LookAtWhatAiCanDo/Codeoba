@@ -212,8 +212,10 @@ pub fn rename_group(old_name: &str, new_name: &str) -> Result<bool, String> {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
-        groups[idx].name = new_name.to_string();
-        groups[idx].updated_at = now;
+        if let Some(group) = groups.get_mut(idx) {
+            group.name = new_name.to_string();
+            group.updated_at = now;
+        }
 
         // Re-parent child groups (names are "Parent/Child" paths) by replacing the leading
         // segments that match old_name. This is done segment-by-segment rather than by byte
@@ -229,14 +231,20 @@ pub fn rename_group(old_name: &str, new_name: &str) -> Result<bool, String> {
             }
             let g_segments: Vec<&str> = g.name.split('/').collect();
             let is_descendant = g_segments.len() > old_segments.len()
-                && g_segments[..old_segments.len()]
-                    .iter()
-                    .zip(&old_segments)
-                    .all(|(seg, old)| seg.to_lowercase() == old.to_lowercase());
+                && g_segments
+                    .get(..old_segments.len())
+                    .map(|sub| {
+                        sub.iter()
+                            .zip(&old_segments)
+                            .all(|(seg, old)| seg.to_lowercase() == old.to_lowercase())
+                    })
+                    .unwrap_or(false);
             if is_descendant {
-                let remaining = g_segments[old_segments.len()..].join("/");
-                g.name = format!("{}/{}", new_name, remaining);
-                g.updated_at = now;
+                if let Some(sub) = g_segments.get(old_segments.len()..) {
+                    let remaining = sub.join("/");
+                    g.name = format!("{}/{}", new_name, remaining);
+                    g.updated_at = now;
+                }
             }
         }
         save_groups(&groups)?;
@@ -260,11 +268,12 @@ pub fn assign_session_to_group(session_id: &str, group_name: &str) -> Result<(),
         .iter()
         .position(|g| g.name.to_lowercase() == group_name.to_lowercase());
     if let Some(idx) = existing_idx {
-        let group = &mut groups[idx];
-        if !group.session_ids.contains(session_id) {
-            group.session_ids.insert(session_id.to_string());
-            group.updated_at = now;
-            save_groups(&groups)?;
+        if let Some(group) = groups.get_mut(idx) {
+            if !group.session_ids.contains(session_id) {
+                group.session_ids.insert(session_id.to_string());
+                group.updated_at = now;
+                save_groups(&groups)?;
+            }
         }
     } else {
         let mut session_ids = HashSet::new();
@@ -294,14 +303,15 @@ pub fn remove_session_from_group(session_id: &str, group_name: &str) -> Result<(
         .iter()
         .position(|g| g.name.to_lowercase() == group_name.to_lowercase());
     if let Some(idx) = existing_idx {
-        let group = &mut groups[idx];
-        if group.session_ids.contains(session_id) {
-            group.session_ids.remove(session_id);
-            group.updated_at = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_millis() as i64)
-                .unwrap_or(0);
-            save_groups(&groups)?;
+        if let Some(group) = groups.get_mut(idx) {
+            if group.session_ids.contains(session_id) {
+                group.session_ids.remove(session_id);
+                group.updated_at = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or(0);
+                save_groups(&groups)?;
+            }
         }
     }
     Ok(())
@@ -316,13 +326,14 @@ pub fn set_group_pinned(name: &str, pinned: bool) -> Result<(), String> {
         .iter()
         .position(|g| g.name.to_lowercase() == name.to_lowercase());
     if let Some(idx) = existing_idx {
-        let group = &mut groups[idx];
-        group.is_pinned = pinned;
-        group.updated_at = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
-        save_groups(&groups)?;
+        if let Some(group) = groups.get_mut(idx) {
+            group.is_pinned = pinned;
+            group.updated_at = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            save_groups(&groups)?;
+        }
     }
     Ok(())
 }
@@ -377,17 +388,20 @@ pub fn update_group_details(
         .iter()
         .position(|g| g.name.to_lowercase() == name.to_lowercase());
     if let Some(idx) = existing_idx {
-        let group = &mut groups[idx];
-        group.description = description.to_string();
-        group.status = status.to_string();
-        group.past_work_summary = past_work_summary.to_string();
-        group.tasks = tasks;
-        group.updated_at = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
-        save_groups(&groups)?;
-        Ok(())
+        if let Some(group) = groups.get_mut(idx) {
+            group.description = description.to_string();
+            group.status = status.to_string();
+            group.past_work_summary = past_work_summary.to_string();
+            group.tasks = tasks;
+            group.updated_at = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            save_groups(&groups)?;
+            Ok(())
+        } else {
+            Err(format!("Group '{}' not found", name))
+        }
     } else {
         Err(format!("Group '{}' not found", name))
     }

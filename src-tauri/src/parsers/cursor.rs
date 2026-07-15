@@ -149,7 +149,7 @@ impl CursorSource {
 
             // Normalize a leading-slash Windows path ("/C:/..." -> "C:/..."). strip_prefix
             // avoids byte-indexing the string.
-            if folder_path.len() > 2 && folder_path.as_bytes()[2] == b':' {
+            if folder_path.len() > 2 && folder_path.as_bytes().get(2) == Some(&b':') {
                 if let Some(stripped) = folder_path.strip_prefix('/') {
                     folder_path = stripped.to_string();
                 }
@@ -207,7 +207,7 @@ impl CursorSource {
         let mut turn_count = 0;
 
         while idx < conversation.len() {
-            let item = match conversation[idx].as_object() {
+            let item = match conversation.get(idx).and_then(|v| v.as_object()) {
                 Some(obj) => obj,
                 None => {
                     idx += 1;
@@ -251,7 +251,7 @@ impl CursorSource {
             if item_type == 1 {
                 let mut assistant_text = String::new();
                 if idx + 1 < conversation.len() {
-                    if let Some(next) = conversation[idx + 1].as_object() {
+                    if let Some(next) = conversation.get(idx + 1).and_then(|v| v.as_object()) {
                         let next_type = next.get("type").and_then(|v| v.as_i64()).unwrap_or(1);
                         if next_type == 2 {
                             assistant_text = next

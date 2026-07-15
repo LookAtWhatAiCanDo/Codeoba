@@ -637,20 +637,21 @@ pub fn resolve_session_status(
     }
 
     // Fallback for other sources (Cursor/Codex/Copilot)
-    let last_turn = &turns[turns.len() - 1];
-    let mut ts = last_turn.timestamp;
-    if ts < 20_000_000_000 {
-        ts *= 1000;
-    }
-    let is_fin = !last_turn.assistant_message.trim().is_empty();
-    let age_ms = now - ts;
-    let is_recent = age_ms.abs() < 300_000;
+    if let Some(last_turn) = turns.last() {
+        let mut ts = last_turn.timestamp;
+        if ts < 20_000_000_000 {
+            ts *= 1000;
+        }
+        let is_fin = !last_turn.assistant_message.trim().is_empty();
+        let age_ms = now - ts;
+        let is_recent = age_ms.abs() < 300_000;
 
-    if is_recent {
-        if !is_fin {
-            return Some("active".to_string());
-        } else {
-            return Some("idle".to_string());
+        if is_recent {
+            if !is_fin {
+                return Some("active".to_string());
+            } else {
+                return Some("idle".to_string());
+            }
         }
     }
 
@@ -684,8 +685,7 @@ pub fn resolve_workspace_name(cwd: &Option<String>) -> Option<String> {
                 .components()
                 .map(|c| c.as_os_str().to_string_lossy().into_owned())
                 .collect();
-            if !components.is_empty() {
-                let first = &components[0];
+            if let Some(first) = components.first() {
                 let standard_folders: std::collections::HashSet<&str> = [
                     "src",
                     "lib",

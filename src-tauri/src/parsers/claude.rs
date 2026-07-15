@@ -368,7 +368,10 @@ impl ClaudeSource {
         let mut turn_count = 0;
 
         while current_idx < raw_turns.len() {
-            let user_raw = &raw_turns[current_idx];
+            let user_raw = match raw_turns.get(current_idx) {
+                Some(r) => r,
+                None => break,
+            };
             if user_raw.is_user {
                 let mut model_name: Option<String> = None;
                 let mut has_compaction = false;
@@ -383,8 +386,13 @@ impl ClaudeSource {
                     combined_images.extend(imgs.clone());
                 }
 
-                while next_idx < raw_turns.len() && !raw_turns[next_idx].is_user {
-                    let next_raw = &raw_turns[next_idx];
+                while next_idx < raw_turns.len()
+                    && raw_turns.get(next_idx).is_some_and(|r| !r.is_user)
+                {
+                    let next_raw = match raw_turns.get(next_idx) {
+                        Some(r) => r,
+                        None => break,
+                    };
                     if next_raw.is_compaction {
                         has_compaction = true;
                         compaction_time_ms += next_raw.compaction_time_ms;

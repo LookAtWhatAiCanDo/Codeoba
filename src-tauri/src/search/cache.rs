@@ -45,6 +45,7 @@ impl EmbeddingCacheManager {
         self.get_cache_dir().join("embeddings_cache.json")
     }
 
+    #[allow(clippy::expect_used)]
     pub fn load_cache(&self) {
         let file_path = self.get_cache_file();
         if !file_path.exists() {
@@ -107,6 +108,7 @@ impl EmbeddingCacheManager {
         }
     }
 
+    #[allow(clippy::expect_used)]
     pub fn save_cache(&self) {
         let modified = {
             if let Ok(guard) = self.is_modified.lock() {

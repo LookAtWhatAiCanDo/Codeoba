@@ -74,6 +74,7 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[allow(clippy::expect_used)]
 pub fn run() {
     // Delete the window state file preemptively before the Tauri builder or plugins initialize
     if std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset") {

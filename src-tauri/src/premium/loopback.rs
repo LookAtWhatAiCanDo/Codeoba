@@ -131,6 +131,7 @@ fn resolve_auth_fields(
     }
 }
 
+#[allow(clippy::indexing_slicing)]
 fn handle_connection<R: tauri::Runtime>(mut stream: TcpStream, app_handle: &tauri::AppHandle<R>) {
     let mut buffer = [0; 4096];
     let mut read_bytes = 0;

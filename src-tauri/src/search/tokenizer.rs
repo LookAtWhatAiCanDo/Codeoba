@@ -70,7 +70,13 @@ impl WordPieceTokenizer {
                 let mut end = len;
                 let mut cur_substr_id = None;
                 while start < end {
-                    let raw_sub: String = chars[start..end].iter().collect();
+                    let raw_sub: String = match chars.get(start..end) {
+                        Some(sub) => sub.iter().collect(),
+                        None => {
+                            end -= 1;
+                            continue;
+                        }
+                    };
                     let substr = if start == 0 {
                         raw_sub
                     } else {
@@ -100,7 +106,10 @@ impl WordPieceTokenizer {
 
         // Truncate if too long (leave space for [SEP])
         let mut final_input_ids = if input_ids.len() > max_len - 1 {
-            input_ids[0..max_len - 1].to_vec()
+            input_ids
+                .get(..max_len - 1)
+                .map(|s| s.to_vec())
+                .unwrap_or_default()
         } else {
             input_ids
         };
@@ -129,15 +138,21 @@ fn tokenize_to_words(text: &str) -> Vec<String> {
     let chars: Vec<char> = text.chars().collect();
     let mut i = 0;
     while i < chars.len() {
-        let c = chars[i];
+        let c = match chars.get(i) {
+            Some(&ch) => ch,
+            None => break,
+        };
         if c.is_whitespace() {
             i += 1;
         } else if c.is_alphanumeric() {
             let start = i;
-            while i < chars.len() && chars[i].is_alphanumeric() {
+            while chars.get(i).is_some_and(|ch| ch.is_alphanumeric()) {
                 i += 1;
             }
-            let word: String = chars[start..i].iter().collect();
+            let word: String = chars
+                .get(start..i)
+                .map(|s| s.iter().collect())
+                .unwrap_or_default();
             result.push(word);
         } else {
             result.push(c.to_string());

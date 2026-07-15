@@ -367,7 +367,10 @@ impl SourceAdapter for CodexSource {
         let mut current_idx = 0;
 
         while current_idx < raw_turns.len() {
-            let user_raw = &raw_turns[current_idx];
+            let user_raw = match raw_turns.get(current_idx) {
+                Some(r) => r,
+                None => break,
+            };
             if user_raw.is_user {
                 let mut combined_images = Vec::new();
                 if let Some(ref imgs) = user_raw.images {
@@ -377,8 +380,13 @@ impl SourceAdapter for CodexSource {
                 let mut assistant_text = String::new();
                 let mut compute_time_ms = 0i64;
                 let mut model_name = None;
-                if current_idx + 1 < raw_turns.len() && !raw_turns[current_idx + 1].is_user {
-                    let assistant_raw = &raw_turns[current_idx + 1];
+                if current_idx + 1 < raw_turns.len()
+                    && raw_turns.get(current_idx + 1).is_some_and(|r| !r.is_user)
+                {
+                    let assistant_raw = match raw_turns.get(current_idx + 1) {
+                        Some(r) => r,
+                        None => break,
+                    };
                     assistant_text = assistant_raw.text.clone();
                     compute_time_ms = (assistant_raw.timestamp - user_raw.timestamp).max(0);
                     model_name = assistant_raw.model.clone();

@@ -207,6 +207,7 @@ pub fn get_or_create_cache_key() -> [u8; 32] {
     key
 }
 
+#[allow(clippy::expect_used)]
 fn generate_and_save_cache_key() -> [u8; 32] {
     let mut key_bytes = [0u8; 32];
     getrandom::fill(&mut key_bytes).expect("Failed to generate random key");

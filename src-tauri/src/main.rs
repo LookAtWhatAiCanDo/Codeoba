@@ -3,12 +3,15 @@
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 && args[1] == "search" {
+    if args.len() > 1 && args.get(1).map(|s| s.as_str()) == Some("search") {
         if args.len() < 3 {
             println!("Usage: cargo run -- search \"<query>\" [--semantic]");
             return;
         }
-        let query = &args[2];
+        let query = match args.get(2) {
+            Some(q) => q,
+            None => return,
+        };
         let use_semantic = args.iter().any(|arg| arg == "--semantic");
 
         println!("==================================================");

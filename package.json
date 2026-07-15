@@ -19,7 +19,7 @@
     "lint:fe": "eslint src",
     "format:be": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:be:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
-    "clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --no-default-features -- -D warnings -A clippy::expect_used -A clippy::indexing_slicing -A clippy::panic",
+    "clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --no-default-features -- -D warnings",
     "format": "npm run format:fe && npm run format:be",
     "lint": "npm run format:fe:check && npm run lint:fe && npm run format:be:check && npm run clippy",
     "qa": "npm run lint && cargo test --manifest-path src-tauri/Cargo.toml && npm run build",

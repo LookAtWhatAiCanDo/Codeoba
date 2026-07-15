@@ -109,6 +109,7 @@ impl SessionCacheManager {
             .join(format!("cache_{}.json", source_id))
     }
 
+    #[allow(clippy::expect_used)]
     pub fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
         let _start = std::time::Instant::now();
         let path = self.get_cache_file(source_id);
@@ -205,6 +206,7 @@ impl SessionCacheManager {
         HashMap::new()
     }
 
+    #[allow(clippy::expect_used)]
     fn save_cache(&self, source_id: &str, entries: Vec<CacheEntry>) {
         let path = self.get_cache_file(source_id);
         let cache = SourceCache {

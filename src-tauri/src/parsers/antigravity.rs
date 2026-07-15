@@ -1,3 +1,4 @@
+#![allow(clippy::indexing_slicing, clippy::expect_used)]
 use crate::models::{Session, Turn};
 use crate::parsers::SourceAdapter;
 use rusqlite::{Connection, OpenFlags};

@@ -24,6 +24,7 @@ impl CopilotSource {
     }
 }
 
+#[allow(clippy::expect_used)]
 fn clean(text: &str) -> String {
     static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     let re = RE.get_or_init(|| {
@@ -405,7 +406,10 @@ impl SourceAdapter for CopilotSource {
         let mut idx = 0;
 
         while idx < events_list.len() {
-            let ev = &events_list[idx];
+            let ev = match events_list.get(idx) {
+                Some(e) => e,
+                None => break,
+            };
             if ev.is_user {
                 let mut assistant_parts = Vec::new();
                 let mut next_idx = idx + 1;
@@ -413,8 +417,13 @@ impl SourceAdapter for CopilotSource {
                 let mut active_time_ms = 0i64;
                 let mut current_timestamp = ev.timestamp;
 
-                while next_idx < events_list.len() && !events_list[next_idx].is_user {
-                    let next_ev = &events_list[next_idx];
+                while next_idx < events_list.len()
+                    && events_list.get(next_idx).is_some_and(|e| !e.is_user)
+                {
+                    let next_ev = match events_list.get(next_idx) {
+                        Some(e) => e,
+                        None => break,
+                    };
                     if !next_ev.text.is_empty() {
                         assistant_parts.push(next_ev.text.clone());
                     }

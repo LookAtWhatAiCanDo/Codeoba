@@ -29,6 +29,7 @@ impl OnnxSemanticEmbedder {
         })
     }
 
+    #[allow(clippy::indexing_slicing)]
     pub fn get_embeddings(&self, text: &str) -> Result<Vec<f32>, String> {
         let tokenized = self.tokenizer.tokenize_to_ids(text, 256);
         let seq_len = tokenized.input_ids.len();
@@ -57,7 +58,9 @@ impl OnnxSemanticEmbedder {
         let output_value = outputs.remove(0).into_tensor();
 
         let shape = output_value.shape();
-        let dim = shape[2] as usize;
+        let dim = *shape
+            .get(2)
+            .ok_or_else(|| "Invalid model output shape".to_string())? as usize;
         let array_view = output_value
             .to_plain_array_view::<f32>()
             .map_err(|e| e.to_string())?;
@@ -248,9 +251,6 @@ fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     if a.len() != b.len() || a.is_empty() {
         return 0.0;
     }
-    let mut dot_product = 0.0;
-    for i in 0..a.len() {
-        dot_product += a[i] * b[i];
-    }
+    let dot_product: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
     dot_product
 }
