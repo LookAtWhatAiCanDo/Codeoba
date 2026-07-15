@@ -2,6 +2,7 @@ use crate::models::Session;
 use crate::search::{SearchFilter, SearchResult, SessionVectorIndex};
 use std::path::Path;
 use std::sync::Arc;
+use rayon::prelude::*;
 use tract_onnx::prelude::tract_ndarray::Array2;
 use tract_onnx::prelude::*;
 
@@ -181,49 +182,51 @@ pub fn semantic_search<'a>(
     similarity_threshold: f32,
     filter: &SearchFilter,
 ) -> Vec<SearchResult> {
-    let mut results = Vec::new();
+    let sessions: Vec<&Session> = sessions.into_iter().collect();
 
-    for session in sessions {
-        if !filter.matches(session) {
-            continue;
-        }
-
-        let index = match embeddings.get(&session.id) {
-            Some(idx) => idx,
-            None => continue,
-        };
-
-        let mut max_similarity = -1.0f32;
-        let mut matched_turn_indexes = Vec::new();
-
-        if !index.thread_name_embedding.is_empty() && !query_vector.is_empty() {
-            let sim = cosine_similarity(query_vector, &index.thread_name_embedding);
-            if sim > max_similarity {
-                max_similarity = sim;
+    let mut results: Vec<SearchResult> = sessions
+        .into_par_iter()
+        .filter_map(|session| {
+            if !filter.matches(session) {
+                return None;
             }
-        }
 
-        for (idx, turn_emb) in index.turn_embeddings.iter().enumerate() {
-            if turn_emb.is_empty() || query_vector.is_empty() {
-                continue;
-            }
-            let sim = cosine_similarity(query_vector, turn_emb);
-            if sim >= similarity_threshold {
-                matched_turn_indexes.push(idx);
-            }
-            if sim > max_similarity {
-                max_similarity = sim;
-            }
-        }
+            let index = embeddings.get(&session.id)?;
 
-        if max_similarity >= similarity_threshold {
-            results.push(SearchResult {
-                session: session.clone(),
-                matched_turn_indexes,
-                score: max_similarity,
-            });
-        }
-    }
+            let mut max_similarity = -1.0f32;
+            let mut matched_turn_indexes = Vec::new();
+
+            if !index.thread_name_embedding.is_empty() && !query_vector.is_empty() {
+                let sim = cosine_similarity(query_vector, &index.thread_name_embedding);
+                if sim > max_similarity {
+                    max_similarity = sim;
+                }
+            }
+
+            for (idx, turn_emb) in index.turn_embeddings.iter().enumerate() {
+                if turn_emb.is_empty() || query_vector.is_empty() {
+                    continue;
+                }
+                let sim = cosine_similarity(query_vector, turn_emb);
+                if sim >= similarity_threshold {
+                    matched_turn_indexes.push(idx);
+                }
+                if sim > max_similarity {
+                    max_similarity = sim;
+                }
+            }
+
+            if max_similarity >= similarity_threshold {
+                Some(SearchResult {
+                    session: session.clone(),
+                    matched_turn_indexes,
+                    score: max_similarity,
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
 
     results.sort_by(|a, b| {
         b.score

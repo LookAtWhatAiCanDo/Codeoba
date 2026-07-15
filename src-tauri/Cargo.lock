@@ -736,6 +736,7 @@ dependencies = [
  "ndarray",
  "notify",
  "percent-encoding",
+ "rayon",
  "regex",
  "reqwest",
  "rusqlite",
