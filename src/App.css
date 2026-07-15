@@ -572,6 +572,22 @@ body {
   font-size: 0.9em;
 }
 
+/* Mermaid diagrams styling */
+.markdown-body .mermaid-diagram-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.markdown-body .mermaid-diagram-container svg {
+  max-width: 100% !important;
+  height: auto !important;
+  background-color: transparent !important;
+  cursor: zoom-in;
+}
+
 .markdown-body p {
   margin-bottom: 12px;
 }

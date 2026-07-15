@@ -127,7 +127,11 @@
     "showInFolder": "フォルダで表示",
     "copySelection": "選択範囲をコピー",
     "searchWithGoogle": "Googleで検索",
-    "translateSelection": "選択範囲を翻訳"
+    "translateSelection": "選択範囲を翻訳",
+    "mermaidRendering": "Mermaidダイアグラムを描画中...",
+    "mermaidFailed": "Mermaidダイアグラムの描画に失敗しました:",
+    "mermaidShowOriginal": "元のコードを表示",
+    "mermaidShowDiagram": "ダイアグラムを表示"
   },
   "fileViewer": {
     "title": "ファイルビューア",

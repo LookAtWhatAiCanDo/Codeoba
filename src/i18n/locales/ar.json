@@ -127,7 +127,11 @@
     "showInFolder": "إظهار في المجلد",
     "copySelection": "نسخ التحديد",
     "searchWithGoogle": "بحث باستخدام Google",
-    "translateSelection": "ترجمة التحديد"
+    "translateSelection": "ترجمة التحديد",
+    "mermaidRendering": "جاري رسم مخطط Mermaid...",
+    "mermaidFailed": "فشل رسم مخطط Mermaid:",
+    "mermaidShowOriginal": "عرض الكود الأصلي",
+    "mermaidShowDiagram": "عرض المخطط"
   },
   "fileViewer": {
     "title": "عارض الملفات",

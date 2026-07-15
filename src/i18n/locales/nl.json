@@ -127,7 +127,11 @@
     "showInFolder": "Weergeven in map",
     "copySelection": "Selectie kopiëren",
     "searchWithGoogle": "Zoeken met Google",
-    "translateSelection": "Selectie vertalen"
+    "translateSelection": "Selectie vertalen",
+    "mermaidRendering": "Mermaid-diagram renderen...",
+    "mermaidFailed": "Mermaid-diagram renderen mislukt:",
+    "mermaidShowOriginal": "Originele code tonen",
+    "mermaidShowDiagram": "Diagram tonen"
   },
   "fileViewer": {
     "title": "Bestandsviewer",

@@ -153,6 +153,17 @@ const AUDITED_COMPONENTS: AuditedComponent[] = [
     licenseText: `Copyright (c) 2012 Lea Verou\n\n${mitLicense}`,
   },
   {
+    id: "mermaid",
+    name: "mermaid Diagramming",
+    category: "libraries",
+    author: "Knut Sveidqvist",
+    url: "https://github.com/mermaid-js/mermaid",
+    licenseName: "MIT",
+    description:
+      "A JavaScript-based diagramming and charting tool that uses Markdown-inspired text definitions to render SVGs.",
+    licenseText: `Copyright (c) 2014-2026 Knut Sveidqvist\n\n${mitLicense}`,
+  },
+  {
     id: "dompurify",
     name: "dompurify Sanitizer",
     category: "libraries",

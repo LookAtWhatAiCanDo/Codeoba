@@ -69,6 +69,73 @@ interface DetailPaneProps {
   onFontSizeChange?: (val: number) => void;
 }
 
+const copySvgAsPng = async (svgUrl: string, originalSvgEl?: SVGElement) => {
+  const promise = new Promise<Blob>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+
+        if (originalSvgEl) {
+          const viewBox = originalSvgEl.getAttribute("viewBox");
+          if (viewBox) {
+            const parts = viewBox.split(/\s+/).map(Number);
+            if (parts.length === 4 && !isNaN(parts[2]) && !isNaN(parts[3])) {
+              width = parts[2];
+              height = parts[3];
+            }
+          }
+          if (!width || !height) {
+            const rect = originalSvgEl.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+          }
+        }
+
+        if (!width) width = 800;
+        if (!height) height = 600;
+
+        const scale = window.devicePixelRatio || 2;
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Failed to get canvas 2d context"));
+          return;
+        }
+
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to generate canvas blob"));
+            return;
+          }
+          resolve(blob);
+        }, "image/png");
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => {
+      reject(new Error("Failed to load SVG image source"));
+    };
+    img.src = svgUrl;
+  });
+
+  // Write to clipboard synchronously using the Promise pattern
+  await navigator.clipboard.write([
+    new ClipboardItem({
+      "image/png": promise,
+    }),
+  ]);
+};
+
 export const DetailPane = (props: DetailPaneProps) => {
   const { t, locale } = useI18n();
   const speech = useSpeech();
@@ -268,9 +335,25 @@ export const DetailPane = (props: DetailPaneProps) => {
     sessionId?: string;
     turnIndex?: number;
     clickedText?: string;
+    mermaidWrapper?: HTMLElement;
+    mermaidContainer?: HTMLElement;
   } | null>(null);
 
   const menuPosition = useContextMenuPosition(contextMenu);
+
+  createEffect(() => {
+    const handleOpenLightbox = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { src, path } = customEvent.detail;
+      if (src) {
+        setActiveLightboxImage({ src, path });
+      }
+    };
+    window.addEventListener("open-image-lightbox", handleOpenLightbox);
+    onCleanup(() => {
+      window.removeEventListener("open-image-lightbox", handleOpenLightbox);
+    });
+  });
 
   const handleContextMenu = (
     e: MouseEvent,
@@ -289,6 +372,12 @@ export const DetailPane = (props: DetailPaneProps) => {
     ) as HTMLElement | null;
     const clickedText = targetEl ? targetEl.textContent || "" : "";
 
+    const target = e.target as HTMLElement;
+    const mermaidWrapper = target.closest(".mermaid-diagram-wrapper") as HTMLElement | null;
+    const mermaidContainer = mermaidWrapper?.querySelector(
+      ".mermaid-diagram-container"
+    ) as HTMLElement | null;
+
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -298,6 +387,8 @@ export const DetailPane = (props: DetailPaneProps) => {
       sessionId,
       turnIndex,
       clickedText,
+      mermaidWrapper: mermaidWrapper || undefined,
+      mermaidContainer: mermaidContainer || undefined,
     });
   };
 
@@ -1600,14 +1691,15 @@ export const DetailPane = (props: DetailPaneProps) => {
       <Portal>
         <Show when={contextMenu()}>
           {(context) => {
-            const [copied, setCopied] = createSignal(false);
+            const [copiedText, setCopiedText] = createSignal(false);
+            const [copiedImage, setCopiedImage] = createSignal(false);
 
             const handleCopyText = async () => {
               try {
                 await navigator.clipboard.writeText(context().text);
-                setCopied(true);
+                setCopiedText(true);
                 setTimeout(() => {
-                  setCopied(false);
+                  setCopiedText(false);
                   setContextMenu(null);
                 }, 800);
               } catch (err) {
@@ -1619,6 +1711,17 @@ export const DetailPane = (props: DetailPaneProps) => {
               try {
                 const src = context().imageSrc || context().extra;
                 if (!src) return;
+
+                if (src.startsWith("data:image/svg+xml")) {
+                  await copySvgAsPng(src);
+                  setCopiedImage(true);
+                  setTimeout(() => {
+                    setCopiedImage(false);
+                    setContextMenu(null);
+                  }, 800);
+                  return;
+                }
+
                 const response = await fetch(src);
                 const blob = await response.blob();
                 await navigator.clipboard.write([
@@ -1626,9 +1729,9 @@ export const DetailPane = (props: DetailPaneProps) => {
                     [blob.type]: blob,
                   }),
                 ]);
-                setCopied(true);
+                setCopiedImage(true);
                 setTimeout(() => {
-                  setCopied(false);
+                  setCopiedImage(false);
                   setContextMenu(null);
                 }, 800);
               } catch (err) {
@@ -1675,10 +1778,10 @@ export const DetailPane = (props: DetailPaneProps) => {
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                     onClick={handleCopyText}
                   >
-                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                    <Show when={copiedText()} fallback={<Copy class="w-3.5 h-3.5" />}>
                       <Check class="w-3.5 h-3.5 text-emerald-400" />
                     </Show>
-                    <span>{copied() ? t("common.copied") : t("detailPane.copySelection")}</span>
+                    <span>{copiedText() ? t("common.copied") : t("detailPane.copySelection")}</span>
                   </button>
 
                   <button
@@ -1715,10 +1818,10 @@ export const DetailPane = (props: DetailPaneProps) => {
                       class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                       onClick={handleCopyImage}
                     >
-                      <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                      <Show when={copiedImage()} fallback={<Copy class="w-3.5 h-3.5" />}>
                         <Check class="w-3.5 h-3.5 text-emerald-400" />
                       </Show>
-                      <span>{copied() ? t("common.copied") : t("detailPane.copyImage")}</span>
+                      <span>{copiedImage() ? t("common.copied") : t("detailPane.copyImage")}</span>
                     </button>
 
                     <Show when={context().imagePath}>
@@ -1765,10 +1868,10 @@ export const DetailPane = (props: DetailPaneProps) => {
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                     onClick={handleCopyImage}
                   >
-                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                    <Show when={copiedImage()} fallback={<Copy class="w-3.5 h-3.5" />}>
                       <Check class="w-3.5 h-3.5 text-emerald-400" />
                     </Show>
-                    <span>{copied() ? t("common.copied") : t("detailPane.copyImage")}</span>
+                    <span>{copiedImage() ? t("common.copied") : t("detailPane.copyImage")}</span>
                   </button>
 
                   <Show when={context().text}>
@@ -1792,10 +1895,10 @@ export const DetailPane = (props: DetailPaneProps) => {
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                     onClick={handleCopyText}
                   >
-                    <Show when={copied()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                    <Show when={copiedText()} fallback={<Copy class="w-3.5 h-3.5" />}>
                       <Check class="w-3.5 h-3.5 text-emerald-400" />
                     </Show>
-                    <span>{copied() ? t("common.copied") : getLabel()}</span>
+                    <span>{copiedText() ? t("common.copied") : getLabel()}</span>
                   </button>
 
                   <Show when={context().type === "assistant"}>
@@ -1818,6 +1921,83 @@ export const DetailPane = (props: DetailPaneProps) => {
                       <span>{t("readAloud.playFromHere")}</span>
                     </button>
                   </Show>
+                </Show>
+
+                <Show when={context().mermaidWrapper && context().mermaidContainer}>
+                  <div class="h-[1px] bg-border/20 my-1" />
+
+                  <Show when={context().mermaidWrapper!.getAttribute("data-show-raw") !== "true"}>
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                      onClick={async () => {
+                        const svgEl = context().mermaidContainer?.querySelector("svg");
+                        if (svgEl) {
+                          try {
+                            const svgString = new XMLSerializer().serializeToString(svgEl);
+                            const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+                            await copySvgAsPng(svgDataUrl, svgEl);
+                            setCopiedImage(true);
+                            setTimeout(() => {
+                              setCopiedImage(false);
+                              setContextMenu(null);
+                            }, 800);
+                            return;
+                          } catch (err) {
+                            console.error("Failed to copy mermaid diagram:", err);
+                          }
+                        }
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Show when={copiedImage()} fallback={<Copy class="w-3.5 h-3.5" />}>
+                        <Check class="w-3.5 h-3.5 text-emerald-400" />
+                      </Show>
+                      <span>
+                        {copiedImage()
+                          ? t("common.copied")
+                          : t("detailPane.copyImage") || "Copy image"}
+                      </span>
+                    </button>
+                    <div class="h-[1px] bg-border/20 my-1" />
+                  </Show>
+
+                  <button
+                    class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                    onClick={() => {
+                      const event = new CustomEvent("toggle-mermaid-raw", {
+                        detail: {
+                          wrapper: context().mermaidWrapper,
+                          container: context().mermaidContainer,
+                        },
+                      });
+                      window.dispatchEvent(event);
+                      setContextMenu(null);
+                    }}
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      {context().mermaidWrapper!.getAttribute("data-show-raw") === "true" ? (
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      ) : (
+                        <>
+                          <polyline points="16 18 22 12 16 6" />
+                          <polyline points="8 6 2 12 8 18" />
+                        </>
+                      )}
+                    </svg>
+                    <span>
+                      {context().mermaidWrapper!.getAttribute("data-show-raw") === "true"
+                        ? t("detailPane.mermaidShowDiagram") || "Show diagram"
+                        : t("detailPane.mermaidShowOriginal") || "Show original code"}
+                    </span>
+                  </button>
                 </Show>
               </div>
             );

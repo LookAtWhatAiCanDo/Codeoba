@@ -127,7 +127,11 @@
     "showInFolder": "Показать в папке",
     "copySelection": "Копировать выделенное",
     "searchWithGoogle": "Искать в Google",
-    "translateSelection": "Перевести выделенное"
+    "translateSelection": "Перевести выделенное",
+    "mermaidRendering": "Отрисовка диаграммы Mermaid...",
+    "mermaidFailed": "Не удалось отрисовать диаграмму Mermaid:",
+    "mermaidShowOriginal": "Показать исходный код",
+    "mermaidShowDiagram": "Показать диаграмму"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",

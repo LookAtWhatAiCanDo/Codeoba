@@ -127,7 +127,11 @@
     "showInFolder": "在資料夾中顯示",
     "copySelection": "複製選取內容",
     "searchWithGoogle": "使用 Google 搜尋",
-    "translateSelection": "翻譯選取內容"
+    "translateSelection": "翻譯選取內容",
+    "mermaidRendering": "正在渲染 Mermaid 圖表...",
+    "mermaidFailed": "渲染 Mermaid 圖表失敗:",
+    "mermaidShowOriginal": "顯示原始程式碼",
+    "mermaidShowDiagram": "顯示圖表"
   },
   "fileViewer": {
     "title": "檔案檢視器",

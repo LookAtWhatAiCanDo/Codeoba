@@ -131,7 +131,11 @@
     "showWorkspaceInFolder": "Show Workspace in Folder",
     "copySelection": "Copy selection",
     "searchWithGoogle": "Search with Google",
-    "translateSelection": "Translate selection"
+    "translateSelection": "Translate selection",
+    "mermaidRendering": "Rendering Mermaid diagram...",
+    "mermaidFailed": "Failed to render Mermaid diagram:",
+    "mermaidShowOriginal": "Show original code",
+    "mermaidShowDiagram": "Show diagram"
   },
   "fileViewer": {
     "title": "File Viewer",

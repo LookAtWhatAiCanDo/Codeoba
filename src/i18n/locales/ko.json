@@ -127,7 +127,11 @@
     "showInFolder": "폴더에서 보기",
     "copySelection": "선택 영역 복사",
     "searchWithGoogle": "Google로 검색",
-    "translateSelection": "선택 영역 번역"
+    "translateSelection": "선택 영역 번역",
+    "mermaidRendering": "Mermaid 다이어그램 렌더링 중...",
+    "mermaidFailed": "Mermaid 다이어그램 렌더링 실패:",
+    "mermaidShowOriginal": "원본 코드 표시",
+    "mermaidShowDiagram": "다이어그램 표시"
   },
   "fileViewer": {
     "title": "파일 뷰어",

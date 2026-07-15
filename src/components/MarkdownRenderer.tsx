@@ -1,4 +1,4 @@
-import { createMemo, createSignal, createEffect } from "solid-js";
+import { createMemo, createSignal, createEffect, onCleanup } from "solid-js";
 import { Marked } from "marked";
 import Prism from "prismjs";
 import { logFE } from "../utils/logger";
@@ -38,6 +38,128 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   const speech = useSpeech();
   const [container, setContainer] = createSignal<HTMLDivElement | null>(null);
   const [isExpanded, setIsExpanded] = createSignal(false);
+
+  // Listen to custom toggle-mermaid-raw events to swap raw/diagram formats from the parent context menu
+  createEffect(() => {
+    const handleToggleEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { wrapper, container: targetContainer } = customEvent.detail;
+      const myContainer = container();
+      if (myContainer && wrapper && targetContainer && myContainer.contains(wrapper)) {
+        toggleMermaidRaw(wrapper, targetContainer);
+      }
+    };
+    window.addEventListener("toggle-mermaid-raw", handleToggleEvent);
+    onCleanup(() => {
+      window.removeEventListener("toggle-mermaid-raw", handleToggleEvent);
+    });
+  });
+
+  const toggleMermaidRaw = async (wrapper: HTMLElement, container: HTMLElement) => {
+    logFE("info", "toggleMermaidRaw: started");
+    const showRaw = wrapper.getAttribute("data-show-raw") === "true";
+    logFE("info", `toggleMermaidRaw: showRaw = ${showRaw}`);
+    const encodedCode = container.getAttribute("data-code");
+    if (!encodedCode) {
+      logFE("warn", "toggleMermaidRaw: data-code is missing");
+      return;
+    }
+    const codeText = decodeURIComponent(encodedCode);
+    logFE("info", `toggleMermaidRaw: decoded code length = ${codeText.length}`);
+
+    if (showRaw) {
+      // Switch back to diagram
+      wrapper.setAttribute("data-show-raw", "false");
+      // Restore loading spinner first
+      container.innerHTML = `
+        <div class="flex items-center gap-2 text-text-secondary text-xs animate-pulse">
+          <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+          ${t("detailPane.mermaidRendering")}
+        </div>
+      `;
+      // Render diagram
+      try {
+        const mermaidModule = await import("mermaid");
+        const mermaid = mermaidModule.default;
+
+        const getComputedColor = (varName: string, fallback: string): string => {
+          const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+          return value || fallback;
+        };
+
+        const surfaceColor = getComputedColor("--surface", "#16181f");
+        const textColor = getComputedColor("--text-primary", "#f3f4f6");
+        const secondaryTextColor = getComputedColor("--text-secondary", "#9ca3af");
+        const borderColor = getComputedColor("--border", "#242733");
+        const backgroundColor = getComputedColor("--background", "#0d0e12");
+
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "base",
+          themeVariables: {
+            fontFamily: "var(--font-sans)",
+            background: backgroundColor,
+            primaryColor: surfaceColor,
+            primaryTextColor: textColor,
+            primaryBorderColor: borderColor,
+            lineColor: secondaryTextColor,
+            secondaryColor: backgroundColor,
+            tertiaryColor: surfaceColor,
+            nodeBorder: borderColor,
+            mainBkg: surfaceColor,
+            noteBkgColor: surfaceColor,
+            noteTextColor: textColor,
+            noteBorderColor: borderColor,
+            actorBkg: surfaceColor,
+            actorBorder: borderColor,
+            actorTextColor: textColor,
+            actorLineColor: secondaryTextColor,
+            signalColor: textColor,
+            signalTextColor: textColor,
+            labelBoxBorderColor: borderColor,
+            labelBoxBkgColor: surfaceColor,
+            labelTextColor: textColor,
+            loopTextColor: textColor,
+          },
+          securityLevel: "loose",
+        });
+
+        logFE("info", "toggleMermaidRaw: calling mermaid.render...");
+        const uniqueId = `mermaid-svg-${Math.random().toString(36).substring(2, 11)}`;
+        const { svg, bindFunctions } = await mermaid.render(uniqueId, codeText);
+        logFE("info", "toggleMermaidRaw: mermaid.render completed");
+        container.innerHTML = svg;
+        if (bindFunctions) {
+          bindFunctions(container);
+        }
+        logFE("info", "toggleMermaidRaw: diagram SVG updated");
+      } catch (error) {
+        logFE("error", `Failed to render Mermaid diagram: ${error}`);
+        container.innerHTML = `
+          <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+            <div class="font-semibold flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              ${t("detailPane.mermaidFailed")}
+            </div>
+            <div class="text-xs max-h-32 overflow-auto bg-black/10 p-2 rounded border border-white/5 whitespace-pre-wrap">${error instanceof Error ? error.message : String(error)}</div>
+            <details class="mt-1">
+              <summary class="cursor-pointer text-xs underline select-none hover:text-red-300 transition-colors">${t("detailPane.mermaidShowOriginal")}</summary>
+              <pre class="bg-black/30 p-2 mt-2 rounded border border-white/10 text-xs overflow-x-auto text-text-secondary"><code>${codeText}</code></pre>
+            </details>
+          </div>
+        `;
+      }
+    } else {
+      // Switch to raw code
+      logFE("info", "toggleMermaidRaw: switching to raw code");
+      wrapper.setAttribute("data-show-raw", "true");
+      container.innerHTML = `
+        <pre class="bg-black/30 p-3 rounded border border-border/40 text-xs overflow-x-auto text-text-secondary w-full font-mono text-left select-text"><code>${codeText}</code></pre>
+      `;
+      logFE("info", "toggleMermaidRaw: raw code HTML updated");
+    }
+    logFE("info", "toggleMermaidRaw: finished successfully");
+  };
 
   // Collapse if content changes (reset state)
   createEffect(() => {
@@ -81,6 +203,30 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         }
         return `<img src="${href}" title="${ttl}" alt="${t}" style="max-width: 100%; border-radius: 8px; display: block; margin: 8px 0;" />`;
       },
+      code(codeOrToken: any, language?: string): string {
+        let text = "";
+        let lang = "";
+        if (codeOrToken && typeof codeOrToken === "object") {
+          text = codeOrToken.text || "";
+          lang = codeOrToken.lang || "";
+        } else {
+          text = codeOrToken || "";
+          lang = language || "";
+        }
+
+        if (lang === "mermaid") {
+          return `<div class="mermaid-diagram-wrapper my-4 overflow-x-auto w-full max-w-full flex justify-center bg-surface/30 border border-border/40 rounded-xl p-4 shadow-sm">
+            <div class="mermaid-diagram-container w-full" data-code="${encodeURIComponent(text)}">
+              <div class="flex items-center gap-2 text-text-secondary text-xs animate-pulse">
+                <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+                ${t("detailPane.mermaidRendering")}
+              </div>
+            </div>
+          </div>`;
+        }
+
+        return `<pre><code class="language-${lang || "none"}">${text}</code></pre>`;
+      },
     },
   });
 
@@ -108,6 +254,131 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|file):|[^a-z]|[a-z+.-]+(?:[^a-z+.:-]|$))/i,
       });
     }
+  });
+
+  // Render Mermaid diagrams on htmlContent change
+  createEffect(() => {
+    htmlContent(); // Read dependency to trigger effect
+    const containerRef = container();
+    if (!containerRef) return;
+
+    const mermaidBlocks = containerRef.querySelectorAll(".mermaid-diagram-container");
+    if (mermaidBlocks.length === 0) return;
+
+    // Load mermaid dynamically only when needed to prevent bundle size issues/Tauri custom protocol flooding on startup
+    import("mermaid")
+      .then((mermaidModule) => {
+        const mermaid = mermaidModule.default;
+
+        // Resolve computed theme colors from the DOM since Mermaid's color parser
+        // doesn't support raw 'var(--...)' strings and requires real color codes (hex, HSL, or RGB)
+        const getComputedColor = (varName: string, fallback: string): string => {
+          const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+          return value || fallback;
+        };
+
+        const surfaceColor = getComputedColor("--surface", "#16181f");
+        const textColor = getComputedColor("--text-primary", "#f3f4f6");
+        const secondaryTextColor = getComputedColor("--text-secondary", "#9ca3af");
+        const borderColor = getComputedColor("--border", "#242733");
+        const backgroundColor = getComputedColor("--background", "#0d0e12");
+
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "base",
+          themeVariables: {
+            fontFamily: "var(--font-sans)",
+            background: backgroundColor,
+            primaryColor: surfaceColor,
+            primaryTextColor: textColor,
+            primaryBorderColor: borderColor,
+            lineColor: secondaryTextColor,
+            secondaryColor: backgroundColor,
+            tertiaryColor: surfaceColor,
+            nodeBorder: borderColor,
+            mainBkg: surfaceColor,
+            noteBkgColor: surfaceColor,
+            noteTextColor: textColor,
+            noteBorderColor: borderColor,
+            actorBkg: surfaceColor,
+            actorBorder: borderColor,
+            actorTextColor: textColor,
+            actorLineColor: secondaryTextColor,
+            signalColor: textColor,
+            signalTextColor: textColor,
+            labelBoxBorderColor: borderColor,
+            labelBoxBkgColor: surfaceColor,
+            labelTextColor: textColor,
+            loopTextColor: textColor,
+          },
+          securityLevel: "loose",
+        });
+
+        mermaidBlocks.forEach((blockEl, idx) => {
+          const block = blockEl as HTMLElement;
+          const encodedCode = block.getAttribute("data-code");
+          if (!encodedCode) return;
+
+          const codeText = decodeURIComponent(encodedCode);
+
+          // Render asynchronously to avoid blocking the main UI thread
+          setTimeout(async () => {
+            try {
+              // Generate a clean, unique ID for mermaid rendering
+              // Mermaid ids must start with a letter and contain only alphanumeric/hyphen/underscore
+              const uniqueId = `mermaid-svg-${Math.random().toString(36).substring(2, 11)}`;
+              const { svg, bindFunctions } = await mermaid.render(uniqueId, codeText);
+
+              block.innerHTML = svg;
+              if (bindFunctions) {
+                bindFunctions(block);
+              }
+            } catch (error) {
+              logFE("error", `Failed to render Mermaid diagram: ${error}`);
+              block.innerHTML = `
+                <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+                  <div class="font-semibold flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    ${t("detailPane.mermaidFailed")}
+                  </div>
+                  <div class="text-xs max-h-32 overflow-auto bg-black/10 p-2 rounded border border-white/5 whitespace-pre-wrap">${error instanceof Error ? error.message : String(error)}</div>
+                  <details class="mt-1">
+                    <summary class="cursor-pointer text-xs underline select-none hover:text-red-300 transition-colors">${t("detailPane.mermaidShowOriginal")}</summary>
+                    <pre class="bg-black/30 p-2 mt-2 rounded border border-white/10 text-xs overflow-x-auto text-text-secondary"><code>${codeText}</code></pre>
+                  </details>
+                </div>
+              `;
+            }
+          }, idx * 15); // Stagger rendering slightly to keep UI fluid
+        });
+      })
+      .catch((err) => {
+        logFE("error", `Failed to dynamically load mermaid: ${err}`);
+        mermaidBlocks.forEach((blockEl) => {
+          const block = blockEl as HTMLElement;
+          const encodedCode = block.getAttribute("data-code");
+          const codeText = encodedCode ? decodeURIComponent(encodedCode) : "";
+          block.innerHTML = `
+            <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+              <div class="font-semibold flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Failed to load Mermaid parser
+              </div>
+              <div class="text-xs max-h-32 overflow-auto bg-black/10 p-2 rounded border border-white/5 whitespace-pre-wrap">${err instanceof Error ? err.message : String(err)}</div>
+              ${
+                codeText
+                  ? `
+              <details class="mt-1">
+                <summary class="cursor-pointer text-xs underline select-none hover:text-red-300 transition-colors">${t("detailPane.mermaidShowOriginal")}</summary>
+                <pre class="bg-black/30 p-2 mt-2 rounded border border-white/10 text-xs overflow-x-auto text-text-secondary"><code>${codeText}</code></pre>
+              </details>
+              `
+                  : ""
+              }
+            </div>
+          `;
+        });
+      });
   });
 
   // Apply Prism syntax highlighting on htmlContent change
@@ -213,6 +484,33 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
   const handleLinkClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
+
+    // Check if user clicked inside a rendered Mermaid diagram to enlarge it
+    const mermaidContainer = target.closest(".mermaid-diagram-container") as HTMLElement | null;
+    const mermaidWrapper = target.closest(".mermaid-diagram-wrapper") as HTMLElement | null;
+    if (
+      mermaidContainer &&
+      mermaidWrapper &&
+      mermaidWrapper.getAttribute("data-show-raw") !== "true"
+    ) {
+      const svgEl = mermaidContainer.querySelector("svg");
+      if (svgEl) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const svgString = new XMLSerializer().serializeToString(svgEl);
+          const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+          const event = new CustomEvent("open-image-lightbox", {
+            detail: { src: svgDataUrl },
+          });
+          window.dispatchEvent(event);
+        } catch (err) {
+          logFE("error", `Failed to generate data URL for Mermaid diagram lightbox: ${err}`);
+        }
+        return;
+      }
+    }
+
     const anchor = target.closest("a");
     if (anchor) {
       const href = anchor.getAttribute("href");

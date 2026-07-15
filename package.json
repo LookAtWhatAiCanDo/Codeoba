@@ -37,6 +37,7 @@
     "dompurify": "^3.4.12",
     "lucide-solid": "^1.24.0",
     "marked": "^18.0.6",
+    "mermaid": "^11.16.0",
     "prismjs": "^1.30.0",
     "solid-js": "^1.9.14",
     "tailwindcss": "^4.3.2"

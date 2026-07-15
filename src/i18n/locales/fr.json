@@ -127,7 +127,11 @@
     "showInFolder": "Afficher dans le dossier",
     "copySelection": "Copier la sélection",
     "searchWithGoogle": "Rechercher avec Google",
-    "translateSelection": "Traduire la sélection"
+    "translateSelection": "Traduire la sélection",
+    "mermaidRendering": "Rendu du diagramme Mermaid...",
+    "mermaidFailed": "Échec du rendu du diagramme Mermaid :",
+    "mermaidShowOriginal": "Afficher le code d'origine",
+    "mermaidShowDiagram": "Afficher le diagramme"
   },
   "fileViewer": {
     "title": "Visionneuse de fichiers",

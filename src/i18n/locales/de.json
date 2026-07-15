@@ -127,7 +127,11 @@
     "showInFolder": "Im Ordner anzeigen",
     "copySelection": "Auswahl kopieren",
     "searchWithGoogle": "Mit Google suchen",
-    "translateSelection": "Auswahl übersetzen"
+    "translateSelection": "Auswahl übersetzen",
+    "mermaidRendering": "Mermaid-Diagramm wird gerendert...",
+    "mermaidFailed": "Fehler beim Rendern des Mermaid-Diagramms:",
+    "mermaidShowOriginal": "Originalcode anzeigen",
+    "mermaidShowDiagram": "Diagramm anzeigen"
   },
   "fileViewer": {
     "title": "Dateibetrachter",

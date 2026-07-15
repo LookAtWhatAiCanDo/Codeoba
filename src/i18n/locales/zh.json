@@ -127,7 +127,11 @@
     "showInFolder": "在文件夹中显示",
     "copySelection": "复制选中内容",
     "searchWithGoogle": "使用Google搜索",
-    "translateSelection": "翻译选中内容"
+    "translateSelection": "翻译选中内容",
+    "mermaidRendering": "正在渲染 Mermaid 图表...",
+    "mermaidFailed": "渲染 Mermaid 图表失败:",
+    "mermaidShowOriginal": "显示原始代码",
+    "mermaidShowDiagram": "显示图表"
   },
   "fileViewer": {
     "title": "文件查看器",
