@@ -594,6 +594,7 @@ export const Sidebar = (props: SidebarProps) => {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-menus"));
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -607,9 +608,13 @@ export const Sidebar = (props: SidebarProps) => {
 
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
+    window.addEventListener("close-context-menus", closeContextMenu);
+    window.addEventListener("close-all-menus", closeContextMenu);
   });
   onCleanup(() => {
     window.removeEventListener("click", closeContextMenu);
+    window.removeEventListener("close-context-menus", closeContextMenu);
+    window.removeEventListener("close-all-menus", closeContextMenu);
   });
 
   const activeGroupSessionIds = createMemo(() => {
@@ -2102,47 +2107,26 @@ const SessionCard = (props: SessionCardProps) => {
             : "bg-surface/50 border-border hover:bg-surface/80 hover:border-border/80"
       }`}
     >
-      {/* Title & Badge */}
-      <div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
-        <span
-          class={`text-[0.84375rem] font-semibold leading-snug break-all line-clamp-2 ${
-            props.isSelected ? "text-accent" : "text-text-primary/95"
-          }`}
-        >
-          {title()}
-        </span>
-        <div class="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-          <span class="text-[0.625rem] text-text-secondary/50 font-normal mr-1">
+      {/* Title & Badge & Actions */}
+      <div class="flex items-start justify-between gap-3 w-full">
+        {/* Title & Time Group (Left side) */}
+        <div class="flex flex-col min-w-0 flex-1 gap-0.5">
+          <span
+            class={`text-[0.84375rem] font-semibold leading-snug break-all line-clamp-2 ${
+              props.isSelected ? "text-accent" : "text-text-primary/95"
+            }`}
+          >
+            {title()}
+          </span>
+          <span class="text-[0.625rem] text-text-secondary/50 font-normal">
             {props.sessionTimesText}
           </span>
+        </div>
+
+        {/* Action Controls Group (Right side) */}
+        <div class="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
           <Show when={props.isLoading}>
             <ActiveSpinner class="w-3.5 h-3.5 text-accent" />
-          </Show>
-          <Show
-            when={props.isPinned}
-            fallback={
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (props.onTogglePin) props.onTogglePin(props.session.id);
-                }}
-                class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
-                title={t("groups.pinConversation") || "Pin Conversation"}
-              >
-                <Pin class="w-3.5 h-3.5" />
-              </button>
-            }
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (props.onTogglePin) props.onTogglePin(props.session.id);
-              }}
-              class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center"
-              title={t("groups.unpinConversation") || "Unpin Conversation"}
-            >
-              <Pin class="w-3.5 h-3.5" />
-            </button>
           </Show>
           <Show
             when={props.isReadAloudActive}
@@ -2174,6 +2158,32 @@ const SessionCard = (props: SessionCardProps) => {
               title={t("readAloud.stopReading") || "Stop Reading"}
             >
               <Volume2 class="w-3.5 h-3.5" />
+            </button>
+          </Show>
+          <Show
+            when={props.isPinned}
+            fallback={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (props.onTogglePin) props.onTogglePin(props.session.id);
+                }}
+                class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
+                title={t("groups.pinConversation") || "Pin Conversation"}
+              >
+                <Pin class="w-3.5 h-3.5" />
+              </button>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (props.onTogglePin) props.onTogglePin(props.session.id);
+              }}
+              class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center"
+              title={t("groups.unpinConversation") || "Unpin Conversation"}
+            >
+              <Pin class="w-3.5 h-3.5" />
             </button>
           </Show>
           <Show when={props.session.isArchived}>

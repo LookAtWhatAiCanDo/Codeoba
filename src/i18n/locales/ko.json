@@ -369,6 +369,7 @@
       "back": "뒤로 이동",
       "forward": "앞으로 이동",
       "dashboard": "대시보드",
+      "readAloudHistory": "소리 내어 읽기 기록",
       "sidebar": "사이드바",
       "detail": "상세 패널",
       "nextSession": "사이드바: 다음 선택",
@@ -395,7 +396,8 @@
       "playPause": "재생 / 일시정지",
       "stop": "중지",
       "previous": "이전 문장",
-      "next": "다음 문장"
+      "next": "다음 문장",
+      "history": "기록"
     }
   },
   "errors": {
@@ -436,6 +438,7 @@
     "speechNext": "다음 문장",
     "speechPrev": "이전 문장",
     "readSessionAloud": "세션 소리 내어 읽기",
-    "stopReading": "읽기 중지"
+    "stopReading": "읽기 중지",
+    "playFromHere": "여기서부터 낭독"
   }
 }

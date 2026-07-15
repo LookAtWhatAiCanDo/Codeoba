@@ -34,6 +34,7 @@ interface DashboardProps {
   activeTab?: DashboardTab;
   onActiveTabChange?: (tab: DashboardTab) => void;
   onSelectSession?: (session: Session) => void;
+  onDeeplink?: (sessionId: string, turnIndex: number, clickedText?: string) => void;
 }
 
 interface ModelItemStats {
@@ -704,14 +705,9 @@ export const Dashboard = (props: DashboardProps) => {
                                     if (sess && props.onSelectSession) {
                                       props.onSelectSession(sess);
                                     }
-                                    window.dispatchEvent(
-                                      new CustomEvent("deeplink-turn", {
-                                        detail: {
-                                          sessionId: item.sessionId,
-                                          turnIndex: item.turnIndex,
-                                        },
-                                      })
-                                    );
+                                    if (props.onDeeplink) {
+                                      props.onDeeplink(item.sessionId, item.turnIndex, item.text);
+                                    }
                                   }}
                                   class="text-text-secondary/40 hover:text-accent p-1 rounded-lg hover:bg-accent/10 opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer inline-flex items-center justify-center"
                                   title="Sync to transcript"

@@ -23,6 +23,7 @@ import {
   X,
   ChevronUp,
   Trash2,
+  Volume2,
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { useSpeech } from "../utils/useSpeech";
@@ -44,6 +45,12 @@ interface DetailPaneProps {
   onCopyPath: (path: string) => void;
   loadTime: string | null;
   isLoading: boolean;
+  activeDeeplink?: {
+    sessionId: string;
+    turnIndex: number;
+    clickedText?: string;
+  } | null;
+  onClearDeeplink?: () => void;
   sidebarCollapsed?: boolean;
   searchQuery?: string;
   matchCase?: boolean;
@@ -258,26 +265,46 @@ export const DetailPane = (props: DetailPaneProps) => {
     extra?: string;
     imagePath?: string;
     imageSrc?: string;
+    sessionId?: string;
+    turnIndex?: number;
+    clickedText?: string;
   } | null>(null);
 
   const menuPosition = useContextMenuPosition(contextMenu);
 
-  const handleContextMenu = (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => {
+  const handleContextMenu = (
+    e: MouseEvent,
+    type: "user" | "assistant" | "tool",
+    text: string,
+    sessionId?: string,
+    turnIndex?: number
+  ) => {
     e.preventDefault();
     e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-menus"));
     const selected = window.getSelection()?.toString() || "";
+
+    const targetEl = (e.target as HTMLElement).closest(
+      "p, li, blockquote, h1, h2, h3, h4, h5, h6"
+    ) as HTMLElement | null;
+    const clickedText = targetEl ? targetEl.textContent || "" : "";
+
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
       text: selected ? selected : text,
       type,
       extra: selected ? "selected-text" : undefined,
+      sessionId,
+      turnIndex,
+      clickedText,
     });
   };
 
   const handleImageContextMenu = (e: MouseEvent, path?: string, src?: string) => {
     e.preventDefault();
     e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-menus"));
     const selected = window.getSelection()?.toString() || "";
     if (selected) {
       setContextMenu({
@@ -424,10 +451,36 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   let scrollContainerRef: HTMLDivElement | undefined;
   let scrollInnerRef: HTMLDivElement | undefined;
+  let activeResizeObserver: ResizeObserver | undefined;
+  let lastBottomScrollHeight = 0;
+  let justMounted = true;
+
+  const handleScrollInnerMount = (el: HTMLDivElement | null) => {
+    if (el) {
+      scrollInnerRef = el;
+      if (activeResizeObserver) {
+        activeResizeObserver.disconnect();
+      }
+      const ro = new ResizeObserver(() => {
+        if (scrollLock()) {
+          scrollToBottom();
+        }
+      });
+      ro.observe(el);
+      activeResizeObserver = ro;
+    } else {
+      if (activeResizeObserver) {
+        activeResizeObserver.disconnect();
+        activeResizeObserver = undefined;
+      }
+      scrollInnerRef = undefined;
+    }
+  };
 
   const scrollToBottom = () => {
     if (scrollContainerRef) {
       scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
+      lastBottomScrollHeight = scrollContainerRef.scrollHeight;
     }
   };
 
@@ -449,10 +502,16 @@ export const DetailPane = (props: DetailPaneProps) => {
           setScrollLock(true);
           logFE("info", `Scroll Lock: acquired (scrolled to bottom)`);
         }
-      } else {
-        if (scrollLock()) {
-          setScrollLock(false);
-          logFE("info", `Scroll Lock: released (scrolled up)`);
+        lastBottomScrollHeight = scrollHeight;
+        justMounted = false;
+      } else if (!justMounted) {
+        // Only release scroll lock if the height has not changed since we last scrolled to the bottom.
+        // If height changed, it's a layout shift/reflow, not a user scroll.
+        if (scrollHeight === lastBottomScrollHeight) {
+          if (scrollLock()) {
+            setScrollLock(false);
+            logFE("info", `Scroll Lock: released (scrolled up)`);
+          }
         }
       }
     }
@@ -524,10 +583,16 @@ export const DetailPane = (props: DetailPaneProps) => {
 
   let handleTriggerSearch: () => void;
   let handleKeyDown: (e: KeyboardEvent) => void;
-  let handleDeeplink: (e: any) => void;
+
+  const handleCloseAllMenus = () => {
+    closeContextMenu();
+    closeDropdowns();
+  };
 
   onMount(() => {
     window.addEventListener("click", closeContextMenu);
+    window.addEventListener("close-context-menus", closeContextMenu);
+    window.addEventListener("close-all-menus", handleCloseAllMenus);
     window.addEventListener("click", closeDropdowns);
 
     handleTriggerSearch = () => {
@@ -549,80 +614,30 @@ export const DetailPane = (props: DetailPaneProps) => {
         const isTyping =
           activeTag === "input" ||
           activeTag === "textarea" ||
+          activeTag === "select" ||
           document.activeElement?.getAttribute("contenteditable") === "true";
 
-        if (!isTyping && scrollContainerRef) {
+        if (!isTyping) {
           e.preventDefault();
-          if (e.key === "Home") {
-            scrollContainerRef.scrollTop = 0;
-            logFE("info", "DetailPane: scrolled to top via key");
-          } else if (e.key === "End") {
-            scrollContainerRef.scrollTop = scrollContainerRef.scrollHeight;
-            logFE("info", "DetailPane: scrolled to bottom via key");
-          } else if (e.key === "PageUp") {
-            scrollContainerRef.scrollTop -= scrollContainerRef.clientHeight * 0.85;
-            logFE("info", "DetailPane: scrolled page up via key");
-          } else if (e.key === "PageDown") {
-            scrollContainerRef.scrollTop += scrollContainerRef.clientHeight * 0.85;
-            logFE("info", "DetailPane: scrolled page down via key");
+          const scrollContainer = document.getElementById("detail-pane-scroll-container");
+          if (scrollContainer) {
+            if (e.key === "Home") scrollContainer.scrollTop = 0;
+            else if (e.key === "End") scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            else if (e.key === "PageUp")
+              scrollContainer.scrollTop -= scrollContainer.clientHeight * 0.9;
+            else if (e.key === "PageDown")
+              scrollContainer.scrollTop += scrollContainer.clientHeight * 0.9;
           }
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-
-    handleDeeplink = (evt: any) => {
-      const { sessionId, turnIndex } = evt.detail;
-      if (!props.session || props.session.id !== sessionId) return;
-
-      const turn = props.session.turns[turnIndex];
-      if (!turn) return;
-
-      const turnKey = turn.turnId || String(turnIndex);
-      setTimeout(() => {
-        const el = document.getElementById(turnKey);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-
-          // Flash highlight the assistant bubble briefly to draw focus!
-          const assistantBubble = el.querySelector(".bg-accent\\/5, .bg-accent-light\\/10");
-          if (assistantBubble) {
-            assistantBubble.classList.add(
-              "ring-2",
-              "ring-accent",
-              "ring-offset-2",
-              "ring-offset-background",
-              "transition-all",
-              "duration-1000"
-            );
-            setTimeout(() => {
-              assistantBubble.classList.remove(
-                "ring-2",
-                "ring-accent",
-                "ring-offset-2",
-                "ring-offset-background"
-              );
-            }, 2500);
-          }
-        }
-      }, 250);
-    };
-    window.addEventListener("deeplink-turn", handleDeeplink);
-
-    // Set up ResizeObserver on the inner wrapper to maintain scroll lock during mounts
-    if (scrollInnerRef) {
-      const ro = new ResizeObserver(() => {
-        if (scrollLock()) {
-          scrollToBottom();
-        }
-      });
-      ro.observe(scrollInnerRef);
-      onCleanup(() => ro.disconnect());
-    }
   });
 
   onCleanup(() => {
     window.removeEventListener("click", closeContextMenu);
+    window.removeEventListener("close-context-menus", closeContextMenu);
+    window.removeEventListener("close-all-menus", handleCloseAllMenus);
     window.removeEventListener("click", closeDropdowns);
     if (handleTriggerSearch) {
       window.removeEventListener("trigger-detail-search", handleTriggerSearch);
@@ -630,27 +645,105 @@ export const DetailPane = (props: DetailPaneProps) => {
     if (handleKeyDown) {
       window.removeEventListener("keydown", handleKeyDown);
     }
-    if (handleDeeplink) {
-      window.removeEventListener("deeplink-turn", handleDeeplink);
+    if (activeResizeObserver) {
+      activeResizeObserver.disconnect();
+      activeResizeObserver = undefined;
     }
   });
 
-  // Reset pagination, search state, and scroll to bottom when session changes
+  // Reset pagination, search state, and scroll to bottom when session changes or reloads
   createEffect(() => {
-    const id = props.session?.id;
-    if (id) {
+    const session = props.session;
+    if (session) {
       setScrollPercent(0);
       setActiveTurnIdx(0);
       setShowDetailSearch(false);
       setDetailSearchQuery("");
       setActiveMatchIndex(0);
-      setScrollLock(true); // Lock scroll to bottom for the new session
 
-      // Perform initial scroll lock scroll
-      setTimeout(() => {
+      // Only lock scroll to bottom on session change if there is no active deeplink scroll
+      if (!props.activeDeeplink) {
+        setScrollLock(true);
+        justMounted = true;
+        lastBottomScrollHeight = 0;
         scrollToBottom();
-      }, 50);
+      }
     }
+  });
+
+  // Reactively execute pending deeplinks once the correct session has finished loading and rendering
+  createEffect(() => {
+    const deeplink = props.activeDeeplink;
+    if (!deeplink) return;
+
+    const session = props.session;
+    if (!session || session.id !== deeplink.sessionId) return;
+
+    const turn = session.turns[deeplink.turnIndex];
+    if (!turn) return;
+
+    // Release scroll lock before executing deeplink scroll to prevent any conflicts
+    setScrollLock(false);
+
+    // Use a small delay to guarantee the DOM elements are fully mounted and sized
+    setTimeout(() => {
+      const turnKey = turn.turnId || String(deeplink.turnIndex);
+      let el = document.getElementById(turnKey);
+      if (!el) {
+        el = document.querySelector(`[data-turn-index="${deeplink.turnIndex}"]`);
+      }
+
+      if (el) {
+        let scrolled = false;
+        const clickedText = deeplink.clickedText;
+
+        if (clickedText) {
+          const cleanClicked = clickedText.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+          if (cleanClicked) {
+            const blocks = Array.from(
+              el.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+            );
+            const matchingEl = blocks.find((block) => {
+              const cleanBlockText =
+                block.textContent?.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") || "";
+              return cleanBlockText.includes(cleanClicked) || cleanClicked.includes(cleanBlockText);
+            });
+            if (matchingEl) {
+              matchingEl.scrollIntoView({ behavior: "smooth", block: "center" });
+              scrolled = true;
+            }
+          }
+        }
+
+        if (!scrolled) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        // Flash highlight the assistant bubble briefly to draw focus!
+        const assistantBubble = el.querySelector(".bg-accent\\/5, .bg-accent-light\\/10");
+        if (assistantBubble) {
+          assistantBubble.classList.add(
+            "ring-2",
+            "ring-accent",
+            "ring-offset-2",
+            "ring-offset-background",
+            "transition-all",
+            "duration-1000"
+          );
+          setTimeout(() => {
+            assistantBubble.classList.remove(
+              "ring-2",
+              "ring-accent",
+              "ring-offset-2",
+              "ring-offset-background"
+            );
+          }, 2500);
+        }
+
+        // Successfully scrolled, reset pending target!
+        props.onClearDeeplink?.();
+      }
+    }, 150);
   });
 
   // Extract folder name from CWD as "Workspace"
@@ -891,6 +984,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                       setShowWorkspaceDropdown(!showWorkspaceDropdown());
                       setShowSessionDropdown(false);
                       setShowActionsDropdown(false);
+                      window.dispatchEvent(new CustomEvent("close-context-menus"));
                     }}
                     class="px-2 py-2 text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center cursor-pointer"
                   >
@@ -984,6 +1078,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     setShowSessionDropdown(!showSessionDropdown());
                     setShowWorkspaceDropdown(false);
                     setShowActionsDropdown(false);
+                    window.dispatchEvent(new CustomEvent("close-context-menus"));
                   }}
                   class="px-2 py-2 text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center cursor-pointer"
                 >
@@ -1032,11 +1127,67 @@ export const DetailPane = (props: DetailPaneProps) => {
                 </Show>
               </div>
 
+              {/* Playback (Read Aloud) Session Toggle */}
+              <Show when={props.session}>
+                <Show
+                  when={speech.isReadAloudActive(props.session!.id)}
+                  fallback={
+                    <button
+                      onClick={() =>
+                        speech.toggleReadAloud(props.session!.id, {
+                          sourceId: props.session!.sourceId,
+                          filePath: props.session!.filePath,
+                        })
+                      }
+                      title={t("readAloud.readSessionAloud") || "Read Session Aloud"}
+                      class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      <Volume2 class="w-3.5 h-3.5" />
+                    </button>
+                  }
+                >
+                  <button
+                    onClick={() =>
+                      speech.toggleReadAloud(props.session!.id, {
+                        sourceId: props.session!.sourceId,
+                        filePath: props.session!.filePath,
+                      })
+                    }
+                    title={t("readAloud.stopReading") || "Stop Reading"}
+                    class="p-2 bg-accent-light/10 hover:bg-accent-light/25 border border-accent/20 rounded-xl text-accent transition-all flex items-center justify-center cursor-pointer animate-pulse"
+                  >
+                    <Volume2 class="w-3.5 h-3.5" />
+                  </button>
+                </Show>
+              </Show>
+
+              {/* Pin/Unpin Toggle */}
+              <Show when={props.onTogglePinSession && props.pinnedSessionIds && props.session}>
+                <button
+                  onClick={() => props.onTogglePinSession!(props.session!.id)}
+                  title={
+                    props.pinnedSessionIds!.has(props.session!.id)
+                      ? t("groups.unpinConversation") || "Unpin Conversation"
+                      : t("groups.pinConversation") || "Pin Conversation"
+                  }
+                  class={`p-2 bg-surface border rounded-xl transition-all flex items-center justify-center cursor-pointer ${
+                    props.pinnedSessionIds!.has(props.session!.id)
+                      ? "text-accent border-accent/20 bg-accent-light/10 hover:bg-accent-light/20"
+                      : "text-text-secondary hover:text-text-primary border-border/80 hover:bg-surface/80"
+                  }`}
+                >
+                  <Pin class="w-3.5 h-3.5" />
+                </button>
+              </Show>
+
               <div class="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowActionsDropdown(!showActionsDropdown());
+                    setShowSessionDropdown(false);
+                    setShowWorkspaceDropdown(false);
+                    window.dispatchEvent(new CustomEvent("close-context-menus"));
                   }}
                   title="More actions"
                   class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center justify-center cursor-pointer"
@@ -1049,26 +1200,6 @@ export const DetailPane = (props: DetailPaneProps) => {
                     onClick={(e) => e.stopPropagation()}
                     class="absolute right-0 mt-2 bg-surface border border-border rounded-xl shadow-xl w-56 py-1.5 z-[9999] select-none text-left flex flex-col"
                   >
-                    {/* Pin/Unpin */}
-                    <Show
-                      when={props.onTogglePinSession && props.pinnedSessionIds && props.session}
-                    >
-                      <button
-                        class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
-                        onClick={() => {
-                          props.onTogglePinSession!(props.session!.id);
-                          setShowActionsDropdown(false);
-                        }}
-                      >
-                        <Pin class="w-3.5 h-3.5" />
-                        <span>
-                          {props.pinnedSessionIds!.has(props.session!.id)
-                            ? t("groups.unpinConversation") || "Unpin Conversation"
-                            : t("groups.pinConversation") || "Pin Conversation"}
-                        </span>
-                      </button>
-                    </Show>
-
                     {/* Copy Session ID */}
                     <Show when={props.session}>
                       <button
@@ -1307,10 +1438,10 @@ export const DetailPane = (props: DetailPaneProps) => {
             id="detail-pane-scroll-container"
             tabindex="-1"
             ref={scrollContainerRef}
-            class="flex-grow overflow-y-auto pl-8 pr-36 py-6 space-y-6 scroll-smooth outline-none relative"
+            class="flex-grow overflow-y-auto pl-8 pr-36 py-6 space-y-6 outline-none relative"
             onScroll={handleScroll}
           >
-            <div ref={scrollInnerRef} class="space-y-6 flex flex-col">
+            <div ref={handleScrollInnerMount} class="space-y-6 flex flex-col">
               {/* Session Metadata Panel */}
               <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
                 <div class="flex items-center gap-1.5">
@@ -1364,6 +1495,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                       formatFullDate={formatFullDate}
                       sourceId={props.session!.sourceId}
                       sessionId={props.session!.id}
+                      filePath={props.session!.filePath}
                       searchQuery={activeSearchQuery()}
                       matchCase={activeMatchCase()}
                       wholeWord={activeWholeWord()}
@@ -1603,6 +1735,28 @@ export const DetailPane = (props: DetailPaneProps) => {
                       </button>
                     </Show>
                   </Show>
+
+                  <Show when={context().type === "assistant"}>
+                    <div class="h-[1px] bg-border/20 my-1" />
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                      onClick={() => {
+                        const sid = context().sessionId;
+                        const tid = context().turnIndex;
+                        const text = context().clickedText || "";
+                        if (sid !== undefined && tid !== undefined && props.session) {
+                          speech.playFromHere(sid, tid, text, {
+                            sourceId: props.session.sourceId,
+                            filePath: props.session.filePath,
+                          });
+                        }
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Volume2 class="w-3.5 h-3.5" />
+                      <span>{t("readAloud.playFromHere")}</span>
+                    </button>
+                  </Show>
                 </Show>
 
                 <Show when={isImage() && !isSelection()}>
@@ -1643,6 +1797,27 @@ export const DetailPane = (props: DetailPaneProps) => {
                     </Show>
                     <span>{copied() ? t("common.copied") : getLabel()}</span>
                   </button>
+
+                  <Show when={context().type === "assistant"}>
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
+                      onClick={() => {
+                        const sid = context().sessionId;
+                        const tid = context().turnIndex;
+                        const text = context().clickedText || "";
+                        if (sid !== undefined && tid !== undefined && props.session) {
+                          speech.playFromHere(sid, tid, text, {
+                            sourceId: props.session.sourceId,
+                            filePath: props.session.filePath,
+                          });
+                        }
+                        setContextMenu(null);
+                      }}
+                    >
+                      <Volume2 class="w-3.5 h-3.5" />
+                      <span>{t("readAloud.playFromHere")}</span>
+                    </button>
+                  </Show>
                 </Show>
               </div>
             );
@@ -1687,12 +1862,19 @@ interface VirtualTurnProps {
   formatFullDate: (timestamp: number) => string;
   sourceId: string;
   sessionId: string;
+  filePath: string;
   searchQuery?: string;
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
   numberFormat?: string;
-  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
+  onContextMenu: (
+    e: MouseEvent,
+    type: "user" | "assistant" | "tool",
+    text: string,
+    sessionId?: string,
+    turnIndex?: number
+  ) => void;
   onImageClick: (img: { path?: string; src: string }) => void;
   onImageContextMenu: (e: MouseEvent, path?: string, src?: string) => void;
   isActiveSpeechTurn?: boolean;
@@ -1721,7 +1903,15 @@ const VirtualTurn = (props: VirtualTurnProps) => {
           </span>
         </div>
         <div
-          onContextMenu={(e) => props.onContextMenu(e, "user", props.turn.userMessage)}
+          onContextMenu={(e) =>
+            props.onContextMenu(
+              e,
+              "user",
+              props.turn.userMessage,
+              props.sessionId,
+              props.actualIndex
+            )
+          }
           class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
         >
           <Show
@@ -1826,10 +2016,10 @@ const VirtualTurn = (props: VirtualTurnProps) => {
           </Show>
         </div>
         <div
-          class={`w-full p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+          class={`w-full p-5 rounded-2xl shadow-sm transition-all duration-300 relative after:absolute after:inset-0 after:rounded-2xl after:pointer-events-none after:z-[11] ${
             props.isActiveSpeechTurn
-              ? "bg-accent/5 border-2 border-accent shadow-md shadow-accent/15"
-              : "bg-accent-light/10 border border-accent/20"
+              ? "bg-accent/5 shadow-md shadow-accent/15 after:border-2 after:border-accent"
+              : "bg-accent-light/10 after:border after:border-accent/20"
           }`}
         >
           <Show
@@ -1844,6 +2034,8 @@ const VirtualTurn = (props: VirtualTurnProps) => {
                 onContextMenu={props.onContextMenu}
                 sessionId={props.sessionId}
                 turnIndex={props.actualIndex}
+                sourceId={props.sourceId}
+                filePath={props.filePath}
               />
             }
           >
@@ -1871,9 +2063,17 @@ const AssistantMessageRenderer = (props: {
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
-  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
+  onContextMenu: (
+    e: MouseEvent,
+    type: "user" | "assistant" | "tool",
+    text: string,
+    sessionId?: string,
+    turnIndex?: number
+  ) => void;
   sessionId?: string;
   turnIndex?: number;
+  sourceId?: string;
+  filePath?: string;
 }) => {
   const parts = createMemo(() => parseAssistantMessage(props.message));
 
@@ -1909,7 +2109,17 @@ const AssistantMessageRenderer = (props: {
         {(part) => {
           if (part.type === "text") {
             return (
-              <div onContextMenu={(e) => props.onContextMenu(e, "assistant", part.content)}>
+              <div
+                onContextMenu={(e) =>
+                  props.onContextMenu(
+                    e,
+                    "assistant",
+                    part.content,
+                    props.sessionId,
+                    props.turnIndex
+                  )
+                }
+              >
                 <MarkdownRenderer
                   content={part.content}
                   searchQuery={props.searchQuery}
@@ -1918,6 +2128,8 @@ const AssistantMessageRenderer = (props: {
                   useRegex={props.useRegex}
                   sessionId={props.sessionId}
                   turnIndex={props.turnIndex}
+                  sourceId={props.sourceId}
+                  filePath={props.filePath}
                 />
               </div>
             );
@@ -1945,7 +2157,13 @@ const WorkedForBlock = (props: {
   matchCase?: boolean;
   wholeWord?: boolean;
   useRegex?: boolean;
-  onContextMenu: (e: MouseEvent, type: "user" | "assistant" | "tool", text: string) => void;
+  onContextMenu: (
+    e: MouseEvent,
+    type: "user" | "assistant" | "tool",
+    text: string,
+    sessionId?: string,
+    turnIndex?: number
+  ) => void;
 }) => {
   const matchesSearch = createMemo(() => {
     const q = props.searchQuery;

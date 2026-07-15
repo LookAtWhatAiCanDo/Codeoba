@@ -29,12 +29,14 @@ interface MarkdownRendererProps {
   useRegex?: boolean;
   sessionId?: string;
   turnIndex?: number;
+  sourceId?: string;
+  filePath?: string;
 }
 
 export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   const { t } = useI18n();
   const speech = useSpeech();
-  let containerRef: HTMLDivElement | undefined;
+  const [container, setContainer] = createSignal<HTMLDivElement | null>(null);
   const [isExpanded, setIsExpanded] = createSignal(false);
 
   // Collapse if content changes (reset state)
@@ -111,6 +113,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   // Apply Prism syntax highlighting on htmlContent change
   createEffect(() => {
     htmlContent(); // Read dependency to trigger effect
+    const containerRef = container();
     if (!containerRef) return;
 
     const highlightStart = performance.now();
@@ -168,6 +171,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     const mc = props.matchCase;
     const ww = props.wholeWord;
     const rx = props.useRegex;
+    const containerRef = container();
 
     setTimeout(() => {
       if (containerRef) {
@@ -179,6 +183,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   // Load local images asynchronously
   createEffect(() => {
     htmlContent(); // trigger on html change
+    const containerRef = container();
     if (!containerRef) return;
 
     // Use a small delay to ensure DOM is updated
@@ -236,24 +241,98 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     }
   };
 
+  // Inject hover play buttons for each speakable text block
+  createEffect(() => {
+    htmlContent(); // Read dependency to trigger effect
+    const containerRef = container();
+    if (!containerRef || !props.sessionId || props.turnIndex === undefined) return;
+
+    // Use a small delay to ensure DOM is updated
+    setTimeout(() => {
+      if (!containerRef) return;
+
+      const elements = Array.from(
+        containerRef.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+      );
+      let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
+
+      // Filter out child paragraphs that are nested inside list items to avoid duplicate play buttons
+      narrativeElements = narrativeElements.filter((el) => {
+        if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+          return false;
+        }
+        return true;
+      });
+
+      narrativeElements.forEach((el) => {
+        const htmlEl = el as HTMLElement;
+
+        // Skip elements with no speakable text content
+        if (!htmlEl.textContent || !/\p{L}|\p{N}/u.test(htmlEl.textContent)) return;
+        if (htmlEl.querySelector(".read-aloud-play-btn")) return; // already added
+
+        // Add parent hover context classes
+        htmlEl.classList.add("group-play-block");
+
+        // Create the hover play button element
+        const btn = document.createElement("button");
+        btn.className = "read-aloud-play-btn";
+        btn.innerHTML = `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>`;
+        btn.setAttribute("title", t("readAloud.playFromHere") || "Read Aloud from here");
+
+        // Calculate offset to fix horizontal position relative to root markdown-body container
+        const alignPlayButton = () => {
+          const rectEl = htmlEl.getBoundingClientRect();
+          const rectContainer = containerRef.getBoundingClientRect();
+          if (rectEl.width === 0 || rectContainer.width === 0) return; // not laid out yet
+          const isRtl = getComputedStyle(containerRef).direction === "rtl";
+          if (isRtl) {
+            const offsetRight = rectContainer.right - rectEl.right;
+            btn.style.right = `${-26 - offsetRight}px`;
+            btn.style.left = "auto";
+          } else {
+            const offsetLeft = rectEl.left - rectContainer.left;
+            btn.style.left = `${-26 - offsetLeft}px`;
+            btn.style.right = "auto";
+          }
+        };
+
+        // Align initially
+        alignPlayButton();
+
+        // Re-align on hover to guarantee correctness under any dynamic layout changes
+        htmlEl.addEventListener("mouseenter", alignPlayButton);
+
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const sid = props.sessionId;
+          const tid = props.turnIndex;
+          const text = htmlEl.textContent || "";
+          if (sid !== undefined && tid !== undefined) {
+            speech.playFromHere(sid, tid, text, {
+              sourceId: props.sourceId || "",
+              filePath: props.filePath || "",
+            });
+          }
+        };
+
+        // Insert at the beginning of the element
+        htmlEl.insertBefore(btn, htmlEl.firstChild);
+      });
+    }, 100);
+  });
+
   // Apply speech-active block highlighting
   createEffect(() => {
     const idx = speech.currentSentenceIndex();
     const isPlaying = speech.isPlaying();
+    const containerRef = container();
 
     // Clear any previous speech highlights in this container
     if (containerRef) {
       const highlighted = containerRef.querySelectorAll(".speech-highlight");
       highlighted.forEach((el) => {
-        el.classList.remove(
-          "speech-highlight",
-          "bg-accent/5",
-          "border-l-2",
-          "border-accent",
-          "pl-2",
-          "transition-all",
-          "duration-200"
-        );
+        el.classList.remove("speech-highlight");
       });
     }
 
@@ -273,7 +352,15 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     const elements = Array.from(
       containerRef.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
     );
-    const narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
+    let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
+
+    // Filter out child paragraphs that are nested inside list items to avoid duplicate highlighting targets
+    narrativeElements = narrativeElements.filter((el) => {
+      if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+        return false;
+      }
+      return true;
+    });
 
     let targetEl: HTMLElement | null = null;
 
@@ -300,24 +387,16 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     }
 
     if (targetEl) {
-      targetEl.classList.add(
-        "speech-highlight",
-        "bg-accent/5",
-        "border-l-2",
-        "border-accent",
-        "pl-2",
-        "transition-all",
-        "duration-200"
-      );
+      targetEl.classList.add("speech-highlight");
     }
   });
 
   return (
     <div class="flex flex-col gap-3 w-full">
       <div
-        ref={containerRef}
+        ref={setContainer}
         onClick={handleLinkClick}
-        class="markdown-body text-text-primary overflow-x-hidden break-words font-sans"
+        class="markdown-body text-text-primary break-words font-sans relative"
         // Safe: htmlContent() is pre-sanitized by DOMPurify in htmlContent memo
         // eslint-disable-next-line solid/no-innerhtml
         innerHTML={htmlContent()}

@@ -345,6 +345,13 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         )
         .separator()
         .item(
+            &MenuItemBuilder::new(t("menu.go.readAloudHistory"))
+                .accelerator("CmdOrCtrl+P")
+                .id("go-read-aloud")
+                .build(app_handle)?,
+        )
+        .separator()
+        .item(
             &MenuItemBuilder::new(t("menu.go.nextSession"))
                 .id("go-next-session")
                 .accelerator("Down")
@@ -565,7 +572,7 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     let read_aloud_menu = SubmenuBuilder::new(app_handle, t("menu.readAloud.title"))
         .item(
             &MenuItemBuilder::new(t("menu.readAloud.playPause"))
-                .accelerator("CmdOrCtrl+Alt+Space")
+                .accelerator("CmdOrCtrl+Alt+P")
                 .id("read-aloud-play-pause")
                 .build(app_handle)?,
         )
@@ -586,6 +593,13 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
             &MenuItemBuilder::new(t("menu.readAloud.next"))
                 .accelerator("CmdOrCtrl+Alt+Right")
                 .id("read-aloud-next")
+                .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::new(t("menu.readAloud.history"))
+                .accelerator("CmdOrCtrl+P")
+                .id("go-read-aloud")
                 .build(app_handle)?,
         )
         .build()?;
@@ -866,6 +880,7 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
         "find-detail" => emit_event("menu-find-detail"),
         "find-sidebar" => emit_event("menu-find-sidebar"),
         "go-home" => emit_event("menu-go-home"),
+        "go-read-aloud" => emit_event("menu-go-read-aloud"),
         "nav-back" => emit_event("menu-nav-back"),
         "nav-forward" => emit_event("menu-nav-forward"),
         "focus-sidebar" => emit_event("menu-focus-sidebar"),

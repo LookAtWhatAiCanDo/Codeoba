@@ -369,6 +369,7 @@
       "back": "Zurück navigieren",
       "forward": "Vorwärts navigieren",
       "dashboard": "Übersicht",
+      "readAloudHistory": "Vorleseverlauf",
       "sidebar": "Seitenleiste",
       "detail": "Detailbereich",
       "nextSession": "Seitenleiste: Nächste auswählen",
@@ -395,7 +396,8 @@
       "playPause": "Wiedergabe / Pause",
       "stop": "Stoppen",
       "previous": "Vorheriger Satz",
-      "next": "Nächster Satz"
+      "next": "Nächster Satz",
+      "history": "Verlauf"
     }
   },
   "errors": {
@@ -436,6 +438,7 @@
     "speechNext": "Nächster Satz",
     "speechPrev": "Vorheriger Satz",
     "readSessionAloud": "Sitzung vorlesen",
-    "stopReading": "Vorlesen stoppen"
+    "stopReading": "Vorlesen stoppen",
+    "playFromHere": "Von hier an vorlesen"
   }
 }

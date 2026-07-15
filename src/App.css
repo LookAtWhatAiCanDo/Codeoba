@@ -689,3 +689,90 @@ pre[class*="language-"] {
     color: #ffffff !important;
   }
 }
+
+/* Read Aloud Hover Play Button */
+.group-play-block {
+  position: relative;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+  transition: all 150ms ease-in-out;
+}
+:dir(rtl) .group-play-block,
+[dir="rtl"] .group-play-block {
+  border-right: 2px solid transparent;
+  border-left: none;
+  padding-right: 8px;
+  padding-left: 0;
+}
+/* Extend hover trigger zone to the left/right gutters */
+.group-play-block::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -36px;
+  bottom: 0;
+  width: 36px;
+  background: transparent;
+  pointer-events: auto;
+  z-index: 5;
+}
+:dir(rtl) .group-play-block::before,
+[dir="rtl"] .group-play-block::before {
+  right: -36px;
+  left: auto;
+}
+.group-play-block.speech-highlight {
+  border-color: var(--accent) !important;
+  background-color: color-mix(in srgb, var(--accent) 5%, transparent) !important;
+  border-radius: 4px;
+}
+.read-aloud-play-btn {
+  position: absolute;
+  top: 0.12em;
+  left: -26px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 150ms ease-in-out;
+  padding: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  z-index: 10;
+  border: none;
+  background: transparent;
+}
+:dir(rtl) .read-aloud-play-btn,
+[dir="rtl"] .read-aloud-play-btn {
+  right: -26px;
+  left: auto;
+}
+.group-play-block:hover:not(:has(.group-play-block:hover)) > .read-aloud-play-btn {
+  opacity: 0.5;
+  pointer-events: auto;
+}
+.read-aloud-play-btn:hover {
+  opacity: 1 !important;
+  color: var(--accent) !important;
+  background-color: var(--surface) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover bridge to prevent losing hover state when moving mouse to button */
+.read-aloud-play-btn::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  right: -16px;
+  bottom: -10px;
+  width: 20px;
+  background: transparent;
+  pointer-events: auto;
+}
+:dir(rtl) .read-aloud-play-btn::after,
+[dir="rtl"] .read-aloud-play-btn::after {
+  left: -16px;
+  right: auto;
+}

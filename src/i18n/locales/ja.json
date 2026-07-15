@@ -369,6 +369,7 @@
       "back": "戻る",
       "forward": "進む",
       "dashboard": "ダッシュボード",
+      "readAloudHistory": "読み上げ履歴",
       "sidebar": "サイドバー",
       "detail": "詳細ペイン",
       "nextSession": "サイドバー: 次を選択",
@@ -395,7 +396,8 @@
       "playPause": "再生 / 一時停止",
       "stop": "停止",
       "previous": "前の文章",
-      "next": "次の文章"
+      "next": "次の文章",
+      "history": "履歴"
     }
   },
   "errors": {
@@ -436,6 +438,7 @@
     "speechNext": "次の文章",
     "speechPrev": "前の文章",
     "readSessionAloud": "セッションを読み上げる",
-    "stopReading": "読み上げを停止"
+    "stopReading": "読み上げを停止",
+    "playFromHere": "ここから朗読"
   }
 }

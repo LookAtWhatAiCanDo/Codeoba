@@ -252,8 +252,24 @@ export function useSpeech() {
     const currIdx = currentSentenceIndex();
     const activeItem = currIdx >= 0 && currIdx < list.length ? list[currIdx] : null;
 
-    // 2. Sort by timestamp ascending (oldest to newest)
-    const sorted = [...combinedList].sort((a, b) => a.timestamp - b.timestamp);
+    // 2. Sort chronologically:
+    //    a) timestamp ascending
+    //    b) turnIndex ascending (if same session and timestamp)
+    //    c) blockIndex ascending (if same turn/session and timestamp)
+    const sorted = [...combinedList].sort((a, b) => {
+      if (a.timestamp !== b.timestamp) {
+        return a.timestamp - b.timestamp;
+      }
+      if (a.sessionId === b.sessionId) {
+        if (a.turnIndex !== b.turnIndex) {
+          return a.turnIndex - b.turnIndex;
+        }
+        const aBlock = a.blockIndex ?? 0;
+        const bBlock = b.blockIndex ?? 0;
+        return aBlock - bBlock;
+      }
+      return 0;
+    });
 
     // 3. Re-assign global index contiguous coordinates
     const reindexed = sorted.map((item, idx) => ({
@@ -462,6 +478,94 @@ export function useSpeech() {
     setSentences(reindexed);
   };
 
+  const playFromHere = async (
+    sessionId: string,
+    turnIndex: number,
+    clickedText: string,
+    session: { sourceId: string; filePath: string }
+  ) => {
+    try {
+      // 1. Fetch full session to get all turns/blocks
+      const fullSession = await invoke<Session | null>("get_session", {
+        sourceId: session.sourceId,
+        filePath: session.filePath,
+      });
+      if (!fullSession) return;
+
+      // 2. Extract speech items for the entire session
+      const allSessionItems = extractSpeechItems(fullSession).map((item) => ({
+        ...item,
+        sessionId: fullSession.id,
+        sessionTitle: fullSession.threadName || "Untitled Session",
+      }));
+
+      // 3. Find the starting item by matching turnIndex and clickedText
+      const cleanClicked = clickedText.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+      let startIdx = -1;
+      if (cleanClicked) {
+        startIdx = allSessionItems.findIndex((item) => {
+          if (item.turnIndex !== turnIndex) return false;
+          const cleanItemText = item.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+          return cleanItemText.includes(cleanClicked) || cleanClicked.includes(cleanItemText);
+        });
+      }
+
+      // Fallback to first item of the turn if text match fails
+      if (startIdx === -1) {
+        startIdx = allSessionItems.findIndex((item) => item.turnIndex === turnIndex);
+      }
+
+      if (startIdx === -1) return; // No matching turn or block found
+
+      // 4. Get the slice of items from the starting point to the end of the session
+      const itemsToInsert = allSessionItems.slice(startIdx);
+
+      // 5. Merge items into the current sentences playlist
+      const currentList = sentences();
+      const combined = [...currentList];
+
+      itemsToInsert.forEach((item) => {
+        const exists = combined.some(
+          (existing) =>
+            existing.sessionId === sessionId &&
+            existing.turnIndex === item.turnIndex &&
+            existing.blockIndex === item.blockIndex
+        );
+        if (!exists) {
+          combined.push(item);
+        }
+      });
+
+      // 6. Sort and update the playlist
+      const sortedList = updateAndSortSentences(combined);
+
+      // 7. Find the new index of the first item to start speaking
+      const firstItem = itemsToInsert[0]!;
+      const playIndex = sortedList.findIndex(
+        (item) =>
+          item.sessionId === sessionId &&
+          item.turnIndex === firstItem.turnIndex &&
+          item.blockIndex === firstItem.blockIndex
+      );
+
+      if (playIndex !== -1) {
+        // Enable read aloud state for this session if not active
+        if (!isReadAloudActive(sessionId)) {
+          toggleReadAloud(sessionId, {
+            sourceId: session.sourceId,
+            filePath: session.filePath,
+          });
+        }
+
+        // Jump and play
+        setCurrentSentenceIndex(playIndex);
+        playCurrent();
+      }
+    } catch (err) {
+      console.error("Failed to play from here:", err);
+    }
+  };
+
   const goToIndex = (index: number) => {
     const list = sentences();
     if (index >= 0 && index < list.length) {
@@ -496,6 +600,7 @@ export function useSpeech() {
     isReadAloudActive,
     toggleReadAloud,
     handleReadAloudSessionUpdate,
+    playFromHere,
     goToIndex,
     clearReadAloudHistory,
     removeSentence,

@@ -369,6 +369,7 @@
       "back": "Retourner en arrière",
       "forward": "Aller de l'avant",
       "dashboard": "Tableau de bord",
+      "readAloudHistory": "Historique de lecture à haute voix",
       "sidebar": "Barre latérale",
       "detail": "Volet de détails",
       "nextSession": "Barre latérale : Sélectionner le suivant",
@@ -395,7 +396,8 @@
       "playPause": "Lecture / Pause",
       "stop": "Arrêter",
       "previous": "Phrase précédente",
-      "next": "Phrase suivante"
+      "next": "Phrase suivante",
+      "history": "Historique"
     }
   },
   "errors": {
@@ -436,6 +438,7 @@
     "speechNext": "Phrase suivante",
     "speechPrev": "Phrase précédente",
     "readSessionAloud": "Lire la session à haute voix",
-    "stopReading": "Arrêter la lecture"
+    "stopReading": "Arrêter la lecture",
+    "playFromHere": "Lire à haute voix à partir d'ici"
   }
 }

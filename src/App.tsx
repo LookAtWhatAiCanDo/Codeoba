@@ -306,6 +306,11 @@ function App() {
   const [loadTime, setLoadTime] = createSignal<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = createSignal<string | null>(null);
   const [appVersion, setAppVersion] = createSignal(packageJson.version);
+  const [activeDeeplink, setActiveDeeplink] = createSignal<{
+    sessionId: string;
+    turnIndex: number;
+    clickedText?: string;
+  } | null>(null);
 
   const [matchCase, setMatchCase] = createSignal(
     localStorage.getItem("codeoba-search-match-case") === "true"
@@ -718,6 +723,7 @@ function App() {
     let unlistenMenuFindDetail: (() => void) | undefined;
     let unlistenMenuFindSidebar: (() => void) | undefined;
     let unlistenMenuGoHome: (() => void) | undefined;
+    let unlistenMenuGoReadAloud: (() => void) | undefined;
     let unlistenMenuNavBack: (() => void) | undefined;
     let unlistenMenuNavForward: (() => void) | undefined;
     let unlistenMenuScrollTop: (() => void) | undefined;
@@ -948,11 +954,11 @@ function App() {
 
       unlistenMenuReadAloudPlayPause = await listen("menu-read-aloud-play-pause", () => {
         untrack(() => {
-          const session = selectedSession();
-          if (session) {
-            if (speech.isPlaying()) {
-              speech.play();
-            } else {
+          if (speech.isPlaying() || speech.isPaused() || speech.sentences().length > 0) {
+            speech.play(undefined, locale());
+          } else {
+            const session = selectedSession();
+            if (session) {
               speech.play(session, locale());
             }
           }
@@ -1007,6 +1013,10 @@ function App() {
       });
       unlistenMenuGoHome = await listen("menu-go-home", () => {
         handleGoHome();
+      });
+      unlistenMenuGoReadAloud = await listen("menu-go-read-aloud", () => {
+        handleGoHome();
+        setDashboardTab(DashboardTab.ReadAloud);
       });
       unlistenMenuNavBack = await listen("menu-nav-back", () => {
         handleNavBack();
@@ -1327,8 +1337,15 @@ function App() {
         }
       }
 
-      // ArrowLeft key pressed on detail/overview pane -> Focus Sidebar
-      if (e.key === "ArrowLeft") {
+      // Ctrl/Cmd-P -> Go to Read Aloud History (only if no Option/Alt modifier, to avoid conflicts with playback Ctrl/Cmd+Alt+P)
+      if (isCmdOrCtrl && e.key.toLowerCase() === "p" && !e.altKey) {
+        e.preventDefault();
+        handleGoHome();
+        setDashboardTab(DashboardTab.ReadAloud);
+      }
+
+      // ArrowLeft key pressed on detail/overview pane -> Focus Sidebar (only without modifiers)
+      if (e.key === "ArrowLeft" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const active = document.activeElement;
         if (
           active &&
@@ -1345,8 +1362,8 @@ function App() {
         }
       }
 
-      // ArrowRight key pressed on sidebar -> Focus detail/overview pane
-      if (e.key === "ArrowRight") {
+      // ArrowRight key pressed on sidebar -> Focus detail/overview pane (only without modifiers)
+      if (e.key === "ArrowRight" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const active = document.activeElement;
         if (active && active.id === "sidebar-scroll-container") {
           e.preventDefault();
@@ -1449,6 +1466,7 @@ function App() {
         if (unlistenMenuFindDetail) unlistenMenuFindDetail();
         if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
         if (unlistenMenuGoHome) unlistenMenuGoHome();
+        if (unlistenMenuGoReadAloud) unlistenMenuGoReadAloud();
         if (unlistenMenuNavBack) unlistenMenuNavBack();
         if (unlistenMenuNavForward) unlistenMenuNavForward();
         if (unlistenMenuFeedback) unlistenMenuFeedback();
@@ -2070,6 +2088,13 @@ function App() {
                       activeTab={dashboardTab()}
                       onActiveTabChange={setDashboardTab}
                       onSelectSession={handleSelectSession}
+                      onDeeplink={(sessId, turnIdx, text) =>
+                        setActiveDeeplink({
+                          sessionId: sessId,
+                          turnIndex: turnIdx,
+                          clickedText: text,
+                        })
+                      }
                     />
                   }
                 >
@@ -2086,6 +2111,8 @@ function App() {
             >
               <DetailPane
                 session={selectedSession()}
+                activeDeeplink={activeDeeplink()}
+                onClearDeeplink={() => setActiveDeeplink(null)}
                 onCopyPath={handleCopyPath}
                 loadTime={loadTime()}
                 isLoading={loadingSessionId() !== null}

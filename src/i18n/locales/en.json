@@ -375,6 +375,7 @@
       "back": "Navigate Back",
       "forward": "Navigate Forward",
       "dashboard": "Dashboard",
+      "readAloudHistory": "Read Aloud History",
       "sidebar": "Sidebar",
       "detail": "Detail Pane",
       "nextSession": "Sidebar: Select Next",
@@ -401,7 +402,8 @@
       "playPause": "Play / Pause",
       "stop": "Stop",
       "previous": "Previous Sentence",
-      "next": "Next Sentence"
+      "next": "Next Sentence",
+      "history": "History"
     }
   },
   "errors": {
@@ -442,6 +444,7 @@
     "speechNext": "Next sentence",
     "speechPrev": "Previous sentence",
     "readSessionAloud": "Read Session Aloud",
-    "stopReading": "Stop Reading"
+    "stopReading": "Stop Reading",
+    "playFromHere": "Read Aloud from here"
   }
 }

@@ -369,6 +369,7 @@
       "back": "Navigeer terug",
       "forward": "Navigeer vooruit",
       "dashboard": "Dashboard",
+      "readAloudHistory": "Voorleeshistorie",
       "sidebar": "Zijbalk",
       "detail": "Detailpaneel",
       "nextSession": "Zijbalk: Volgende selecteren",
@@ -395,7 +396,8 @@
       "playPause": "Afspelen / Pauzeren",
       "stop": "Stoppen",
       "previous": "Vorige zin",
-      "next": "Volgende zin"
+      "next": "Volgende zin",
+      "history": "Historie"
     }
   },
   "errors": {
@@ -436,6 +438,7 @@
     "speechNext": "Volgende zin",
     "speechPrev": "Vorige zin",
     "readSessionAloud": "Sessie voorlezen",
-    "stopReading": "Voorlezen stoppen"
+    "stopReading": "Voorlezen stoppen",
+    "playFromHere": "Vanaf hier voorlezen"
   }
 }
