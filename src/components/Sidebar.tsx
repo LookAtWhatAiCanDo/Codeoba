@@ -358,12 +358,13 @@ export const Sidebar = (props: SidebarProps) => {
     return activeSort;
   });
 
-  const handleMouseDown = (e: MouseEvent) => {
+  const handlePointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = props.width;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const handlePointerMove = (moveEvent: PointerEvent) => {
       const baseFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 15;
       const minWidth = Math.round(18.67 * baseFontSize);
       const maxWidth = Math.round(40.0 * baseFontSize);
@@ -374,13 +375,13 @@ export const Sidebar = (props: SidebarProps) => {
       props.onWidthChange(newWidth);
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+    const handlePointerUp = () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
   };
 
   const [groupsHeight, setGroupsHeight] = createSignal(
@@ -391,13 +392,14 @@ export const Sidebar = (props: SidebarProps) => {
     localStorage.setItem("codeoba-groups-height", String(groupsHeight()));
   });
 
-  const handleGroupsResizeMouseDown = (e: MouseEvent) => {
+  const handleGroupsResizePointerDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     const startY = e.clientY;
     const isInitiallyExpanded = showGroups();
     const startHeight = isInitiallyExpanded ? groupsHeight() : 0;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const handlePointerMove = (moveEvent: PointerEvent) => {
       const deltaY = moveEvent.clientY - startY;
 
       if (!showGroups() && deltaY > 10) {
@@ -410,13 +412,13 @@ export const Sidebar = (props: SidebarProps) => {
       }
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+    const handlePointerUp = () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
   };
 
   // Helper to format source tags
@@ -1152,11 +1154,12 @@ export const Sidebar = (props: SidebarProps) => {
 
       {/* Drag Handle */}
       <div
-        onMouseDown={handleMouseDown}
+        onPointerDown={handlePointerDown}
         class="absolute right-0 w-1 cursor-col-resize hover:bg-accent/40 active:bg-accent/60 transition-colors z-50 select-none"
         style={{
           top: "0px",
           height: "100%",
+          "touch-action": "none",
         }}
       />
       {/* Sticky Header Section */}
@@ -1603,8 +1606,11 @@ export const Sidebar = (props: SidebarProps) => {
 
       {/* Resizable Divider just above Sort By */}
       <div
-        onMouseDown={handleGroupsResizeMouseDown}
+        onPointerDown={handleGroupsResizePointerDown}
         class="h-2 -my-1 bg-transparent cursor-row-resize z-40 select-none flex-shrink-0 flex items-center justify-center relative group/resize"
+        style={{
+          "touch-action": "none",
+        }}
       >
         <div class="absolute inset-x-0 h-[1px] bg-border group-hover/resize:bg-accent group-active/resize:bg-accent transition-colors pointer-events-none" />
       </div>
