@@ -1962,6 +1962,7 @@ function App() {
           sources={sources()}
           indexingProgress={indexingProgress()}
           width={sidebarWidth()}
+          fontSize={fontSize()}
           onWidthChange={setSidebarWidth}
           collapsed={sidebarCollapsed()}
           appVersion={appVersion()}

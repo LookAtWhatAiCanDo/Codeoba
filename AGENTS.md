@@ -17,6 +17,7 @@ To ensure the project context remains accurate:
 6. **Test Verification:** Before completing any task, code modifications, or refactoring, you MUST run the comprehensive QA script locally (`npm run qa`) to ensure that all style formatting (`cargo fmt`), static lint analysis (`cargo clippy`), unit tests (`cargo test`), and frontend build checks (`npm run build`) pass successfully and no regressions are introduced.
 7. **Conventional Commits:** All commits MUST follow the Conventional Commits specification (https://www.conventionalcommits.org) using standard prefixes (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
 8. **Zero Hardcoded User-Facing Strings & Locales:** Never hardcode user-facing text strings, templates, dates, times, numbers, or formatting assumptions. Always utilize the application's localization framework (e.g. translation files, initially targeting English) and preferences. All code, templates, dates, numbers, times, and UI components MUST consider locale, timezone, formatting, translation, and internationalization requirements.
+9. **Explicit & Searchable Translation Keys:** Never use dynamic template strings or programmatically composed paths to call translation keys (e.g., do NOT write `t(\`sidebar.filter\${tab}\`)` or `t("sources." + option)`). Always use explicit, fully static translation key references or static inline object mappings so that all referenced keys are 100% searchable/greppable. Keep translation values correctly capitalized natively in the locale JSON files; do NOT store lowercase strings in locale dictionaries and apply CSS `capitalize` on translated text, as capitalization rules vary across languages.
 
 ---
 
@@ -86,6 +87,9 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - Use `marked` on the frontend for rendering transcripts.
    - Syntactically highlight code snippets using `prismjs` or `shiki` within SolidJS code block layouts.
    - Handle markdown links inside chat bubbles by attaching clickable callback events that securely verify target paths with the backend before opening them.
+
+5. **No CSS Capitalization on Localized Text**:
+   - Avoid using Tailwind's `capitalize` or other CSS text-transform utilities on translated user-facing text. Define strings with their natural localized casing directly in the translation files, as capitalization grammar rules vary widely by language.
 
 ---
 

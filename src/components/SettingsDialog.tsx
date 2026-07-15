@@ -969,7 +969,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         {t("settings.general.themeDesc")}
                       </p>
                     </div>
-                    <span class="text-xs font-semibold text-accent capitalize">
+                    <span class="text-xs font-semibold text-accent">
                       {props.theme === "custom"
                         ? t("settings.general.themeCustom")
                         : t(
@@ -1074,7 +1074,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     {/* Sliders for the active HSL setting */}
                     <div class="bg-background/30 border border-border/40 rounded-xl p-3 space-y-3">
                       <div class="flex items-center justify-between text-[0.625rem] font-semibold text-text-secondary">
-                        <span class="capitalize font-bold text-text-primary">
+                        <span class="font-bold text-text-primary">
                           {activeColorIndex() === "bg"
                             ? t("settings.general.customThemeBg")
                             : activeColorIndex() === "surface"
@@ -1170,9 +1170,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                         <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between gap-4">
                           <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">
-                              <h4 class="text-xs font-bold text-text-primary capitalize">
-                                {src.displayName}
-                              </h4>
+                              <h4 class="text-xs font-bold text-text-primary">{src.displayName}</h4>
                               <Show when={src.productUrl && !src.isAvailable}>
                                 <button
                                   onClick={() => openUrl(src.productUrl!)}
@@ -1198,13 +1196,19 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                 {(option) => (
                                   <button
                                     onClick={() => handleToggleSourceDecision(src.id, option)}
-                                    class={`px-2 py-1 rounded transition-all capitalize cursor-pointer ${
+                                    class={`px-2 py-1 rounded transition-all cursor-pointer ${
                                       dec === option
                                         ? "bg-surface text-accent font-bold"
                                         : "text-text-secondary hover:text-text-primary"
                                     }`}
                                   >
-                                    {t("settings.sources." + option)}
+                                    {
+                                      {
+                                        allow: t("settings.sources.allow"),
+                                        deny: t("settings.sources.deny"),
+                                        ask: t("settings.sources.ask"),
+                                      }[option]
+                                    }
                                   </button>
                                 )}
                               </For>

@@ -227,6 +227,7 @@ interface SidebarProps {
     currentSource: string;
   } | null;
   width: number;
+  fontSize?: number;
   onWidthChange: (w: number) => void;
   collapsed?: boolean;
   appVersion?: string;
@@ -727,10 +728,25 @@ export const Sidebar = (props: SidebarProps) => {
   });
 
   const gridClasses = createMemo(() => {
-    if (props.pruneDeleted) {
+    const count = tabOptions().length;
+    const currentFontSize = props.fontSize || 15;
+
+    // Breakpoints based on font size:
+    // Lower breakpoint: 24rem (360px at 15px font base)
+    // Upper breakpoint: 38rem (570px at 15px font base)
+    const lowerBreakpoint = currentFontSize * 24;
+    const upperBreakpoint = currentFontSize * 38;
+
+    if (props.width < lowerBreakpoint) {
+      return "grid grid-cols-2";
+    }
+    if (props.width < upperBreakpoint) {
       return "grid grid-cols-3";
     }
-    return props.width < 480 ? "grid grid-cols-2" : "grid grid-cols-4";
+    if (count === 4) {
+      return "grid grid-cols-4";
+    }
+    return "grid grid-cols-5";
   });
 
   // <For> reconciles rows by item identity. These wrapper objects were rebuilt on
@@ -1293,7 +1309,7 @@ export const Sidebar = (props: SidebarProps) => {
                           props.onArchivalFilterChange(tab);
                         }
                       }}
-                      class={`flex-1 text-center py-1 text-xs rounded-md transition-all capitalize cursor-pointer ${
+                      class={`flex-1 text-center py-1 text-xs rounded-md transition-all cursor-pointer ${
                         props.archivalFilter === tab
                           ? "bg-background text-accent border border-border font-medium shadow-sm"
                           : "text-text-secondary hover:text-text-primary"
@@ -1301,19 +1317,26 @@ export const Sidebar = (props: SidebarProps) => {
                     >
                       <span class="flex items-center justify-center gap-1.5">
                         <Show when={tab === "all"}>
-                          <Layers class="w-3.5 h-3.5" />
+                          <Layers class="w-3.5 h-3.5 shrink-0" />
                         </Show>
                         <Show when={tab === "active"}>
-                          <Activity class="w-3.5 h-3.5" />
+                          <Activity class="w-3.5 h-3.5 shrink-0" />
                         </Show>
                         <Show when={tab === "archived"}>
-                          <Archive class="w-3.5 h-3.5" />
+                          <Archive class="w-3.5 h-3.5 shrink-0" />
                         </Show>
                         <Show when={tab === "deleted"}>
-                          <Trash2 class="w-3.5 h-3.5 text-red-500" />
+                          <Trash2 class="w-3.5 h-3.5 text-red-500 shrink-0" />
                         </Show>
                         <span>
-                          {t(`sidebar.filter${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
+                          {
+                            {
+                              all: t("sidebar.filterAll"),
+                              active: t("sidebar.filterActive"),
+                              archived: t("sidebar.filterArchived"),
+                              deleted: t("sidebar.filterDeleted"),
+                            }[tab]
+                          }
                         </span>
                         <span class="text-[0.625rem] opacity-60 ml-0.5">
                           ({archivalCounts()[tab]})
@@ -1592,7 +1615,16 @@ export const Sidebar = (props: SidebarProps) => {
                   }`}
                 >
                   <span>
-                    {t(`sidebar.sort${dimension.charAt(0).toUpperCase() + dimension.slice(1)}`)}
+                    {
+                      {
+                        relevance: t("sidebar.sortRelevance"),
+                        updated: t("sidebar.sortUpdated"),
+                        tokens: t("sidebar.sortTokens"),
+                        speed: t("sidebar.sortSpeed"),
+                        turns: t("sidebar.sortTurns"),
+                        duration: t("sidebar.sortDuration"),
+                      }[dimension]
+                    }
                   </span>
                   <Show when={isSelected()}>
                     <Show
@@ -1648,6 +1680,7 @@ export const Sidebar = (props: SidebarProps) => {
                   getSourceLabel={getSourceLabel}
                   groups={props.groups}
                   onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
+                  onTogglePin={props.onTogglePinSession}
                 />
               );
             }}
@@ -1952,6 +1985,7 @@ interface SessionCardProps {
   groups: ConversationGroup[];
   isPinned: boolean;
   onContextMenu: (e: MouseEvent, session: Session) => void;
+  onTogglePin?: (sessionId: string) => void;
 }
 
 const SessionCard = (props: SessionCardProps) => {
@@ -2001,7 +2035,7 @@ const SessionCard = (props: SessionCardProps) => {
           "user-drag": "element",
         } as any
       }
-      class={`p-4 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none transition-all border rounded-xl ${
+      class={`p-4 flex flex-col gap-2.5 cursor-grab active:cursor-grabbing select-none transition-all border rounded-xl group ${
         props.isSelected
           ? "bg-accent-light/20 border-accent ring-2 ring-accent/30 shadow-md shadow-accent/20"
           : props.isHighlighted
@@ -2025,8 +2059,31 @@ const SessionCard = (props: SessionCardProps) => {
           <Show when={props.isLoading}>
             <Loader2 class="w-3.5 h-3.5 text-accent animate-spin" />
           </Show>
-          <Show when={props.isPinned}>
-            <Pin class="w-3.5 h-3.5 text-accent" />
+          <Show
+            when={props.isPinned}
+            fallback={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (props.onTogglePin) props.onTogglePin(props.session.id);
+                }}
+                class="text-text-secondary/35 hover:text-accent opacity-0 group-hover:opacity-100 transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
+                title={t("groups.pinConversation") || "Pin Conversation"}
+              >
+                <Pin class="w-3.5 h-3.5" />
+              </button>
+            }
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (props.onTogglePin) props.onTogglePin(props.session.id);
+              }}
+              class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center"
+              title={t("groups.unpinConversation") || "Unpin Conversation"}
+            >
+              <Pin class="w-3.5 h-3.5" />
+            </button>
           </Show>
           <Show when={props.session.isArchived}>
             <Archive class="w-3.5 h-3.5 text-text-secondary" />

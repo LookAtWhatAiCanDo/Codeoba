@@ -199,7 +199,7 @@ export const TitleBar = (props: TitleBarProps) => {
 
   return (
     <div
-      class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-50 flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
+      class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-[1000] flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
       style={{
         "padding-left": isMac ? "80px" : "24px",
         "padding-right": isMac ? "24px" : "140px",
@@ -278,6 +278,7 @@ export const TitleBar = (props: TitleBarProps) => {
             </span>
           </Show>
         </div>
+
         <Show when={props.fontSize && props.onFontSizeChange}>
           <div
             class="flex items-center bg-surface/40 hover:bg-surface/60 border border-border/60 rounded-xl text-text-secondary select-none box-border pointer-events-auto"
