@@ -635,7 +635,7 @@ export const Dashboard = (props: DashboardProps) => {
                 <table class="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr class="text-text-secondary font-semibold select-none">
-                      <th class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-1 w-24 text-center border-b border-border/40"></th>
+                      <th class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-1 w-24 text-center border-b border-border/40" />
                       <th class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-1 w-px whitespace-nowrap border-b border-border/40">
                         {t("dashboard.time")}
                       </th>
