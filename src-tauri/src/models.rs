@@ -450,9 +450,14 @@ fn get_running_processes_table() -> String {
     match &*guard {
         Some((at, text)) if at.elapsed() < std::time::Duration::from_secs(1) => text.clone(),
         _ => {
-            let output = std::process::Command::new("tasklist")
-                .args(["/FO", "CSV"])
-                .output();
+            let mut cmd = std::process::Command::new("tasklist");
+            cmd.args(["/FO", "CSV"]);
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
+            let output = cmd.output();
             let text = match output {
                 Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
                 Err(_) => String::new(),
