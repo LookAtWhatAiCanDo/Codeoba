@@ -378,6 +378,12 @@ export const DetailPane = (props: DetailPaneProps) => {
       ".mermaid-diagram-container"
     ) as HTMLElement | null;
 
+    const isMermaidError = !!(
+      mermaidContainer?.querySelector(".mermaid-error-container") ||
+      target.closest(".mermaid-error-container")
+    );
+    const showMermaidMenu = mermaidWrapper && mermaidContainer && !isMermaidError;
+
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -387,8 +393,8 @@ export const DetailPane = (props: DetailPaneProps) => {
       sessionId,
       turnIndex,
       clickedText,
-      mermaidWrapper: mermaidWrapper || undefined,
-      mermaidContainer: mermaidContainer || undefined,
+      mermaidWrapper: showMermaidMenu ? mermaidWrapper : undefined,
+      mermaidContainer: showMermaidMenu ? mermaidContainer : undefined,
     });
   };
 

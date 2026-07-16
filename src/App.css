@@ -581,8 +581,38 @@ body {
   width: 100%;
 }
 
+/* Prevent global Tailwind/reset overrides from corrupting Mermaid HTML labels */
+.markdown-body .mermaid-diagram-container svg foreignObject {
+  overflow: visible !important;
+}
+
+.markdown-body .mermaid-diagram-container svg foreignObject div {
+  box-sizing: content-box !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  position: static !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: normal !important;
+}
+
+.markdown-body .mermaid-diagram-container svg foreignObject p,
+.markdown-body .mermaid-diagram-container svg foreignObject span {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+}
+
 .markdown-body .mermaid-diagram-container svg {
   max-width: 100% !important;
+  max-height: 360px !important;
   height: auto !important;
   background-color: transparent !important;
   cursor: zoom-in;
