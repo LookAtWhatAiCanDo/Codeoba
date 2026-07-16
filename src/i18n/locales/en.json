@@ -49,7 +49,8 @@
     "matchCase": "Match Case (Aa)",
     "wholeWord": "Match Whole Word (\\b)",
     "useRegex": "Use Regular Expression (.*)",
-    "multiline": "Toggle Multiline (\\n)"
+    "multiline": "Toggle Multiline (\\n)",
+    "deleteHistory": "Delete from history"
   },
   "dashboard": {
     "globalStats": "Global Stats",

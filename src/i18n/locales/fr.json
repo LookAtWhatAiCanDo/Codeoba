@@ -49,7 +49,8 @@
     "matchCase": "Respecter la casse (Aa)",
     "wholeWord": "Mot entier (\\b)",
     "useRegex": "Utiliser une expression régulière (.*)",
-    "multiline": "Basculer sur plusieurs lignes (\\n)"
+    "multiline": "Basculer sur plusieurs lignes (\\n)",
+    "deleteHistory": "Supprimer de l'historique"
   },
   "dashboard": {
     "globalStats": "Statistiques globales",

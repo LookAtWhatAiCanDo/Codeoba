@@ -168,6 +168,13 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - **Known/accepted v1 gap**: a `run_command` proposal shows `"active"` whether approval is pending or the command is executing — Antigravity only flushes the `RUN_COMMAND` line when the command *finishes*, so the two states are indistinguishable on disk, and auto-approved commands never show a prompt at all. Distinguishing them requires process-table probing and is deferred.
    - **Task completion tracking**: `RUN_COMMAND`/`GENERIC` lines with status `RUNNING` launch background tasks (scoped per user turn); completion is detected via `SYSTEM_MESSAGE`/`ERROR_MESSAGE`/`GENERIC` lines carrying the task id plus a completion keyword (finished/status: done/completed/terminated/cancelled/expired). `sender=` is **not** a completion marker — every inter-task message envelope carries it.
 
+14. **Search History & Dropdown Interaction**:
+    - Persisted locally via `localStorage` (key: `codeoba-search-history`), capped at the 100 most recent unique queries.
+    - Opaque dropdown container styled with `var(--surface)` to prevent background content overlap.
+    - Dropping down intercepts `onMouseDown` with `preventDefault()` to prevent focus loss during scroll, row clicks, or entry deletion.
+    - Input edits reset the active selection index to `-1` so pressing Enter submits the typed text.
+    - Keyboard navigation (ArrowUp/ArrowDown to navigate list, Enter to submit, Escape/Tab to close) stops event propagation to avoid bubbling up to the sidebar's container layout handlers.
+
 ---
 
 ## 🛠️ Common Cargo & NPM Development Commands

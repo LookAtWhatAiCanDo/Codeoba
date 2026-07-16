@@ -327,6 +327,177 @@ export const Sidebar = (props: SidebarProps) => {
   const speech = useSpeech();
   const [showFilters, setShowFilters] = createSignal(false);
 
+  // Search History State & Ref
+  const [searchHistory, setSearchHistory] = createSignal<string[]>([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] = createSignal(false);
+  const [activeHistoryIndex, setActiveHistoryIndex] = createSignal<number>(-1);
+  let searchBarRef: HTMLDivElement | undefined;
+  let dropdownRef: HTMLDivElement | undefined;
+  let justFocused = false;
+  let lastDeletedQuery: string | null = null;
+
+  // Load history on mount
+  onMount(() => {
+    try {
+      const stored = localStorage.getItem("codeoba-search-history");
+      if (stored) {
+        setSearchHistory(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to load search history", e);
+    }
+  });
+
+  const saveHistory = (newHistory: string[]) => {
+    setSearchHistory(newHistory);
+    try {
+      localStorage.setItem("codeoba-search-history", JSON.stringify(newHistory));
+    } catch (e) {
+      console.error("Failed to save search history", e);
+    }
+  };
+
+  const addToHistory = (query: string) => {
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return;
+
+    let updated = [trimmed, ...searchHistory().filter((item) => item !== trimmed)];
+    if (updated.length > 100) {
+      updated = updated.slice(0, 100);
+    }
+    saveHistory(updated);
+  };
+
+  const handleDeleteHistoryItem = (item: string, e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const updated = searchHistory().filter((h) => h !== item);
+    saveHistory(updated);
+    setActiveHistoryIndex(-1);
+    lastDeletedQuery = item;
+  };
+
+  const handleBlur = () => {
+    const trimmed = props.searchQuery.trim();
+    if (trimmed.length > 0 && trimmed !== lastDeletedQuery) {
+      const history = searchHistory();
+      if (history.length === 0 || history[0] !== trimmed) {
+        addToHistory(trimmed);
+      }
+    }
+  };
+
+  const handleSelectHistoryItem = (item: string) => {
+    props.onSearchChange(item);
+    addToHistory(item);
+    setShowHistoryDropdown(false);
+    setActiveHistoryIndex(-1);
+  };
+
+  const scrollHistoryIndexIntoView = (index: number) => {
+    if (index >= 0 && index < searchHistory().length) {
+      const itemId = `history-item-${index}`;
+      const itemEl = document.getElementById(itemId);
+      if (itemEl) {
+        itemEl.scrollIntoView({ block: "nearest", behavior: "auto" });
+      }
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      if (!showHistoryDropdown()) {
+        setShowHistoryDropdown(true);
+        setActiveHistoryIndex(-1);
+        e.preventDefault();
+        e.stopPropagation();
+      } else if (searchHistory().length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveHistoryIndex((prev) => {
+          const next = prev + 1;
+          const target = next >= searchHistory().length ? 0 : next;
+          scrollHistoryIndexIntoView(target);
+          return target;
+        });
+      }
+    } else if (e.key === "ArrowUp") {
+      if (showHistoryDropdown() && searchHistory().length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveHistoryIndex((prev) => {
+          const next = prev - 1;
+          const target = next < 0 ? searchHistory().length - 1 : next;
+          scrollHistoryIndexIntoView(target);
+          return target;
+        });
+      }
+    } else if (e.key === "Enter") {
+      if (
+        showHistoryDropdown() &&
+        activeHistoryIndex() >= 0 &&
+        activeHistoryIndex() < searchHistory().length
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        const selected = searchHistory()[activeHistoryIndex()];
+        handleSelectHistoryItem(selected);
+      } else {
+        if (!props.multiline || e.ctrlKey || e.metaKey) {
+          addToHistory(props.searchQuery);
+          setShowHistoryDropdown(false);
+        }
+      }
+    } else if (e.key === "Escape") {
+      if (showHistoryDropdown()) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowHistoryDropdown(false);
+        setActiveHistoryIndex(-1);
+      }
+    } else if (e.key === "Tab") {
+      if (showHistoryDropdown()) {
+        setShowHistoryDropdown(false);
+      }
+    }
+  };
+
+  const handleFocus = () => {
+    setShowHistoryDropdown(true);
+    setActiveHistoryIndex(-1);
+    justFocused = true;
+    setTimeout(() => {
+      justFocused = false;
+    }, 150);
+  };
+
+  const handleInputClick = () => {
+    if (justFocused) {
+      setShowHistoryDropdown(true);
+    } else {
+      setShowHistoryDropdown((prev) => !prev);
+    }
+  };
+
+  const handleWindowClick = (e: MouseEvent) => {
+    if (searchBarRef) {
+      if (!searchBarRef.contains(e.target as Node)) {
+        setShowHistoryDropdown(false);
+        setActiveHistoryIndex(-1);
+      } else if (dropdownRef && !dropdownRef.contains(e.target as Node)) {
+        setActiveHistoryIndex(-1);
+      }
+    }
+  };
+
+  onMount(() => {
+    window.addEventListener("click", handleWindowClick);
+  });
+
+  onCleanup(() => {
+    window.removeEventListener("click", handleWindowClick);
+  });
+
   const [sortBy, setSortBy] = createSignal<
     "relevance" | "updated" | "tokens" | "speed" | "turns" | "duration"
   >((localStorage.getItem("codeoba-sidebar-sort-by") as any) || "updated");
@@ -1165,7 +1336,7 @@ export const Sidebar = (props: SidebarProps) => {
       {/* Sticky Header Section */}
       <div class="p-4 space-y-3 flex-shrink-0">
         {/* Search Bar Group */}
-        <div class="relative flex items-center w-full">
+        <div class="relative flex items-center w-full" ref={searchBarRef}>
           <Search class="absolute left-3 top-2.5 w-4 h-4 text-text-secondary rtl:left-auto rtl:right-3 pointer-events-none" />
 
           <Show
@@ -1175,7 +1346,15 @@ export const Sidebar = (props: SidebarProps) => {
                 id="sidebar-search-input"
                 type="text"
                 value={props.searchQuery}
-                onInput={(e) => props.onSearchChange(e.currentTarget.value)}
+                onInput={(e) => {
+                  props.onSearchChange(e.currentTarget.value);
+                  setActiveHistoryIndex(-1);
+                  lastDeletedQuery = null;
+                }}
+                onKeyDown={handleKeyDown}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                onClick={handleInputClick}
                 placeholder={t("sidebar.searchPlaceholder")}
                 class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-[10.5rem] py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60 h-[2.375rem]"
               />
@@ -1184,7 +1363,15 @@ export const Sidebar = (props: SidebarProps) => {
             <textarea
               id="sidebar-search-textarea"
               value={props.searchQuery}
-              onInput={(e) => props.onSearchChange(e.currentTarget.value)}
+              onInput={(e) => {
+                props.onSearchChange(e.currentTarget.value);
+                setActiveHistoryIndex(-1);
+                lastDeletedQuery = null;
+              }}
+              onKeyDown={handleKeyDown}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onClick={handleInputClick}
               placeholder={t("sidebar.searchPlaceholder")}
               class="w-full bg-surface border border-border hover:border-border/80 focus:border-accent text-text-primary pl-9 pr-[10.5rem] py-2 text-sm rounded-xl outline-none transition-all placeholder:text-text-secondary/60 resize-none overflow-y-auto min-h-[2.375rem] max-h-[7.5rem]"
               rows={1}
@@ -1205,7 +1392,10 @@ export const Sidebar = (props: SidebarProps) => {
           <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 select-none">
             <Show when={props.searchQuery.length > 0}>
               <button
-                onClick={() => props.onSearchChange("")}
+                onClick={() => {
+                  props.onSearchChange("");
+                  setActiveHistoryIndex(-1);
+                }}
                 title={t("common.clear")}
                 class="w-5 h-5 hover:bg-surface rounded transition-all cursor-pointer flex items-center justify-center text-text-secondary hover:text-text-primary"
               >
@@ -1291,6 +1481,41 @@ export const Sidebar = (props: SidebarProps) => {
               <Filter class="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Search History Dropdown */}
+          <Show when={showHistoryDropdown() && searchHistory().length > 0}>
+            <div
+              ref={dropdownRef}
+              onMouseDown={(e) => e.preventDefault()}
+              style={{ background: "var(--surface)" }}
+              class="absolute top-[calc(100%+4px)] left-0 w-full border border-border rounded-xl shadow-lg z-[100] max-h-60 overflow-y-auto py-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+            >
+              <For each={searchHistory()}>
+                {(item, index) => (
+                  <div
+                    id={`history-item-${index()}`}
+                    onClick={() => handleSelectHistoryItem(item)}
+                    class={`flex items-center justify-between px-3 py-1.5 text-xs text-text-primary hover:bg-accent/10 hover:text-accent cursor-pointer transition-colors group/item rounded-lg mx-1 ${
+                      activeHistoryIndex() === index() ? "bg-accent/10 text-accent font-medium" : ""
+                    }`}
+                  >
+                    <div class="flex items-center gap-2 truncate pr-4">
+                      <Clock class="w-3.5 h-3.5 text-text-secondary/50 group-hover/item:text-accent transition-colors shrink-0" />
+                      <span class="truncate">{item}</span>
+                    </div>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => handleDeleteHistoryItem(item, e)}
+                      title={t("sidebar.deleteHistory")}
+                      class="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-surface rounded text-text-secondary hover:text-text-primary transition-all cursor-pointer shrink-0"
+                    >
+                      <X class="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </For>
+            </div>
+          </Show>
         </div>
 
         {/* Collapsible Filter panel */}

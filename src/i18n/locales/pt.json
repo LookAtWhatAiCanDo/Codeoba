@@ -49,7 +49,8 @@
     "matchCase": "Diferenciar maiúsculas/minúsculas (Aa)",
     "wholeWord": "Palavra inteira (\\b)",
     "useRegex": "Usar expressão regular (.*)",
-    "multiline": "Alternar multilinha (\\n)"
+    "multiline": "Alternar multilinha (\\n)",
+    "deleteHistory": "Excluir do histórico"
   },
   "dashboard": {
     "globalStats": "Estatísticas globais",

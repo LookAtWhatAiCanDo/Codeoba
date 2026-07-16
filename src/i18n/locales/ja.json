@@ -49,7 +49,8 @@
     "matchCase": "大文字と小文字を区別 (Aa)",
     "wholeWord": "単語全体 (\\b)",
     "useRegex": "正規表現を使用 (.*)",
-    "multiline": "複数行の切り替え (\\n)"
+    "multiline": "複数行の切り替え (\\n)",
+    "deleteHistory": "履歴から削除"
   },
   "dashboard": {
     "globalStats": "グローバル統計",

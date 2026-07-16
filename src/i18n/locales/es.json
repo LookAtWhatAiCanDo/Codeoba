@@ -49,7 +49,8 @@
     "matchCase": "Coincidir mayúsculas y minúsculas (Aa)",
     "wholeWord": "Palabra completa (\\b)",
     "useRegex": "Usar expresión regular (.*)",
-    "multiline": "Alternar multilínea (\\n)"
+    "multiline": "Alternar multilínea (\\n)",
+    "deleteHistory": "Eliminar del historial"
   },
   "dashboard": {
     "globalStats": "Estadísticas globales",

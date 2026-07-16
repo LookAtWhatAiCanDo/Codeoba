@@ -49,7 +49,8 @@
     "matchCase": "대소문자 구분 (Aa)",
     "wholeWord": "단어 단위로 (\\b)",
     "useRegex": "정규식 사용 (.*)",
-    "multiline": "여러 줄 토글 (\\n)"
+    "multiline": "여러 줄 토글 (\\n)",
+    "deleteHistory": "기록에서 삭제"
   },
   "dashboard": {
     "globalStats": "전체 통계",

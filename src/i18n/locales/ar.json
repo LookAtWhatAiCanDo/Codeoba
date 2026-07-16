@@ -49,7 +49,8 @@
     "matchCase": "حالة الأحرف (Aa)",
     "wholeWord": "كلمة بالكامل (\\b)",
     "useRegex": "تعبير نمطي (.*)",
-    "multiline": "تبديل متعدد الأسطر (\\n)"
+    "multiline": "تبديل متعدد الأسطر (\\n)",
+    "deleteHistory": "حذف من السجل"
   },
   "dashboard": {
     "globalStats": "الإحصائيات العامة",

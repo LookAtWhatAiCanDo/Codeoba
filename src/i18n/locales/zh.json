@@ -49,7 +49,8 @@
     "matchCase": "区分大小写 (Aa)",
     "wholeWord": "全字匹配 (\\b)",
     "useRegex": "使用正则表达式 (.*)",
-    "multiline": "切换多行 (\\n)"
+    "multiline": "切换多行 (\\n)",
+    "deleteHistory": "从历史记录中删除"
   },
   "dashboard": {
     "globalStats": "全局统计",

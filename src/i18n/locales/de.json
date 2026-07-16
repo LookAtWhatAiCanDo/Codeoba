@@ -49,7 +49,8 @@
     "matchCase": "Groß-/Kleinschreibung beachten (Aa)",
     "wholeWord": "Ganzes Wort (\\b)",
     "useRegex": "Regulären Ausdruck verwenden (.*)",
-    "multiline": "Mehrzeilig umschalten (\\n)"
+    "multiline": "Mehrzeilig umschalten (\\n)",
+    "deleteHistory": "Aus Verlauf löschen"
   },
   "dashboard": {
     "globalStats": "Globale Statistiken",
