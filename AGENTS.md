@@ -80,7 +80,7 @@ When modifying the frontend web components, adhere to these styling guidelines:
 
 3. **Window Layout & Spacing (macOS vs Windows/Linux)**:
    - Clear a top-left padding/margin area (e.g., `80px` left padding) on macOS to avoid overlapping the macOS transparent titlebar window controls.
-   - On Windows and Linux, clear a top-right padding/margin area (e.g., `140px` right padding) to avoid overlapping the overlay custom window control buttons (minimize/maximize/close).
+   - On Windows and Linux, native window decorations (title bar and borders) and standard system menus are enabled. Custom HTML window controls are removed, and padding on both left and right is set to standard `24px` because the webview client area begins below the native title/menu bar.
    - Maintain breadcrumb navigation: `Workspace Name / Active Session Title`.
 
 4. **Markdown Rendering & Code Highlighting**:

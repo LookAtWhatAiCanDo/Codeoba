@@ -84,6 +84,11 @@
         // Platform detection for window padding and spacers
         const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
         document.documentElement.setAttribute('data-platform', isMac ? 'macos' : 'windows');
+        if (!isMac) {
+          document.querySelectorAll('[data-tauri-drag-region]').forEach(el => {
+            el.removeAttribute('data-tauri-drag-region');
+          });
+        }
       })();
     </script>
 
@@ -311,7 +316,7 @@
         padding: 0 24px 0 80px;
       }
       [data-platform="windows"] .sk-header {
-        padding: 0 140px 0 24px;
+        padding: 0 24px 0 24px;
       }
 
       .sk-header button,
@@ -919,18 +924,7 @@
           </button>
         </div>
 
-        <!-- Fake Window Controls for Windows/Linux Skeleton -->
-        <div class="sk-win-controls no-drag">
-          <button class="sk-win-btn sk-win-min">
-            <svg width="10" height="1" viewBox="0 0 10 1" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="0.5" x2="10" y2="0.5" /></svg>
-          </button>
-          <button class="sk-win-btn sk-win-max">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="0.5" y="0.5" width="9" height="9" /></svg>
-          </button>
-          <button class="sk-win-btn sk-win-close">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" /></svg>
-          </button>
-        </div>
+
       </header>
 
       <!-- Main Grid: Sidebar + Content -->

@@ -1,5 +1,5 @@
-import { createSignal, onMount, onCleanup, Show, For } from "solid-js";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { createSignal, Show, For } from "solid-js";
+
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n/i18n";
 import { Session } from "../types";
@@ -68,27 +68,8 @@ interface TitleBarProps {
 export const TitleBar = (props: TitleBarProps) => {
   const { t, locale } = useI18n();
   const speech = useSpeech();
-  const [isMaximized, setIsMaximized] = createSignal(false);
   const [showPrevDropdown, setShowPrevDropdown] = createSignal(false);
   const [showNextDropdown, setShowNextDropdown] = createSignal(false);
-  let unlistenResize: (() => void) | undefined;
-
-  const handleMinimize = () => {
-    getCurrentWindow().minimize();
-  };
-
-  const handleMaximize = async () => {
-    const win = getCurrentWindow();
-    if (await win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
-  };
-
-  const handleClose = () => {
-    getCurrentWindow().close();
-  };
 
   const handleOpenIssues = async () => {
     try {
@@ -97,26 +78,6 @@ export const TitleBar = (props: TitleBarProps) => {
       console.error("Failed to open issues URL:", err);
     }
   };
-
-  onMount(async () => {
-    if (!isMac) {
-      try {
-        const win = getCurrentWindow();
-        setIsMaximized(await win.isMaximized());
-        unlistenResize = await win.onResized(async () => {
-          setIsMaximized(await win.isMaximized());
-        });
-      } catch (err) {
-        console.error("Failed to setup window controls listener:", err);
-      }
-    }
-  });
-
-  onCleanup(() => {
-    if (unlistenResize) {
-      unlistenResize();
-    }
-  });
 
   const renderNavigationPill = () => (
     <div
@@ -323,21 +284,28 @@ export const TitleBar = (props: TitleBarProps) => {
       class="absolute top-0 left-0 right-0 h-[var(--sk-header-height)] pointer-events-auto z-[1000] flex items-center justify-between select-none border-b border-border/10 glass transition-all duration-200"
       style={{
         "padding-left": isMac ? "80px" : "24px",
-        "padding-right": isMac ? "24px" : "140px",
+        "padding-right": "24px",
       }}
-      data-tauri-drag-region
+      data-tauri-drag-region={isMac ? true : undefined}
     >
       <div class="flex items-center pointer-events-none" style={{ gap: "16px" }}>
         <div
           class="flex items-center pointer-events-auto"
           style={{ gap: "8px", width: "176px", "flex-shrink": 0 }}
-          data-tauri-drag-region
+          data-tauri-drag-region={isMac ? true : undefined}
         >
-          <Terminal class="w-[18px] h-[18px] text-accent animate-pulse" data-tauri-drag-region />
-          <div class="flex items-baseline" style={{ gap: "8px" }} data-tauri-drag-region>
+          <Terminal
+            class="w-[18px] h-[18px] text-accent animate-pulse"
+            data-tauri-drag-region={isMac ? true : undefined}
+          />
+          <div
+            class="flex items-baseline"
+            style={{ gap: "8px" }}
+            data-tauri-drag-region={isMac ? true : undefined}
+          >
             <span
               class="font-bold tracking-widest text-[14px] text-text-primary leading-none"
-              data-tauri-drag-region
+              data-tauri-drag-region={isMac ? true : undefined}
             >
               CODEOBA
             </span>
@@ -347,7 +315,7 @@ export const TitleBar = (props: TitleBarProps) => {
                 padding: "2px 6px",
                 "border-radius": "4px",
               }}
-              data-tauri-drag-region
+              data-tauri-drag-region={isMac ? true : undefined}
             >
               v{props.appVersion}
             </span>
@@ -365,7 +333,7 @@ export const TitleBar = (props: TitleBarProps) => {
             "font-size": "14px",
             "font-weight": "500",
           }}
-          data-tauri-drag-region
+          data-tauri-drag-region={isMac ? true : undefined}
         >
           <Show
             when={props.selectedSession}
@@ -373,9 +341,12 @@ export const TitleBar = (props: TitleBarProps) => {
               <span
                 class="text-accent font-semibold flex items-center"
                 style={{ gap: "4px" }}
-                data-tauri-drag-region
+                data-tauri-drag-region={isMac ? true : undefined}
               >
-                <Layers style={{ width: "12px", height: "12px" }} data-tauri-drag-region />{" "}
+                <Layers
+                  style={{ width: "12px", height: "12px" }}
+                  data-tauri-drag-region={isMac ? true : undefined}
+                />{" "}
                 {t("dashboard.globalStats")}
               </span>
             }
@@ -383,17 +354,17 @@ export const TitleBar = (props: TitleBarProps) => {
             <span
               class="text-text-secondary/70"
               title={props.selectedSession?.cwd || ""}
-              data-tauri-drag-region
+              data-tauri-drag-region={isMac ? true : undefined}
             >
               {props.selectedSession?.cwd?.split(/[/\\]/).pop() || t("common.root")}
             </span>
-            <span class="text-border" data-tauri-drag-region>
+            <span class="text-border" data-tauri-drag-region={isMac ? true : undefined}>
               /
             </span>
             <span
               class="text-text-primary"
               title={props.selectedSession?.threadName || t("common.untitledSession")}
-              data-tauri-drag-region
+              data-tauri-drag-region={isMac ? true : undefined}
             >
               {props.selectedSession?.threadName || t("common.untitledSession")}
             </span>
@@ -460,75 +431,6 @@ export const TitleBar = (props: TitleBarProps) => {
           <Bug style={{ width: "14px", height: "14px" }} class="text-accent" />
         </button>
       </div>
-
-      {/* Custom Window Controls for Windows/Linux */}
-      <Show when={!isMac}>
-        <div class="absolute top-0 right-0 h-full flex items-center z-50 pointer-events-auto select-none no-drag">
-          {/* Minimize */}
-          <button
-            onClick={handleMinimize}
-            class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
-          >
-            <svg
-              class="w-[14px] h-[14px]"
-              viewBox="0 0 10 1"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <line x1="0" y1="0.5" x2="10" y2="0.5" />
-            </svg>
-          </button>
-
-          {/* Maximize / Restore */}
-          <button
-            onClick={handleMaximize}
-            class="h-full w-11 flex items-center justify-center win-control-btn transition-colors cursor-pointer"
-          >
-            <Show
-              when={isMaximized()}
-              fallback={
-                <svg
-                  class="w-[12px] h-[12px]"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                >
-                  <rect x="0.5" y="0.5" width="9" height="9" />
-                </svg>
-              }
-            >
-              <svg
-                class="w-[12px] h-[12px]"
-                viewBox="0 0 10 10"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <rect x="0.5" y="2.5" width="7" height="7" />
-                <path d="M2.5,2.5 V0.5 H9.5 V7.5 H7.5" />
-              </svg>
-            </Show>
-          </button>
-
-          {/* Close */}
-          <button
-            onClick={handleClose}
-            class="h-full w-11 flex items-center justify-center win-close-btn transition-colors cursor-pointer"
-          >
-            <svg
-              class="w-[14px] h-[14px]"
-              viewBox="0 0 10 10"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path d="M0.5,0.5 L9.5,9.5 M9.5,0.5 L0.5,9.5" />
-            </svg>
-          </button>
-        </div>
-      </Show>
     </div>
   );
 };
