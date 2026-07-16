@@ -252,7 +252,8 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
     let file_menu = file_menu_builder.build()?;
 
     // View Submenu
-    let view_menu = SubmenuBuilder::new(app_handle, t("menu.view.title"))
+    #[allow(unused_mut)]
+    let mut view_menu_builder = SubmenuBuilder::new(app_handle, t("menu.view.title"))
         .item(
             &MenuItemBuilder::new(t("menu.view.reload"))
                 .accelerator("CmdOrCtrl+R")
@@ -266,8 +267,19 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::fullscreen(app_handle, None)?)
-        .build()?;
+        .item(&PredefinedMenuItem::fullscreen(app_handle, None)?);
+
+    #[cfg(any(debug_assertions, feature = "devtools"))]
+    {
+        view_menu_builder = view_menu_builder.separator().item(
+            &MenuItemBuilder::new("Toggle Developer Tools")
+                .accelerator("CmdOrCtrl+Alt+I")
+                .id("toggle-devtools")
+                .build(app_handle)?,
+        );
+    }
+
+    let view_menu = view_menu_builder.build()?;
 
     // Go Submenu
     let highlight_modifier = if cfg!(target_os = "macos") {
@@ -877,6 +889,13 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
         "check-updates" => emit_event("menu-check-updates"),
         "reload" => emit_event("menu-reload"),
         "force-reload" => emit_event("menu-force-reload"),
+        #[cfg(any(debug_assertions, feature = "devtools"))]
+        "toggle-devtools" => {
+            use tauri::Manager;
+            if let Some(window) = app_handle.get_webview_window("main") {
+                window.open_devtools();
+            }
+        }
         "find-detail" => emit_event("menu-find-detail"),
         "find-sidebar" => emit_event("menu-find-sidebar"),
         "go-home" => emit_event("menu-go-home"),

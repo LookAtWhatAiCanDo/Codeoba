@@ -1,5 +1,6 @@
 import { createSignal, createMemo } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Session } from "../types";
 import { parseAssistantMessage } from "./messageParser";
 import { useI18n } from "../i18n/i18n";
@@ -113,6 +114,17 @@ let currentLanguage = "en";
 let currentSentenceStartTime = 0;
 let lastSpokenSessionId: string | null = null;
 
+interface SpeechController {
+  play: (session?: Session, lang?: string) => void;
+  stop: () => void;
+  next: () => void;
+  prev: () => void;
+  isPlaying: () => boolean;
+  isPaused: () => boolean;
+}
+
+let activeSpeechController: SpeechController | null = null;
+
 export function useSpeech() {
   const { t } = useI18n();
 
@@ -170,6 +182,14 @@ export function useSpeech() {
     setIsPaused(false);
     setCurrentSentenceIndex(-1);
     lastSpokenSessionId = null;
+
+    invoke("update_playback_metadata", {
+      title: "",
+      artist: "",
+      isPlaying: false,
+    }).catch((err) => {
+      console.error("[TTS] Failed to update playback metadata:", err);
+    });
   };
 
   const playCurrent = () => {
@@ -201,6 +221,14 @@ export function useSpeech() {
 
     setIsPlaying(true);
     setIsPaused(false);
+
+    invoke("update_playback_metadata", {
+      title: currentItem.text,
+      artist: currentItem.sessionTitle || "Untitled Session",
+      isPlaying: true,
+    }).catch((err) => {
+      console.error("[TTS] Failed to update playback metadata:", err);
+    });
 
     if (window.speechSynthesis) {
       if (activeUtterance) {
@@ -333,9 +361,29 @@ export function useSpeech() {
       if (isPaused()) {
         setIsPaused(false);
         if (window.speechSynthesis) window.speechSynthesis.resume();
+        const list = sentences();
+        const idx = currentSentenceIndex();
+        const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
+        invoke("update_playback_metadata", {
+          title: currentItem ? currentItem.text : "",
+          artist: currentItem ? currentItem.sessionTitle || "Untitled Session" : "",
+          isPlaying: true,
+        }).catch((err) => {
+          console.error("[TTS] Failed to update playback metadata:", err);
+        });
       } else {
         setIsPaused(true);
         if (window.speechSynthesis) window.speechSynthesis.pause();
+        const list = sentences();
+        const idx = currentSentenceIndex();
+        const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
+        invoke("update_playback_metadata", {
+          title: currentItem ? currentItem.text : "",
+          artist: currentItem ? currentItem.sessionTitle || "Untitled Session" : "",
+          isPlaying: false,
+        }).catch((err) => {
+          console.error("[TTS] Failed to update playback metadata:", err);
+        });
       }
     } else {
       const list = sentences();
@@ -604,6 +652,16 @@ export function useSpeech() {
     currentLanguage = lang;
   };
 
+  const controller: SpeechController = {
+    play,
+    stop,
+    next,
+    prev,
+    isPlaying,
+    isPaused,
+  };
+  activeSpeechController = controller;
+
   return {
     isPlaying,
     isPaused,
@@ -626,4 +684,35 @@ export function useSpeech() {
     removeSentence,
     setLanguage,
   };
+}
+
+// Listen to OS-level media keys
+if (typeof window !== "undefined") {
+  listen<string>("system-media-action", (event) => {
+    const action = event.payload;
+    console.log("[TTS] system-media-action received event payload:", action);
+    if (!activeSpeechController) {
+      console.warn("[TTS] system-media-action received but no active speech controller registered");
+      return;
+    }
+    if (action === "Toggle") {
+      activeSpeechController.play();
+    } else if (action === "Play") {
+      if (activeSpeechController.isPaused() || !activeSpeechController.isPlaying()) {
+        activeSpeechController.play();
+      }
+    } else if (action === "Pause") {
+      if (activeSpeechController.isPlaying() && !activeSpeechController.isPaused()) {
+        activeSpeechController.play();
+      }
+    } else if (action === "Next") {
+      activeSpeechController.next();
+    } else if (action === "Previous") {
+      activeSpeechController.prev();
+    } else if (action === "Stop") {
+      activeSpeechController.stop();
+    }
+  }).catch((err) => {
+    console.error("Failed to register system-media-action listener:", err);
+  });
 }

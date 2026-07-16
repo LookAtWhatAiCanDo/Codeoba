@@ -73,6 +73,8 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     }
 }
 
+pub struct MediaControlsState(pub std::sync::Mutex<Option<souvlaki::MediaControls>>);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(clippy::expect_used)]
 pub fn run() {
@@ -153,6 +155,7 @@ pub fn run() {
         .manage(watcher::SelectedSessionState(std::sync::Mutex::new(None)))
         .manage(search::SearchIndexState::new())
         .manage(groups::GroupState::new())
+        .manage(MediaControlsState(std::sync::Mutex::new(None)))
         .setup(|app| {
             // Clean up legacy model files from the home directory to free up disk space
             let model_dir = crate::search::get_home_model_dir();
@@ -164,6 +167,64 @@ pub fn run() {
             let _ = crate::keyring::get_or_create_cache_key();
 
             let handle = app.handle().clone();
+
+            // Initialize media controls integration
+            #[cfg(target_os = "windows")]
+            let hwnd = {
+                use tauri::window::WindowExt;
+                let main_window = app.get_webview_window("main");
+                main_window.and_then(|w| w.hwnd().ok().map(|h| h.0 as *mut std::ffi::c_void))
+            };
+            #[cfg(not(target_os = "windows"))]
+            let hwnd = None;
+
+            let config = souvlaki::PlatformConfig {
+                dbus_name: "codeoba",
+                display_name: "Codeoba",
+                hwnd,
+            };
+
+            let controls = match souvlaki::MediaControls::new(config) {
+                Ok(mut c) => {
+                    let handle_clone = handle.clone();
+                    if let Err(e) = c.attach(move |event| {
+                        crate::log_info!(
+                            "[MediaControls] Event received inside closure: {:?}",
+                            event
+                        );
+                        let action = match event {
+                            souvlaki::MediaControlEvent::Play => Some("Play"),
+                            souvlaki::MediaControlEvent::Pause => Some("Pause"),
+                            souvlaki::MediaControlEvent::Toggle => Some("Toggle"),
+                            souvlaki::MediaControlEvent::Next => Some("Next"),
+                            souvlaki::MediaControlEvent::Previous => Some("Previous"),
+                            souvlaki::MediaControlEvent::Stop => Some("Stop"),
+                            _ => None,
+                        };
+                        if let Some(action_str) = action {
+                            use tauri::Emitter;
+                            if let Err(e) = handle_clone.emit("system-media-action", action_str) {
+                                crate::log_info!("Failed to emit system-media-action event: {}", e);
+                            }
+                        }
+                    }) {
+                        crate::log_info!("Failed to attach media controls listener: {:?}", e);
+                    }
+                    Some(c)
+                }
+                Err(e) => {
+                    crate::log_info!("Failed to initialize media controls: {:?}", e);
+                    None
+                }
+            };
+
+            if let Some(c) = controls {
+                let state = app.state::<MediaControlsState>();
+                let guard_res = state.0.lock();
+                if let Ok(mut guard) = guard_res {
+                    *guard = Some(c);
+                }
+            }
 
             // Startup diagnostics
             let (_dm, _dv) = crate::search::resolve_model_paths(Some(&handle));
@@ -355,6 +416,7 @@ pub fn run() {
             commands::get_language_override,
             commands::get_index_subagents,
             commands::save_index_subagents,
+            commands::update_playback_metadata,
             menu::update_scroll_menu_labels,
             menu::set_menu_item_text
         ])
