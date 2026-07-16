@@ -236,23 +236,10 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
         .build()?;
 
     // File Submenu
-    let file_menu_builder = SubmenuBuilder::new(app_handle, t("menu.file.title"))
-        .item(
-            &MenuItemBuilder::new(t("menu.file.rebuild"))
-                .accelerator("CmdOrCtrl+R")
-                .id("rebuild-index")
-                .build(app_handle)?,
-        )
-        .item(
-            &MenuItemBuilder::new(t("menu.file.rebuildBypass"))
-                .accelerator("CmdOrCtrl+Shift+R")
-                .id("rebuild-index-bypass")
-                .build(app_handle)?,
-        );
+    let file_menu_builder = SubmenuBuilder::new(app_handle, t("menu.file.title"));
 
     #[cfg(not(target_os = "macos"))]
     let file_menu_builder = file_menu_builder
-        .separator()
         .item(
             &MenuItemBuilder::new(t("menu.file.settings"))
                 .accelerator("CmdOrCtrl+,")
@@ -266,6 +253,19 @@ pub fn setup_menu_internal<R: tauri::Runtime>(
 
     // View Submenu
     let view_menu = SubmenuBuilder::new(app_handle, t("menu.view.title"))
+        .item(
+            &MenuItemBuilder::new(t("menu.view.reload"))
+                .accelerator("CmdOrCtrl+R")
+                .id("reload")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::new(t("menu.view.forceReload"))
+                .accelerator("CmdOrCtrl+Shift+R")
+                .id("force-reload")
+                .build(app_handle)?,
+        )
+        .separator()
         .item(&PredefinedMenuItem::fullscreen(app_handle, None)?)
         .build()?;
 
@@ -875,8 +875,8 @@ pub fn handle_menu_event<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, ev
         "read-aloud-next" => emit_event("menu-read-aloud-next"),
         "settings" => emit_event("menu-settings"),
         "check-updates" => emit_event("menu-check-updates"),
-        "rebuild-index" => emit_event("menu-rebuild-index"),
-        "rebuild-index-bypass" => emit_event("menu-rebuild-index-bypass"),
+        "reload" => emit_event("menu-reload"),
+        "force-reload" => emit_event("menu-force-reload"),
         "find-detail" => emit_event("menu-find-detail"),
         "find-sidebar" => emit_event("menu-find-sidebar"),
         "go-home" => emit_event("menu-go-home"),

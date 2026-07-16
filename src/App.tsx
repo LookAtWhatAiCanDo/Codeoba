@@ -718,8 +718,8 @@ function App() {
     let unlistenMenuLicenses: (() => void) | undefined;
     let unlistenMenuPrivacy: (() => void) | undefined;
     let unlistenMenuCheckUpdates: (() => void) | undefined;
-    let unlistenMenuRebuild: (() => void) | undefined;
-    let unlistenMenuRebuildBypass: (() => void) | undefined;
+    let unlistenMenuReload: (() => void) | undefined;
+    let unlistenMenuForceReload: (() => void) | undefined;
     let unlistenMenuFindDetail: (() => void) | undefined;
     let unlistenMenuFindSidebar: (() => void) | undefined;
     let unlistenMenuGoHome: (() => void) | undefined;
@@ -986,10 +986,10 @@ function App() {
       unlistenMenuCheckUpdates = await listen("menu-check-updates", () => {
         triggerManualUpdateCheck();
       });
-      unlistenMenuRebuild = await listen("menu-rebuild-index", () => {
+      unlistenMenuReload = await listen("menu-reload", () => {
         handleRebuildIndex(false);
       });
-      unlistenMenuRebuildBypass = await listen("menu-rebuild-index-bypass", () => {
+      unlistenMenuForceReload = await listen("menu-force-reload", () => {
         handleRebuildIndex(true);
       });
       unlistenMenuFindDetail = await listen("menu-find-detail", () => {
@@ -1461,8 +1461,8 @@ function App() {
         if (unlistenMenuLicenses) unlistenMenuLicenses();
         if (unlistenMenuPrivacy) unlistenMenuPrivacy();
         if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
-        if (unlistenMenuRebuild) unlistenMenuRebuild();
-        if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
+        if (unlistenMenuReload) unlistenMenuReload();
+        if (unlistenMenuForceReload) unlistenMenuForceReload();
         if (unlistenMenuFindDetail) unlistenMenuFindDetail();
         if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
         if (unlistenMenuGoHome) unlistenMenuGoHome();

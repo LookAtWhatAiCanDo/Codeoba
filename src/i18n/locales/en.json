@@ -370,8 +370,6 @@
     },
     "file": {
       "title": "File",
-      "rebuild": "Rebuild Index",
-      "rebuildBypass": "Rebuild Index (Bypass Cache)",
       "settings": "Settings",
       "preferences": "Preferences..."
     },
@@ -394,7 +392,9 @@
       "pageDown": "Page Down"
     },
     "view": {
-      "title": "View"
+      "title": "View",
+      "reload": "Reload",
+      "forceReload": "Force Reload"
     },
     "help": {
       "title": "Help",

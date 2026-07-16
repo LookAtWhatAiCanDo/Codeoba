@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "Archief",
-      "rebuild": "Index opnieuw opbouwen",
-      "rebuildBypass": "Index opnieuw opbouwen (cache omzeilen)",
       "settings": "Instellingen",
       "preferences": "Voorkeuren..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "Pagina omlaag"
     },
     "view": {
-      "title": "Weergave"
+      "title": "Weergave",
+      "reload": "Opnieuw laden",
+      "forceReload": "Opnieuw laden forceren"
     },
     "help": {
       "title": "Help",

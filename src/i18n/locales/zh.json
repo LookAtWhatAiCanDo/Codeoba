@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "文件",
-      "rebuild": "重新构建索引",
-      "rebuildBypass": "重新构建索引（跳过缓存）",
       "settings": "设置",
       "preferences": "偏好设置..."
     },
@@ -380,7 +378,7 @@
       "nextSession": "侧边栏: 选择下一个",
       "prevSession": "侧边栏: 选择上一个",
       "highlightNext": "侧边栏: 高亮下一个",
-      "highlightPrev": "侧边栏: 高亮上一个",
+      "highlightPrev": "侧边栏: 高亮上一個",
       "selectHighlighted": "侧边栏: 选择高亮项",
       "home": "开头",
       "end": "结尾",
@@ -388,7 +386,9 @@
       "pageDown": "向下翻页"
     },
     "view": {
-      "title": "视图"
+      "title": "视图",
+      "reload": "重新加载",
+      "forceReload": "强制重新加载"
     },
     "help": {
       "title": "帮助",
