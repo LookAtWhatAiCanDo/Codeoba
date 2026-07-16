@@ -25,17 +25,17 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
             </div>
             <div>
               <h3 class="text-sm font-bold text-text-primary uppercase tracking-wider">
-                {t("settings.sources.detectedMultiPromptTitle")}
+                {t("settings.agents.detectedMultiPromptTitle")}
               </h3>
               <span class="text-[0.5625rem] font-mono bg-accent/15 border border-accent/20 rounded text-accent px-1.5 py-0.5 font-semibold">
-                {t("settings.sources.detectedMultiPromptBadge")}
+                {t("settings.agents.detectedMultiPromptBadge")}
               </span>
             </div>
           </div>
 
           {/* Description Details */}
           <div class="text-xs leading-relaxed text-text-secondary">
-            {t("settings.sources.detectedMultiPromptMessage")}
+            {t("settings.agents.detectedMultiPromptMessage")}
           </div>
 
           {/* Detected sources checkboxes list */}
@@ -64,8 +64,8 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
 
           {/* Reassurance Callouts */}
           <div class="flex flex-col gap-1.5 p-3 rounded-xl bg-background/50 border border-border/40 text-[0.625rem] text-text-secondary leading-relaxed">
-            <div>{t("settings.sources.detectedMultiPromptFootnotePrivate")}</div>
-            <div>{t("settings.sources.detectedMultiPromptFootnoteEmpty")}</div>
+            <div>{t("settings.agents.detectedMultiPromptFootnotePrivate")}</div>
+            <div>{t("settings.agents.detectedMultiPromptFootnoteEmpty")}</div>
           </div>
 
           {/* Actions */}
@@ -74,13 +74,13 @@ export const SourceDetectedModal = (props: SourceDetectedModalProps) => {
               onClick={() => props.onIgnoreAll()}
               class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
             >
-              {t("settings.sources.detectedMultiPromptDenyAll")}
+              {t("settings.agents.detectedMultiPromptDenyAll")}
             </button>
             <button
               onClick={() => props.onSave()}
               class="flex-1 py-2 bg-accent hover:bg-accent/90 border border-accent/20 rounded-xl text-xs font-semibold text-background hover:text-background transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
             >
-              <span>{t("settings.sources.detectedMultiPromptAllowSelected")}</span>
+              <span>{t("settings.agents.detectedMultiPromptAllowSelected")}</span>
             </button>
           </div>
         </div>

@@ -26,7 +26,7 @@
     "semanticEnabled": "Semantic Search: Enabled",
     "lexicalEnabled": "Semantic Search: Disabled",
     "filters": "Search Filters",
-    "sources": "Sources",
+    "agents": "Agents",
     "statusFilter": "Status Filter",
     "filterAll": "All",
     "filterActive": "Active",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "Global Stats",
-    "adapterGroups": "Adapter Groups",
+    "agentStats": "Agent Stats",
     "totalConversations": "Total Conversations",
     "totalTurns": "Total Turns",
     "promptTokens": "Prompt Tokens",
@@ -234,18 +234,18 @@
       "thresholdDesc": "Configure matching tolerance (higher is stricter).",
       "restoreDefault": "Restore to Default"
     },
-    "sources": {
-      "tab": "Sources",
-      "title": "Sources & Adapters",
-      "desc": "Configure raw log sources and formatting adapters.",
+    "agents": {
+      "tab": "Agents",
+      "title": "Agents & Adapters",
+      "desc": "Configure raw log agents and formatting adapters.",
       "status": "Status",
       "available": "Available",
       "notInstalled": "Not Installed",
       "appInstalled": "App Installed",
       "getInstaller": "Get Installer",
-      "refresh": "Refresh Sources",
-      "deleteData": "Delete Source Data",
-      "deleteDataTooltip": "Clear Codeoba's local search index and cached sessions for this source (does not affect your actual agent logs)",
+      "refresh": "Refresh Agents",
+      "deleteData": "Delete Agent Data",
+      "deleteDataTooltip": "Clear Codeoba's local search index and cached sessions for this agent (does not affect your actual agent logs)",
       "confirmDeleteSource": "Are you sure you want to clear Codeoba's local search index and cached sessions for {source}? This will remove it from search results, but will NOT delete or affect your actual agent application, conversations, or log files.",
       "detectedMultiPromptTitle": "Enable Local Search",
       "detectedMultiPromptBadge": "100% LOCAL & PRIVATE",
@@ -253,7 +253,7 @@
       "detectedMultiPromptDenyAll": "Configure Later",
       "detectedMultiPromptAllowSelected": "Enable Selected Applications",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Private: All search parsing and index builds happen completely offline on your device. Optional cloud features (such as update checks) communicate only necessary metadata to our backend.",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Required: If you do not authorize any sources, search results will remain empty.",
+      "detectedMultiPromptFootnoteEmpty": "🔍 Required: If you do not authorize any agents, search results will remain empty.",
       "allow": "Allow",
       "deny": "Deny",
       "ask": "Ask"
@@ -412,7 +412,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "Source adapter '{sourceId}' not found.",
+    "adapterNotFound": "Agent adapter '{sourceId}' not found.",
     "sessionReadLock": "Failed to acquire session read lock.",
     "onnxNotFound": "Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.",
     "embedderCreation": "Failed to initialize semantic embedder.",

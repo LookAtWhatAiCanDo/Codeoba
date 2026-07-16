@@ -26,7 +26,7 @@
     "semanticEnabled": "语义搜索：已启用",
     "lexicalEnabled": "语义搜索：已禁用",
     "filters": "搜索过滤器",
-    "sources": "数据源",
+    "agents": "智能体",
     "statusFilter": "状态筛选",
     "filterAll": "全部",
     "filterActive": "活跃",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "全局统计",
-    "adapterGroups": "适配器组",
+    "agentStats": "智能体统计",
     "totalConversations": "总会话数",
     "totalTurns": "总轮次",
     "promptTokens": "提示词 Tokens",
@@ -230,17 +230,17 @@
       "thresholdDesc": "配置匹配容差（值越高，要求越严格）。",
       "restoreDefault": "恢复默认值"
     },
-    "sources": {
-      "tab": "数据源",
-      "title": "数据源与适配器",
-      "desc": "配置原始日志数据源和格式化适配器。",
+    "agents": {
+      "tab": "智能体",
+      "title": "智能体与适配器",
+      "desc": "配置原始日志智能体和格式化适配器。",
       "status": "状态",
       "available": "可用",
       "notInstalled": "未安装",
       "appInstalled": "应用已安装",
-      "refresh": "刷新数据源",
-      "deleteData": "删除来源数据",
-      "deleteDataTooltip": "清除 Codeoba 中此数据源的本地搜索索引和缓存会话（不影响您实际的智能体日志）",
+      "refresh": "刷新智能体",
+      "deleteData": "删除智能体数据",
+      "deleteDataTooltip": "清除 Codeoba 中此智能体的本地搜索索引和缓存会话（不影响您实际的智能体日志）",
       "confirmDeleteSource": "您确定要清除 {source} 的 Codeoba 本地搜索索引和缓存会话吗？这会将其从搜索结果中移除，但绝不会删除或影响您实际的智能体应用程序、对话或日志文件。",
       "detectedMultiPromptTitle": "启用本地搜索",
       "detectedMultiPromptBadge": "100% 本地与隐私",
@@ -248,7 +248,7 @@
       "detectedMultiPromptDenyAll": "稍后配置",
       "detectedMultiPromptAllowSelected": "启用所选应用",
       "detectedMultiPromptFootnotePrivate": "🔒 100% 隐私保护：所有搜索解析和索引构建完全在您的设备上离线完成。可选的云端功能（如更新检查）仅向我们的后端传输必要的元数据。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必要条件：如果您不授权任何来源，搜索结果将保持为空。",
+      "detectedMultiPromptFootnoteEmpty": "🔍 必要条件：如果您不授权任何智能体，搜索结果将保持为空。",
       "allow": "允许",
       "deny": "拒绝",
       "ask": "询问"
@@ -406,7 +406,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "找不到源适配器 '{sourceId}'。",
+    "adapterNotFound": "找不到智能体适配器 '{sourceId}'。",
     "sessionReadLock": "未能获取会话读取锁。",
     "onnxNotFound": "语义搜索不可用：找不到 ONNX 模型/词表。请验证应用打包或下载模型。",
     "embedderCreation": "未能初始化语义嵌入器。",

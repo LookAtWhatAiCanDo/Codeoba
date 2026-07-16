@@ -26,7 +26,7 @@
     "semanticEnabled": "セマンティック検索：有効",
     "lexicalEnabled": "セマンティック検索：無効",
     "filters": "検索フィルター",
-    "sources": "ソース",
+    "agents": "エージェント",
     "statusFilter": "ステータスフィルター",
     "filterAll": "すべて",
     "filterActive": "アクティブ",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "グローバル統計",
-    "adapterGroups": "アダプターグループ",
+    "agentStats": "エージェントの統計",
     "totalConversations": "総会話数",
     "totalTurns": "総ターン数",
     "promptTokens": "プロンプトトークン",
@@ -230,17 +230,17 @@
       "thresholdDesc": "マッチングの許容度を設定します（値が高いほど厳格になります）。",
       "restoreDefault": "デフォルトに戻す"
     },
-    "sources": {
-      "tab": "ソース",
-      "title": "ソースとアダプター",
-      "desc": "生のログソースとフォーマットアダプターを設定します。",
+    "agents": {
+      "tab": "エージェント",
+      "title": "エージェントとアダプター",
+      "desc": "生のログエージェントとフォーマットアダプターを設定します。",
       "status": "ステータス",
       "available": "利用可能",
       "notInstalled": "未インストール",
       "appInstalled": "アプリインストール済み",
-      "refresh": "ソースを更新",
-      "deleteData": "ソースデータを削除",
-      "deleteDataTooltip": "このソースのCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアします（実際のエージェントのログには影響しません）",
+      "refresh": "エージェントを更新",
+      "deleteData": "エージェントデータを削除",
+      "deleteDataTooltip": "このエージェントのCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアします（実際のエージェントのログには影響しません）",
       "confirmDeleteSource": "{source}のCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアしてもよろしいですか？これにより検索結果からは削除されますが、実際のエージェントアプリケーション、会話、またはログファイルが削除されたり影響を受けたりすることはありません。",
       "detectedMultiPromptTitle": "ローカル検索の有効化",
       "detectedMultiPromptBadge": "100% ローカル＆プライベート",
@@ -248,7 +248,7 @@
       "detectedMultiPromptDenyAll": "後で設定する",
       "detectedMultiPromptAllowSelected": "選択したアプリを有効にする",
       "detectedMultiPromptFootnotePrivate": "🔒 100% プライベート: すべての検索解析とインデックス構築はデバイス上で完全にオフラインで実行されます。オプションのクラウド機能（アップデート確認など）は、必要なメタデータのみをバックエンドに送信します。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必須: どのソースも許可しない場合、検索結果は空のままになります。",
+      "detectedMultiPromptFootnoteEmpty": "🔍 必須: どのエージェントも許可しない場合、検索結果は空のままになります。",
       "allow": "許可",
       "deny": "拒否",
       "ask": "確認"
@@ -406,7 +406,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "ソースアダプター '{sourceId}' が見つかりません。",
+    "adapterNotFound": "エージェントアダプター '{sourceId}' が見つかりません。",
     "sessionReadLock": "セッション読み取りロックの取得に失敗しました。",
     "onnxNotFound": "セマンティック検索は利用できません：ONNXモデル/ボキャブラリーが見つかりません。アプリパッケージを確認するか、モデルをダウンロードしてください。",
     "embedderCreation": "セマンティックエンベッダーの初期化に失敗しました。",

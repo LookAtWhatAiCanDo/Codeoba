@@ -360,7 +360,7 @@ export const Dashboard = (props: DashboardProps) => {
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
-            {t("dashboard.adapterGroups")}
+            {t("dashboard.agentStats")}
           </button>
           <button
             onClick={() => setActiveTab(DashboardTab.ReadAloud)}
@@ -541,7 +541,7 @@ export const Dashboard = (props: DashboardProps) => {
           {/* Groups Dashboard View */}
           <div class="space-y-4 max-w-4xl">
             <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-              {t("dashboard.adapterGroups")}
+              {t("dashboard.agentStats")}
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <For each={stats().sourceGroups}>
@@ -553,9 +553,7 @@ export const Dashboard = (props: DashboardProps) => {
                       </div>
                       <div>
                         <h4 class="text-sm font-bold text-text-primary capitalize">{source}</h4>
-                        <span class="text-xs text-text-secondary">
-                          {t("settings.sources.desc")}
-                        </span>
+                        <span class="text-xs text-text-secondary">{t("settings.agents.desc")}</span>
                       </div>
                     </div>
                     <div class="text-right">

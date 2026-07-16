@@ -26,7 +26,7 @@
     "semanticEnabled": "의미 검색: 활성화됨",
     "lexicalEnabled": "의미 검색: 비활성화됨",
     "filters": "검색 필터",
-    "sources": "소스",
+    "agents": "에이전트",
     "statusFilter": "상태 필터",
     "filterAll": "전체",
     "filterActive": "활성",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "전체 통계",
-    "adapterGroups": "어댑터 그룹",
+    "agentStats": "에이전트 통계",
     "totalConversations": "총 대화 수",
     "totalTurns": "총 턴 수",
     "promptTokens": "프롬프트 토큰",
@@ -230,17 +230,17 @@
       "thresholdDesc": "매칭 허용도를 구성합니다(높을수록 엄격함).",
       "restoreDefault": "기본값으로 복원"
     },
-    "sources": {
-      "tab": "소스",
-      "title": "소스 및 어댑터",
-      "desc": "원시 로그 소스와 포맷팅 어댑터를 구성합니다.",
+    "agents": {
+      "tab": "에이전트",
+      "title": "에이전트 및 어댑터",
+      "desc": "원시 로그 에이전트와 포맷팅 어댑터를 구성합니다.",
       "status": "상태",
       "available": "사용 가능",
       "notInstalled": "설치되지 않음",
       "appInstalled": "앱 설치됨",
-      "refresh": "소스 새로고침",
-      "deleteData": "소스 데이터 삭제",
-      "deleteDataTooltip": "이 소스에 대한 Codeoba의 로컬 검색 인덱스 및 캐시된 세션 지우기 (실제 에이전트 로그에는 영향을 미치지 않음)",
+      "refresh": "에이전트 새로고침",
+      "deleteData": "에이전트 데이터 삭제",
+      "deleteDataTooltip": "이 에이전트에 대한 Codeoba의 로컬 검색 인덱스 및 캐시된 세션 지우기 (실제 에이전트 로그에는 영향을 미치지 않음)",
       "confirmDeleteSource": "정말로 {source}에 대한 Codeoba의 로컬 검색 인덱스 및 캐시된 세션을 지우시겠습니까? 이 작업은 검색 결과에서 소스를 제거하지만, 실제 에이전트 애플리케이션, 대화 또는 로그 파일을 삭제하거나 영향을 미치지 않습니다.",
       "detectedMultiPromptTitle": "로컬 검색 활성화",
       "detectedMultiPromptBadge": "100% 로컬 및 개인정보 보호",
@@ -248,7 +248,7 @@
       "detectedMultiPromptDenyAll": "나중에 설정",
       "detectedMultiPromptAllowSelected": "선택한 애플리케이션 활성화",
       "detectedMultiPromptFootnotePrivate": "🔒 100% 개인정보 보호: 모든 검색 파싱 및 인덱스 구축은 기기에서 완전히 오프라인으로 실행됩니다. 선택 사항인 클라우드 기능(업데이트 확인 등)은 필요한 메타데이터만 백엔드와 통신합니다.",
-      "detectedMultiPromptFootnoteEmpty": "🔍 필수: 소스를 승인하지 않으면 검색 결과가 비어 있게 됩니다.",
+      "detectedMultiPromptFootnoteEmpty": "🔍 필수: 에이전트를 승인하지 않으면 검색 결과가 비어 있게 됩니다.",
       "allow": "허용",
       "deny": "거부",
       "ask": "확인"
@@ -406,7 +406,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "소스 어댑터 '{sourceId}'를 찾을 수 없습니다.",
+    "adapterNotFound": "에이전트 어댑터 '{sourceId}'를 찾을 수 없습니다.",
     "sessionReadLock": "세션 읽기 잠금을 획득하지 못했습니다.",
     "onnxNotFound": "시맨틱 검색을 사용할 수 없습니다: ONNX 모델/어휘를 찾을 수 없습니다. 애플리케이션 패키징을 확인하거나 모델을 다운로드하십시오.",
     "embedderCreation": "시맨틱 임베더를 초기화하지 못했습니다.",

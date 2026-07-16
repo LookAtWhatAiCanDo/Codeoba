@@ -36,7 +36,7 @@ pub const ERR_MANIFEST_SERIALIZE: u32 = 1053;
 pub const ERR_MANIFEST_WRITE: u32 = 1054;
 
 // General/Session Errors (2000 - 2099)
-pub const ERR_SOURCE_NOT_FOUND: u32 = 2001;
+pub const ERR_ADAPTER_NOT_FOUND: u32 = 2001;
 pub const ERR_SESSION_READ_LOCK: u32 = 2002;
 
 // Search & Index Errors (2100 - 2199)
@@ -478,7 +478,7 @@ pub async fn get_session<R: tauri::Runtime>(
                 elapsed,
                 source_id
             );
-            Err(AppErrorPayload::with_msg(ERR_SOURCE_NOT_FOUND, source_id))
+            Err(AppErrorPayload::with_msg(ERR_ADAPTER_NOT_FOUND, source_id))
         }
     }
 }
@@ -489,7 +489,7 @@ pub fn delete_source_data(source_id: String) -> Result<bool, AppErrorPayload> {
     let source = sources.iter().find(|s| s.id() == source_id);
     match source {
         Some(s) => Ok(s.delete_data_paths()),
-        None => Err(AppErrorPayload::with_msg(ERR_SOURCE_NOT_FOUND, source_id)),
+        None => Err(AppErrorPayload::with_msg(ERR_ADAPTER_NOT_FOUND, source_id)),
     }
 }
 

@@ -26,7 +26,7 @@ export const ERR_MANIFEST_SERIALIZE = 1053;
 export const ERR_MANIFEST_WRITE = 1054;
 
 // General/Session Errors (2000 - 2099)
-export const ERR_SOURCE_NOT_FOUND = 2001;
+export const ERR_ADAPTER_NOT_FOUND = 2001;
 export const ERR_SESSION_READ_LOCK = 2002;
 
 // Search & Index Errors (2100 - 2199)
@@ -137,8 +137,8 @@ export const getLocalizedAppError = (
       return t("settings.subscription.errors.manifestWriteFailed", params);
 
     // General/Session Errors (2000 - 2099)
-    case ERR_SOURCE_NOT_FOUND:
-      return t("errors.sourceNotFound", params);
+    case ERR_ADAPTER_NOT_FOUND:
+      return t("errors.adapterNotFound", params);
     case ERR_SESSION_READ_LOCK:
       return t("errors.sessionReadLock", params);
 

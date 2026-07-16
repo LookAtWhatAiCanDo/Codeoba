@@ -648,7 +648,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 }`}
               >
                 <Layers class="w-3.5 h-3.5" />
-                <span>{t("settings.sources.tab")}</span>
+                <span>{t("settings.agents.tab")}</span>
               </button>
               <button
                 onClick={() => setActiveCategory("exclusions")}
@@ -1330,7 +1330,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               {/* Sources & Adapters Tab */}
               <div class="space-y-4">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.sources.title")}
+                  {t("settings.agents.title")}
                 </h3>
 
                 <div class="space-y-3">
@@ -1346,17 +1346,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                 <button
                                   onClick={() => openUrl(src.productUrl!)}
                                   class="text-[0.625rem] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
-                                  title={t("settings.sources.getInstaller")}
+                                  title={t("settings.agents.getInstaller")}
                                 >
-                                  {t("settings.sources.getInstaller")}
+                                  {t("settings.agents.getInstaller")}
                                 </button>
                               </Show>
                             </div>
                             <p class="text-[0.625rem] text-text-secondary/70 truncate">
-                              {t("settings.sources.status")}:{" "}
+                              {t("settings.agents.status")}:{" "}
                               {src.isAvailable
-                                ? t("settings.sources.available")
-                                : t("settings.sources.notInstalled")}
+                                ? t("settings.agents.available")
+                                : t("settings.agents.notInstalled")}
                             </p>
                           </div>
 
@@ -1375,9 +1375,9 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                                   >
                                     {
                                       {
-                                        allow: t("settings.sources.allow"),
-                                        deny: t("settings.sources.deny"),
-                                        ask: t("settings.sources.ask"),
+                                        allow: t("settings.agents.allow"),
+                                        deny: t("settings.agents.deny"),
+                                        ask: t("settings.agents.ask"),
                                       }[option]
                                     }
                                   </button>
@@ -1388,7 +1388,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                             {/* Trash button to delete source cache */}
                             <button
                               onClick={() => setDeletingSourceId(src.id)}
-                              title={t("settings.sources.deleteDataTooltip")}
+                              title={t("settings.agents.deleteDataTooltip")}
                               class="p-2 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-text-secondary hover:text-red-400 transition-all cursor-pointer"
                             >
                               <Trash2 class="w-3.5 h-3.5" />
@@ -1622,10 +1622,10 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               <div class="w-[400px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col items-center gap-4 text-center shadow-2xl animate-in zoom-in-95 duration-200">
                 <AlertTriangle class="w-12 h-12 text-red-500 animate-pulse" />
                 <h3 class="text-base font-bold text-red-500 uppercase tracking-wide">
-                  {t("settings.sources.deleteData")}?
+                  {t("settings.agents.deleteData")}?
                 </h3>
                 <p class="text-xs text-text-secondary/80 leading-relaxed">
-                  {t("settings.sources.confirmDeleteSource", {
+                  {t("settings.agents.confirmDeleteSource", {
                     source: getDeletingSourceDisplayName(),
                   })}
                 </p>

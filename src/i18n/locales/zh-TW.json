@@ -26,7 +26,7 @@
     "semanticEnabled": "語意搜尋：已啟用",
     "lexicalEnabled": "語意搜尋：已停用",
     "filters": "搜尋篩選器",
-    "sources": "來源",
+    "agents": "代理",
     "statusFilter": "狀態篩選器",
     "filterAll": "全部",
     "filterActive": "啟用中",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "全域統計",
-    "adapterGroups": "配接器分組",
+    "agentStats": "代理統計",
     "totalConversations": "總對話數",
     "totalTurns": "總回合數",
     "promptTokens": "提示權杖",
@@ -230,17 +230,17 @@
       "thresholdDesc": "設定匹配容差（值越高越嚴格）。",
       "restoreDefault": "恢復預設值"
     },
-    "sources": {
-      "tab": "來源",
-      "title": "來源與配接器",
-      "desc": "設定原始日誌來源和格式化配接器。",
+    "agents": {
+      "tab": "代理",
+      "title": "代理與配接器",
+      "desc": "設定原始日誌代理和格式化配接器。",
       "status": "狀態",
       "available": "可用",
       "notInstalled": "未安裝",
       "appInstalled": "應用程式已安裝",
-      "refresh": "重新整理來源",
-      "deleteData": "刪除來源資料",
-      "deleteDataTooltip": "清除 Codeoba 中此資料來源的本地搜尋索引和快取工作階段（不影響您實際的代理程式記錄）",
+      "refresh": "重新整理代理",
+      "deleteData": "刪除代理資料",
+      "deleteDataTooltip": "清除 Codeoba 中此代理的本地搜尋索引和快取工作階段（不影響您實際的代理程式記錄）",
       "confirmDeleteSource": "您確定要清除 {source} 的 Codeoba 本地搜尋索引和快取工作階段嗎？這會將其從搜尋結果中移除，但絕不會刪除或影響您實際的代理程式應用程式、對話或記錄檔案。",
       "detectedMultiPromptTitle": "啟用在地搜尋",
       "detectedMultiPromptBadge": "100% 在地與隱私",
@@ -248,7 +248,7 @@
       "detectedMultiPromptDenyAll": "稍後設定",
       "detectedMultiPromptAllowSelected": "啟用所選應用程式",
       "detectedMultiPromptFootnotePrivate": "🔒 100% 隱私保護：所有搜尋解析與索引建立完全在您的裝置上離線完成。可選的雲端功能（如更新檢查）僅向我們的後端傳輸必要的元數據。",
-      "detectedMultiPromptFootnoteEmpty": "🔍 必要條件：如果您不授權任何來源，搜尋結果將保持為空。",
+      "detectedMultiPromptFootnoteEmpty": "🔍 必要條件：如果您不授權任何代理，搜尋結果將保持為空。",
       "allow": "允許",
       "deny": "拒絕",
       "ask": "詢問"
@@ -406,7 +406,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "找不到來源介面卡 '{sourceId}'。",
+    "adapterNotFound": "找不到代理介面卡 '{sourceId}'。",
     "sessionReadLock": "未能獲取會話讀取鎖。",
     "onnxNotFound": "語意搜尋不可用：找不到 ONNX 模型/詞表。請驗證應用程式封裝或下載模型。",
     "embedderCreation": "未能初始化語意嵌入器。",

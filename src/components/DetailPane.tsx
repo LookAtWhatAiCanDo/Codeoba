@@ -1542,7 +1542,7 @@ export const DetailPane = (props: DetailPaneProps) => {
               <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
                 <div class="flex items-center gap-1.5">
                   <Bookmark class="w-3.5 h-3.5 text-accent" />
-                  <span class="font-semibold text-text-primary">{t("settings.sources.tab")}:</span>
+                  <span class="font-semibold text-text-primary">{t("settings.agents.tab")}:</span>
                   <span class="capitalize">{props.session!.sourceId}</span>
                 </div>
                 <div class="flex items-center gap-1.5">

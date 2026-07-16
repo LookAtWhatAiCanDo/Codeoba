@@ -26,7 +26,7 @@
     "semanticEnabled": "Búsqueda semántica: activada",
     "lexicalEnabled": "Búsqueda semántica: desactivada",
     "filters": "Filtros de búsqueda",
-    "sources": "Fuentes",
+    "agents": "Agentes",
     "statusFilter": "Filtro de estado",
     "filterAll": "Todos",
     "filterActive": "Activos",
@@ -54,7 +54,7 @@
   },
   "dashboard": {
     "globalStats": "Estadísticas globales",
-    "adapterGroups": "Grupos de adaptadores",
+    "agentStats": "Estadísticas de agentes",
     "totalConversations": "Total de conversaciones",
     "totalTurns": "Total de turnos",
     "promptTokens": "Tokens de entrada",
@@ -230,17 +230,17 @@
       "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos).",
       "restoreDefault": "Restaurar valores predeterminados"
     },
-    "sources": {
-      "tab": "Fuentes",
-      "title": "Fuentes y adaptadores",
-      "desc": "Configure fuentes de registro sin procesar y adaptadores de formato.",
+    "agents": {
+      "tab": "Agentes",
+      "title": "Agentes y adaptadores",
+      "desc": "Configure agentes de registro sin procesar y adaptadores de formato.",
       "status": "Estado",
       "available": "Disponible",
       "notInstalled": "No instalado",
       "appInstalled": "App instalada",
-      "refresh": "Actualizar fuentes",
-      "deleteData": "Eliminar datos de origen",
-      "deleteDataTooltip": "Borrar el índice de búsqueda local y las sesiones guardadas de Codeoba para esta fuente (no afecta a los registros reales de tu agente)",
+      "refresh": "Actualizar agentes",
+      "deleteData": "Eliminar datos del agente",
+      "deleteDataTooltip": "Borrar el índice de búsqueda local y las sesiones guardadas de Codeoba para este agente (no afecta a los registros reales de tu agente)",
       "confirmDeleteSource": "¿Estás seguro de que deseas borrar el índice de búsqueda local y las sesiones guardadas de Codeoba para {source}? Esto lo eliminará de los resultados de búsqueda, pero NO eliminará ni afectará a la aplicación del agente real, tus conversaciones o archivos de registro.",
       "detectedMultiPromptTitle": "Habilitar búsqueda local",
       "detectedMultiPromptBadge": "100% LOCAL Y PRIVADO",
@@ -248,7 +248,7 @@
       "detectedMultiPromptDenyAll": "Configurar más tarde",
       "detectedMultiPromptAllowSelected": "Habilitar aplicaciones seleccionadas",
       "detectedMultiPromptFootnotePrivate": "🔒 100% Privado: Todo el análisis de búsqueda y la creación del índice ocurren completamente fuera de línea en su dispositivo. Las funciones opcionales en la nube (como las comprobaciones de actualizaciones) solo comunican los metadatos necesarios a nuestro servidor,",
-      "detectedMultiPromptFootnoteEmpty": "🔍 Requerido: Si no autoriza ninguna fuente, los resultados de búsqueda permanecerán vacíos.",
+      "detectedMultiPromptFootnoteEmpty": "🔍 Requerido: Si no autoriza ningún agente, los resultados de búsqueda permanecerán vacíos.",
       "allow": "Permitir",
       "deny": "Denegar",
       "ask": "Preguntar"
@@ -406,7 +406,7 @@
     }
   },
   "errors": {
-    "sourceNotFound": "No se encontró el adaptador de origen '{sourceId}'.",
+    "adapterNotFound": "No se encontró el adaptador de agente '{sourceId}'.",
     "sessionReadLock": "Error al adquirir el bloqueo de lectura de la sesión.",
     "onnxNotFound": "La búsqueda semántica no está disponible: no se encontró el modelo ONNX/vocabulario. Verifique el empaquetado de la aplicación o descargue el modelo.",
     "embedderCreation": "Error al inicializar el incorporador semántico.",

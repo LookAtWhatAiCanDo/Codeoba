@@ -1525,7 +1525,7 @@ export const Sidebar = (props: SidebarProps) => {
             {/* Source checkboxes */}
             <div class="space-y-1.5">
               <div class="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                {t("sidebar.sources")}
+                {t("sidebar.agents")}
               </div>
               <div class="grid grid-cols-2 gap-1.5">
                 <For each={props.sources}>
