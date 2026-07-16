@@ -273,6 +273,11 @@ pub fn run() {
 
                 let _ = window
                     .set_background_color(Some(tauri::window::Color(rgb.0, rgb.1, rgb.2, 255)));
+
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = window.set_decorations(true);
+                }
             }
 
             // Load cached sessions in background thread on startup
