@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Voorlezen",
+      "provider": "Spraak-engine",
+      "providerDesc": "Kies tussen systeem spraaksynthese en offline Kokoro AI.",
+      "providerSystem": "Systeem-spraaksynthesizer",
+      "providerOffline": "Offline Kokoro AI (Lokaal)",
       "voice": "Tekst-naar-spraakstem",
       "voiceDesc": "Selecteer de stemsynthesizer voor het voorlezen van tekst.",
       "defaultVoice": "Standaard systeemstem",
@@ -299,7 +303,17 @@
       "rateDesc": "Pas de snelheid aan waarmee tekst wordt uitgesproken.",
       "pitch": "Spraaktoonhoogte",
       "pitchDesc": "Pas de toonhoogte van de gesproken stem aan.",
-      "reset": "Standaardwaarden herstellen"
+      "reset": "Standaardwaarden herstellen",
+      "test": "Stem testen",
+      "testSaying": "De kat krabt de krullen van de trap.",
+      "pronunciations": "Aangepaste uitspraken",
+      "pronunciationsDesc": "Configureer spellingregels voor mapkoppelingen, afkortingen in code of technische termen.",
+      "pronunciationsOriginal": "Woord / Overeenkomst",
+      "pronunciationsReplacement": "Gesproken uitspraak",
+      "pronunciationsPlaceholderWord": "bijv. src",
+      "pronunciationsPlaceholderReplacement": "bijv. source",
+      "pronunciationsAdd": "Regel toevoegen",
+      "pronunciationsReset": "Regels herstellen"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Agentadapter '{sourceId}' niet gevonden.",
     "sessionReadLock": "Verkrijgen van leesslot voor sessie mislukt.",
+    "ttsModelLoad": "Kan de lokale offline TTS-modelgewichten niet laden.",
+    "ttsSynthesis": "Lokale spraaksynthese mislukt: {reason}",
     "onnxNotFound": "Semantisch zoeken is niet beschikbaar: ONNX-model/vocabulaire niet gevonden. Controleer de applicatieverpakking of download het model.",
     "embedderCreation": "Initialiseren van semantische embedder mislukt.",
     "embeddingsGeneration": "Genereren van embeddings mislukt.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Sessie voorlezen",
     "stopReading": "Voorlezen stoppen",
     "playFromHere": "Vanaf hier voorlezen",
-    "sessionTransition": "Sessie {sessionTitle}. {text}"
+    "sessionTransition": "Sessie {sessionTitle}. {text}",
+    "sessionLabel": "Sessie"
   }
 }

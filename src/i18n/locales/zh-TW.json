@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "朗讀",
+      "provider": "語音引擎",
+      "providerDesc": "在系統文字轉語音與離線 Kokoro AI 之間進行選擇。",
+      "providerSystem": "系統語音合成器",
+      "providerOffline": "離線 Kokoro AI (本地)",
       "voice": "語音合成聲音",
       "voiceDesc": "選擇朗讀轉錄文字的語音合成引擎。",
       "defaultVoice": "系統預設聲音",
@@ -299,7 +303,17 @@
       "rateDesc": "調整文字朗讀的速度。",
       "pitch": "朗讀音調",
       "pitchDesc": "調整說話聲音的音調。",
-      "reset": "重設為預設值"
+      "reset": "重設為預設值",
+      "test": "測試聲音",
+      "testSaying": "吃葡萄不吐葡萄皮，不吃葡萄倒吐葡萄皮。",
+      "pronunciations": "自訂發音",
+      "pronunciationsDesc": "為目錄快捷方式、程式碼縮寫或技術術語設定自訂拼寫替換規則。",
+      "pronunciationsOriginal": "單字 / 匹配",
+      "pronunciationsReplacement": "口頭發音",
+      "pronunciationsPlaceholderWord": "例如 src",
+      "pronunciationsPlaceholderReplacement": "例如 source",
+      "pronunciationsAdd": "新增規則",
+      "pronunciationsReset": "重設規則"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "找不到代理介面卡 '{sourceId}'。",
     "sessionReadLock": "未能獲取會話讀取鎖。",
+    "ttsModelLoad": "載入本地離線 TTS 模型權重失敗。",
+    "ttsSynthesis": "本地合成語音失敗: {reason}",
     "onnxNotFound": "語意搜尋不可用：找不到 ONNX 模型/詞表。請驗證應用程式封裝或下載模型。",
     "embedderCreation": "未能初始化語意嵌入器。",
     "embeddingsGeneration": "未能生成嵌入向量。",
@@ -445,6 +461,7 @@
     "readSessionAloud": "朗讀工作階段",
     "stopReading": "停止朗讀",
     "playFromHere": "從這裡開始朗讀",
-    "sessionTransition": "會話 {sessionTitle}。{text}"
+    "sessionTransition": "會話 {sessionTitle}。{text}",
+    "sessionLabel": "對話"
   }
 }

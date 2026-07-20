@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "القراءة بصوت عالٍ",
+      "provider": "محرك الصوت",
+      "providerDesc": "اختر بين نظام تحويل النص إلى كلام ومحرك Kokoro AI المحلي.",
+      "providerSystem": "مخلق صوت النظام",
+      "providerOffline": "محرك Kokoro AI المحلي (دون اتصال)",
       "voice": "صوت تحويل النص إلى كلام",
       "voiceDesc": "اختر محرك توليد الصوت لقراءة النص الوصفي.",
       "defaultVoice": "صوت النظام الافتراضي",
@@ -299,7 +303,17 @@
       "rateDesc": "اضبط السرعة التي يتم بها نطق النص.",
       "pitch": "طبقة الصوت",
       "pitchDesc": "اضبط نغمة الصوت المنطوق.",
-      "reset": "إعادة التعيين للافتراضي"
+      "reset": "إعادة التعيين للافتراضي",
+      "test": "تجربة الصوت",
+      "testSaying": "خيط حرير على حيط خليل.",
+      "pronunciations": "النطق المخصص",
+      "pronunciationsDesc": "تكوين بدائل إملائية مخصصة لاختصارات الأدلة أو اختصارات التعليمات البرمجية أو المصطلحات التقنية.",
+      "pronunciationsOriginal": "الكلمة / المطابقة",
+      "pronunciationsReplacement": "النطق المنطوق",
+      "pronunciationsPlaceholderWord": "مثال: src",
+      "pronunciationsPlaceholderReplacement": "مثال: source",
+      "pronunciationsAdd": "إضافة قاعدة",
+      "pronunciationsReset": "إعادة تعيين القواعد"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "لم يتم العثور على محول الوكيل '{sourceId}'.",
     "sessionReadLock": "فشل الحصول على قفل قراءة الجلسة.",
+    "ttsModelLoad": "فشل تحميل أوزان نموذج TTS المحلي دون اتصال.",
+    "ttsSynthesis": "فشل توليد الصوت محليًا: {reason}",
     "onnxNotFound": "البحث الدلالي غير متاح: لم يتم العثور على نموذج ONNX/المفردات. يرجى التحقق من حزمة التطبيق أو تنزيل النموذج.",
     "embedderCreation": "فشل تهيئة أداة التضمين الدلالية.",
     "embeddingsGeneration": "فشل إنشاء التضمينات.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "قراءة الجلسة بصوت عالٍ",
     "stopReading": "إيقاف القراءة",
     "playFromHere": "اقرأ بصوت عالٍ من هنا",
-    "sessionTransition": "الجلسة {sessionTitle}. {text}"
+    "sessionTransition": "الجلسة {sessionTitle}. {text}",
+    "sessionLabel": "جلسة"
   }
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/download-privacy.cjs && tsc && vite build",
+    "build": "node scripts/download-privacy.cjs && node scripts/download-assets.cjs && tsc && vite build",
     "preview": "vite preview",
     "tauri": "node scripts/tauri.cjs",
     "build:local": "node scripts/tauri.cjs build --config \"{\\\"bundle\\\": {\\\"createUpdaterArtifacts\\\": false, \\\"targets\\\": [\\\"app\\\"]}}\"",

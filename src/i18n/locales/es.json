@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Lectura en voz alta",
+      "provider": "Motor de voz",
+      "providerDesc": "Elija entre la síntesis de voz del sistema y Kokoro AI local.",
+      "providerSystem": "Sintetizador de voz del sistema",
+      "providerOffline": "Kokoro AI local (sin conexión)",
       "voice": "Voz de texto a voz",
       "voiceDesc": "Seleccione el sintetizador de voz para leer el texto descriptivo.",
       "defaultVoice": "Voz del sistema por defecto",
@@ -299,7 +303,17 @@
       "rateDesc": "Ajuste la velocidad con la que se habla el texto.",
       "pitch": "Tono de voz",
       "pitchDesc": "Ajuste el tono de la voz hablada.",
-      "reset": "Restablecer a valores predeterminados"
+      "reset": "Restablecer a valores predeterminados",
+      "test": "Probar voz",
+      "testSaying": "Tres tristes tigres tragan trigo en un trigal.",
+      "pronunciations": "Pronunciaciones personalizadas",
+      "pronunciationsDesc": "Configure sustituciones de ortografía personalizadas para atajos de directorio, abreviaturas de código o términos técnicos.",
+      "pronunciationsOriginal": "Palabra / Coincidencia",
+      "pronunciationsReplacement": "Pronunciación hablada",
+      "pronunciationsPlaceholderWord": "ej. src",
+      "pronunciationsPlaceholderReplacement": "ej. source",
+      "pronunciationsAdd": "Añadir regla",
+      "pronunciationsReset": "Restablecer reglas"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "No se encontró el adaptador de agente '{sourceId}'.",
     "sessionReadLock": "Error al adquirir el bloqueo de lectura de la sesión.",
+    "ttsModelLoad": "Error al cargar los pesos del modelo TTS local sin conexión.",
+    "ttsSynthesis": "Error al sintetizar voz localmente: {reason}",
     "onnxNotFound": "La búsqueda semántica no está disponible: no se encontró el modelo ONNX/vocabulario. Verifique el empaquetado de la aplicación o descargue el modelo.",
     "embedderCreation": "Error al inicializar el incorporador semántico.",
     "embeddingsGeneration": "Error al generar incorporaciones.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Leer sesión en voz alta",
     "stopReading": "Detener lectura",
     "playFromHere": "Leer en voz alta desde aquí",
-    "sessionTransition": "Sesión {sessionTitle}. {text}"
+    "sessionTransition": "Sesión {sessionTitle}. {text}",
+    "sessionLabel": "Sesión"
   }
 }

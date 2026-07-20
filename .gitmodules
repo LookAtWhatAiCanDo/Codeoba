@@ -1,0 +1,3 @@
+[submodule "src-tauri/any-tts"]
+	path = src-tauri/any-tts
+	url = https://github.com/LookAtWhatAiCanDo/any-tts

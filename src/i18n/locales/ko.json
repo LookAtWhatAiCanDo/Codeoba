@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "소리 내어 읽기",
+      "provider": "음성 엔진",
+      "providerDesc": "시스템 기본 음성 합성기와 오프라인 Kokoro AI 중에서 선택합니다.",
+      "providerSystem": "시스템 음성 합성기",
+      "providerOffline": "오프라인 Kokoro AI (로컬)",
       "voice": "음성 합성 목소리",
       "voiceDesc": "텍스트를 읽을 음성 합성 엔진을 선택합니다.",
       "defaultVoice": "시스템 기본 목소리",
@@ -299,7 +303,17 @@
       "rateDesc": "텍스트를 읽는 속도를 조절합니다.",
       "pitch": "음성 피치",
       "pitchDesc": "말하는 목소리의 톤(피치)을 조절합니다.",
-      "reset": "기본값으로 재설정"
+      "reset": "기본값으로 재설정",
+      "test": "음성 테스트",
+      "testSaying": "간장 공장 공장장은 강 공장장이고 된장 공장 공장장은 공 공장장이다.",
+      "pronunciations": "사용자 지정 발음",
+      "pronunciationsDesc": "디렉터리 단축키, 코드 약어 또는 기술 용어의 커스텀 발음 규칙을 설정합니다.",
+      "pronunciationsOriginal": "단어 / 일치",
+      "pronunciationsReplacement": "실제 발음",
+      "pronunciationsPlaceholderWord": "예: src",
+      "pronunciationsPlaceholderReplacement": "예: source",
+      "pronunciationsAdd": "규칙 추가",
+      "pronunciationsReset": "규칙 초기화"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "에이전트 어댑터 '{sourceId}'를 찾을 수 없습니다.",
     "sessionReadLock": "세션 읽기 잠금을 획득하지 못했습니다.",
+    "ttsModelLoad": "로컬 오프라인 TTS 모델 가중치를 로드하지 못했습니다.",
+    "ttsSynthesis": "로컬 음성 합성에 실패했습니다: {reason}",
     "onnxNotFound": "시맨틱 검색을 사용할 수 없습니다: ONNX 모델/어휘를 찾을 수 없습니다. 애플리케이션 패키징을 확인하거나 모델을 다운로드하십시오.",
     "embedderCreation": "시맨틱 임베더를 초기화하지 못했습니다.",
     "embeddingsGeneration": "임베딩을 생성하지 못했습니다.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "세션 소리 내어 읽기",
     "stopReading": "읽기 중지",
     "playFromHere": "여기서부터 낭독",
-    "sessionTransition": "세션 {sessionTitle}. {text}"
+    "sessionTransition": "세션 {sessionTitle}. {text}",
+    "sessionLabel": "세션"
   }
 }

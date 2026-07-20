@@ -28,6 +28,8 @@ export const ERR_MANIFEST_WRITE = 1054;
 // General/Session Errors (2000 - 2099)
 export const ERR_ADAPTER_NOT_FOUND = 2001;
 export const ERR_SESSION_READ_LOCK = 2002;
+export const ERR_TTS_MODEL_LOAD = 2003;
+export const ERR_TTS_SYNTHESIS = 2004;
 
 // Search & Index Errors (2100 - 2199)
 export const ERR_ONNX_NOT_FOUND = 2101;
@@ -141,6 +143,10 @@ export const getLocalizedAppError = (
       return t("errors.adapterNotFound", params);
     case ERR_SESSION_READ_LOCK:
       return t("errors.sessionReadLock", params);
+    case ERR_TTS_MODEL_LOAD:
+      return t("errors.ttsModelLoad", params);
+    case ERR_TTS_SYNTHESIS:
+      return t("errors.ttsSynthesis", params);
 
     // Search & Index Errors (2100 - 2199)
     case ERR_ONNX_NOT_FOUND:

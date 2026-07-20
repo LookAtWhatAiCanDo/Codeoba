@@ -38,6 +38,8 @@ pub const ERR_MANIFEST_WRITE: u32 = 1054;
 // General/Session Errors (2000 - 2099)
 pub const ERR_ADAPTER_NOT_FOUND: u32 = 2001;
 pub const ERR_SESSION_READ_LOCK: u32 = 2002;
+pub const ERR_TTS_MODEL_LOAD: u32 = 2003;
+pub const ERR_TTS_SYNTHESIS: u32 = 2004;
 
 // Search & Index Errors (2100 - 2199)
 pub const ERR_ONNX_NOT_FOUND: u32 = 2101;
@@ -1514,6 +1516,32 @@ mod trusted_root_tests {
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(is_executable_target(&script));
     }
+}
+
+#[tauri::command]
+pub async fn prewarm_offline_speech(app_handle: tauri::AppHandle) -> Result<(), AppErrorPayload> {
+    tokio::task::spawn_blocking(move || {
+        crate::tts_engine::prewarm(&app_handle)
+            .map_err(|e| AppErrorPayload::with_msg(ERR_TTS_SYNTHESIS, e))
+    })
+    .await
+    .map_err(|e| AppErrorPayload::with_msg(ERR_GENERIC, format!("Thread join error: {}", e)))?
+}
+
+#[tauri::command]
+pub async fn generate_offline_speech(
+    app_handle: tauri::AppHandle,
+    text: String,
+    voice: String,
+) -> Result<String, AppErrorPayload> {
+    use base64::Engine as _;
+    tokio::task::spawn_blocking(move || {
+        crate::tts_engine::synthesize_offline(&app_handle, &text, &voice)
+            .map(|wav_bytes| base64::engine::general_purpose::STANDARD.encode(&wav_bytes))
+            .map_err(|e| AppErrorPayload::with_msg(ERR_TTS_SYNTHESIS, e))
+    })
+    .await
+    .map_err(|e| AppErrorPayload::with_msg(ERR_GENERIC, format!("Thread join error: {}", e)))?
 }
 
 #[cfg(test)]

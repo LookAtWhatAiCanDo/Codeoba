@@ -19,7 +19,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import DOMPurify from "dompurify";
 import { highlightContainer } from "../utils/highlighter";
 import { invoke } from "@tauri-apps/api/core";
-import { useSpeech } from "../utils/useSpeech";
+import { useSpeech, splitIntoLogicalBlocks, sanitizeBlockForSpeech } from "../utils/useSpeech";
 
 const massageMermaidCode = (code: string): string => {
   const lines = code.split(/\r?\n/);
@@ -155,13 +155,104 @@ interface MarkdownRendererProps {
   turnIndex?: number;
   sourceId?: string;
   filePath?: string;
+  startBlockIndex?: number;
 }
+
+const wrapBrContent = (el: HTMLElement) => {
+  if (el.querySelector(".br-content-wrap") || el.classList.contains("br-content-wrap")) return;
+
+  const childNodes = Array.from(el.childNodes);
+  let currentGroup: Node[] = [];
+  const groups: Node[][] = [];
+
+  for (const node of childNodes) {
+    if (node.nodeType === 1 && (node as Element).tagName.toLowerCase() === "br") {
+      groups.push(currentGroup);
+      currentGroup = [];
+    } else {
+      currentGroup.push(node);
+    }
+  }
+  groups.push(currentGroup);
+
+  if (groups.length <= 1) return;
+
+  el.innerHTML = "";
+
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i]!;
+    const hasText = group.some((n) => n.nodeType === 3 && (n.textContent?.trim().length ?? 0) > 0);
+    const hasElement = group.some((n) => n.nodeType === 1);
+
+    if (group.length > 0 && (hasText || hasElement)) {
+      const wrapper = document.createElement("span");
+      wrapper.className = "br-content-wrap inline-block w-full relative";
+      for (const node of group) {
+        wrapper.appendChild(node);
+      }
+      el.appendChild(wrapper);
+    }
+
+    if (i < groups.length - 1) {
+      el.appendChild(document.createElement("br"));
+    }
+  }
+};
+
+const wrapLiInlineContent = (li: HTMLElement) => {
+  if (li.querySelector(".li-content-wrap") || li.querySelector(".br-content-wrap")) return;
+
+  const childNodes = Array.from(li.childNodes);
+  const inlineNodes: Node[] = [];
+
+  for (const node of childNodes) {
+    if (
+      node.nodeType === 1 && // Node.ELEMENT_NODE
+      /^(p|ul|ol|blockquote|div|h[1-6])$/i.test((node as Element).tagName)
+    ) {
+      break;
+    }
+    inlineNodes.push(node);
+  }
+
+  const hasText = inlineNodes.some(
+    (n) => n.nodeType === 3 && (n.textContent?.trim().length ?? 0) > 0 // Node.TEXT_NODE
+  );
+  const hasInlineElement = inlineNodes.some(
+    (n) =>
+      n.nodeType === 1 && // Node.ELEMENT_NODE
+      !/^(p|ul|ol|blockquote|div|h[1-6])$/i.test((n as Element).tagName)
+  );
+
+  if (inlineNodes.length > 0 && (hasText || hasInlineElement)) {
+    const wrapper = document.createElement("span");
+    wrapper.className = "li-content-wrap inline-block w-full relative";
+    li.insertBefore(wrapper, inlineNodes[0]!);
+    for (const node of inlineNodes) {
+      wrapper.appendChild(node);
+    }
+  }
+};
 
 export const MarkdownRenderer = (props: MarkdownRendererProps) => {
   const { t } = useI18n();
   const speech = useSpeech();
   const [container, setContainer] = createSignal<HTMLDivElement | null>(null);
   const [isExpanded, setIsExpanded] = createSignal(false);
+
+  const numBlocks = createMemo(() => {
+    if (props.startBlockIndex === undefined) return 100000;
+    const blocks = splitIntoLogicalBlocks(props.content);
+    let count = 0;
+    for (const rawBlock of blocks) {
+      if (/^[-*_]{3,}$/.test(rawBlock)) continue;
+      const sanitized = sanitizeBlockForSpeech(rawBlock);
+      if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
+        count++;
+      }
+    }
+    return count;
+  });
 
   // Listen to custom toggle-mermaid-raw events to swap raw/diagram formats from the parent context menu
   createEffect(() => {
@@ -676,15 +767,35 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     setTimeout(() => {
       if (!containerRef) return;
 
+      // Wrap content separated by <br> in p and li elements to allow precise line-by-line highlighting
+      const brElements = containerRef.querySelectorAll("p, li, blockquote");
+      brElements.forEach((el) => wrapBrContent(el as HTMLElement));
+
+      // Wrap inline content of list items to allow precise highlighting and play button alignment
+      const liElements = containerRef.querySelectorAll("li");
+      liElements.forEach((li) => wrapLiInlineContent(li as HTMLElement));
+
       const elements = Array.from(
-        containerRef.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+        containerRef.querySelectorAll(
+          "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6"
+        )
       );
       let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
 
-      // Filter out child paragraphs that are nested inside list items to avoid duplicate play buttons
+      // Discard parent elements that have a wrapped child to ensure we target the innermost element
       narrativeElements = narrativeElements.filter((el) => {
-        if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+        if (el.querySelector(".br-content-wrap") || el.querySelector(".li-content-wrap")) {
           return false;
+        }
+        if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+          const parentLi = el.closest("li");
+          if (parentLi) {
+            const liText = parentLi.textContent?.trim() || "";
+            const pText = el.textContent?.trim() || "";
+            if (liText === pText) {
+              return false; // Filter out if duplicate of parent
+            }
+          }
         }
         return true;
       });
@@ -773,16 +884,54 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       return;
     }
 
+    if (currentItem.blockIndex === undefined) {
+      return;
+    }
+
+    if (props.startBlockIndex !== undefined) {
+      const relIdx = currentItem.blockIndex - props.startBlockIndex;
+      if (relIdx < 0 || relIdx >= numBlocks()) {
+        return;
+      }
+    }
+
+    const targetBlockIndex =
+      props.startBlockIndex !== undefined
+        ? currentItem.blockIndex - props.startBlockIndex
+        : currentItem.blockIndex;
+
+    // Wrap content separated by <br> in p and li elements to allow precise line-by-line highlighting
+    const brElements = containerRef.querySelectorAll("p, li, blockquote");
+    brElements.forEach((el) => wrapBrContent(el as HTMLElement));
+
+    // Wrap inline content of list items to allow precise highlighting
+    const liElements = containerRef.querySelectorAll("li");
+    liElements.forEach((li) => wrapLiInlineContent(li as HTMLElement));
+
     // Select text block elements in document order
     const elements = Array.from(
-      containerRef.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+      containerRef.querySelectorAll(
+        "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6"
+      )
     );
     let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
 
-    // Filter out child paragraphs that are nested inside list items to avoid duplicate highlighting targets
+    // Discard parent elements that have a wrapped child to ensure we target the innermost element
     narrativeElements = narrativeElements.filter((el) => {
-      if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+      if (el.querySelector(".br-content-wrap") || el.querySelector(".li-content-wrap")) {
         return false;
+      }
+      // Keep p elements if they are nested inside li, because we can target them individually using minimum-length matching.
+      // But if the parent li has no other text content besides this p, we can filter it to prevent double-matching.
+      if (el.tagName.toLowerCase() === "p" && el.closest("li")) {
+        const parentLi = el.closest("li");
+        if (parentLi) {
+          const liText = parentLi.textContent?.trim() || "";
+          const pText = el.textContent?.trim() || "";
+          if (liText === pText) {
+            return false; // Filter out if duplicate of parent
+          }
+        }
       }
       return true;
     });
@@ -792,23 +941,46 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     // Try text-similarity matching first (highly robust against off-by-one formatting/tag gaps)
     const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
     if (cleanSpeakText) {
-      targetEl =
-        (narrativeElements.find((el) => {
-          const cleanElText = el.textContent?.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") || "";
-          return (
+      logFE("info", `TTS HIGHLIGHT scan for speakText: "${cleanSpeakText}"`);
+      const matches = narrativeElements
+        .map((el, i) => {
+          let rawElText = el.textContent?.toLowerCase() || "";
+          // Normalize angle brackets in the same way as speech text to ensure matching
+          rawElText = rawElText.replace(/</g, " less than ").replace(/>/g, " greater than ");
+          const cleanElText = rawElText.replace(/[^\p{L}\p{N}]/gu, "") || "";
+          logFE("info", `  Element ${i} (${el.tagName}): "${cleanElText.substring(0, 60)}..."`);
+          const isMatch =
             cleanElText.length > 0 &&
-            (cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText))
-          );
-        }) as HTMLElement) || null;
+            (cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText));
+          return { el: el as HTMLElement, i, cleanElText, isMatch };
+        })
+        .filter((m) => m.isMatch);
+
+      if (matches.length > 0) {
+        // Sort matches to find the best candidate:
+        // 1. Prefer smaller text length difference to match the innermost/most specific element
+        // 2. Prefer the element closest to the blockIndex position
+        matches.sort((a, b) => {
+          const lenDiffA = Math.abs(a.cleanElText.length - cleanSpeakText.length);
+          const lenDiffB = Math.abs(b.cleanElText.length - cleanSpeakText.length);
+          if (lenDiffA !== lenDiffB) {
+            return lenDiffA - lenDiffB;
+          }
+          const distA = Math.abs(a.i - (targetBlockIndex ?? 0));
+          const distB = Math.abs(b.i - (targetBlockIndex ?? 0));
+          return distA - distB;
+        });
+        targetEl = matches[0]!.el;
+      }
     }
 
     // Fallback to positional index matching
     if (
       !targetEl &&
-      currentItem.blockIndex !== undefined &&
-      currentItem.blockIndex < narrativeElements.length
+      targetBlockIndex !== undefined &&
+      targetBlockIndex < narrativeElements.length
     ) {
-      targetEl = narrativeElements[currentItem.blockIndex] as HTMLElement;
+      targetEl = narrativeElements[targetBlockIndex] as HTMLElement;
     }
 
     if (targetEl) {

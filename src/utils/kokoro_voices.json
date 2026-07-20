@@ -1,0 +1,218 @@
+[
+  {
+    "name": "af_alloy",
+    "label": "af_alloy (en-us female)"
+  },
+  {
+    "name": "af_aoede",
+    "label": "af_aoede (en-us female)"
+  },
+  {
+    "name": "af_bella",
+    "label": "af_bella (en-us female)"
+  },
+  {
+    "name": "af_heart",
+    "label": "af_heart (en-us female)"
+  },
+  {
+    "name": "af_jessica",
+    "label": "af_jessica (en-us female)"
+  },
+  {
+    "name": "af_kore",
+    "label": "af_kore (en-us female)"
+  },
+  {
+    "name": "af_nicole",
+    "label": "af_nicole (en-us female)"
+  },
+  {
+    "name": "af_nova",
+    "label": "af_nova (en-us female)"
+  },
+  {
+    "name": "af_river",
+    "label": "af_river (en-us female)"
+  },
+  {
+    "name": "af_sarah",
+    "label": "af_sarah (en-us female)"
+  },
+  {
+    "name": "af_sky",
+    "label": "af_sky (en-us female)"
+  },
+  {
+    "name": "am_adam",
+    "label": "am_adam (en-us male)"
+  },
+  {
+    "name": "am_echo",
+    "label": "am_echo (en-us male)"
+  },
+  {
+    "name": "am_eric",
+    "label": "am_eric (en-us male)"
+  },
+  {
+    "name": "am_fenrir",
+    "label": "am_fenrir (en-us male)"
+  },
+  {
+    "name": "am_liam",
+    "label": "am_liam (en-us male)"
+  },
+  {
+    "name": "am_michael",
+    "label": "am_michael (en-us male)"
+  },
+  {
+    "name": "am_onyx",
+    "label": "am_onyx (en-us male)"
+  },
+  {
+    "name": "am_puck",
+    "label": "am_puck (en-us male)"
+  },
+  {
+    "name": "am_santa",
+    "label": "am_santa (en-us male)"
+  },
+  {
+    "name": "bf_alice",
+    "label": "bf_alice (en-gb female)"
+  },
+  {
+    "name": "bf_emma",
+    "label": "bf_emma (en-gb female)"
+  },
+  {
+    "name": "bf_isabella",
+    "label": "bf_isabella (en-gb female)"
+  },
+  {
+    "name": "bf_lily",
+    "label": "bf_lily (en-gb female)"
+  },
+  {
+    "name": "bm_daniel",
+    "label": "bm_daniel (en-gb male)"
+  },
+  {
+    "name": "bm_fable",
+    "label": "bm_fable (en-gb male)"
+  },
+  {
+    "name": "bm_george",
+    "label": "bm_george (en-gb male)"
+  },
+  {
+    "name": "bm_lewis",
+    "label": "bm_lewis (en-gb male)"
+  },
+  {
+    "name": "ef_dora",
+    "label": "ef_dora (es-es female)"
+  },
+  {
+    "name": "em_alex",
+    "label": "em_alex (es-es male)"
+  },
+  {
+    "name": "em_santa",
+    "label": "em_santa (es-es male)"
+  },
+  {
+    "name": "ff_siwis",
+    "label": "ff_siwis (fr-fr female)"
+  },
+  {
+    "name": "hf_alpha",
+    "label": "hf_alpha (hi-in female)"
+  },
+  {
+    "name": "hf_beta",
+    "label": "hf_beta (hi-in female)"
+  },
+  {
+    "name": "hm_omega",
+    "label": "hm_omega (hi-in male)"
+  },
+  {
+    "name": "hm_psi",
+    "label": "hm_psi (hi-in male)"
+  },
+  {
+    "name": "if_sara",
+    "label": "if_sara (it-it female)"
+  },
+  {
+    "name": "im_nicola",
+    "label": "im_nicola (it-it male)"
+  },
+  {
+    "name": "jf_alpha",
+    "label": "jf_alpha (ja-jp female)"
+  },
+  {
+    "name": "jf_gongitsune",
+    "label": "jf_gongitsune (ja-jp female)"
+  },
+  {
+    "name": "jf_nezumi",
+    "label": "jf_nezumi (ja-jp female)"
+  },
+  {
+    "name": "jf_tebukuro",
+    "label": "jf_tebukuro (ja-jp female)"
+  },
+  {
+    "name": "jm_kumo",
+    "label": "jm_kumo (ja-jp male)"
+  },
+  {
+    "name": "pf_dora",
+    "label": "pf_dora (pt-br female)"
+  },
+  {
+    "name": "pm_alex",
+    "label": "pm_alex (pt-br male)"
+  },
+  {
+    "name": "pm_santa",
+    "label": "pm_santa (pt-br male)"
+  },
+  {
+    "name": "zf_xiaobei",
+    "label": "zf_xiaobei (zh-cn female)"
+  },
+  {
+    "name": "zf_xiaoni",
+    "label": "zf_xiaoni (zh-cn female)"
+  },
+  {
+    "name": "zf_xiaoxiao",
+    "label": "zf_xiaoxiao (zh-cn female)"
+  },
+  {
+    "name": "zf_xiaoyi",
+    "label": "zf_xiaoyi (zh-cn female)"
+  },
+  {
+    "name": "zm_yunjian",
+    "label": "zm_yunjian (zh-cn male)"
+  },
+  {
+    "name": "zm_yunxi",
+    "label": "zm_yunxi (zh-cn male)"
+  },
+  {
+    "name": "zm_yunxia",
+    "label": "zm_yunxia (zh-cn male)"
+  },
+  {
+    "name": "zm_yunyang",
+    "label": "zm_yunyang (zh-cn male)"
+  }
+]

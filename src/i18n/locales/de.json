@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Vorlesen",
+      "provider": "Sprach-Engine",
+      "providerDesc": "Wählen Sie zwischen der System-Sprachsynthese und der Offline-Kokoro-KI.",
+      "providerSystem": "System-Sprachsynthesizer",
+      "providerOffline": "Offline-Kokoro-KI (Lokal)",
       "voice": "Text-to-Speech-Stimme",
       "voiceDesc": "Wählen Sie den Stimmensynthesizer zum Vorlesen von Transkripttexten.",
       "defaultVoice": "Standardsystemstimme",
@@ -299,7 +303,17 @@
       "rateDesc": "Passen Sie die Geschwindigkeit an, mit der Text gesprochen wird.",
       "pitch": "Stimmhöhe",
       "pitchDesc": "Passen Sie die Tonhöhe der gesprochenen Stimme an.",
-      "reset": "Auf Standardwerte zurücksetzen"
+      "reset": "Auf Standardwerte zurücksetzen",
+      "test": "Stimme testen",
+      "testSaying": "Fischers Fritze fischt frische Fische, frische Fische fischt Fischers Fritze.",
+      "pronunciations": "Benutzerdefinierte Aussprache",
+      "pronunciationsDesc": "Konfigurieren Sie benutzerdefinierte Schreibweisen für Verzeichnisverknüpfungen, Code-Abkürzungen oder Fachbegriffe.",
+      "pronunciationsOriginal": "Wort / Treffer",
+      "pronunciationsReplacement": "Gesprochene Aussprache",
+      "pronunciationsPlaceholderWord": "z. B. src",
+      "pronunciationsPlaceholderReplacement": "z. B. source",
+      "pronunciationsAdd": "Regel hinzufügen",
+      "pronunciationsReset": "Regeln zurücksetzen"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Agentenadapter '{sourceId}' nicht gefunden.",
     "sessionReadLock": "Fehler beim Erwerb der Sitzungslesesperre.",
+    "ttsModelLoad": "Laden der lokalen Offline-TTS-Modellgewichte fehlgeschlagen.",
+    "ttsSynthesis": "Lokale Sprachsynthese fehlgeschlagen: {reason}",
     "onnxNotFound": "Semantische Suche ist nicht verfügbar: ONNX-Modell/Vokabular nicht gefunden. Bitte überprüfen Sie die Anwendung Verpackung oder laden Sie das Modell herunter.",
     "embedderCreation": "Fehler beim Initialisieren des semantischen Embedders.",
     "embeddingsGeneration": "Fehler beim Generieren von Embeddings.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Sitzung vorlesen",
     "stopReading": "Vorlesen stoppen",
     "playFromHere": "Von hier an vorlesen",
-    "sessionTransition": "Sitzung {sessionTitle}. {text}"
+    "sessionTransition": "Sitzung {sessionTitle}. {text}",
+    "sessionLabel": "Sitzung"
   }
 }

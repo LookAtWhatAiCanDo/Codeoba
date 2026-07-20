@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Lettura ad alta voce",
+      "provider": "Motore Vocale",
+      "providerDesc": "Scegli tra la sintesi vocale di sistema e la tecnologia offline Kokoro AI.",
+      "providerSystem": "Sintetizzatore Vocale di Sistema",
+      "providerOffline": "Kokoro AI Offline (Locale)",
       "voice": "Voce di sintesi vocale",
       "voiceDesc": "Seleziona il sintetizzatore vocale per leggere il testo narrativo.",
       "defaultVoice": "Voce di sistema predefinita",
@@ -299,7 +303,17 @@
       "rateDesc": "Regola la velocità con cui viene letto il testo.",
       "pitch": "Tonalità della voce",
       "pitchDesc": "Regola la tonalità della voce parlata.",
-      "reset": "Ripristina predefiniti"
+      "reset": "Ripristina predefiniti",
+      "test": "Testa Voce",
+      "testSaying": "Trentotto trentini entrarono a Trento tutti e trentotto trotterellando.",
+      "pronunciations": "Pronunce Personalizzate",
+      "pronunciationsDesc": "Configura sostituzioni di pronuncia per scorciatoie di directory, abbreviazioni di codice o termini tecnici.",
+      "pronunciationsOriginal": "Parola / Corrispondenza",
+      "pronunciationsReplacement": "Pronuncia Parlata",
+      "pronunciationsPlaceholderWord": "es. src",
+      "pronunciationsPlaceholderReplacement": "es. source",
+      "pronunciationsAdd": "Aggiungi Regola",
+      "pronunciationsReset": "Ripristina Regole"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Adattatore agente '{sourceId}' non trovato.",
     "sessionReadLock": "Impossibile acquisire il blocco di lettura della sessione.",
+    "ttsModelLoad": "Impossibile caricare i pesi del modello TTS offline locale.",
+    "ttsSynthesis": "Sintesi vocale locale fallita: {reason}",
     "onnxNotFound": "La ricerca semantica non è disponibile: modello ONNX/vocabolario non trovato. Verificare il pacchetto dell'applicazione o scaricare il modello.",
     "embedderCreation": "Impossibile inizializzare l'incorporatore semantico.",
     "embeddingsGeneration": "Impossibile generare le incorporazioni.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Leggi sessione ad alta voce",
     "stopReading": "Interrompi lettura",
     "playFromHere": "Leggi ad alta voce da qui",
-    "sessionTransition": "Sessione {sessionTitle}. {text}"
+    "sessionTransition": "Sessione {sessionTitle}. {text}",
+    "sessionLabel": "Sessione"
   }
 }

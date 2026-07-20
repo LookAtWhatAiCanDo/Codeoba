@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Чтение вслух",
+      "provider": "Голосовой движок",
+      "providerDesc": "Выберите между системным синтезатором речи и автономным ИИ Kokoro.",
+      "providerSystem": "Системный синтезатор речи",
+      "providerOffline": "Автономный ИИ Kokoro (Локально)",
       "voice": "Голос синтезатора",
       "voiceDesc": "Выберите синтезатор речи для чтения описательного текста.",
       "defaultVoice": "Системный голос по умолчанию",
@@ -299,7 +303,17 @@
       "rateDesc": "Настройте скорость произнесения текста.",
       "pitch": "Высота голоса",
       "pitchDesc": "Настройте высоту тона произносимого голоса.",
-      "reset": "Сбросить по умолчанию"
+      "reset": "Сбросить по умолчанию",
+      "test": "Тест голоса",
+      "testSaying": "Шла Саша по шоссе и сосала сушку.",
+      "pronunciations": "Пользовательское произношение",
+      "pronunciationsDesc": "Настройте правила замены произношения для путей папок, сокращений кода или технических терминов.",
+      "pronunciationsOriginal": "Слово / Совпадение",
+      "pronunciationsReplacement": "Произношение речи",
+      "pronunciationsPlaceholderWord": "напр. src",
+      "pronunciationsPlaceholderReplacement": "напр. source",
+      "pronunciationsAdd": "Добавить правило",
+      "pronunciationsReset": "Сбросить правила"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Адаптер агента '{sourceId}' не найден.",
     "sessionReadLock": "Не удалось получить блокировку чтения сессии.",
+    "ttsModelLoad": "Не удалось загрузить веса локальной автономной модели TTS.",
+    "ttsSynthesis": "Ошибка локального синтеза речи: {reason}",
     "onnxNotFound": "Семантический поиск недоступен: модель ONNX/словарь не найдены. Пожалуйста, проверьте сборку приложения или скачайте модель.",
     "embedderCreation": "Не удалось инициализировать семантический эмбеддер.",
     "embeddingsGeneration": "Не удалось создать эмбеддинги.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Прочитать сеанс вслух",
     "stopReading": "Остановить чтение",
     "playFromHere": "Читать вслух отсюда",
-    "sessionTransition": "Сессия {sessionTitle}. {text}"
+    "sessionTransition": "Сессия {sessionTitle}. {text}",
+    "sessionLabel": "Сессия"
   }
 }
