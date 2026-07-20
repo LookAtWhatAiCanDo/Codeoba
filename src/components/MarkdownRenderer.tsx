@@ -703,7 +703,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         const btn = document.createElement("button");
         btn.className = "read-aloud-play-btn";
         btn.innerHTML = `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>`;
-        btn.setAttribute("title", t("readAloud.playFromHere") || "Read Aloud from here");
+        btn.setAttribute("title", t("readAloud.playFromHere"));
 
         // Calculate offset to fix horizontal position relative to root markdown-body container
         const alignPlayButton = () => {

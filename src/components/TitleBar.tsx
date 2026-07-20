@@ -400,7 +400,7 @@ export const TitleBar = (props: TitleBarProps) => {
               style={{
                 "font-size": "11px",
               }}
-              title={t("detailPane.resetFontSize") || "Double click to reset to default"}
+              title={t("detailPane.resetFontSize")}
             >
               {props.fontSize}px
             </span>

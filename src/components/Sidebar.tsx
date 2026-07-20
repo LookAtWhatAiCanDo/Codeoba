@@ -646,7 +646,7 @@ export const Sidebar = (props: SidebarProps) => {
       dateObj.getFullYear() === yesterday.getFullYear();
 
     if (isYesterday) {
-      return `${t("sidebar.yesterday") || "Yesterday"}, ${timeStr}`;
+      return `${t("sidebar.yesterday")}, ${timeStr}`;
     }
 
     // Otherwise, show full date and time according to settings
@@ -705,7 +705,7 @@ export const Sidebar = (props: SidebarProps) => {
         startObj.getFullYear() === yesterday.getFullYear();
 
       if (isYesterday) {
-        return `${t("sidebar.yesterday") || "Yesterday"}, ${startTimeStr} ➜ ${endTimeStr}`;
+        return `${t("sidebar.yesterday")}, ${startTimeStr} ➜ ${endTimeStr}`;
       }
 
       // Older date
@@ -2371,7 +2371,7 @@ const SessionCard = (props: SessionCardProps) => {
                   });
                 }}
                 class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
-                title={t("readAloud.readSessionAloud") || "Read Session Aloud"}
+                title={t("readAloud.readSessionAloud")}
               >
                 <Volume2 class="w-3.5 h-3.5" />
               </button>
@@ -2386,7 +2386,7 @@ const SessionCard = (props: SessionCardProps) => {
                 });
               }}
               class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center animate-pulse"
-              title={t("readAloud.stopReading") || "Stop Reading"}
+              title={t("readAloud.stopReading")}
             >
               <Volume2 class="w-3.5 h-3.5" />
             </button>
@@ -2400,7 +2400,7 @@ const SessionCard = (props: SessionCardProps) => {
                   if (props.onTogglePin) props.onTogglePin(props.session.id);
                 }}
                 class="text-text-secondary/35 hover:text-accent transition-all p-0.5 cursor-pointer rounded hover:bg-surface/60 flex items-center justify-center"
-                title={t("groups.pinConversation") || "Pin Conversation"}
+                title={t("groups.pinConversation")}
               >
                 <Pin class="w-3.5 h-3.5" />
               </button>
@@ -2412,7 +2412,7 @@ const SessionCard = (props: SessionCardProps) => {
                 if (props.onTogglePin) props.onTogglePin(props.session.id);
               }}
               class="text-accent hover:text-text-secondary transition-colors p-0.5 cursor-pointer rounded hover:bg-accent-light/10 flex items-center justify-center"
-              title={t("groups.unpinConversation") || "Unpin Conversation"}
+              title={t("groups.unpinConversation")}
             >
               <Pin class="w-3.5 h-3.5" />
             </button>
@@ -2421,7 +2421,7 @@ const SessionCard = (props: SessionCardProps) => {
             <Archive class="w-3.5 h-3.5 text-text-secondary" />
           </Show>
           <Show when={props.session.isDeleted}>
-            <span title={t("sidebar.badgeDeleted") || "Deleted"}>
+            <span title={t("sidebar.badgeDeleted")}>
               <Trash2 class="w-3.5 h-3.5 text-red-500" />
             </span>
           </Show>
