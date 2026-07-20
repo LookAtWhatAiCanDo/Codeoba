@@ -734,7 +734,18 @@ export const Dashboard = (props: DashboardProps) => {
                                 >
                                   <Show
                                     when={isCurrent() && speech.isPlaying() && !speech.isPaused()}
-                                    fallback={<Play class="w-3.5 h-3.5" />}
+                                    fallback={
+                                      <Show
+                                        when={
+                                          isCurrent() &&
+                                          speech.isPreparingSpeech &&
+                                          speech.isPreparingSpeech()
+                                        }
+                                        fallback={<Play class="w-3.5 h-3.5" />}
+                                      >
+                                        <RefreshCw class="w-3.5 h-3.5 animate-spin text-accent" />
+                                      </Show>
+                                    }
                                   >
                                     <Pause class="w-3.5 h-3.5" />
                                   </Show>

@@ -297,6 +297,10 @@
     },
     "readAloud": {
       "title": "Read Aloud",
+      "provider": "Speech Engine",
+      "providerDesc": "Choose between system text-to-speech and offline Kokoro AI.",
+      "providerSystem": "System Voice Synthesizer",
+      "providerOffline": "Offline Kokoro AI (Local)",
       "voice": "Text-to-Speech Voice",
       "voiceDesc": "Select the voice synthesizer for reading transcript narrative text.",
       "defaultVoice": "Default System Voice",
@@ -304,7 +308,17 @@
       "rateDesc": "Adjust the speed at which text is spoken.",
       "pitch": "Speech Pitch",
       "pitchDesc": "Adjust the tone pitch of the voice.",
-      "reset": "Reset to Defaults"
+      "reset": "Reset to Defaults",
+      "test": "Test Voice",
+      "testSaying": "How much wood would a woodchuck chuck if a woodchuck could chuck wood?",
+      "pronunciations": "Custom Pronunciations",
+      "pronunciationsDesc": "Configure custom spelling overrides for directory shortcuts, code abbreviations, or technical terms.",
+      "pronunciationsOriginal": "Word / Match",
+      "pronunciationsReplacement": "Spoken Pronunciation",
+      "pronunciationsPlaceholderWord": "e.g., src",
+      "pronunciationsPlaceholderReplacement": "e.g., source",
+      "pronunciationsAdd": "Add Override",
+      "pronunciationsReset": "Reset Mappings"
     }
   },
   "updater": {
@@ -414,6 +428,8 @@
   "errors": {
     "adapterNotFound": "Agent adapter '{sourceId}' not found.",
     "sessionReadLock": "Failed to acquire session read lock.",
+    "ttsModelLoad": "Failed to load local offline TTS model weights.",
+    "ttsSynthesis": "Failed to synthesize speech locally: {reason}",
     "onnxNotFound": "Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.",
     "embedderCreation": "Failed to initialize semantic embedder.",
     "embeddingsGeneration": "Failed to generate embeddings.",
@@ -451,6 +467,7 @@
     "readSessionAloud": "Read Session Aloud",
     "stopReading": "Stop Reading",
     "playFromHere": "Read Aloud from here",
-    "sessionTransition": "Session {sessionTitle}. {text}"
+    "sessionTransition": "Session {sessionTitle}. {text}",
+    "sessionLabel": "Session"
   }
 }

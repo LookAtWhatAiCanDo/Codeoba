@@ -244,7 +244,7 @@
       "confirmDeleteSource": "{source}のCodeobaのローカル検索インデックスとキャッシュされたセッションをクリアしてもよろしいですか？これにより検索結果からは削除されますが、実際のエージェントアプリケーション、会話、またはログファイルが削除されたり影響を受けたりすることはありません。",
       "detectedMultiPromptTitle": "ローカル検索の有効化",
       "detectedMultiPromptBadge": "100% ローカル＆プライベート",
-      "detectedMultiPromptMessage": "Codeobaはシステム上で以下のエージェント의チャット履歴を検出しました。インデックスを作成するアプリを選択してください。会話データがコンピューターの外部に送信されることはありません。",
+      "detectedMultiPromptMessage": "Codeobaはシステム上で以下のエージェントのチャット履歴を検出しました。インデックスを作成するアプリを選択してください。会話データがコンピューターの外部に送信されることはありません。",
       "detectedMultiPromptDenyAll": "後で設定する",
       "detectedMultiPromptAllowSelected": "選択したアプリを有効にする",
       "detectedMultiPromptFootnotePrivate": "🔒 100% プライベート: すべての検索解析とインデックス構築はデバイス上で完全にオフラインで実行されます。オプションのクラウド機能（アップデート確認など）は、必要なメタデータのみをバックエンドに送信します。",
@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "読み上げ",
+      "provider": "音声エンジン",
+      "providerDesc": "システム標準の音声合成とオフラインKokoro AIから選択します。",
+      "providerSystem": "システム音声合成",
+      "providerOffline": "オフラインKokoro AI (ローカル)",
       "voice": "音声合成の音声",
       "voiceDesc": "トランスクリプトのテキストを読み上げるための音声合成エンジンを選択します。",
       "defaultVoice": "システムのデフォルト音声",
@@ -299,7 +303,17 @@
       "rateDesc": "テキストを読み上げる速度を調整します。",
       "pitch": "音声のピッチ",
       "pitchDesc": "読み上げ音声のトーン（ピッチ）を調整します。",
-      "reset": "デフォルトに戻す"
+      "reset": "デフォルトに戻す",
+      "test": "音声をテスト",
+      "testSaying": "隣の客はよく柿食う客だ。",
+      "pronunciations": "カスタム発音",
+      "pronunciationsDesc": "ディレクトリのショートカット、コードの略称、または技術用語のカスタム表記発音を設定します。",
+      "pronunciationsOriginal": "単語 / マッチ",
+      "pronunciationsReplacement": "読み方（発音）",
+      "pronunciationsPlaceholderWord": "例: src",
+      "pronunciationsPlaceholderReplacement": "例: source",
+      "pronunciationsAdd": "ルールを追加",
+      "pronunciationsReset": "ルールをリセット"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "エージェントアダプター '{sourceId}' が見つかりません。",
     "sessionReadLock": "セッション読み取りロックの取得に失敗しました。",
+    "ttsModelLoad": "ローカルのオフラインTTSモデルウェイトの読み込みに失敗しました。",
+    "ttsSynthesis": "ローカルでの音声合成に失敗しました: {reason}",
     "onnxNotFound": "セマンティック検索は利用できません：ONNXモデル/ボキャブラリーが見つかりません。アプリパッケージを確認するか、モデルをダウンロードしてください。",
     "embedderCreation": "セマンティックエンベッダーの初期化に失敗しました。",
     "embeddingsGeneration": "埋め込みの生成に失敗しました。",
@@ -445,6 +461,7 @@
     "readSessionAloud": "セッションを読み上げる",
     "stopReading": "読み上げを停止",
     "playFromHere": "ここから朗読",
-    "sessionTransition": "セッション {sessionTitle}。{text}"
+    "sessionTransition": "セッション {sessionTitle}。{text}",
+    "sessionLabel": "セッション"
   }
 }

@@ -9,6 +9,7 @@ pub mod parsers;
 pub mod premium;
 pub mod search;
 pub mod tokenizer;
+pub mod tts_engine;
 pub mod watcher;
 
 #[cfg(test)]
@@ -417,6 +418,8 @@ pub fn run() {
             commands::get_index_subagents,
             commands::save_index_subagents,
             commands::update_playback_metadata,
+            commands::prewarm_offline_speech,
+            commands::generate_offline_speech,
             menu::update_scroll_menu_labels,
             menu::set_menu_item_text
         ])

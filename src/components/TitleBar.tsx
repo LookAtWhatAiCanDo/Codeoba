@@ -227,7 +227,9 @@ export const TitleBar = (props: TitleBarProps) => {
           }
           class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
         >
-          {speech.isPlaying() && !speech.isPaused() ? (
+          {speech.isPreparingSpeech && speech.isPreparingSpeech() ? (
+            <RotateCwClean class="w-[14px] h-[14px] animate-spin text-accent" />
+          ) : speech.isPlaying() && !speech.isPaused() ? (
             <Pause class="w-[14px] h-[14px]" />
           ) : (
             <Play class="w-[14px] h-[14px]" />

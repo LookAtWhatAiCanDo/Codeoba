@@ -26,7 +26,7 @@ import {
   Volume2,
 } from "lucide-solid";
 import { MarkdownRenderer } from "./MarkdownRenderer";
-import { useSpeech } from "../utils/useSpeech";
+import { useSpeech, splitIntoLogicalBlocks, sanitizeBlockForSpeech } from "../utils/useSpeech";
 import { useI18n } from "../i18n/i18n";
 import { logFE } from "../utils/logger";
 import { getStatusBadge } from "../utils/sessionStatus";
@@ -2267,9 +2267,24 @@ const AssistantMessageRenderer = (props: {
   const groupedParts = createMemo(() => {
     const list = parts();
     const result: Array<
-      { type: "text"; content: string } | { type: "toolGroup"; tools: MessageToolPart[] }
+      | { type: "text"; content: string; startBlockIndex: number }
+      | { type: "toolGroup"; tools: MessageToolPart[] }
     > = [];
     let currentToolGroup: MessageToolPart[] = [];
+    let currentBlockCount = 0;
+
+    const getBlockCount = (text: string) => {
+      const blocks = splitIntoLogicalBlocks(text);
+      let count = 0;
+      for (const rawBlock of blocks) {
+        if (/^[-*_]{3,}$/.test(rawBlock)) continue;
+        const sanitized = sanitizeBlockForSpeech(rawBlock);
+        if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
+          count++;
+        }
+      }
+      return count;
+    };
 
     for (const part of list) {
       if (part.type === "tool") {
@@ -2279,7 +2294,13 @@ const AssistantMessageRenderer = (props: {
           result.push({ type: "toolGroup", tools: currentToolGroup });
           currentToolGroup = [];
         }
-        result.push(part);
+        const blockCount = getBlockCount(part.content);
+        result.push({
+          type: "text",
+          content: part.content,
+          startBlockIndex: currentBlockCount,
+        });
+        currentBlockCount += blockCount;
       }
     }
 
@@ -2317,6 +2338,7 @@ const AssistantMessageRenderer = (props: {
                   turnIndex={props.turnIndex}
                   sourceId={props.sourceId}
                   filePath={props.filePath}
+                  startBlockIndex={part.startBlockIndex}
                 />
               </div>
             );

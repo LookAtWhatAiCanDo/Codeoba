@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Leitura em voz alta",
+      "provider": "Mecanismo de Voz",
+      "providerDesc": "Escolha entre a síntese de voz do sistema e a IA offline Kokoro.",
+      "providerSystem": "Sintetizador de Voz do Sistema",
+      "providerOffline": "Kokoro AI Offline (Local)",
       "voice": "Voz de texto para fala",
       "voiceDesc": "Selecione o sintetizador de voz para ler o texto descritivo.",
       "defaultVoice": "Voz do sistema padrão",
@@ -299,7 +303,17 @@
       "rateDesc": "Ajuste a velocidade em que o texto é falado.",
       "pitch": "Tom da fala",
       "pitchDesc": "Ajuste o tom da voz falada.",
-      "reset": "Redefinir para padrões"
+      "reset": "Redefinir para padrões",
+      "test": "Testar Voz",
+      "testSaying": "O rato roeu a roupa do rei de Roma.",
+      "pronunciations": "Pronúncias Personalizadas",
+      "pronunciationsDesc": "Configure substituições ortográficas para atalhos de diretório, abreviações de código ou termos técnicos.",
+      "pronunciationsOriginal": "Palavra / Correspondência",
+      "pronunciationsReplacement": "Pronúncia Falada",
+      "pronunciationsPlaceholderWord": "ex: src",
+      "pronunciationsPlaceholderReplacement": "ex: source",
+      "pronunciationsAdd": "Adicionar Regra",
+      "pronunciationsReset": "Restaurar Regras"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Adaptador de agente '{sourceId}' não encontrado.",
     "sessionReadLock": "Falha ao adquirir o bloqueio de leitura da sessão.",
+    "ttsModelLoad": "Falha ao carregar os pesos do modelo TTS offline local.",
+    "ttsSynthesis": "Falha ao sintetizar voz localmente: {reason}",
     "onnxNotFound": "A busca semântica não está disponível: modelo ONNX/vocabulário não encontrado. Verifique a embalagem do aplicativo ou faça o download do modelo.",
     "embedderCreation": "Falha ao inicializar o incorporador semântico.",
     "embeddingsGeneration": "Falha ao gerar as incorporações.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Ler sessão em voz alta",
     "stopReading": "Parar leitura",
     "playFromHere": "Ler em voz alta a partir daqui",
-    "sessionTransition": "Sessão {sessionTitle}. {text}"
+    "sessionTransition": "Sessão {sessionTitle}. {text}",
+    "sessionLabel": "Sessão"
   }
 }

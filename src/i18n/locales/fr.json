@@ -292,6 +292,10 @@
     },
     "readAloud": {
       "title": "Lecture à haute voix",
+      "provider": "Moteur de synthèse",
+      "providerDesc": "Choisissez entre la synthèse vocale du système et l'IA locale Kokoro.",
+      "providerSystem": "Synthétiseur de voix système",
+      "providerOffline": "IA hors ligne Kokoro (Local)",
       "voice": "Voix de synthèse vocale",
       "voiceDesc": "Sélectionnez le synthétiseur de voix pour lire le texte descriptif.",
       "defaultVoice": "Voix système par défaut",
@@ -299,7 +303,17 @@
       "rateDesc": "Ajustez la vitesse de lecture du texte.",
       "pitch": "Hauteur de la voix",
       "pitchDesc": "Ajustez la hauteur de ton de la voix parlée.",
-      "reset": "Réinitialiser"
+      "reset": "Réinitialiser",
+      "test": "Tester la voix",
+      "testSaying": "Un chasseur sachant chasser doit savoir chasser sans son chien.",
+      "pronunciations": "Prononciations personnalisées",
+      "pronunciationsDesc": "Configurez des règles d'orthographe personnalisées pour les raccourcis de répertoire, les abréviations de code ou les termes techniques.",
+      "pronunciationsOriginal": "Mot / Correspondance",
+      "pronunciationsReplacement": "Prononciation parlée",
+      "pronunciationsPlaceholderWord": "ex. src",
+      "pronunciationsPlaceholderReplacement": "ex. source",
+      "pronunciationsAdd": "Ajouter une règle",
+      "pronunciationsReset": "Réinitialiser les règles"
     }
   },
   "updater": {
@@ -408,6 +422,8 @@
   "errors": {
     "adapterNotFound": "Adaptateur d'agent '{sourceId}' introuvable.",
     "sessionReadLock": "Échec de l'acquisition du verrou de lecture de session.",
+    "ttsModelLoad": "Impossible de charger les poids du modèle TTS local hors ligne.",
+    "ttsSynthesis": "Échec de la synthèse vocale locale : {reason}",
     "onnxNotFound": "La recherche sémantique est indisponible : modèle ONNX/vocabulaire introuvable. Veuillez vérifier l'empaquetage de l'application ou télécharger le modèle.",
     "embedderCreation": "Échec de l'initialisation de l'embeddeur sémantique.",
     "embeddingsGeneration": "Échec de la génération des embeddings.",
@@ -445,6 +461,7 @@
     "readSessionAloud": "Lire la session à haute voix",
     "stopReading": "Arrêter la lecture",
     "playFromHere": "Lire à haute voix à partir d'ici",
-    "sessionTransition": "Session {sessionTitle}. {text}"
+    "sessionTransition": "Session {sessionTitle}. {text}",
+    "sessionLabel": "Session"
   }
 }
