@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "ファイル",
-      "rebuild": "インデックスを再構築",
-      "rebuildBypass": "インデックスを再構築（キャッシュをバイパス）",
       "settings": "設定",
       "preferences": "環境設定..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "次のページ"
     },
     "view": {
-      "title": "表示"
+      "title": "表示",
+      "reload": "再読み込み",
+      "forceReload": "強制再読み込み"
     },
     "help": {
       "title": "ヘルプ",

@@ -702,13 +702,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           <div class="flex-grow h-full flex flex-col p-6 pt-8 overflow-y-auto min-w-0">
             <Show when={activeCategory() === "general"}>
               {/* General Settings Tab */}
-              <div class="space-y-5">
+              <div class="space-y-3">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.general.title")}
                 </h3>
 
                 {/* Persistent cache switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.cache")}
@@ -729,7 +729,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Prune deleted sessions switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.pruneDeleted")}
@@ -750,7 +750,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Font Size controls */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.fontSize")}
@@ -769,7 +769,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <span
                       onDblClick={() => props.onFontSizeChange(15)}
                       class="text-xs font-mono min-w-[32px] text-center text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                      title={t("detailPane.resetFontSize") || "Double click to reset to default"}
+                      title={t("detailPane.resetFontSize")}
                     >
                       {props.fontSize}px
                     </span>
@@ -784,7 +784,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
                 {/* Secure storage switch */}
                 <Show when={premiumActive()}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between transition-all duration-200">
                     <div class="flex-1 pr-4">
                       <div class="flex items-center gap-2">
                         <h4 class="text-xs font-bold text-text-primary">
@@ -808,7 +808,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </Show>
 
                 {/* Log Parsing Mode */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.logMode")}
@@ -842,7 +842,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Similarity Threshold */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-4">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-4">
                   <div class="space-y-1">
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.threshold")}
@@ -881,13 +881,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "regional"}>
               {/* Region & Language Settings Tab */}
-              <div class="space-y-5 animate-in fade-in duration-200">
+              <div class="space-y-3 animate-in fade-in duration-200">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.regional.title")}
                 </h3>
 
                 {/* Language Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.language")}
@@ -908,7 +908,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Date Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.dateFormat")}
@@ -932,7 +932,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Time Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.timeFormat")}
@@ -955,7 +955,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Show Seconds Switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.showSeconds")}
@@ -976,7 +976,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Number Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.numberFormat")}
@@ -1003,13 +1003,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "read-aloud"}>
               {/* Read Aloud Settings Tab */}
-              <div class="space-y-5 animate-in fade-in duration-200">
+              <div class="space-y-3 animate-in fade-in duration-200">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2 select-none">
                   {t("settings.readAloud.title")}
                 </h3>
 
                 {/* Voice Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.readAloud.voice")}
@@ -1035,7 +1035,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Speech Rate Slider */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">
@@ -1063,7 +1063,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Speech Pitch Slider */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">
@@ -1103,13 +1103,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "theme"}>
               {/* Theme Settings Tab */}
-              <div class="space-y-5 animate-in fade-in duration-200">
+              <div class="space-y-3 animate-in fade-in duration-200">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.theme.title")}
                 </h3>
 
                 {/* Appearance Mode Selection */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.appearance")}
@@ -1130,7 +1130,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 {/* Theme Selector Dot Bar */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-2">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">
@@ -1175,7 +1175,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
                 {/* Custom HSL Theme Editor */}
                 <Show when={props.theme === "custom"}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-4 animate-in fade-in duration-200">
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-4 animate-in fade-in duration-200">
                     <div class="flex items-center justify-between">
                       <div>
                         <h4 class="text-xs font-bold text-text-primary">
@@ -1328,7 +1328,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "sources"}>
               {/* Sources & Adapters Tab */}
-              <div class="space-y-4">
+              <div class="space-y-3">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.agents.title")}
                 </h3>
@@ -1338,7 +1338,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     {(src) => {
                       const dec = getSourceDecision(src.id);
                       return (
-                        <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between gap-4">
+                        <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between gap-4">
                           <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 flex-wrap">
                               <h4 class="text-xs font-bold text-text-primary">{src.displayName}</h4>
@@ -1404,7 +1404,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "permissions"}>
               {/* Path Permissions Tab */}
-              <div class="space-y-4">
+              <div class="space-y-3">
                 <div class="flex items-center justify-between border-b border-border/30 pb-2 mb-2 flex-shrink-0">
                   <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
                     {t("settings.permissions.title")}
@@ -1430,7 +1430,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   <div class="space-y-3">
                     <For each={permissions()}>
                       {(p) => (
-                        <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                        <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
                           <div class="space-y-1">
                             <div
                               class="text-xs font-mono font-bold text-text-primary truncate"
@@ -1492,14 +1492,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "exclusions"}>
               {/* Exclusions Tab */}
-              <div class="space-y-4">
+              <div class="space-y-3">
                 <div class="border-b border-border/30 pb-2 mb-2 flex-shrink-0">
                   <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
                     {t("settings.exclusions.title")}
                   </h3>
                 </div>
 
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex flex-col gap-3">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex flex-col gap-3">
                   <div>
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.general.excludedPaths")}
@@ -1516,7 +1516,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   />
                 </div>
 
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 flex items-center justify-between transition-all duration-200">
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between transition-all duration-200">
                   <div class="flex-1 pr-4">
                     <h4 class="text-xs font-bold text-text-primary">
                       {t("settings.exclusions.indexSubagents")}
@@ -1540,7 +1540,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
             <Show when={activeCategory() === "updates"}>
               {/* Updates Tab */}
-              <div class="space-y-5">
+              <div class="space-y-3">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
                   {t("settings.updates.title")}
                 </h3>
@@ -1549,12 +1549,12 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 <Show
                   when={updaterActive()}
                   fallback={
-                    <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 text-center text-xs text-text-secondary">
+                    <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 text-center text-xs text-text-secondary">
                       {t("settings.updates.notActive")}
                     </div>
                   }
                 >
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
+                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
                     <div class="flex items-center justify-between">
                       <div>
                         <h4 class="text-xs font-bold text-text-primary">

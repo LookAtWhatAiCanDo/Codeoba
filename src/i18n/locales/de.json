@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "Ablage",
-      "rebuild": "Index neu aufbauen",
-      "rebuildBypass": "Index neu aufbauen (Cache umgehen)",
       "settings": "Einstellungen",
       "preferences": "Einstellungen..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "Bild ab"
     },
     "view": {
-      "title": "Ansicht"
+      "title": "Ansicht",
+      "reload": "Neu laden",
+      "forceReload": "Neu laden erzwingen"
     },
     "help": {
       "title": "Hilfe",

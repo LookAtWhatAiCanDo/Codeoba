@@ -1372,6 +1372,50 @@ pub fn open_external_url<R: tauri::Runtime>(
         .map_err(|e| AppErrorPayload::with_msg(ERR_EXTERNAL_OPEN_FAILED, e.to_string()))
 }
 
+#[tauri::command]
+pub fn update_playback_metadata(
+    state: tauri::State<'_, crate::MediaControlsState>,
+    title: String,
+    artist: String,
+    is_playing: bool,
+) -> Result<(), AppErrorPayload> {
+    crate::log_info!(
+        "[MediaControls] Updating metadata: title='{}', artist='{}', is_playing={}",
+        title,
+        artist,
+        is_playing
+    );
+    let mut guard = state.0.lock().map_err(|e| {
+        AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to lock media controls: {e}"))
+    })?;
+
+    if let Some(ref mut controls) = *guard {
+        let metadata = souvlaki::MediaMetadata {
+            title: Some(&title),
+            artist: Some(&artist),
+            album: None,
+            cover_url: None,
+            duration: None,
+        };
+        controls.set_metadata(metadata).map_err(|e| {
+            AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to set media metadata: {e:?}"))
+        })?;
+
+        let playback = if is_playing {
+            souvlaki::MediaPlayback::Playing { progress: None }
+        } else {
+            souvlaki::MediaPlayback::Paused { progress: None }
+        };
+        controls.set_playback(playback).map_err(|e| {
+            AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to set playback status: {e:?}"))
+        })?;
+    } else {
+        crate::log_info!("[MediaControls] Media controls are not initialized (None in state).");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod trusted_root_tests {
     use super::*;

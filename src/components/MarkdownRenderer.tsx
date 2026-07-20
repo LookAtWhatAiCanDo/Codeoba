@@ -21,6 +21,130 @@ import { highlightContainer } from "../utils/highlighter";
 import { invoke } from "@tauri-apps/api/core";
 import { useSpeech } from "../utils/useSpeech";
 
+const massageMermaidCode = (code: string): string => {
+  const lines = code.split(/\r?\n/);
+
+  // Step 1: Replace graph declaration with flowchart & wrap unquoted subgraph titles
+  const processedLines = lines.map((line) => {
+    const graphMatch = line.match(/^(\s*)graph\s+([A-Za-z]+)\s*$/);
+    if (graphMatch) {
+      return `${graphMatch[1]}flowchart ${graphMatch[2].toUpperCase()}`;
+    }
+    const simpleGraphMatch = line.match(/^(\s*)graph\s*$/);
+    if (simpleGraphMatch) {
+      return `${simpleGraphMatch[1]}flowchart`;
+    }
+
+    const match = line.match(/^(\s*)subgraph\s+([^"\[\]\r\n]+)$/i);
+    if (match) {
+      const indent = match[1];
+      const title = match[2].trim();
+      if (title && !title.startsWith('"') && !title.endsWith('"')) {
+        return `${indent}subgraph "${title}"`;
+      }
+    }
+    return line;
+  });
+
+  // Step 2: Detect subgraphs with only isolated nodes and inject "direction LR"
+  interface SubgraphInfo {
+    headerIndex: number;
+    nodes: string[];
+    indent: string;
+    hasExplicitDirection?: boolean;
+    endIndex: number;
+  }
+  const subgraphs: SubgraphInfo[] = [];
+  const currentStack: SubgraphInfo[] = [];
+
+  // Collect all connection lines and find all node IDs that are part of connections
+  const connectedNodes = new Set<string>();
+
+  processedLines.forEach((line) => {
+    if (
+      line.includes("-->") ||
+      line.includes("---") ||
+      line.includes("==>") ||
+      line.includes("-.->")
+    ) {
+      const words = line.match(/[a-zA-Z0-9_-]+/g);
+      if (words) {
+        words.forEach((word) => {
+          const lower = word.toLowerCase();
+          if (
+            lower !== "graph" &&
+            lower !== "subgraph" &&
+            lower !== "end" &&
+            lower !== "direction" &&
+            lower !== "td" &&
+            lower !== "lr" &&
+            lower !== "flowchart"
+          ) {
+            connectedNodes.add(word);
+          }
+        });
+      }
+    }
+  });
+
+  // Parse lines to associate nodes with subgraphs
+  processedLines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.toLowerCase().startsWith("subgraph ")) {
+      const match = line.match(/^(\s*)subgraph/i);
+      const indent = match ? match[1] : "";
+      const info: SubgraphInfo = {
+        headerIndex: index,
+        nodes: [],
+        indent,
+        endIndex: -1,
+      };
+      subgraphs.push(info);
+      currentStack.push(info);
+    } else if (trimmed.toLowerCase() === "end") {
+      const top = currentStack.pop();
+      if (top) {
+        top.endIndex = index;
+      }
+    } else if (currentStack.length > 0) {
+      if (trimmed.toLowerCase().startsWith("direction ")) {
+        currentStack[currentStack.length - 1].hasExplicitDirection = true;
+      } else {
+        const nodeMatch = line.match(/^\s*([a-zA-Z0-9_-]+)\s*(?:\[|\(|\{|\(\(|>|\[\")/);
+        if (nodeMatch) {
+          const nodeId = nodeMatch[1];
+          currentStack[currentStack.length - 1].nodes.push(nodeId);
+        }
+      }
+    }
+  });
+
+  // For each subgraph, check if all of its declared nodes are isolated
+  for (let i = subgraphs.length - 1; i >= 0; i--) {
+    const sg = subgraphs[i];
+    if (sg.nodes.length > 0) {
+      const allIsolated = sg.nodes.every((nodeId) => !connectedNodes.has(nodeId));
+      if (allIsolated && !sg.hasExplicitDirection && sg.endIndex !== -1) {
+        const indent = sg.indent + "    ";
+
+        // 1. Inject invisible links right before the "end" statement
+        const invisibleLinks: string[] = [];
+        for (let j = 0; j < sg.nodes.length - 1; j++) {
+          invisibleLinks.push(`${indent}${sg.nodes[j]} ~~~ ${sg.nodes[j + 1]}`);
+        }
+        if (invisibleLinks.length > 0) {
+          processedLines.splice(sg.endIndex, 0, ...invisibleLinks);
+        }
+
+        // 2. Inject "direction LR" right after the subgraph header
+        processedLines.splice(sg.headerIndex + 1, 0, `${indent}direction LR`);
+      }
+    }
+  }
+
+  return processedLines.join("\n");
+};
+
 interface MarkdownRendererProps {
   content: string;
   searchQuery?: string;
@@ -126,7 +250,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
         logFE("info", "toggleMermaidRaw: calling mermaid.render...");
         const uniqueId = `mermaid-svg-${Math.random().toString(36).substring(2, 11)}`;
-        const { svg, bindFunctions } = await mermaid.render(uniqueId, codeText);
+        const massagedCode = massageMermaidCode(codeText);
+        const { svg, bindFunctions } = await mermaid.render(uniqueId, massagedCode);
         logFE("info", "toggleMermaidRaw: mermaid.render completed");
         container.innerHTML = svg;
         if (bindFunctions) {
@@ -136,7 +261,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
       } catch (error) {
         logFE("error", `Failed to render Mermaid diagram: ${error}`);
         container.innerHTML = `
-          <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+          <div class="mermaid-error-container border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
             <div class="font-semibold flex items-center gap-1.5">
               <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               ${t("detailPane.mermaidFailed")}
@@ -327,7 +452,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
               // Generate a clean, unique ID for mermaid rendering
               // Mermaid ids must start with a letter and contain only alphanumeric/hyphen/underscore
               const uniqueId = `mermaid-svg-${Math.random().toString(36).substring(2, 11)}`;
-              const { svg, bindFunctions } = await mermaid.render(uniqueId, codeText);
+              const massagedCode = massageMermaidCode(codeText);
+              const { svg, bindFunctions } = await mermaid.render(uniqueId, massagedCode);
 
               block.innerHTML = svg;
               if (bindFunctions) {
@@ -336,7 +462,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
             } catch (error) {
               logFE("error", `Failed to render Mermaid diagram: ${error}`);
               block.innerHTML = `
-                <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+                <div class="mermaid-error-container border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
                   <div class="font-semibold flex items-center gap-1.5">
                     <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     ${t("detailPane.mermaidFailed")}
@@ -359,7 +485,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           const encodedCode = block.getAttribute("data-code");
           const codeText = encodedCode ? decodeURIComponent(encodedCode) : "";
           block.innerHTML = `
-            <div class="border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
+            <div class="mermaid-error-container border border-red-500/20 bg-red-500/10 text-red-400 p-4 rounded-xl text-sm flex flex-col gap-2 font-mono w-full text-left">
               <div class="font-semibold flex items-center gap-1.5">
                 <svg class="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 Failed to load Mermaid parser
@@ -491,7 +617,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     if (
       mermaidContainer &&
       mermaidWrapper &&
-      mermaidWrapper.getAttribute("data-show-raw") !== "true"
+      mermaidWrapper.getAttribute("data-show-raw") !== "true" &&
+      !target.closest(".mermaid-error-container")
     ) {
       const svgEl = mermaidContainer.querySelector("svg");
       if (svgEl) {
@@ -576,7 +703,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         const btn = document.createElement("button");
         btn.className = "read-aloud-play-btn";
         btn.innerHTML = `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>`;
-        btn.setAttribute("title", t("readAloud.playFromHere") || "Read Aloud from here");
+        btn.setAttribute("title", t("readAloud.playFromHere"));
 
         // Calculate offset to fix horizontal position relative to root markdown-body container
         const alignPlayButton = () => {

@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "檔案",
-      "rebuild": "重新構建索引",
-      "rebuildBypass": "重新構建索引（跳過快取）",
       "settings": "設定",
       "preferences": "偏好設定..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "向下翻頁"
     },
     "view": {
-      "title": "檢視"
+      "title": "檢視",
+      "reload": "重新載入",
+      "forceReload": "強制重新載入"
     },
     "help": {
       "title": "說明",

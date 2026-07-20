@@ -378,6 +378,12 @@ export const DetailPane = (props: DetailPaneProps) => {
       ".mermaid-diagram-container"
     ) as HTMLElement | null;
 
+    const isMermaidError = !!(
+      mermaidContainer?.querySelector(".mermaid-error-container") ||
+      target.closest(".mermaid-error-container")
+    );
+    const showMermaidMenu = mermaidWrapper && mermaidContainer && !isMermaidError;
+
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -387,8 +393,8 @@ export const DetailPane = (props: DetailPaneProps) => {
       sessionId,
       turnIndex,
       clickedText,
-      mermaidWrapper: mermaidWrapper || undefined,
-      mermaidContainer: mermaidContainer || undefined,
+      mermaidWrapper: showMermaidMenu ? mermaidWrapper : undefined,
+      mermaidContainer: showMermaidMenu ? mermaidContainer : undefined,
     });
   };
 
@@ -999,7 +1005,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                 <Show when={props.session!.isDeleted}>
                   <div class="flex items-center gap-1 px-1.5 py-0.5 border border-red-500/30 bg-red-500/10 text-red-500 rounded-md text-[0.5625rem] font-bold select-none leading-none">
                     <Trash2 class="w-3 h-3 text-red-500" />
-                    <span>{t("sidebar.badgeDeleted") || "Deleted"}</span>
+                    <span>{t("sidebar.badgeDeleted")}</span>
                   </div>
                 </Show>
                 <Show when={compactionCount() > 0}>
@@ -1235,7 +1241,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                           filePath: props.session!.filePath,
                         })
                       }
-                      title={t("readAloud.readSessionAloud") || "Read Session Aloud"}
+                      title={t("readAloud.readSessionAloud")}
                       class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center justify-center cursor-pointer"
                     >
                       <Volume2 class="w-3.5 h-3.5" />
@@ -1249,7 +1255,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                         filePath: props.session!.filePath,
                       })
                     }
-                    title={t("readAloud.stopReading") || "Stop Reading"}
+                    title={t("readAloud.stopReading")}
                     class="p-2 bg-accent-light/10 hover:bg-accent-light/25 border border-accent/20 rounded-xl text-accent transition-all flex items-center justify-center cursor-pointer animate-pulse"
                   >
                     <Volume2 class="w-3.5 h-3.5" />
@@ -1263,8 +1269,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                   onClick={() => props.onTogglePinSession!(props.session!.id)}
                   title={
                     props.pinnedSessionIds!.has(props.session!.id)
-                      ? t("groups.unpinConversation") || "Unpin Conversation"
-                      : t("groups.pinConversation") || "Pin Conversation"
+                      ? t("groups.unpinConversation")
+                      : t("groups.pinConversation")
                   }
                   class={`p-2 bg-surface border rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                     props.pinnedSessionIds!.has(props.session!.id)
@@ -1306,7 +1312,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                         }}
                       >
                         <Copy class="w-3.5 h-3.5" />
-                        <span>{t("groups.copySessionId") || "Copy Session ID"}</span>
+                        <span>{t("groups.copySessionId")}</span>
                       </button>
                     </Show>
 
@@ -1335,7 +1341,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     >
                       <div class="border-t border-border/60 my-1" />
                       <div class="px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider text-text-secondary/55">
-                        {t("groups.filterByGroup") || "Groups"}
+                        {t("groups.filterByGroup")}
                       </div>
                       <div class="max-h-36 overflow-y-auto">
                         <For
@@ -1392,7 +1398,7 @@ export const DetailPane = (props: DetailPaneProps) => {
           <Show when={showDetailSearch()}>
             <div
               id="detail-search-bar"
-              class="absolute right-8 z-30 flex items-center gap-2 p-1.5 bg-surface/95 border border-border hover:border-border/80 rounded-xl shadow-xl glass animate-in slide-in-from-top-2 duration-150"
+              class="absolute right-8 z-50 flex items-center gap-2 p-1.5 bg-surface/95 border border-border hover:border-border/80 rounded-xl shadow-xl glass animate-in slide-in-from-top-2 duration-150"
               style={{
                 top: "calc(4.75rem + 8px)",
               }}
@@ -1957,11 +1963,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                       <Show when={copiedImage()} fallback={<Copy class="w-3.5 h-3.5" />}>
                         <Check class="w-3.5 h-3.5 text-emerald-400" />
                       </Show>
-                      <span>
-                        {copiedImage()
-                          ? t("common.copied")
-                          : t("detailPane.copyImage") || "Copy image"}
-                      </span>
+                      <span>{copiedImage() ? t("common.copied") : t("detailPane.copyImage")}</span>
                     </button>
                     <div class="h-[1px] bg-border/20 my-1" />
                   </Show>
@@ -1999,8 +2001,8 @@ export const DetailPane = (props: DetailPaneProps) => {
                     </svg>
                     <span>
                       {context().mermaidWrapper!.getAttribute("data-show-raw") === "true"
-                        ? t("detailPane.mermaidShowDiagram") || "Show diagram"
-                        : t("detailPane.mermaidShowOriginal") || "Show original code"}
+                        ? t("detailPane.mermaidShowDiagram")
+                        : t("detailPane.mermaidShowOriginal")}
                     </span>
                   </button>
                 </Show>

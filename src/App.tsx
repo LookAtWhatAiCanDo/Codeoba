@@ -38,6 +38,46 @@ import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
 import "./App.css";
 
+function getLuminanceFromHsl(h: number, s: number, l: number) {
+  const sPct = s / 100;
+  const lPct = l / 100;
+  const c = (1 - Math.abs(2 * lPct - 1)) * sPct;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lPct - c / 2;
+  let rVal = 0,
+    gVal = 0,
+    bVal = 0;
+  if (h >= 0 && h < 60) {
+    rVal = c;
+    gVal = x;
+    bVal = 0;
+  } else if (h >= 60 && h < 120) {
+    rVal = x;
+    gVal = c;
+    bVal = 0;
+  } else if (h >= 120 && h < 180) {
+    rVal = 0;
+    gVal = c;
+    bVal = x;
+  } else if (h >= 180 && h < 240) {
+    rVal = 0;
+    gVal = x;
+    bVal = c;
+  } else if (h >= 240 && h < 300) {
+    rVal = x;
+    gVal = 0;
+    bVal = c;
+  } else if (h >= 300 && h < 360) {
+    rVal = c;
+    gVal = 0;
+    bVal = x;
+  }
+  const r = rVal + m;
+  const g = gVal + m;
+  const b = bVal + m;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 function App() {
   const { t, locale } = useI18n();
   const [appearance, setAppearance] = createSignal(
@@ -608,10 +648,15 @@ function App() {
       document.documentElement.style.setProperty("--accent", accentStr);
       document.documentElement.style.setProperty("--accent-hover", accentHoverStr);
       document.documentElement.style.setProperty("--accent-light", accentLightStr);
+
+      const lum = getLuminanceFromHsl(colors.accent1.h, colors.accent1.s, colors.accent1.l);
+      const accentTextStr = lum > 0.25 ? (isDark ? "#0d0e12" : "#0f172a") : "#ffffff";
+      document.documentElement.style.setProperty("--accent-text", accentTextStr);
+
       document.documentElement.style.setProperty("--text-primary", isDark ? "#f3f4f6" : "#0f172a");
       document.documentElement.style.setProperty(
         "--text-secondary",
-        isDark ? "#9ca3af" : "#475569"
+        isDark ? "#d1d5db" : "#475569"
       );
     } else {
       document.documentElement.style.removeProperty("--background");
@@ -622,6 +667,7 @@ function App() {
       document.documentElement.style.removeProperty("--accent");
       document.documentElement.style.removeProperty("--accent-hover");
       document.documentElement.style.removeProperty("--accent-light");
+      document.documentElement.style.removeProperty("--accent-text");
     }
   });
 
@@ -718,8 +764,8 @@ function App() {
     let unlistenMenuLicenses: (() => void) | undefined;
     let unlistenMenuPrivacy: (() => void) | undefined;
     let unlistenMenuCheckUpdates: (() => void) | undefined;
-    let unlistenMenuRebuild: (() => void) | undefined;
-    let unlistenMenuRebuildBypass: (() => void) | undefined;
+    let unlistenMenuReload: (() => void) | undefined;
+    let unlistenMenuForceReload: (() => void) | undefined;
     let unlistenMenuFindDetail: (() => void) | undefined;
     let unlistenMenuFindSidebar: (() => void) | undefined;
     let unlistenMenuGoHome: (() => void) | undefined;
@@ -986,10 +1032,10 @@ function App() {
       unlistenMenuCheckUpdates = await listen("menu-check-updates", () => {
         triggerManualUpdateCheck();
       });
-      unlistenMenuRebuild = await listen("menu-rebuild-index", () => {
+      unlistenMenuReload = await listen("menu-reload", () => {
         handleRebuildIndex(false);
       });
-      unlistenMenuRebuildBypass = await listen("menu-rebuild-index-bypass", () => {
+      unlistenMenuForceReload = await listen("menu-force-reload", () => {
         handleRebuildIndex(true);
       });
       unlistenMenuFindDetail = await listen("menu-find-detail", () => {
@@ -1461,8 +1507,8 @@ function App() {
         if (unlistenMenuLicenses) unlistenMenuLicenses();
         if (unlistenMenuPrivacy) unlistenMenuPrivacy();
         if (unlistenMenuCheckUpdates) unlistenMenuCheckUpdates();
-        if (unlistenMenuRebuild) unlistenMenuRebuild();
-        if (unlistenMenuRebuildBypass) unlistenMenuRebuildBypass();
+        if (unlistenMenuReload) unlistenMenuReload();
+        if (unlistenMenuForceReload) unlistenMenuForceReload();
         if (unlistenMenuFindDetail) unlistenMenuFindDetail();
         if (unlistenMenuFindSidebar) unlistenMenuFindSidebar();
         if (unlistenMenuGoHome) unlistenMenuGoHome();

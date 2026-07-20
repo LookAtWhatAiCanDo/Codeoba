@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "Archivo",
-      "rebuild": "Reconstruir índice",
-      "rebuildBypass": "Reconstruir índice (omitir caché)",
       "settings": "Configuración",
       "preferences": "Preferencias..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "Página abajo"
     },
     "view": {
-      "title": "Ver"
+      "title": "Ver",
+      "reload": "Recargar",
+      "forceReload": "Forzar recarga"
     },
     "help": {
       "title": "Ayuda",

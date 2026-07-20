@@ -364,8 +364,6 @@
     },
     "file": {
       "title": "파일",
-      "rebuild": "인덱스 재구축",
-      "rebuildBypass": "인덱스 재구축 (캐시 우회)",
       "settings": "설정",
       "preferences": "환경설정..."
     },
@@ -388,7 +386,9 @@
       "pageDown": "다음 페이지"
     },
     "view": {
-      "title": "보기"
+      "title": "보기",
+      "reload": "새로고침",
+      "forceReload": "강제 새로고침"
     },
     "help": {
       "title": "도움말",

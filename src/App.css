@@ -300,6 +300,7 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-light: var(--accent-light);
+  --color-accent-text: var(--accent-text);
 }
 
 :root {
@@ -308,10 +309,11 @@
   --surface: #16181f;
   --border: #242733;
   --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
+  --text-secondary: #d1d5db;
   --accent: #6366f1;
   --accent-hover: #4f46e5;
   --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-text: #ffffff;
   --sk-header-height: 48px;
 }
 
@@ -324,6 +326,7 @@
   --accent: #88c0d0;
   --accent-hover: #81a1c1;
   --accent-light: rgba(136, 192, 208, 0.15);
+  --accent-text: #0b1116;
 }
 
 [data-theme="emerald-forest"] {
@@ -335,6 +338,7 @@
   --accent: #10b981;
   --accent-hover: #059669;
   --accent-light: rgba(16, 185, 129, 0.15);
+  --accent-text: #09110f;
 }
 
 [data-theme="sunset-copper"] {
@@ -346,6 +350,7 @@
   --accent: #f59e0b;
   --accent-hover: #d97706;
   --accent-light: rgba(245, 158, 11, 0.15);
+  --accent-text: #130f0d;
 }
 
 [data-theme="royal-amethyst"] {
@@ -357,6 +362,7 @@
   --accent: #a855f7;
   --accent-hover: #9333ea;
   --accent-light: rgba(168, 85, 247, 0.15);
+  --accent-text: #100d18;
 }
 
 [data-theme="dracula"] {
@@ -364,10 +370,11 @@
   --surface: #252538;
   --border: #313244;
   --text-primary: #cdd6f4;
-  --text-secondary: #a6adc8;
+  --text-secondary: #bac2de;
   --accent: #cba6f7;
   --accent-hover: #f5c2e7;
   --accent-light: rgba(203, 166, 247, 0.15);
+  --accent-text: #1e1e2e;
 }
 
 [data-theme="cyberpunk-neon"] {
@@ -379,6 +386,7 @@
   --accent: #ff007f;
   --accent-hover: #e60073;
   --accent-light: rgba(255, 0, 127, 0.2);
+  --accent-text: #080710;
 }
 
 [data-theme="monochrome-slate"] {
@@ -386,10 +394,11 @@
   --surface: #1e293b;
   --border: #334155;
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-secondary: #cbd5e1;
   --accent: #64748b;
   --accent-hover: #475569;
   --accent-light: rgba(100, 116, 139, 0.15);
+  --accent-text: #0f172a;
 }
 
 [data-theme="obsidian-light"] {
@@ -401,6 +410,7 @@
   --accent: #4f46e5;
   --accent-hover: #4338ca;
   --accent-light: rgba(79, 70, 229, 0.1);
+  --accent-text: #ffffff;
 }
 
 [data-theme="nordic-light"] {
@@ -412,6 +422,7 @@
   --accent: #1982c4;
   --accent-hover: #11689e;
   --accent-light: rgba(25, 130, 196, 0.1);
+  --accent-text: #ffffff;
 }
 
 [data-theme="emerald-light"] {
@@ -423,6 +434,7 @@
   --accent: #10b981;
   --accent-hover: #059669;
   --accent-light: rgba(16, 185, 129, 0.1);
+  --accent-text: #064e3b;
 }
 
 [data-theme="sunset-light"] {
@@ -434,6 +446,7 @@
   --accent: #f59e0b;
   --accent-hover: #d97706;
   --accent-light: rgba(245, 158, 11, 0.1);
+  --accent-text: #78350f;
 }
 
 [data-theme="royal-light"] {
@@ -445,6 +458,7 @@
   --accent: #a855f7;
   --accent-hover: #9333ea;
   --accent-light: rgba(168, 85, 247, 0.1);
+  --accent-text: #581c87;
 }
 
 [data-theme="dracula-light"] {
@@ -456,6 +470,7 @@
   --accent: #cba6f7;
   --accent-hover: #ea80fc;
   --accent-light: rgba(203, 166, 247, 0.1);
+  --accent-text: #860e42;
 }
 
 [data-theme="cyberpunk-light"] {
@@ -467,6 +482,7 @@
   --accent: #ff007f;
   --accent-hover: #e60073;
   --accent-light: rgba(255, 0, 127, 0.1);
+  --accent-text: #701a75;
 }
 
 [data-theme="monochrome-light"] {
@@ -478,6 +494,7 @@
   --accent: #000000;
   --accent-hover: #334155;
   --accent-light: rgba(0, 0, 0, 0.05);
+  --accent-text: #ffffff;
 }
 
 body {
@@ -581,8 +598,38 @@ body {
   width: 100%;
 }
 
+/* Prevent global Tailwind/reset overrides from corrupting Mermaid HTML labels */
+.markdown-body .mermaid-diagram-container svg foreignObject {
+  overflow: visible !important;
+}
+
+.markdown-body .mermaid-diagram-container svg foreignObject div {
+  box-sizing: content-box !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  position: static !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: normal !important;
+}
+
+.markdown-body .mermaid-diagram-container svg foreignObject p,
+.markdown-body .mermaid-diagram-container svg foreignObject span {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+}
+
 .markdown-body .mermaid-diagram-container svg {
   max-width: 100% !important;
+  max-height: 360px !important;
   height: auto !important;
   background-color: transparent !important;
   cursor: zoom-in;
