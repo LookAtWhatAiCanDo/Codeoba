@@ -1,8 +1,4 @@
 use crate::models::Session;
-use aes_gcm::{
-    aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce,
-};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -51,10 +47,6 @@ pub fn get_cache_manager() -> &'static SessionCacheManager {
         hit_counter: Mutex::new(HashMap::new()),
         miss_counter: Mutex::new(HashMap::new()),
     })
-}
-
-fn get_or_create_cache_key() -> [u8; 32] {
-    crate::keyring::get_or_create_cache_key()
 }
 
 impl SessionCacheManager {
@@ -126,7 +118,6 @@ impl SessionCacheManager {
             return HashMap::new();
         }
 
-        // 1. Try parsing directly as unencrypted JSON
         if let Ok(source_cache) = serde_json::from_slice::<SourceCache>(&raw_data) {
             if source_cache.version == CURRENT_CACHE_VERSION {
                 let res: HashMap<_, _> = source_cache
@@ -135,104 +126,31 @@ impl SessionCacheManager {
                     .map(|e| (e.file_path.clone(), e))
                     .collect();
                 crate::log_debug!(
-                    "[load_cache] Loaded unencrypted cache for '{}' in {:?}",
-                    source_id,
-                    _start.elapsed()
-                );
-                return res;
-            }
-        }
-
-        // 2. If parsing fails, check if we have enough bytes for an encrypted payload (nonce prefix)
-        if raw_data.len() < 12 {
-            return HashMap::new();
-        }
-
-        let (nonce_bytes, ciphertext) = raw_data.split_at(12);
-        let key_bytes = get_or_create_cache_key();
-        let cipher = Aes256Gcm::new(&key_bytes.into());
-        let nonce = nonce_bytes
-            .try_into()
-            .expect("GCM nonce is exactly 12 bytes");
-
-        let plaintext = match cipher.decrypt(nonce, ciphertext) {
-            Ok(p) => p,
-            Err(_) => {
-                let mut fallback_data = Vec::new();
-                fallback_data.extend_from_slice(nonce_bytes);
-                fallback_data.extend_from_slice(ciphertext);
-                if let Ok(plaintext_str) = String::from_utf8(fallback_data) {
-                    if let Ok(source_cache) = serde_json::from_str::<SourceCache>(&plaintext_str) {
-                        if source_cache.version == CURRENT_CACHE_VERSION {
-                            let res: HashMap<_, _> = source_cache
-                                .entries
-                                .into_iter()
-                                .map(|e| (e.file_path.clone(), e))
-                                .collect();
-                            crate::log_debug!(
-                                "[load_cache] Loaded plaintext fallback cache for '{}' in {:?}",
-                                source_id,
-                                _start.elapsed()
-                            );
-                            return res;
-                        }
-                    }
-                }
-                crate::log_warn!(
-                    "Warning: Failed to decrypt session cache for '{}'. Discarding cache.",
-                    source_id
-                );
-                return HashMap::new();
-            }
-        };
-
-        if let Ok(source_cache) = serde_json::from_slice::<SourceCache>(&plaintext) {
-            if source_cache.version == CURRENT_CACHE_VERSION {
-                let res: HashMap<_, _> = source_cache
-                    .entries
-                    .into_iter()
-                    .map(|e| (e.file_path.clone(), e))
-                    .collect();
-                crate::log_debug!(
-                    "[load_cache] Decrypted and parsed cache for '{}' in {:?}",
+                    "[load_cache] Loaded cache for '{}' in {:?}",
                     source_id,
                     _start.elapsed()
                 );
                 return res;
             } else {
-                crate::log_error!("Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.", source_id, CURRENT_CACHE_VERSION, source_cache.version);
+                crate::log_error!(
+                    "Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.",
+                    source_id,
+                    CURRENT_CACHE_VERSION,
+                    source_cache.version
+                );
             }
         }
         HashMap::new()
     }
 
-    #[allow(clippy::expect_used)]
     fn save_cache(&self, source_id: &str, entries: Vec<CacheEntry>) {
         let path = self.get_cache_file(source_id);
         let cache = SourceCache {
             version: CURRENT_CACHE_VERSION.to_string(),
             entries,
         };
-        let plaintext_json = match serde_json::to_vec(&cache) {
-            Ok(json) => json,
-            Err(_) => return,
-        };
-
-        if crate::keyring::is_keyring_disabled() {
+        if let Ok(plaintext_json) = serde_json::to_vec(&cache) {
             let _ = crate::fs_util::atomic_write(&path, &plaintext_json);
-        } else {
-            let key_bytes = get_or_create_cache_key();
-            let cipher = Aes256Gcm::new(&key_bytes.into());
-            let mut nonce_bytes = [0u8; 12];
-            getrandom::fill(&mut nonce_bytes).expect("Failed to generate random nonce");
-            let nonce = Nonce::from(nonce_bytes);
-
-            if let Ok(ciphertext) = cipher.encrypt(&nonce, plaintext_json.as_ref()) {
-                let mut combined = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
-                combined.extend_from_slice(&nonce_bytes);
-                combined.extend_from_slice(&ciphertext);
-                let _ = crate::fs_util::atomic_write(&path, &combined);
-            }
         }
     }
 
@@ -387,7 +305,7 @@ impl SessionCacheManager {
                 None => return Vec::new(),
             };
 
-            let prune_deleted = crate::keyring::load_fallback_config()
+            let prune_deleted = crate::config::load_fallback_config()
                 .get("prune_deleted_sessions")
                 .and_then(|v| v.parse::<bool>().ok())
                 .unwrap_or(false);

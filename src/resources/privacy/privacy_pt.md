@@ -8,12 +8,12 @@ Leia esta política com atenção. Se você não concordar com estes termos, nã
 ---
 
 ## 1. Princípio Principal: Local-First por Padrão
-> O Codeoba é construído para ser um aplicativo local-first. Suas transcrições, índices de banco de dados, caches e modelos semânticos são armazenados inteiramente em sua máquina local.
+> O Codeoba é construído para ser um aplicativo local-first. Suas transcrições, índices de banco de dados e caches são armazenados inteiramente em sua máquina local.
 
 Principais aspectos desta implementação local-first incluem:
-- **Zero Logs Remotos:** Transcrições de conversas agregadas de diretórios de assistentes locais (Claude Code, Antigravity, Cursor, OpenAI Codex, Copilot, etc.) são processadas off-line e analisadas diretamente no tempo de execução do cliente de desktop.
+- **Zero Logs Remotos:** Transcrições de conversas agregadas de diretórios de assistentes locais (Claude Code, Google Antigravity, Cursor, OpenAI Codex, Copilot, etc.) são processadas off-line e analisadas diretamente no tempo de execução do cliente de desktop.
 - **Banco de Dados SQLite e Cache Local:** Todas as sessões indexadas, logs, palavras-chave de pesquisa e dados de desempenho são persistidos em um diretório de cache local.
-- **Indexação Vetorial Local:** Para a correspondência semântica de consultas, o aplicativo baixa um modelo de transformador quantizado (all-MiniLM-L6-v2) localmente. Todos os cálculos de similaridade rodam na CPU do seu dispositivo sem envio de dados para APIs de terceiros.
+- **Cache local pré-analisada:** Todas as conversas indexadas são analisadas localmente em uma cache de sessão rápida no seu diretório de usuário para permitir a inicialização instantânea do aplicativo sem chamadas de rede externas.
 
 ## 2. Diagnósticos e Verificações de Atualização Automática
 Para manter a plataforma operacional e segura, o Codeoba realiza verificações básicas:

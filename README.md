@@ -12,10 +12,8 @@ Instead of searching through hidden cache directories, terminal logs, or editor 
 ## ✨ Key Features
 
 * **Unified Dashboard**: Browse conversation threads from all your AI tools in a single timeline, sorted by date or search relevance.
-* **100% Local & Private**: Your data never leaves your computer. All file parsing, databases, search indexing, and vector calculations run entirely locally on your CPU. No cloud tracking, no metrics collection.
-* **Hybrid Search**: 
-  * **Keyword Search**: Instant lexical matching for specific terms or code snippets.
-  * **Semantic Search**: AI-powered search (using a built-in, offline transformer model) that finds conversations based on meaning and context, even if the exact words don't match.
+* **100% Local & Private**: Your data never leaves your computer. All file parsing, databases, and search indexing run entirely locally on your CPU. No cloud tracking, no metrics collection.
+* **Instant Keyword Search**: Instant lexical matching for specific terms, code snippets, or session titles.
 * **Rich Markdown Transcripts**: Read conversations with clean layouts, full Markdown formatting, code block syntax highlighting, and quick copy-to-clipboard controls.
 * **Dynamic Visual Themes**: Personalize your workspace with curated color themes, including Obsidian, Nordic Frost, Emerald Forest, Sunset Copper, Royal Amethyst, Dracula, Cyberpunk Neon, and Monochrome Slate.
 

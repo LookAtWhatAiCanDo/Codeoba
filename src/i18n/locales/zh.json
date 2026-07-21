@@ -23,8 +23,6 @@
     "title": "会话",
     "searchPlaceholder": "搜索对话...",
     "forceRebuild": "强制重建索引",
-    "semanticEnabled": "语义搜索：已启用",
-    "lexicalEnabled": "语义搜索：已禁用",
     "filters": "搜索过滤器",
     "agents": "智能体",
     "statusFilter": "状态筛选",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "在日期和时间格式中显示秒。",
       "numberFormat": "数字格式",
       "numberFormatDesc": "选择大数字和指标的格式化方式。",
-      "secureStorage": "安全存储",
-      "secureStorageDesc": "使用系统安全密钥链（Keyring）存储凭据。",
       "dateFormatISO": "ISO 格式 (YYYY-MM-DD)",
       "dateFormatUS": "美国格式 (MM/DD/YYYY)",
       "dateFormatEU": "欧盟格式 (DD/MM/YYYY)",
@@ -225,10 +221,7 @@
       "excludedPaths": "排除路径",
       "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。",
       "fontSize": "字体大小",
-      "fontSizeDesc": "调整对话记录的基准字体大小。",
-      "threshold": "相似度阈值",
-      "thresholdDesc": "配置匹配容差（值越高，要求越严格）。",
-      "restoreDefault": "恢复默认值"
+      "fontSizeDesc": "调整对话记录的基准字体大小。"
     },
     "agents": {
       "tab": "智能体",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "找不到智能体适配器 '{sourceId}'。",
     "sessionReadLock": "未能获取会话读取锁。",
-    "onnxNotFound": "语义搜索不可用：找不到 ONNX 模型/词表。请验证应用打包或下载模型。",
-    "embedderCreation": "未能初始化语义嵌入器。",
-    "embeddingsGeneration": "未能生成嵌入向量。",
     "indexRebuildFailed": "索引重建失败。",
     "fileTooLarge": "文件超过了 5MB 的最大预览限制。请在外部编辑器中打开。",
     "binaryFilePreview": "不支持二进制文件预览。请在外部编辑器中打开。",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "在外部打开文件失败: {error}",
     "groupLock": "未能获取组锁。",
     "groupDbError": "组数据库操作失败。",
-    "authServerStart": "启动本地认证服务器失败: {error}",
     "generic": "发生了意外错误。"
   },
   "licenses": {

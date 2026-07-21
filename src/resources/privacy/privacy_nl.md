@@ -8,12 +8,12 @@ Lees dit beleid zorgvuldig door. Als u niet akkoord gaat met de hierin uiteengez
 ---
 
 ## 1. Kernprincipe: Standaard lokaal eerst
-> Codeoba is gebouwd als een lokaal-eerst toepassing. Alle gesprekstranscripties, database-indexen, caches en semantische modellen worden volledig op uw lokale machine opgeslagen.
+> Codeoba is gebouwd als een lokaal-eerst toepassing. Alle gesprekstranscripties, database-indexen en caches worden volledig op uw lokale machine opgeslagen.
 
 Belangrijke aspecten van deze lokaal-eerst implementatie zijn:
-- **Geen logs op afstand:** Gesprekstranscripties verzameld uit lokale assistent-directories (Claude Code, Antigravity, Cursor, OpenAI Codex, Copilot, etc.) worden offline verwerkt en direct binnen de runtime van de desktopclient op uw apparaat geanalyseerd.
+- **Geen logs op afstand:** Gesprekstranscripties verzameld uit lokale assistent-directories (Claude Code, Google Antigravity, Cursor, OpenAI Codex, Copilot, etc.) worden offline verwerkt en direct binnen de runtime van de desktopclient op uw apparaat geanalyseerd.
 - **Lokale SQLite-database & cache:** Alle geïndexeerde sessies, logs, zoekwoorden en prestatiegegevens worden bewaard in een lokale cachemap.
-- **Lokale vectorindexering:** Voor semantische zoekopdrachten downloadt de toepassing lokaal een gekwantiseerd transformatormodel (all-MiniLM-L6-v2). Alle conceptuele berekeningen en zoekopdrachten worden uitgevoerd op de CPU van uw machine, zonder verzending naar API's van derden.
+- **Lokale vooraf geanalyseerde cache:** Alle geïndexeerde gesprekken worden lokaal geanalyseerd in een snelle sessiecache in uw thuismap om een onmiddellijke opstart van de toepassing mogelijk te maken zonder externe netwerkoproepen.
 
 ## 2. Diagnostische gegevens & automatische updatecontroles
 Om het platform operationeel en veilig te houden, voert Codeoba basiscontroles uit:

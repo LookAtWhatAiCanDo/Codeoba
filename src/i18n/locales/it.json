@@ -23,8 +23,6 @@
     "title": "Sessioni",
     "searchPlaceholder": "Cerca conversazioni...",
     "forceRebuild": "Forza ricostruzione indice",
-    "semanticEnabled": "Ricerca semantica: abilitata",
-    "lexicalEnabled": "Ricerca semantica: disabilitata",
     "filters": "Filtri di ricerca",
     "agents": "Agenti",
     "statusFilter": "Filtro stato",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Visualizza i secondi nei formati di data e ora.",
       "numberFormat": "Formato numeri",
       "numberFormatDesc": "Selezionare come vengono formattati i numeri grandi e le metriche.",
-      "secureStorage": "Archiviazione sicura",
-      "secureStorageDesc": "Usare il portachiavi sicuro del sistema (Keyring) per le credenziali.",
       "dateFormatISO": "Formato ISO (AAAA-MM-GG)",
       "dateFormatUS": "Formato USA (MM/GG/AAAA)",
       "dateFormatEU": "Formato UE (GG/MM/AAAA)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Percorsi esclusi",
       "excludedPathsDesc": "Esclusioni (separate da virgola o a capo). I cataloghi o file corrispondenti saranno ignorati nelle liste di conversazione.",
       "fontSize": "Dimensione del carattere",
-      "fontSizeDesc": "Regola la dimensione del carattere di base per la trascrizione della conversazione.",
-      "threshold": "Soglia di similarità",
-      "thresholdDesc": "Configura la tolleranza di corrispondenza (valori più alti sono più restrittivi).",
-      "restoreDefault": "Ripristina predefinito"
+      "fontSizeDesc": "Regola la dimensione del carattere di base per la trascrizione della conversazione."
     },
     "agents": {
       "tab": "Agenti",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "Adattatore agente '{sourceId}' non trovato.",
     "sessionReadLock": "Impossibile acquisire il blocco di lettura della sessione.",
-    "onnxNotFound": "La ricerca semantica non è disponibile: modello ONNX/vocabolario non trovato. Verificare il pacchetto dell'applicazione o scaricare il modello.",
-    "embedderCreation": "Impossibile inizializzare l'incorporatore semantico.",
-    "embeddingsGeneration": "Impossibile generare le incorporazioni.",
     "indexRebuildFailed": "Ricostruzione dell'indice non riuscita.",
     "fileTooLarge": "Il file supera il limite massimo di anteprima di 5 MB. Aprirlo in un editor esterno.",
     "binaryFilePreview": "I file binari non sono supportati per l'anteprima. Aprirlo in un editor esterno.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Impossibile aprire il file esternamente: {error}",
     "groupLock": "Impossibile acquisire il blocco del gruppo.",
     "groupDbError": "Operazione sul database del gruppo non riuscita.",
-    "authServerStart": "Impossibile avviare il server di autenticazione locale: {error}",
     "generic": "Si è verificato un errore imprevisto."
   },
   "licenses": {

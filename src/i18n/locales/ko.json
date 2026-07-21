@@ -23,8 +23,6 @@
     "title": "세션",
     "searchPlaceholder": "대화 검색...",
     "forceRebuild": "인덱스 강제 재구축",
-    "semanticEnabled": "의미 검색: 활성화됨",
-    "lexicalEnabled": "의미 검색: 비활성화됨",
     "filters": "검색 필터",
     "agents": "에이전트",
     "statusFilter": "상태 필터",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "날짜 및 시간 형식에 초를 표시합니다.",
       "numberFormat": "숫자 형식",
       "numberFormatDesc": "큰 숫자와 지표가 어떻게 서식 지정되는지 선택합니다.",
-      "secureStorage": "보안 저장소",
-      "secureStorageDesc": "자격 증명을 위해 시스템 보안 키체인(키링)을 사용합니다.",
       "dateFormatISO": "ISO 형식 (YYYY-MM-DD)",
       "dateFormatUS": "미국 형식 (MM/DD/YYYY)",
       "dateFormatEU": "유럽 형식 (DD/MM/YYYY)",
@@ -225,10 +221,7 @@
       "excludedPaths": "제외할 경로",
       "excludedPathsDesc": "제외 항목(쉼표 또는 줄바꿈으로 구분). 일치하는 디렉터리나 파일은 대화 목록에서 무시됩니다.",
       "fontSize": "글꼴 크기",
-      "fontSizeDesc": "대화 기록의 기본 글꼴 크기를 조정합니다.",
-      "threshold": "유사도 임계값",
-      "thresholdDesc": "매칭 허용도를 구성합니다(높을수록 엄격함).",
-      "restoreDefault": "기본값으로 복원"
+      "fontSizeDesc": "대화 기록의 기본 글꼴 크기를 조정합니다."
     },
     "agents": {
       "tab": "에이전트",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "에이전트 어댑터 '{sourceId}'를 찾을 수 없습니다.",
     "sessionReadLock": "세션 읽기 잠금을 획득하지 못했습니다.",
-    "onnxNotFound": "시맨틱 검색을 사용할 수 없습니다: ONNX 모델/어휘를 찾을 수 없습니다. 애플리케이션 패키징을 확인하거나 모델을 다운로드하십시오.",
-    "embedderCreation": "시맨틱 임베더를 초기화하지 못했습니다.",
-    "embeddingsGeneration": "임베딩을 생성하지 못했습니다.",
     "indexRebuildFailed": "인덱스 재구축에 실패했습니다.",
     "fileTooLarge": "파일이 최대 미리보기 제한인 5MB를 초과합니다. 외부 편집기에서 여십시오.",
     "binaryFilePreview": "이진 파일은 미리보기를 지원하지 않습니다. 외부 편집기에서 여십시오.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "파일을 외부에서 열지 못했습니다: {error}",
     "groupLock": "그룹 잠금을 획득하지 못했습니다.",
     "groupDbError": "그룹 데이터베이스 작업에 실패했습니다.",
-    "authServerStart": "로컬 인증 서버를 시작하지 못했습니다: {error}",
     "generic": "예기치 않은 오류가 발생했습니다."
   },
   "licenses": {

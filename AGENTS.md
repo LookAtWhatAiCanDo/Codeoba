@@ -63,7 +63,7 @@ To ensure the project context remains accurate:
   - `services/`: Bridges to call Tauri commands via TS functions (`tauriBridge.ts`).
 
 - **`src-tauri/` (Backend Rust Core)**
-  - `Cargo.toml`: Package dependencies (tauri, serde, rusqlite, notify, keyring, ort, wasmtime).
+  - `Cargo.toml`: Package dependencies (tauri, serde, rusqlite, notify, chrono).
   - `src/main.rs`: Minimal entry point that boots the library runner.
   - `src/lib.rs`: Tauri builder, setup hooks, and deep link integrations.
   - `src/menu.rs`: Native system menu builders, event handlers, and label updaters.
@@ -77,8 +77,7 @@ To ensure the project context remains accurate:
   - `src/search/`: Vector ONNX and lexical search logic.
   - `src/tokenizer.rs`: Offline BPE-based token count estimator (family scales, Hugging Face config loader).
   - `src/watcher.rs`: Native OS filesystem file monitoring.
-  - `src/keyring.rs`: Keychain and Credential Manager secure integrations.
-  - `src/premium/`: Signed WASM premium code verification and runner.
+  - `src/config.rs`: Local configuration storage (`~/.codeoba/config.json`).
 
 - **`docs/` (Architectural Documentation)**
   - `tokenization_calibration.md`: Hybrid Offline/Online tokenization calibration & simulation system design.
@@ -129,27 +128,11 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - To avoid redundant rescans when editing files in Cursor, modifications under `workspaceStorage` are filtered by checking if the active composer list has actually changed.
    - To avoid duplicate reloads on database writes, database change events compute a file content hash. If the hash matches the previous state, the reload is skipped.
 
-3. **Local ONNX-based Semantic Search**:
-   - The `all-MiniLM-L6-v2` transformer model and vocabulary files are pre-packaged within the application resources (`resources/onnx/`), resolving directly to read-only Tauri resources. Startup routines automatically clean up the legacy models folder under `~/.codeoba/models/` to free disk space.
-   - Execution is run on the Rust backend using the `tract-onnx` crate and a local WordPiece tokenizer module.
-   - Run tokenization and inference asynchronously in a background thread pool (e.g., using `tokio` or `rayon`) to prevent blocking the UI thread.
-   - Store computed vectors locally in `~/.codeoba/cache/embeddings_cache.json` using the keyring encryption key.
+3. **Local App Configuration & Cache Storage**:
+   - Stores local user configuration options (pinned sessions, theme preferences, prune options) in `~/.codeoba/config.json`.
+   - Stores fast pre-parsed session transcript caches in `~/.codeoba/cache/parser_cache.json` as plain JSON to match the local filesystem format of the underlying source logs.
 
-4. **Dynamic WASM Premium Module Execution (`premium.wasm` Target Architecture)**:
-   - **Current Implementation Status**: The Tauri client currently has premium features stubbed as inactive (i.e., `is_premium_active()` in `./src-tauri/src/premium/mod.rs` returns `false` by default). The backend currently hosts and serves `premium.jar` (Java JAR payload) which is consumed exclusively by the legacy Kotlin client (`Codeoba-Kotlin`), and `weights.bin` in Firebase Storage.
-   - **Planned WASM Target Architecture**:
-     * **Verification**: Once fully ported, the Tauri client will download the signed WASM module and verify its signature against the public KMS release key using `ed25519-dalek`.
-     * **Execution**: The Rust backend will execute the WASM binary using `wasmtime` or `wasmer` inside the backend process.
-     * **Data Transfer**: Exchange session details and summaries between Rust and WASM by passing lightweight JSON serialization strings.
-
-5. **Keychain Credential Storage**:
-   - Retrieve and save credentials (tokens, billing JWTs, encryption key) via the Rust `keyring` crate.
-   - Automatically bypass keychain prompts in non-production environments to avoid authorization dialogs on unsigned builds (toggled via `-Dcodeoba.no.keyring` equivalent or checking dev build compilation). Use a local user-restricted JSON config file fallback.
-
-6. **Ecosystem Sync & Deep Linking**:
-   - Implement deep-linking callback hooks on the custom protocol `codeoba://callback` using the `tauri-plugin-deeplink` plugin, replacing the JDK HTTP loopback server.
-
-7. **Auto-Updates & Deployment Pipeline**:
+4. **Auto-Updates & Deployment Pipeline**:
    - **Built-in Updater**: Utilizes Tauri's built-in updater (`tauri-plugin-updater`) for release checks and installer execution.
    - **Two-Tier Key Signing**: Uses development key pairs for pushes to `main` (staging builds) and production key pairs for tag pushes (`v*`). Private key variables are `CODEOBA_TAURI_UPDATE_PRIVATE_KEY_DEV` and `_PROD`. Public key variables are `CODEOBA_TAURI_UPDATE_PUBLIC_KEY_DEV` and `_PROD`.
    - **Version Suffixing**: The `./scripts/sync-version.cjs` script configures the target version:
@@ -159,40 +142,40 @@ When modifying the frontend web components, adhere to these styling guidelines:
    - **Staging Pre-Release Pruning**: The `./scripts/prune-dev-releases.cjs` script programmatically deletes previous dev pre-releases and tag references using the GitHub CLI to prevent release list spam. Running it locally with the `--local` flag (e.g., `node scripts/prune-dev-releases.cjs --local`) will scan and delete matching pre-release tags in the local Git repository instead.
    - **Staging Update Resolver**: Staging clients query `dev.codeoba.com/api/update`, which dynamically resolves the latest dev pre-release update manifest using the `CODEOBA_TAURI_LATEST_JSON_URL=DYNAMIC_DEV` backend configuration.
 
-8. **Store Screenshot Generator & Mock Mode**:
+5. **Store Screenshot Generator & Mock Mode**:
    - Intercept log folders parsing and load canned mock datasets (`canned_apple.json` or `canned_microsoft.json`) if `--store microsoft` or `--store apple` flags are passed to the app cli entrypoint.
 
-9. **Claude Code Directory Traversal Limit**:
+6. **Claude Code Directory Traversal Limit**:
    - Limit the folder scanning depth for Claude Code (`~/.claude/projects`) strictly to a maximum depth of `3` (`max_depth = 3`).
    - This prevents the directory scanner from traversing into massive project workspace folders or following cyclic symlinks under user projects, avoiding thread lockup and extreme performance degradation.
    - It also ensures search index correctness by preventing the scan from picking up subagent transcripts (located at depth 4). Because subagent logs share their parent's `sessionId`, parsing them would cause duplicate IDs and overwrite the parent session in the search index with incomplete subagent data.
 
-10. **Tauri System Menu & Scroll Target Focus**:
+7. **Tauri System Menu & Scroll Target Focus**:
    - Custom menu events are captured globally on the `tauri::Builder` instance (via `.on_menu_event`) instead of the app setup hook, ensuring compatibility with macOS's thread loop initialization.
    - Click events are dispatched both globally and window-specifically to guarantee all frontend listener types receive the signal.
    - To prevent WKWebView scroll layout suppression when clicking the native OS menu bar (where the webview window loses focus), the frontend listeners run an explicit `window.focus()`.
    - It then resolves the target container element (e.g., `#detail-pane-scroll-container` or `#sidebar-scroll-container`) within a deferred `setTimeout(..., 50)` block, programmatically focuses it (enabled via `tabindex="-1"` and `outline-none`), and mutates its `scrollTop` property. This focuses the target pane and initiates subsequent native keyboard navigation.
 
-11. **Vite Hot-Reload Startup Rebuild Bypass**:
+8. **Vite Hot-Reload Startup Rebuild Bypass**:
    - In development environments, saving workspace source files causes the Vite server to refresh the webview, mounting the root SolidJS application again and calling `rebuild_index`.
    - The backend tracks whether it has completed its initial index rebuild run via `has_rebuilt`. Any subsequent automatic rebuild requests originating from startup mounts short-circuit immediately, avoiding the 700ms index reload lag.
 
-12. **Unified Tauri Structured Errors**:
-   - Tauri command handlers exposed to SolidJS MUST return `Result<T, AppErrorPayload>` rather than raw, unlocalized `String` errors.
-   - Errors are defined as u32 constants (e.g., 2000-2999 range) in `src-tauri/src/commands.rs` and mapped to user-facing translations under the `errors` section in locale dictionaries (e.g., `src/i18n/locales/en.json`).
-   - Frontend callers catching these errors MUST pass the rejected promise payload through the `getLocalizedAppError(err, t)` helper in `src/utils/errorHelper.ts` to resolve and display translated error messages.
+9. **Unified Tauri Structured Errors**:
+    - Tauri command handlers exposed to SolidJS MUST return `Result<T, AppErrorPayload>` rather than raw, unlocalized `String` errors.
+    - Errors are defined as u32 constants (e.g., 2000-2999 range) in `src-tauri/src/commands.rs` and mapped to user-facing translations under the `errors` section in locale dictionaries (e.g., `src/i18n/locales/en.json`).
+    - Frontend callers catching these errors MUST pass the rejected promise payload through the `getLocalizedAppError(err, t)` helper in `src/utils/errorHelper.ts` to resolve and display translated error messages.
 
-13. **Antigravity Session Status Resolution (v1 state machine)**:
-   - Status is derived from the last line of the session transcript (`transcript_full.jsonl`/`transcript.jsonl` under the session's brain dir) plus one process heartbeat. There are deliberately **no time-based staleness caps** — any cap X mislabels a command that legitimately runs longer than X.
-   - Resolution order (see `ag_status_decision` in `src-tauri/src/models.rs`):
-     1. Antigravity[ IDE] app not running → `"idle"` (heartbeat failsafe for crash/quit; matched by app bundle path, not loose substrings).
-     2. Last line is a `PLANNER_RESPONSE` with an `ask_question`/`ask_permission` tool call → `"waiting"` (a question is showing; the `ASK_QUESTION` line is only appended after the user answers, so both edges are reliably on disk).
-     3. Last line is a bare `PLANNER_RESPONSE` with no unfinished background task → `"idle"` (turn over).
-     4. Anything else → `"active"`.
-   - **Known/accepted v1 gap**: a `run_command` proposal shows `"active"` whether approval is pending or the command is executing — Antigravity only flushes the `RUN_COMMAND` line when the command *finishes*, so the two states are indistinguishable on disk, and auto-approved commands never show a prompt at all. Distinguishing them requires process-table probing and is deferred.
-   - **Task completion tracking**: `RUN_COMMAND`/`GENERIC` lines with status `RUNNING` launch background tasks (scoped per user turn); completion is detected via `SYSTEM_MESSAGE`/`ERROR_MESSAGE`/`GENERIC` lines carrying the task id plus a completion keyword (finished/status: done/completed/terminated/cancelled/expired). `sender=` is **not** a completion marker — every inter-task message envelope carries it.
+10. **Antigravity Session Status Resolution (v1 state machine)**:
+    - Status is derived from the last line of the session transcript (`transcript_full.jsonl`/`transcript.jsonl` under the session's brain dir) plus one process heartbeat. There are deliberately **no time-based staleness caps** — any cap X mislabels a command that legitimately runs longer than X.
+    - Resolution order (see `ag_status_decision` in `src-tauri/src/models.rs`):
+      1. Antigravity[ IDE] app not running → `"idle"` (heartbeat failsafe for crash/quit; matched by app bundle path, not loose substrings).
+      2. Last line is a `PLANNER_RESPONSE` with an `ask_question`/`ask_permission` tool call → `"waiting"` (a question is showing; the `ASK_QUESTION` line is only appended after the user answers, so both edges are reliably on disk).
+      3. Last line is a bare `PLANNER_RESPONSE` with no unfinished background task → `"idle"` (turn over).
+      4. Anything else → `"active"`.
+    - **Known/accepted v1 gap**: a `run_command` proposal shows `"active"` whether approval is pending or the command is executing — Antigravity only flushes the `RUN_COMMAND` line when the command *finishes*, so the two states are indistinguishable on disk, and auto-approved commands never show a prompt at all. Distinguishing them requires process-table probing and is deferred.
+    - **Task completion tracking**: `RUN_COMMAND`/`GENERIC` lines with status `RUNNING` launch background tasks (scoped per user turn); completion is detected via `SYSTEM_MESSAGE`/`ERROR_MESSAGE`/`GENERIC` lines carrying the task id plus a completion keyword (finished/status: done/completed/terminated/cancelled/expired). `sender=` is **not** a completion marker — every inter-task message envelope carries it.
 
-14. **Search History & Dropdown Interaction**:
+11. **Search History & Dropdown Interaction**:
     - Persisted locally via `localStorage` (key: `codeoba-search-history`), capped at the 100 most recent unique queries.
     - Opaque dropdown container styled with `var(--surface)` to prevent background content overlap.
     - Dropping down intercepts `onMouseDown` with `preventDefault()` to prevent focus loss during scroll, row clicks, or entry deletion.

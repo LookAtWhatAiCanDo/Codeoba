@@ -8,12 +8,12 @@ Por favor lea esta política detenidamente. Si no está de acuerdo con los térm
 ---
 
 ## 1. Principio Fundamental: Local-Primero por Defecto
-> Codeoba está diseñado para ser una aplicación local-primero. Todos los transcritos de diálogos, índices de bases de datos, cachés y modelos semánticos se almacenan completamente en su máquina local.
+> Codeoba está diseñado para ser una aplicación local-primero. Todos los transcritos de diálogos, índices de bases de datos y cachés se almacenan completamente en su máquina local.
 
 Los aspectos clave de esta implementación local-privada incluyen:
-- **Cero Registros Remotos:** Los transcritos de conversaciones agregados de directorios de asistentes locales (Claude Code, Antigravity, Cursor, OpenAI Codex, Copilot, etc.) se procesan sin conexión y se analizan directamente dentro de la ejecución del cliente de escritorio en su dispositivo.
+- **Cero Registros Remotos:** Los transcritos de conversaciones agregados de directorios de asistentes locales (Claude Code, Google Antigravity, Cursor, OpenAI Codex, Copilot, etc.) se procesan sin conexión y se analizan directamente dentro de la ejecución del cliente de escritorio en su dispositivo.
 - **Base de Datos SQLite y Caché Local:** Todos los turnos indexados, registros, palabras clave de búsqueda y datos de rendimiento se persisten en un directorio de caché local.
-- **Indexación de Vectores Local:** Para la coincidencia de consultas semánticas, la aplicación descarga un modelo de transformador cuantizado (all-MiniLM-L6-v2) localmente. Todos los cálculos conceptuales y búsquedas de similitud se ejecutan en la CPU de su máquina sin transmisiones de API de terceros.
+- **Caché local preanalizada:** Todas las conversaciones indexadas se analizan localmente en una caché de sesión rápida en el directorio personal del usuario para permitir el inicio inmediato de la aplicación sin llamadas a redes externas.
 
 ## 2. Diagnósticos y Verificaciones de Actualización Automática
 Para mantener la plataforma operativa y segura, Codeoba realiza actualizaciones de diagnóstico básicas:

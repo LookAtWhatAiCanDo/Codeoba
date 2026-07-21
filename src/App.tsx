@@ -132,9 +132,7 @@ function App() {
   const [showFeedback, setShowFeedback] = createSignal(false);
   const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
   const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
-  const [similarityThreshold, setSimilarityThreshold] = createSignal(
-    parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
-  );
+
   const [dateFormat, setDateFormat] = createSignal(
     localStorage.getItem("codeoba-date-format") || "system"
   );
@@ -311,7 +309,6 @@ function App() {
   });
 
   const [searchQuery, setSearchQuery] = createSignal("");
-  const [isSemantic, setIsSemantic] = createSignal(false);
 
   const [selectedSources, setSelectedSources] = createSignal<Set<string>>(
     (() => {
@@ -680,11 +677,6 @@ function App() {
   // Sync sidebar collapsed selection to localStorage
   createEffect(() => {
     localStorage.setItem("codeoba-sidebar-collapsed", String(sidebarCollapsed()));
-  });
-
-  // Sync similarity threshold to localStorage
-  createEffect(() => {
-    localStorage.setItem("codeoba-similarity-threshold", String(similarityThreshold()));
   });
 
   // Clear any pending source prompts if settings dialog is opened
@@ -1698,8 +1690,6 @@ function App() {
   // Handle debounced search changes
   createEffect(() => {
     const query = searchQuery();
-    const sem = isSemantic();
-    const thresh = similarityThreshold();
     activeGroupFilter();
     matchCase();
     wholeWord();
@@ -1711,13 +1701,13 @@ function App() {
     }
 
     const delayDebounce = setTimeout(() => {
-      performSearch(query, sem, thresh);
+      performSearch(query);
     }, 250);
 
     onCleanup(() => clearTimeout(delayDebounce));
   });
 
-  const performSearch = async (query: string, sem: boolean, thresh: number) => {
+  const performSearch = async (query: string) => {
     try {
       setErrorMsg(null);
       const filter = {
@@ -1738,18 +1728,12 @@ function App() {
       const results = await invoke<SearchResult[]>("search_sessions", {
         query,
         filter,
-        useSemantic: sem,
-        similarityThreshold: thresh,
       });
       setSearchResults(results);
     } catch (err: any) {
       logFE("error", `Search error: ${err}`);
       setErrorMsg(getLocalizedAppError(err, t));
     }
-  };
-
-  const handleSemanticToggle = () => {
-    setIsSemantic(!isSemantic());
   };
 
   const handleToggleSource = (sourceId: string) => {
@@ -1785,7 +1769,7 @@ function App() {
 
       const query = searchQuery();
       if (query.trim() !== "") {
-        performSearch(query, isSemantic(), similarityThreshold());
+        performSearch(query);
       }
     } catch (err: any) {
       logFE("error", `Post-rebuild refresh error: ${err}`);
@@ -2064,8 +2048,7 @@ function App() {
           onRegexToggle={() => setUseRegex(!useRegex())}
           multiline={multiline()}
           onMultilineToggle={() => setMultiline(!multiline())}
-          isSemantic={isSemantic()}
-          onSemanticToggle={handleSemanticToggle}
+
           selectedSources={selectedSources()}
           onToggleSource={handleToggleSource}
           archivalFilter={archivalFilter()}
@@ -2216,8 +2199,7 @@ function App() {
               console.error("Failed to load prune_deleted_sessions setting:", err);
             });
         }}
-        similarityThreshold={similarityThreshold()}
-        onSimilarityThresholdChange={setSimilarityThreshold}
+
         dateFormat={dateFormat()}
         onDateFormatChange={handleDateFormatChange}
         timeFormat={timeFormat()}

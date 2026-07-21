@@ -23,8 +23,6 @@
     "title": "Sesiones",
     "searchPlaceholder": "Buscar conversaciones...",
     "forceRebuild": "Forzar reconstrucción del índice",
-    "semanticEnabled": "Búsqueda semántica: activada",
-    "lexicalEnabled": "Búsqueda semántica: desactivada",
     "filters": "Filtros de búsqueda",
     "agents": "Agentes",
     "statusFilter": "Filtro de estado",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Mostrar segundos en formatos de fecha y hora.",
       "numberFormat": "Formato de número",
       "numberFormatDesc": "Seleccione cómo se formatean los números grandes y las métricas.",
-      "secureStorage": "Almacenamiento seguro",
-      "secureStorageDesc": "Utilice el llavero seguro del sistema (Keyring) para las credenciales.",
       "dateFormatISO": "Formato ISO (AAAA-MM-DD)",
       "dateFormatUS": "Formato de EE. UU. (MM/DD/AAAA)",
       "dateFormatEU": "Formato de la UE (DD/MM/AAAA)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Rutas excluidas",
       "excludedPathsDesc": "Exclusiones (separadas por comas o saltos de línea). Los directorios o archivos coincidentes se ignorarán en las listas de conversación.",
       "fontSize": "Tamaño de fuente",
-      "fontSizeDesc": "Ajuste el tamaño de fuente base para la transcripción de la conversación.",
-      "threshold": "Umbral de similitud",
-      "thresholdDesc": "Configure la tolerancia de coincidencia (valores más altos son más estrictos).",
-      "restoreDefault": "Restaurar valores predeterminados"
+      "fontSizeDesc": "Ajuste el tamaño de fuente base para la transcripción de la conversación."
     },
     "agents": {
       "tab": "Agentes",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "No se encontró el adaptador de agente '{sourceId}'.",
     "sessionReadLock": "Error al adquirir el bloqueo de lectura de la sesión.",
-    "onnxNotFound": "La búsqueda semántica no está disponible: no se encontró el modelo ONNX/vocabulario. Verifique el empaquetado de la aplicación o descargue el modelo.",
-    "embedderCreation": "Error al inicializar el incorporador semántico.",
-    "embeddingsGeneration": "Error al generar incorporaciones.",
     "indexRebuildFailed": "Error al reconstruir el índice.",
     "fileTooLarge": "El archivo excede el límite máximo de vista previa de 5 MB. Ábralo en un editor externo.",
     "binaryFilePreview": "Los archivos binarios no son compatibles con la vista previa. Ábralo en un editor externo.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Error al abrir el archivo externamente: {error}",
     "groupLock": "Error al adquirir el bloqueo del grupo.",
     "groupDbError": "Error en la operação de la base de datos del grupo.",
-    "authServerStart": "Error al iniciar el servidor de autenticación local: {error}",
     "generic": "Ocurrió un error inesperado durante la activación."
   },
   "licenses": {

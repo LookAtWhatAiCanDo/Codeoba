@@ -23,8 +23,6 @@
     "title": "Sessies",
     "searchPlaceholder": "Gesprekken zoeken...",
     "forceRebuild": "Index opnieuw opbouwen forceren",
-    "semanticEnabled": "Semantisch zoeken: ingeschakeld",
-    "lexicalEnabled": "Semantisch zoeken: uitgeschakeld",
     "filters": "Zoekfilters",
     "agents": "Agenten",
     "statusFilter": "Statusfilter",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Seconden weergeven in datum- en tijdnotaties.",
       "numberFormat": "Getalformaat",
       "numberFormatDesc": "Selecteer hoe grote getallen en statistieken worden geformatteerd.",
-      "secureStorage": "Beveiligde opslag",
-      "secureStorageDesc": "Gebruik de beveiligde systeemsleutelhanger (Keyring) voor inloggegevens.",
       "dateFormatISO": "ISO-indeling (YYYY-MM-DD)",
       "dateFormatUS": "US-indeling (MM/DD/YYYY)",
       "dateFormatEU": "EU-indeling (DD/MM/YYYY)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Uitgesloten paden",
       "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten.",
       "fontSize": "Lettergrootte",
-      "fontSizeDesc": "Pas de basislettergrootte aan voor de transcriptie van het gesprek.",
-      "threshold": "Gelijkenisdrempel",
-      "thresholdDesc": "Stel de matchtolerantie in (hogere waarden zijn strikter).",
-      "restoreDefault": "Standaardinstellingen herstellen"
+      "fontSizeDesc": "Pas de basislettergrootte aan voor de transcriptie van het gesprek."
     },
     "agents": {
       "tab": "Agenten",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "Agentadapter '{sourceId}' niet gevonden.",
     "sessionReadLock": "Verkrijgen van leesslot voor sessie mislukt.",
-    "onnxNotFound": "Semantisch zoeken is niet beschikbaar: ONNX-model/vocabulaire niet gevonden. Controleer de applicatieverpakking of download het model.",
-    "embedderCreation": "Initialiseren van semantische embedder mislukt.",
-    "embeddingsGeneration": "Genereren van embeddings mislukt.",
     "indexRebuildFailed": "Opnieuw opbouwen van index mislukt.",
     "fileTooLarge": "Bestand overschrijdt de maximale voorbeeldlimiet van 5 MB. Open het in een externe editor.",
     "binaryFilePreview": "Binaire bestanden worden niet ondersteund voor voorbeeld. Open het in een externe editor.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Extern openen van bestand mislukt: {error}",
     "groupLock": "Verkrijgen van groepsslot mislukt.",
     "groupDbError": "Groepsdatabasebewerking mislukt.",
-    "authServerStart": "Starten van lokale authenticatieserver mislukt: {error}",
     "generic": "Er is een onverwachte fout opgetreden."
   },
   "licenses": {

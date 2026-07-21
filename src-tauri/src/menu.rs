@@ -182,7 +182,7 @@ pub fn setup_menu(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
         .unwrap_or_else(|| {
-            let config = crate::keyring::load_fallback_config();
+            let config = crate::config::load_fallback_config();
             config
                 .get("language")
                 .cloned()
@@ -691,7 +691,7 @@ pub async fn update_scroll_menu_labels<R: tauri::Runtime>(
         .position(|r| r == "--lang")
         .and_then(|idx| args.get(idx + 1).cloned())
         .unwrap_or_else(|| {
-            let config = crate::keyring::load_fallback_config();
+            let config = crate::config::load_fallback_config();
             config
                 .get("language")
                 .cloned()

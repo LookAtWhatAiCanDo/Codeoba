@@ -23,8 +23,6 @@
     "title": "工作階段",
     "searchPlaceholder": "搜尋對話...",
     "forceRebuild": "強制重建索引",
-    "semanticEnabled": "語意搜尋：已啟用",
-    "lexicalEnabled": "語意搜尋：已停用",
     "filters": "搜尋篩選器",
     "agents": "代理",
     "statusFilter": "狀態篩選器",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "在日期與時間格式中顯示秒。",
       "numberFormat": "數字格式",
       "numberFormatDesc": "選取大型數字和度量資料的格式。",
-      "secureStorage": "安全儲存區",
-      "secureStorageDesc": "使用系統安全金鑰鏈 (Keyring) 儲存憑證。",
       "dateFormatISO": "ISO 格式 (YYYY-MM-DD)",
       "dateFormatUS": "美國格式 (MM/DD/YYYY)",
       "dateFormatEU": "歐盟格式 (DD/MM/YYYY)",
@@ -225,10 +221,7 @@
       "excludedPaths": "排除路徑",
       "excludedPathsDesc": "排除項（以逗號或換行符分隔）。匹配的目錄或文件將在對話列表中被忽略。",
       "fontSize": "字型大小",
-      "fontSizeDesc": "調整對話記錄的基準字型大小。",
-      "threshold": "相似度閾值",
-      "thresholdDesc": "設定匹配容差（值越高越嚴格）。",
-      "restoreDefault": "恢復預設值"
+      "fontSizeDesc": "調整對話記錄的基準字型大小。"
     },
     "agents": {
       "tab": "代理",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "找不到代理介面卡 '{sourceId}'。",
     "sessionReadLock": "未能獲取會話讀取鎖。",
-    "onnxNotFound": "語意搜尋不可用：找不到 ONNX 模型/詞表。請驗證應用程式封裝或下載模型。",
-    "embedderCreation": "未能初始化語意嵌入器。",
-    "embeddingsGeneration": "未能生成嵌入向量。",
     "indexRebuildFailed": "索引重建失敗。",
     "fileTooLarge": "檔案超過了 5MB 的最大預覽限制。請在外部編輯器中開啟。",
     "binaryFilePreview": "不支援二進位檔案預覽。請在外部編輯器中開啟。",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "在外部開啟檔案失敗: {error}",
     "groupLock": "未能獲取組鎖。",
     "groupDbError": "組資料庫操作失敗。",
-    "authServerStart": "啟動本地認證伺服器失敗: {error}",
     "generic": "發生了意外錯誤。"
   },
   "licenses": {

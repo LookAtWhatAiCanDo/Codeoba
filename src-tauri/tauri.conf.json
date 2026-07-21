@@ -34,10 +34,7 @@
   },
   "bundle": {
     "active": true,
-    "resources": [
-      "resources/onnx/model.onnx",
-      "resources/onnx/vocab.txt"
-    ],
+    "resources": [],
     "targets": "all",
     "publisher": "WhatAiCanDo",
     "createUpdaterArtifacts": true,

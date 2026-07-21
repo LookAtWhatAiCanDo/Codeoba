@@ -1,4 +1,4 @@
-use crate::keyring;
+use crate::config;
 use crate::models::Session;
 use crate::parsers::get_sources_list;
 use crate::search::{SearchFilter, SearchIndexState, SearchResult};
@@ -40,9 +40,6 @@ pub const ERR_ADAPTER_NOT_FOUND: u32 = 2001;
 pub const ERR_SESSION_READ_LOCK: u32 = 2002;
 
 // Search & Index Errors (2100 - 2199)
-pub const ERR_ONNX_NOT_FOUND: u32 = 2101;
-pub const ERR_EMBEDDER_CREATION: u32 = 2102;
-pub const ERR_EMBEDDINGS_GENERATION: u32 = 2103;
 pub const ERR_INDEX_REBUILD_FAILED: u32 = 2104;
 
 // File Preview & Permissions (2200 - 2299)
@@ -57,9 +54,6 @@ pub const ERR_EXTERNAL_OPEN_FAILED: u32 = 2207;
 // Group Management Errors (2300 - 2399)
 pub const ERR_GROUP_LOCK: u32 = 2301;
 pub const ERR_GROUP_DB_ERROR: u32 = 2302;
-
-// Auth Server Errors (2400 - 2499)
-pub const ERR_AUTH_SERVER_START: u32 = 2401;
 
 // Generic Fallback (2999)
 pub const ERR_GENERIC: u32 = 2999;
@@ -495,27 +489,12 @@ pub fn delete_source_data(source_id: String) -> Result<bool, AppErrorPayload> {
 
 #[tauri::command]
 pub fn get_credential(key: String) -> Option<String> {
-    keyring::get_secret(&key)
+    config::get_secret(&key)
 }
 
 #[tauri::command]
 pub fn save_credential(key: String, value: Option<String>) {
-    keyring::put_secret(&key, value.as_deref());
-}
-
-#[tauri::command]
-pub fn is_keyring_disabled() -> bool {
-    keyring::is_keyring_disabled()
-}
-
-#[tauri::command]
-pub fn set_keyring_disabled(disabled: bool) {
-    keyring::set_keyring_disabled(disabled);
-}
-
-#[tauri::command]
-pub fn is_premium_active() -> bool {
-    crate::premium::is_premium_active()
+    config::put_secret(&key, value.as_deref());
 }
 
 #[tauri::command]
@@ -523,66 +502,15 @@ pub async fn search_sessions<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     query: String,
     filter: SearchFilter,
-    use_semantic: bool,
-    similarity_threshold: Option<f64>,
 ) -> Result<Vec<SearchResult>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
 
-    // First semantic search lazily builds the index, which needs the write lock — do it before
-    // taking any read guard below.
-    if use_semantic
-        && !state
-            .is_semantic_initialized
-            .load(std::sync::atomic::Ordering::SeqCst)
-    {
-        state
-            .is_semantic_initialized
-            .store(true, std::sync::atomic::Ordering::SeqCst);
-        state
-            .rebuild(true, Some(app_handle.clone()))
-            .await
-            .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))?;
-    }
-
-    let mut results = if use_semantic {
-        let (model_path, vocab_path) = crate::search::resolve_model_paths(Some(&app_handle));
-
-        if !model_path.exists() || !vocab_path.exists() {
-            return Err(AppErrorPayload::new(ERR_ONNX_NOT_FOUND));
-        }
-        let onnx_embedder = state
-            .get_or_load_embedder(&model_path, &vocab_path)
-            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDER_CREATION, e))?;
-        // Embed the query before taking the read guards so the locks are held only for the scan.
-        let query_vector = onnx_embedder
-            .get_embeddings(&query)
-            .map_err(|e| AppErrorPayload::with_msg(ERR_EMBEDDINGS_GENERATION, e.to_string()))?;
-        let threshold = similarity_threshold.unwrap_or(0.35) as f32;
-
-        // Search over the live index by reference — no full-corpus clone. Only matched sessions
-        // are cloned inside semantic_search.
-        let sessions_guard = state
-            .sessions
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        let embeddings_guard = state
-            .embeddings
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        crate::search::semantic::semantic_search(
-            sessions_guard.values(),
-            &embeddings_guard,
-            &query_vector,
-            threshold,
-            &filter,
-        )
-    } else {
-        let sessions_guard = state
-            .sessions
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter)
-    };
+    let sessions_guard = state
+        .sessions
+        .read()
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+    let mut results =
+        crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter);
 
     for res in &mut results {
         res.session = res.session.to_lightweight();
@@ -606,18 +534,9 @@ pub async fn rebuild_index<R: tauri::Runtime>(
     if bypass_cache == Some(true) {
         crate::log_info!("[IPC] rebuild_index: Bypassing and clearing cache!");
         crate::parsers::cache::get_cache_manager().clear_all_caches();
-
-        // Also clear embedding cache
-        let cache_mgr = crate::search::cache::EmbeddingCacheManager::new("all-MiniLM-L6-v2");
-        cache_mgr.delete_cache_file();
-
-        let mut embs_guard = state.embeddings.write();
-        if let Ok(ref mut guard) = embs_guard {
-            guard.clear();
-        }
     }
     state
-        .rebuild(true, Some(app_handle.clone()))
+        .rebuild(Some(app_handle.clone()))
         .await
         .map_err(|e| AppErrorPayload::with_msg(ERR_INDEX_REBUILD_FAILED, e))
 }
@@ -944,19 +863,6 @@ pub fn open_file_externally<R: tauri::Runtime>(
 }
 
 #[tauri::command]
-pub fn start_local_auth_server<R: tauri::Runtime>(
-    app_handle: tauri::AppHandle<R>,
-) -> Result<u16, AppErrorPayload> {
-    crate::premium::loopback::start_server(app_handle)
-        .map_err(|e| AppErrorPayload::with_msg(ERR_AUTH_SERVER_START, e))
-}
-
-#[tauri::command]
-pub fn stop_local_auth_server() {
-    crate::premium::loopback::stop_server();
-}
-
-#[tauri::command]
 pub fn get_source_decisions() -> HashMap<String, String> {
     crate::parsers::source_decisions::load_source_decisions()
 }
@@ -1109,22 +1015,22 @@ pub fn update_group_details(
 
 #[tauri::command]
 pub fn get_pinned_sessions() -> Vec<String> {
-    crate::keyring::get_pinned_sessions()
+    crate::config::get_pinned_sessions()
 }
 
 #[tauri::command]
 pub fn save_pinned_sessions(ids: Vec<String>) {
-    crate::keyring::save_pinned_sessions(&ids);
+    crate::config::save_pinned_sessions(&ids);
 }
 
 #[tauri::command]
 pub fn save_theme_settings(appearance: String, dark_theme: String, light_theme: String) {
-    crate::keyring::save_theme_settings(&appearance, &dark_theme, &light_theme);
+    crate::config::save_theme_settings(&appearance, &dark_theme, &light_theme);
 }
 
 #[tauri::command]
 pub fn save_custom_theme_bg(mode: String, h: i32, s: i32, l: i32) {
-    crate::keyring::save_custom_theme_bg(&mode, h, s, l);
+    crate::config::save_custom_theme_bg(&mode, h, s, l);
 }
 
 #[tauri::command]
@@ -1163,9 +1069,9 @@ pub fn save_language_setting<R: tauri::Runtime>(
     app_handle: tauri::AppHandle<R>,
     lang: String,
 ) -> Result<(), String> {
-    let mut config = crate::keyring::load_fallback_config();
+    let mut config = crate::config::load_fallback_config();
     config.insert("language".to_string(), lang.clone());
-    crate::keyring::save_fallback_config(&config);
+    crate::config::save_fallback_config(&config);
 
     // Rebuild the menu bar in real-time
     if let Err(e) = crate::menu::setup_menu_internal(&app_handle, &lang) {
@@ -1184,12 +1090,12 @@ pub fn get_language_override() -> Option<String> {
 
 #[tauri::command]
 pub fn get_index_subagents() -> bool {
-    crate::keyring::get_index_subagents_setting()
+    crate::config::get_index_subagents_setting()
 }
 
 #[tauri::command]
 pub fn save_index_subagents(enabled: bool) {
-    crate::keyring::save_index_subagents_setting(enabled);
+    crate::config::save_index_subagents_setting(enabled);
 }
 
 fn validate_image_path(path: &Path) -> Result<(), String> {
