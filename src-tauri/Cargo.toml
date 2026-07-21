@@ -59,7 +59,7 @@ percent-encoding = "2.3"
 lazy_static = "1.5"
 base64 = "0.22"
 rayon = "1.12.0"
-souvlaki = "0.7.3"
+souvlaki = "0.8.3"
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 
