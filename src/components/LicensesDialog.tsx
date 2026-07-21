@@ -50,18 +50,6 @@ const AUDITED_COMPONENTS: AuditedComponent[] = [
       "JetBrains Mono is a highly readable monospace font tailored specifically for code blocks, terminal representations, and search query displays in Codeoba.",
     licenseText: `Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)\n\n${silOflLicense}`,
   },
-  // Models
-  {
-    id: "all-minilm-l6-v2",
-    name: "all-MiniLM-L6-v2 Model (ONNX)",
-    category: "models",
-    author: "SentenceTransformers / Xenova",
-    url: "https://huggingface.co/Xenova/all-MiniLM-L6-v2",
-    licenseName: "Apache License 2.0",
-    description:
-      "A lightweight transformer model mapping sentences and search transcripts to a 384-dimensional dense vector space to support extremely fast offline semantic search.",
-    licenseText: `Copyright (c) SentenceTransformers & Xenova\n\n${apacheLicense}`,
-  },
   // Frameworks
   {
     id: "tauri",
@@ -96,28 +84,7 @@ const AUDITED_COMPONENTS: AuditedComponent[] = [
       "A utility-first CSS framework for rapid UI styling, powering the responsive design tokens and custom theme properties of Codeoba.",
     licenseText: `Copyright (c) Tailwind Labs, Inc.\n\n${mitLicense}`,
   },
-  {
-    id: "tract",
-    name: "Tract ONNX Engine",
-    category: "frameworks",
-    author: "Sonos",
-    url: "https://github.com/sonos/tract",
-    licenseName: "Apache 2.0 / MIT",
-    description:
-      "Tract is a high-performance neural network inference engine, executing Codeoba's local vector evaluations directly in Rust.",
-    licenseText: `Copyright (c) Sonos, Inc.\n\n${apacheLicense}`,
-  },
-  {
-    id: "wasmtime",
-    name: "Wasmtime Runtime",
-    category: "frameworks",
-    author: "Bytecode Alliance",
-    url: "https://github.com/bytecodealliance/wasmtime",
-    licenseName: "Apache 2.0",
-    description:
-      "Wasmtime is a standalone, WebAssembly-first runtime used by Codeoba's premium module validation layer to run sandboxed guest WASM functions.",
-    licenseText: `Copyright (c) Bytecode Alliance\n\n${apacheLicense}`,
-  },
+
   // Libraries
   {
     id: "rusqlite",

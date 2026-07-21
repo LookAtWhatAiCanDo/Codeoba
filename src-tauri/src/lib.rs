@@ -1,12 +1,12 @@
 pub mod commands;
+pub mod config;
 pub mod fs_util;
 pub mod groups;
-pub mod keyring;
 pub mod logging;
 pub mod menu;
 pub mod models;
 pub mod parsers;
-pub mod premium;
+
 pub mod search;
 pub mod tokenizer;
 pub mod watcher;
@@ -158,20 +158,17 @@ pub fn run() {
         .manage(MediaControlsState(std::sync::Mutex::new(None)))
         .setup(|app| {
             // Clean up legacy model files from the home directory to free up disk space
-            let model_dir = crate::search::get_home_model_dir();
+            let home = crate::parsers::get_home_dir();
+            let model_dir = home.join(".codeoba/models");
             if model_dir.exists() {
                 let _ = std::fs::remove_dir_all(&model_dir);
             }
-
-            // Ensure encryption key is created synchronously on startup to prevent background collisions
-            let _ = crate::keyring::get_or_create_cache_key();
 
             let handle = app.handle().clone();
 
             // Initialize media controls integration
             #[cfg(target_os = "windows")]
             let hwnd = {
-                use tauri::window::WindowExt;
                 let main_window = app.get_webview_window("main");
                 main_window.and_then(|w| w.hwnd().ok().map(|h| h.0 as *mut std::ffi::c_void))
             };
@@ -226,9 +223,6 @@ pub fn run() {
                 }
             }
 
-            // Startup diagnostics
-            let (_dm, _dv) = crate::search::resolve_model_paths(Some(&handle));
-
             let search_state = app.state::<search::SearchIndexState>();
             if let Ok(mut guard) = search_state.app_handle.write() {
                 *guard = Some(handle.clone());
@@ -241,7 +235,7 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 // Read configurations
-                let config = crate::keyring::load_fallback_config();
+                let config = crate::config::load_fallback_config();
                 let appearance = config
                     .get("appearance")
                     .map(|s| s.as_str())
@@ -374,9 +368,6 @@ pub fn run() {
             commands::delete_source_data,
             commands::get_credential,
             commands::save_credential,
-            commands::is_keyring_disabled,
-            commands::set_keyring_disabled,
-            commands::is_premium_active,
             commands::search_sessions,
             commands::rebuild_index,
             commands::log_from_frontend,
@@ -394,8 +385,6 @@ pub fn run() {
             commands::delete_permission,
             commands::clear_all_permissions,
             commands::open_file_externally,
-            commands::start_local_auth_server,
-            commands::stop_local_auth_server,
             commands::get_groups,
             commands::add_group,
             commands::delete_group,

@@ -23,8 +23,6 @@
     "title": "Sitzungen",
     "searchPlaceholder": "Unterhaltungen durchsuchen...",
     "forceRebuild": "Index neu erstellen erzwingen",
-    "semanticEnabled": "Semantische Suche: Aktiviert",
-    "lexicalEnabled": "Semantische Suche: Deaktiviert",
     "filters": "Suchfilter",
     "agents": "Agenten",
     "statusFilter": "Statusfilter",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Sekunden in Datums- und Zeitformaten anzeigen.",
       "numberFormat": "Zahlenformat",
       "numberFormatDesc": "Wählen Sie, wie große Zahlen und Metriken formatiert werden sollen.",
-      "secureStorage": "Sicherer Speicher",
-      "secureStorageDesc": "Verwenden Sie den sicheren Systemspeicher (Schlüsselbund) für Anmeldeinformationen.",
       "dateFormatISO": "ISO-Format (JJJJ-MM-TT)",
       "dateFormatUS": "US-Format (MM/TT/JJJJ)",
       "dateFormatEU": "EU-Format (TT/MM/JJJJ)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Ausgeschlossene Pfade",
       "excludedPathsDesc": "Ausschlüsse (durch Komma oder Zeilenumbruch getrennt). Übereinstimmende Verzeichnisse oder Dateien werden in Konversationslisten ignoriert.",
       "fontSize": "Schriftgröße",
-      "fontSizeDesc": "Passen Sie die Standardschriftgröße für das Konversationsprotokoll an.",
-      "threshold": "Ähnlichkeitsschwelle",
-      "thresholdDesc": "Konfigurieren Sie die Übereinstimmungstoleranz (höhere Werte sind strenger).",
-      "restoreDefault": "Standard wiederherstellen"
+      "fontSizeDesc": "Passen Sie die Standardschriftgröße für das Konversationsprotokoll an."
     },
     "agents": {
       "tab": "Agenten",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "Agentenadapter '{sourceId}' nicht gefunden.",
     "sessionReadLock": "Fehler beim Erwerb der Sitzungslesesperre.",
-    "onnxNotFound": "Semantische Suche ist nicht verfügbar: ONNX-Modell/Vokabular nicht gefunden. Bitte überprüfen Sie die Anwendung Verpackung oder laden Sie das Modell herunter.",
-    "embedderCreation": "Fehler beim Initialisieren des semantischen Embedders.",
-    "embeddingsGeneration": "Fehler beim Generieren von Embeddings.",
     "indexRebuildFailed": "Index-Rebuild fehlgeschlagen.",
     "fileTooLarge": "Datei überschreitet das maximale Vorschaulimit von 5 MB. Bitte öffnen Sie sie in einem externen Editor.",
     "binaryFilePreview": "Binäre Dateien werden für die Vorschau nicht unterstützt. Bitte öffnen Sie sie in einem externen Editor.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Fehler beim externen Öffnen der Datei: {error}",
     "groupLock": "Fehler beim Erwerb der Gruppensperre.",
     "groupDbError": "Gruppen-Datenbankoperation fehlgeschlagen.",
-    "authServerStart": "Fehler beim Starten des lokalen Authentifizierungsservers: {error}",
     "generic": "Ein unerwarteter Fehler ist aufgetreten."
   },
   "licenses": {

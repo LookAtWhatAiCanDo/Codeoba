@@ -23,8 +23,6 @@
     "title": "Sessions",
     "searchPlaceholder": "Rechercher des conversations...",
     "forceRebuild": "Forcer la reconstruction de l'index",
-    "semanticEnabled": "Recherche sémantique : activée",
-    "lexicalEnabled": "Recherche sémantique : désactivée",
     "filters": "Filtres de recherche",
     "agents": "Agents",
     "statusFilter": "Filtre d'état",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Afficher les secondes dans les formats de date et d'heure.",
       "numberFormat": "Format des nombres",
       "numberFormatDesc": "Sélectionnez comment les grands nombres et les métriques sont formatés.",
-      "secureStorage": "Stockage sécurisé",
-      "secureStorageDesc": "Utilisez le trousseau sécurisé du système (Keyring) pour les identifiants.",
       "dateFormatISO": "Format ISO (AAAA-MM-JJ)",
       "dateFormatUS": "Format US (MM/JJ/AAAA)",
       "dateFormatEU": "Format UE (JJ/MM/AAAA)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Chemins exclus",
       "excludedPathsDesc": "Exclusions (séparées par des virgules ou des sauts de ligne). Les répertoires ou fichiers correspondants seront ignorés dans les listes de conversation.",
       "fontSize": "Taille de la police",
-      "fontSizeDesc": "Ajustez la taille de police de base pour la transcription de la conversation.",
-      "threshold": "Seuil de similitude",
-      "thresholdDesc": "Configurez la tolérance de correspondance (plus la valeur est élevée, plus la correspondance est stricte).",
-      "restoreDefault": "Restaurer par défaut"
+      "fontSizeDesc": "Ajustez la taille de police de base pour la transcription de la conversation."
     },
     "agents": {
       "tab": "Agents",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "Adaptateur d'agent '{sourceId}' introuvable.",
     "sessionReadLock": "Échec de l'acquisition du verrou de lecture de session.",
-    "onnxNotFound": "La recherche sémantique est indisponible : modèle ONNX/vocabulaire introuvable. Veuillez vérifier l'empaquetage de l'application ou télécharger le modèle.",
-    "embedderCreation": "Échec de l'initialisation de l'embeddeur sémantique.",
-    "embeddingsGeneration": "Échec de la génération des embeddings.",
     "indexRebuildFailed": "Échec de la reconstruction de l'index.",
     "fileTooLarge": "Le fichier dépasse la limite maximale d'aperçu de 5 Mo. Veuillez l'ouvrir dans un éditeur externe.",
     "binaryFilePreview": "Les fichiers binaires ne sont pas pris en charge pour l'aperçu. Veuillez l'ouvrir dans un éditeur externe.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Échec de l'ouverture externe du fichier : {error}",
     "groupLock": "Échec de l'acquisition du verrou de groupe.",
     "groupDbError": "Échec de l'opération de la base de données du groupe.",
-    "authServerStart": "Échec du démarrage du serveur d'authentification local : {error}",
     "generic": "Une erreur inattendue est survenue."
   },
   "licenses": {

@@ -5,31 +5,24 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 && args.get(1).map(|s| s.as_str()) == Some("search") {
         if args.len() < 3 {
-            println!("Usage: cargo run -- search \"<query>\" [--semantic]");
+            println!("Usage: cargo run -- search \"<query>\"");
             return;
         }
         let query = match args.get(2) {
             Some(q) => q,
             None => return,
         };
-        let use_semantic = args.iter().any(|arg| arg == "--semantic");
 
         println!("==================================================");
         println!("           Codeoba CLI Search Tool                ");
         println!("==================================================");
         println!("Query: \"{}\"", query);
-        println!(
-            "Mode:  {}",
-            if use_semantic { "Semantic" } else { "Lexical" }
-        );
+        println!("Mode:  Lexical");
         println!("Indexing sessions... please wait...");
-
-        // Initialize cache key synchronously to prevent background race conditions
-        let _ = codeoba_lib::keyring::get_or_create_cache_key();
 
         tauri::async_runtime::block_on(async {
             let state = codeoba_lib::search::SearchIndexState::new();
-            if let Err(e) = state.rebuild(use_semantic, None::<tauri::AppHandle>).await {
+            if let Err(e) = state.rebuild(None::<tauri::AppHandle>).await {
                 println!("Error building index: {}", e);
                 return;
             }
@@ -43,43 +36,7 @@ fn main() {
             let filter = codeoba_lib::search::SearchFilter::default();
 
             let search_start = std::time::Instant::now();
-            let results = if use_semantic {
-                let (model_path, vocab_path) =
-                    codeoba_lib::search::resolve_model_paths(None::<&tauri::AppHandle>);
-
-                if !model_path.exists() || !vocab_path.exists() {
-                    println!("Error: Semantic search is unavailable because the ONNX model or vocab.txt was not found.");
-                    return;
-                }
-                let onnx_embedder = match codeoba_lib::search::semantic::OnnxSemanticEmbedder::new(
-                    &model_path,
-                    &vocab_path,
-                ) {
-                    Ok(e) => e,
-                    Err(err) => {
-                        println!("Error loading model: {}", err);
-                        return;
-                    }
-                };
-                let query_vector = match onnx_embedder.get_embeddings(query) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        println!("Error calculating query embeddings: {}", err);
-                        return;
-                    }
-                };
-
-                let embeddings_guard = state.embeddings.read().unwrap_or_else(|e| e.into_inner());
-                codeoba_lib::search::semantic::semantic_search(
-                    &sessions,
-                    &embeddings_guard,
-                    &query_vector,
-                    0.35,
-                    &filter,
-                )
-            } else {
-                codeoba_lib::search::lexical::lexical_search(&sessions, query, &filter)
-            };
+            let results = codeoba_lib::search::lexical::lexical_search(&sessions, query, &filter);
             println!("[main] Search execution time: {:?}", search_start.elapsed());
 
             let print_start = std::time::Instant::now();

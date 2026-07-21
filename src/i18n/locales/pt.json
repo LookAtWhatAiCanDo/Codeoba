@@ -23,8 +23,6 @@
     "title": "Sessões",
     "searchPlaceholder": "Pesquisar conversas...",
     "forceRebuild": "Forçar reconstrução do índice",
-    "semanticEnabled": "Busca semântica: ativada",
-    "lexicalEnabled": "Busca semântica: desativada",
     "filters": "Filtros de busca",
     "agents": "Agentes",
     "statusFilter": "Filtro de status",
@@ -177,8 +175,6 @@
       "showSecondsDesc": "Exibir segundos nos formatos de data e hora.",
       "numberFormat": "Formato do número",
       "numberFormatDesc": "Selecione como números grandes e métricas são formatados.",
-      "secureStorage": "Armazenamento seguro",
-      "secureStorageDesc": "Use o chaveiro seguro do sistema (Keyring) para credenciais.",
       "dateFormatISO": "Formato ISO (AAAA-MM-DD)",
       "dateFormatUS": "Formato dos EUA (MM/DD/AAAA)",
       "dateFormatEU": "Formato da UE (DD/MM/AAAA)",
@@ -225,10 +221,7 @@
       "excludedPaths": "Caminhos excluídos",
       "excludedPathsDesc": "Exclusões (separadas por vírgulas ou quebras de linha). Os diretórios ou arquivos correspondentes serão ignorados nas listas de conversas.",
       "fontSize": "Tamanho da fonte",
-      "fontSizeDesc": "Ajuste o tamanho de fonte base para a transcrição da conversa.",
-      "threshold": "Limiar de similaridade",
-      "thresholdDesc": "Configure a tolerância de correspondência (quanto maior, mais rigoroso).",
-      "restoreDefault": "Restaurar padrão"
+      "fontSizeDesc": "Ajuste o tamanho de fonte base para a transcrição da conversa."
     },
     "agents": {
       "tab": "Agentes",
@@ -408,9 +401,6 @@
   "errors": {
     "adapterNotFound": "Adaptador de agente '{sourceId}' não encontrado.",
     "sessionReadLock": "Falha ao adquirir o bloqueio de leitura da sessão.",
-    "onnxNotFound": "A busca semântica não está disponível: modelo ONNX/vocabulário não encontrado. Verifique a embalagem do aplicativo ou faça o download do modelo.",
-    "embedderCreation": "Falha ao inicializar o incorporador semântico.",
-    "embeddingsGeneration": "Falha ao gerar as incorporações.",
     "indexRebuildFailed": "Falha ao reconstruir o índice.",
     "fileTooLarge": "O arquivo excede o limite máximo de visualização de 5 MB. Abra em um editor externo.",
     "binaryFilePreview": "Arquivos binários não são suportados para visualização. Abra em um editor externo.",
@@ -421,7 +411,6 @@
     "externalOpenFailed": "Falha ao abrir o arquivo externamente: {error}",
     "groupLock": "Falha ao adquirir o bloqueio do grupo.",
     "groupDbError": "Falha na operação do banco de dados do grupo.",
-    "authServerStart": "Falha ao iniciar o servidor de autenticação local: {error}",
     "generic": "Ocorreu um erro inesperado."
   },
   "licenses": {
