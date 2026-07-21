@@ -240,7 +240,7 @@ jobs:
             echo "Successfully resolved macOS Signing Identity: $IDENTITY"
             echo "MACOS_SIGNING_IDENTITY=$IDENTITY" >> $GITHUB_ENV
           fi
-      - name: Fetch and Patch dependencies
+      - name: Fetch dependencies
         run: |
           cd src-tauri
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
@@ -249,8 +249,6 @@ jobs:
           elif [[ "${{ matrix.target }}" != "" ]]; then
             cargo fetch --target ${{ matrix.target }}
           fi
-          cd ..
-          node scripts/patch-tract-linalg.cjs
 
       - name: Build Tauri Application
         env:
