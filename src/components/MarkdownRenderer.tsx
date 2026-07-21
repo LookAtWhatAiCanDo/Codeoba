@@ -823,7 +823,6 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         onClick={handleLinkClick}
         class="markdown-body text-text-primary break-words font-sans relative"
         // Safe: htmlContent() is pre-sanitized by DOMPurify in htmlContent memo
-        // eslint-disable-next-line solid/no-innerhtml
         innerHTML={htmlContent()}
       />
       {isTooLarge() && !isExpanded() && (
