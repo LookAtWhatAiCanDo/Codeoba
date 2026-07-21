@@ -280,11 +280,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                             s_guard.remove(id);
                         }
                     }
-                    if let Ok(mut e_guard) = idx_state.embeddings.write() {
-                        for id in &removed_session_ids {
-                            e_guard.remove(id);
-                        }
-                    }
+
                     for id in &removed_session_ids {
                         let _ = app_handle.emit("session-deleted", id);
                     }
@@ -321,11 +317,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                             s_guard.remove(id);
                         }
                     }
-                    if let Ok(mut e_guard) = idx_state.embeddings.write() {
-                        for id in &removed_session_ids {
-                            e_guard.remove(id);
-                        }
-                    }
+
                     for id in &removed_session_ids {
                         let _ = app_handle.emit("session-deleted", id);
                     }
@@ -503,11 +495,7 @@ fn evict_excluded_sessions<R: tauri::Runtime>(
             guard.remove(id);
         }
     }
-    if let Ok(mut guard) = idx_state.embeddings.write() {
-        for id in &removed {
-            guard.remove(id);
-        }
-    }
+
     for id in &removed {
         crate::log_debug!("Evicting subagent session from index: {}", id);
         let _ = app_handle.emit("session-deleted", id);
@@ -662,11 +650,7 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                         guard.remove(id);
                                     }
                                 }
-                                if let Ok(mut guard) = idx_state.embeddings.write() {
-                                    for id in &removed_session_ids {
-                                        guard.remove(id);
-                                    }
-                                }
+
                                 for id in &removed_session_ids {
                                     let _ = app_handle_clone.emit("session-deleted", id);
                                 }
@@ -729,9 +713,6 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                     }
                                 };
                                 if let Some(session_id) = removed_session_id {
-                                    if let Ok(mut guard) = idx_state.embeddings.write() {
-                                        guard.remove(&session_id);
-                                    }
                                     let _ = app_handle_clone.emit("session-deleted", &session_id);
                                 }
                             } else {

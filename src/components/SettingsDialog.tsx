@@ -33,8 +33,6 @@ interface SettingsDialogProps {
   onAppearanceChange: (val: string) => void;
   sources: SourceMetadata[];
   onRefreshSources: () => void;
-  similarityThreshold?: number;
-  onSimilarityThresholdChange?: (val: number) => void;
   onUpdateAvailable?: (update: any) => void;
   dateFormat: string;
   onDateFormatChange: (val: string) => void;
@@ -239,20 +237,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     props.onCustomThemeChange(rolled);
   };
 
-  const [localThreshold, setLocalThreshold] = createSignal(
-    parseFloat(localStorage.getItem("codeoba-similarity-threshold") || "0.35")
-  );
-  const similarityThreshold = () =>
-    props.similarityThreshold !== undefined ? props.similarityThreshold : localThreshold();
-  const setSimilarityThreshold = (val: number) => {
-    if (props.onSimilarityThresholdChange) {
-      props.onSimilarityThresholdChange(val);
-    } else {
-      setLocalThreshold(val);
-      localStorage.setItem("codeoba-similarity-threshold", String(val));
-    }
-  };
-
   onMount(async () => {
     // 1. Check updater status
     try {
@@ -287,16 +271,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       }
     } catch (errDec) {
       logFE("error", `Failed to load source decisions from backend: ${errDec}`);
-    }
-
-    // 5. Load keyring and premium status
-    try {
-      const disabled = await invoke<boolean>("is_keyring_disabled");
-      setKeyringDisabled(disabled);
-      const premium = await invoke<boolean>("is_premium_active");
-      setPremiumActive(premium);
-    } catch (err) {
-      logFE("error", `Failed to query keyring or premium status: ${err}`);
     }
 
     // 6. Load prune deleted sessions setting
@@ -335,20 +309,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [parserMode, setParserMode] = createSignal(
     localStorage.getItem("codeoba-parser-mode") || "standard"
   );
-  const [keyringDisabled, setKeyringDisabled] = createSignal(false);
-  const [premiumActive, setPremiumActive] = createSignal(false);
   const [pruneDeleted, setPruneDeleted] = createSignal(false);
-  const handleToggleKeyring = async (checked: boolean) => {
-    // Prevent toggling if premium is inactive
-    if (!premiumActive()) return;
-    try {
-      await invoke("set_keyring_disabled", { disabled: !checked });
-      setKeyringDisabled(!checked);
-      logFE("info", `Keyring usage set to: ${checked}`);
-    } catch (err) {
-      logFE("error", `Failed to set keyring disabled state: ${err}`);
-    }
-  };
 
   // Path Permissions
   const [permissions, setPermissions] = createSignal<
@@ -426,14 +387,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setParserMode(mode);
     localStorage.setItem("codeoba-parser-mode", mode);
     logFE("info", `Preferred parser mode set to: ${mode}`);
-  };
-
-  const handleThresholdChange = (val: number) => {
-    setSimilarityThreshold(val);
-  };
-
-  const handleRestoreThresholdDefault = () => {
-    handleThresholdChange(0.35);
   };
 
   const handleCheckUpdates = async () => {
@@ -782,31 +735,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   </div>
                 </div>
 
-                {/* Secure storage switch */}
-                <Show when={premiumActive()}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between transition-all duration-200">
-                    <div class="flex-1 pr-4">
-                      <div class="flex items-center gap-2">
-                        <h4 class="text-xs font-bold text-text-primary">
-                          {t("settings.general.secureStorage")}
-                        </h4>
-                      </div>
-                      <p class="text-[0.625rem] text-text-secondary/70 mt-1">
-                        {t("settings.general.secureStorageDesc")}
-                      </p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={!keyringDisabled()}
-                        onChange={(e) => handleToggleKeyring(e.currentTarget.checked)}
-                        class="sr-only peer"
-                      />
-                      <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                    </label>
-                  </div>
-                </Show>
-
                 {/* Log Parsing Mode */}
                 <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
                   <div>
@@ -837,42 +765,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       }`}
                     >
                       {t("settings.general.modeCompact")}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Similarity Threshold */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-4">
-                  <div class="space-y-1">
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.threshold")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.thresholdDesc")}
-                    </p>
-                  </div>
-
-                  <div class="flex items-center gap-4">
-                    <input
-                      type="range"
-                      min="0.0"
-                      max="1.0"
-                      step="0.05"
-                      value={similarityThreshold()}
-                      onInput={(e) => handleThresholdChange(parseFloat(e.currentTarget.value))}
-                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
-                      {similarityThreshold().toFixed(2)}
-                    </div>
-                  </div>
-
-                  <div class="flex justify-end pt-1 border-t border-border/20">
-                    <button
-                      onClick={handleRestoreThresholdDefault}
-                      class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
-                    >
-                      {t("settings.general.restoreDefault")}
                     </button>
                   </div>
                 </div>

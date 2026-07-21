@@ -23,8 +23,6 @@
     "title": "Sessions",
     "searchPlaceholder": "Search conversations...",
     "forceRebuild": "Force Rebuild Index",
-    "semanticEnabled": "Semantic Search: Enabled",
-    "lexicalEnabled": "Semantic Search: Disabled",
     "filters": "Search Filters",
     "agents": "Agents",
     "statusFilter": "Status Filter",
@@ -181,8 +179,6 @@
       "showSecondsDesc": "Display seconds in date and time formats.",
       "numberFormat": "Number Format",
       "numberFormatDesc": "Select how large numbers and metrics are formatted.",
-      "secureStorage": "Secure Storage",
-      "secureStorageDesc": "Use system secure keychain (Keyring) for credentials.",
       "dateFormatISO": "ISO Format (YYYY-MM-DD)",
       "dateFormatUS": "US Format (MM/DD/YYYY)",
       "dateFormatEU": "EU Format (DD/MM/YYYY)",
@@ -229,10 +225,7 @@
       "excludedPaths": "Excluded Paths",
       "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists.",
       "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript.",
-      "threshold": "Similarity Threshold",
-      "thresholdDesc": "Configure matching tolerance (higher is stricter).",
-      "restoreDefault": "Restore to Default"
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
     },
     "agents": {
       "tab": "Agents",
@@ -414,9 +407,6 @@
   "errors": {
     "adapterNotFound": "Agent adapter '{sourceId}' not found.",
     "sessionReadLock": "Failed to acquire session read lock.",
-    "onnxNotFound": "Semantic search is unavailable: ONNX model/vocab not found. Please verify the application packaging or download the model.",
-    "embedderCreation": "Failed to initialize semantic embedder.",
-    "embeddingsGeneration": "Failed to generate embeddings.",
     "indexRebuildFailed": "Index rebuild failed.",
     "fileTooLarge": "File exceeds maximum preview limit of 5MB. Please open in an external editor.",
     "binaryFilePreview": "Binary files are not supported for preview. Please open in an external editor.",
@@ -427,7 +417,6 @@
     "externalOpenFailed": "Failed to open file externally: {error}",
     "groupLock": "Failed to acquire group lock.",
     "groupDbError": "Group database operation failed.",
-    "authServerStart": "Failed to start local auth server: {error}",
     "generic": "An unexpected error occurred."
   },
   "licenses": {

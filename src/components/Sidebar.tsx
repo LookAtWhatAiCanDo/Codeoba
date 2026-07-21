@@ -5,7 +5,6 @@ import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import { getStatusBadge, ActiveSpinner } from "../utils/sessionStatus";
 import {
   Search,
-  Sparkles,
   Filter,
   Pin,
   Archive,
@@ -214,8 +213,6 @@ interface SidebarProps {
   onRegexToggle: () => void;
   multiline: boolean;
   onMultilineToggle: () => void;
-  isSemantic: boolean;
-  onSemanticToggle: () => void;
   selectedSources: Set<string>;
   onToggleSource: (sourceId: string) => void;
   archivalFilter: ArchivalFilter;
@@ -1453,19 +1450,6 @@ export const Sidebar = (props: SidebarProps) => {
               }`}
             >
               \n
-            </button>
-
-            {/* Semantic Search */}
-            <button
-              onClick={() => props.onSemanticToggle()}
-              title={props.isSemantic ? t("sidebar.semanticEnabled") : t("sidebar.lexicalEnabled")}
-              class={`w-5 h-5 rounded flex items-center justify-center border transition-all cursor-pointer ${
-                props.isSemantic
-                  ? "bg-accent/15 border-accent text-accent shadow-xs shadow-accent/20"
-                  : "bg-transparent border-transparent text-text-secondary/50 hover:text-text-primary hover:bg-surface/80"
-              }`}
-            >
-              <Sparkles class="w-3.5 h-3.5" />
             </button>
 
             {/* Filter (Filters Panel) */}

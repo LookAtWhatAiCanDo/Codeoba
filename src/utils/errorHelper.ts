@@ -30,9 +30,6 @@ export const ERR_ADAPTER_NOT_FOUND = 2001;
 export const ERR_SESSION_READ_LOCK = 2002;
 
 // Search & Index Errors (2100 - 2199)
-export const ERR_ONNX_NOT_FOUND = 2101;
-export const ERR_EMBEDDER_CREATION = 2102;
-export const ERR_EMBEDDINGS_GENERATION = 2103;
 export const ERR_INDEX_REBUILD_FAILED = 2104;
 
 // File Preview & Permissions (2200 - 2299)
@@ -47,9 +44,6 @@ export const ERR_EXTERNAL_OPEN_FAILED = 2207;
 // Group Management Errors (2300 - 2399)
 export const ERR_GROUP_LOCK = 2301;
 export const ERR_GROUP_DB_ERROR = 2302;
-
-// Auth Server Errors (2400 - 2499)
-export const ERR_AUTH_SERVER_START = 2401;
 
 // Generic Fallbacks
 export const ERR_GENERIC = 2999;
@@ -142,13 +136,6 @@ export const getLocalizedAppError = (
     case ERR_SESSION_READ_LOCK:
       return t("errors.sessionReadLock", params);
 
-    // Search & Index Errors (2100 - 2199)
-    case ERR_ONNX_NOT_FOUND:
-      return t("errors.onnxNotFound", params);
-    case ERR_EMBEDDER_CREATION:
-      return t("errors.embedderCreation", params);
-    case ERR_EMBEDDINGS_GENERATION:
-      return t("errors.embeddingsGeneration", params);
     case ERR_INDEX_REBUILD_FAILED:
       return t("errors.indexRebuildFailed", params);
 
@@ -173,10 +160,6 @@ export const getLocalizedAppError = (
       return t("errors.groupLock", params);
     case ERR_GROUP_DB_ERROR:
       return t("errors.groupDbError", params);
-
-    // Auth Server Errors (2400 - 2499)
-    case ERR_AUTH_SERVER_START:
-      return t("errors.authServerStart", params);
 
     case ERR_GENERIC:
     default:

@@ -92,9 +92,6 @@ You can run search operations directly in your shell without spawning the deskto
 ```bash
 # Perform a standard lexical (keyword-based) search
 cargo run --manifest-path src-tauri/Cargo.toml -- search "your search query"
-
-# Perform an ONNX-powered semantic vector search
-cargo run --manifest-path src-tauri/Cargo.toml -- search "your search query" --semantic
 ```
 
 ### 2. Reset Window Geometry & Layout
@@ -198,7 +195,7 @@ npm run tauri build
 ## 🏗️ Project Architecture Map
 
 *   **`src/` (Frontend)**: Styled with Tailwind CSS, SolidJS components manage search layouts, settings panes, markdown renderings, and UI themes.
-*   **`src-tauri/` (Backend)**: Rust crate that manages directory watchers (`notify`), SQLite cache databases (`rusqlite`), credential stores (`keyring`), ONNX semantic vector inference (`ort`), and signed WASM plugin loading (`wasmtime`).
+*   **`src-tauri/` (Backend)**: Rust crate that manages directory watchers (`notify`), SQLite workspace parsers (`rusqlite`), and local app configuration (`config.rs`).
 
 ---
 

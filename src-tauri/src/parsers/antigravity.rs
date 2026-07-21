@@ -1140,7 +1140,7 @@ impl SourceAdapter for AntigravitySource {
         // in the sidebar while Antigravity's own UI showed one. The set below is
         // built from the parents' INVOKE_SUBAGENT steps, which is the only place
         // the relationship is actually recorded.
-        if !cfg!(test) && !crate::keyring::get_index_subagents_setting() {
+        if !cfg!(test) && !crate::config::get_index_subagents_setting() {
             let is_subagent = {
                 let ids = self
                     .antigravity_subagent_ids
@@ -1909,7 +1909,7 @@ impl SourceAdapter for AntigravitySource {
     }
 
     fn excluded_session_ids(&self) -> HashSet<String> {
-        if cfg!(test) || crate::keyring::get_index_subagents_setting() {
+        if cfg!(test) || crate::config::get_index_subagents_setting() {
             return HashSet::new();
         }
         self.antigravity_subagent_ids

@@ -17,7 +17,7 @@ updates:
       semver-minor-days: 14
       semver-patch-days: 7
 
-  # Keep Rust dependencies up-to-date in the src-tauri directory (tauri, rusqlite, keyring, etc.)
+  # Keep Rust dependencies up-to-date in the src-tauri directory (tauri, rusqlite, notify, etc.)
   - package-ecosystem: "cargo"
     directory: "/src-tauri"
     schedule:
