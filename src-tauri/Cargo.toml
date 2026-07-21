@@ -68,9 +68,6 @@ opt-level = 3
 [profile.test.package."*"]
 opt-level = 3
 
-[patch.crates-io]
-esaxx-rs = { git = "https://github.com/mozilla-ai/esaxx-rs-dyn-msvc", branch = "main" }
-
 # Panic-surface guardrails. `string_slice` is DENIED — byte-indexing a `&str` panics on
 # a UTF-8 boundary (this caused a UI freeze); every existing site has been migrated to
 # strip_prefix/strip_suffix/.get()/char-based, so any new one is a hard error in CI.
