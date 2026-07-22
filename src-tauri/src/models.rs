@@ -583,6 +583,33 @@ fn ag_status_decision(info: &AgTranscriptInfo, agent_alive: bool) -> &'static st
     "active"
 }
 
+/// How recent an on-disk event must be for it to count as evidence that an agent
+/// is still mid-turn.
+const RECENT_EVENT_WINDOW_MS: i64 = 300_000;
+
+/// Slack allowed for a timestamp that sits slightly in the future, which happens
+/// routinely with filesystem/clock skew.
+const CLOCK_SKEW_TOLERANCE_MS: i64 = 5_000;
+
+/// Whether `ts_ms` is recent enough to treat as live activity.
+///
+/// Deliberately directional. The previous check was `(now - ts).abs() < WINDOW`,
+/// which also accepted timestamps arbitrarily far in the *future* — so a single
+/// skewed clock, a wrong timezone, or a unit mismatch pinned a session as "recent"
+/// and, combined with the caller's fallbacks, reported it "active" indefinitely.
+///
+/// `ts_ms == 0` means the field was absent or unparseable (~40% of Claude
+/// transcripts end on a `mode` / `last-prompt` / `custom-title` line that carries
+/// no timestamp). That is an absence of evidence, not evidence of activity, so it
+/// is never recent.
+fn is_recent_event(now_ms: i64, ts_ms: i64) -> bool {
+    if ts_ms <= 0 {
+        return false;
+    }
+    let age_ms = now_ms - ts_ms;
+    (-CLOCK_SKEW_TOLERANCE_MS..RECENT_EVENT_WINDOW_MS).contains(&age_ms)
+}
+
 pub fn resolve_session_status(
     source_id: &str,
     session_id: &str,
@@ -605,16 +632,19 @@ pub fn resolve_session_status(
 
     if source_id == "claude" {
         if let Some((line_type, ts, _)) = get_last_event_info_claude(file_path) {
-            let age_ms = now - ts;
-            let is_recent = age_ms.abs() < 300_000;
-            if is_recent {
+            if is_recent_event(now, ts) {
+                // Only a recent `user` line is positive evidence that the agent is
+                // working. Every other line type — `assistant` (turn finished) and
+                // metadata lines such as `mode` / `last-prompt` / `custom-title` /
+                // `system` / `summary` — says nothing about agent activity, so it
+                // resolves to idle.
+                //
+                // This previously defaulted to "active" for any unrecognized type,
+                // which reported long-finished sessions as running.
                 if line_type == "user" {
                     return Some("active".to_string());
-                } else if line_type == "assistant" {
-                    return Some("idle".to_string());
-                } else {
-                    return Some("active".to_string());
                 }
+                return Some("idle".to_string());
             }
         }
 
@@ -644,14 +674,15 @@ pub fn resolve_session_status(
     // Fallback for other sources (Cursor/Codex/Copilot)
     if let Some(last_turn) = turns.last() {
         let mut ts = last_turn.timestamp;
-        if ts < 20_000_000_000 {
+        // Seconds-vs-milliseconds normalization: anything below the cutoff is a
+        // second-granularity epoch and needs scaling. Zero stays zero, and
+        // `is_recent_event` rejects it rather than treating it as live.
+        if ts > 0 && ts < 20_000_000_000 {
             ts *= 1000;
         }
         let is_fin = !last_turn.assistant_message.trim().is_empty();
-        let age_ms = now - ts;
-        let is_recent = age_ms.abs() < 300_000;
 
-        if is_recent {
+        if is_recent_event(now, ts) {
             if !is_fin {
                 return Some("active".to_string());
             } else {
@@ -1183,5 +1214,107 @@ mod antigravity_status_tests {
         assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
 
         std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+}
+
+#[cfg(test)]
+mod session_status_recency_tests {
+    use super::{
+        is_recent_event, resolve_session_status, Turn, CLOCK_SKEW_TOLERANCE_MS,
+        RECENT_EVENT_WINDOW_MS,
+    };
+
+    const NOW: i64 = 1_750_000_000_000;
+
+    #[test]
+    fn recent_past_event_counts_as_recent() {
+        assert!(is_recent_event(NOW, NOW - 1_000));
+        assert!(is_recent_event(NOW, NOW - (RECENT_EVENT_WINDOW_MS - 1)));
+    }
+
+    #[test]
+    fn old_event_is_not_recent() {
+        assert!(!is_recent_event(NOW, NOW - RECENT_EVENT_WINDOW_MS));
+        assert!(!is_recent_event(NOW, NOW - 86_400_000));
+    }
+
+    /// The `.abs()` bug: a timestamp far in the future used to read as "recent",
+    /// which pinned skewed sessions as active forever.
+    #[test]
+    fn far_future_event_is_not_recent() {
+        assert!(!is_recent_event(NOW, NOW + 86_400_000));
+        assert!(!is_recent_event(NOW, NOW + RECENT_EVENT_WINDOW_MS));
+    }
+
+    /// Small forward skew is still tolerated, since clocks legitimately disagree.
+    #[test]
+    fn small_forward_skew_is_tolerated() {
+        assert!(is_recent_event(NOW, NOW + CLOCK_SKEW_TOLERANCE_MS - 1));
+    }
+
+    /// A missing/unparseable timestamp is absence of evidence, not activity.
+    #[test]
+    fn missing_timestamp_is_not_recent() {
+        assert!(!is_recent_event(NOW, 0));
+        assert!(!is_recent_event(NOW, -1));
+    }
+
+    fn turn(assistant: &str, ts: i64) -> Turn {
+        Turn {
+            turn_id: "t0".to_string(),
+            user_message: "hello".to_string(),
+            assistant_message: assistant.to_string(),
+            timestamp: ts,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+            images: None,
+        }
+    }
+
+    fn now_ms() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0)
+    }
+
+    /// A finished turn from long ago must never report "active".
+    #[test]
+    fn stale_finished_session_is_idle() {
+        let turns = vec![turn("all done", now_ms() - 86_400_000)];
+        let status = resolve_session_status("codex", "s1", "/nonexistent", &turns, &None);
+        assert_eq!(status.as_deref(), Some("idle"));
+    }
+
+    /// An unfinished turn dated in the future must not be reported "active".
+    #[test]
+    fn future_dated_unfinished_turn_is_idle() {
+        let turns = vec![turn("", now_ms() + 86_400_000)];
+        let status = resolve_session_status("codex", "s1", "/nonexistent", &turns, &None);
+        assert_eq!(status.as_deref(), Some("idle"));
+    }
+
+    /// A genuinely in-flight turn (recent, no assistant reply yet) still reports active.
+    #[test]
+    fn recent_unfinished_turn_is_active() {
+        let turns = vec![turn("", now_ms() - 1_000)];
+        let status = resolve_session_status("codex", "s1", "/nonexistent", &turns, &None);
+        assert_eq!(status.as_deref(), Some("active"));
+    }
+
+    /// Second-granularity timestamps are still normalized to milliseconds.
+    #[test]
+    fn seconds_granularity_timestamp_is_normalized() {
+        let turns = vec![turn("", (now_ms() - 1_000) / 1000)];
+        let status = resolve_session_status("codex", "s1", "/nonexistent", &turns, &None);
+        assert_eq!(status.as_deref(), Some("active"));
+    }
+
+    /// A session with no turns is idle, not active.
+    #[test]
+    fn empty_session_is_idle() {
+        let status = resolve_session_status("codex", "s1", "/nonexistent", &[], &None);
+        assert_eq!(status.as_deref(), Some("idle"));
     }
 }
