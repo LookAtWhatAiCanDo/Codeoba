@@ -292,7 +292,19 @@
       "rateDesc": "Настройте скорость произнесения текста.",
       "pitch": "Высота голоса",
       "pitchDesc": "Настройте высоту тона произносимого голоса.",
-      "reset": "Сбросить по умолчанию"
+      "reset": "Сбросить по умолчанию",
+      "test": "Тест голоса",
+      "testSaying": "Шла Саша по шоссе и сосала сушку.",
+      "pronunciations": "Пользовательское произношение",
+      "pronunciationsDesc": "Настройте правила замены произношения для путей папок, сокращений кода или технических терминов.",
+      "pronunciationsOriginal": "Слово / Совпадение",
+      "pronunciationsReplacement": "Произношение речи",
+      "pronunciationsPlaceholderWord": "напр. src",
+      "pronunciationsPlaceholderReplacement": "напр. source",
+      "pronunciationsAdd": "Добавить правило",
+      "pronunciationsReset": "Сбросить правила",
+      "testDesc": "Настройте и протестируйте синтезированный голос с вашим собственным текстом.",
+      "testReset": "Сбросить текст"
     }
   },
   "updater": {

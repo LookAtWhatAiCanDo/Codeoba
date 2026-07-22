@@ -292,7 +292,19 @@
       "rateDesc": "调整文本朗读的速度。",
       "pitch": "朗读音调",
       "pitchDesc": "调整说话声音的音调。",
-      "reset": "恢复默认值"
+      "reset": "恢复默认值",
+      "test": "测试声音",
+      "testSaying": "吃葡萄不吐葡萄皮，不吃葡萄倒吐葡萄皮。",
+      "pronunciations": "自定义发音",
+      "pronunciationsDesc": "为目录快捷方式、代码缩写或技术术语配置自定义拼写替换规则。",
+      "pronunciationsOriginal": "单词 / 匹配",
+      "pronunciationsReplacement": "口头读音",
+      "pronunciationsPlaceholderWord": "例如 src",
+      "pronunciationsPlaceholderReplacement": "例如 source",
+      "pronunciationsAdd": "添加规则",
+      "pronunciationsReset": "重置规则",
+      "testDesc": "使用您自己的文本自定义并测试合成语音。",
+      "testReset": "重置文本"
     }
   },
   "updater": {

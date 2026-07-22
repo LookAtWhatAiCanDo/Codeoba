@@ -292,7 +292,19 @@
       "rateDesc": "Ajustez la vitesse de lecture du texte.",
       "pitch": "Hauteur de la voix",
       "pitchDesc": "Ajustez la hauteur de ton de la voix parlée.",
-      "reset": "Réinitialiser"
+      "reset": "Réinitialiser",
+      "test": "Tester la voix",
+      "testSaying": "Un chasseur sachant chasser doit savoir chasser sans son chien.",
+      "pronunciations": "Prononciations personnalisées",
+      "pronunciationsDesc": "Configurez des règles d'orthographe personnalisées pour les raccourcis de répertoire, les abréviations de code ou les termes techniques.",
+      "pronunciationsOriginal": "Mot / Correspondance",
+      "pronunciationsReplacement": "Prononciation parlée",
+      "pronunciationsPlaceholderWord": "ex. src",
+      "pronunciationsPlaceholderReplacement": "ex. source",
+      "pronunciationsAdd": "Ajouter une règle",
+      "pronunciationsReset": "Réinitialiser les règles",
+      "testDesc": "Personnalisez et testez la voix synthétisée avec votre propre texte.",
+      "testReset": "Réinitialiser le texte"
     }
   },
   "updater": {

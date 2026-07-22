@@ -292,7 +292,19 @@
       "rateDesc": "調整文字朗讀的速度。",
       "pitch": "朗讀音調",
       "pitchDesc": "調整說話聲音的音調。",
-      "reset": "重設為預設值"
+      "reset": "重設為預設值",
+      "test": "測試聲音",
+      "testSaying": "吃葡萄不吐葡萄皮，不吃葡萄倒吐葡萄皮。",
+      "pronunciations": "自訂發音",
+      "pronunciationsDesc": "為目錄快捷方式、程式碼縮寫或技術術語設定自訂拼寫替換規則。",
+      "pronunciationsOriginal": "單字 / 匹配",
+      "pronunciationsReplacement": "口頭發音",
+      "pronunciationsPlaceholderWord": "例如 src",
+      "pronunciationsPlaceholderReplacement": "例如 source",
+      "pronunciationsAdd": "新增規則",
+      "pronunciationsReset": "重設規則",
+      "testDesc": "使用您自己的文字自訂並測試合成語音。",
+      "testReset": "重置文字"
     }
   },
   "updater": {

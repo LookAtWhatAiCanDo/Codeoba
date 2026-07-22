@@ -292,7 +292,19 @@
       "rateDesc": "Ajuste a velocidade em que o texto é falado.",
       "pitch": "Tom da fala",
       "pitchDesc": "Ajuste o tom da voz falada.",
-      "reset": "Redefinir para padrões"
+      "reset": "Redefinir para padrões",
+      "test": "Testar Voz",
+      "testSaying": "O rato roeu a roupa do rei de Roma.",
+      "pronunciations": "Pronúncias Personalizadas",
+      "pronunciationsDesc": "Configure substituições ortográficas para atalhos de diretório, abreviações de código ou termos técnicos.",
+      "pronunciationsOriginal": "Palavra / Correspondência",
+      "pronunciationsReplacement": "Pronúncia Falada",
+      "pronunciationsPlaceholderWord": "ex: src",
+      "pronunciationsPlaceholderReplacement": "ex: source",
+      "pronunciationsAdd": "Adicionar Regra",
+      "pronunciationsReset": "Restaurar Regras",
+      "testDesc": "Personalize e teste a voz sintetizada com o seu próprio texto.",
+      "testReset": "Restaurar texto"
     }
   },
   "updater": {

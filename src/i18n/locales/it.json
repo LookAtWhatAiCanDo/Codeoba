@@ -292,7 +292,19 @@
       "rateDesc": "Regola la velocità con cui viene letto il testo.",
       "pitch": "Tonalità della voce",
       "pitchDesc": "Regola la tonalità della voce parlata.",
-      "reset": "Ripristina predefiniti"
+      "reset": "Ripristina predefiniti",
+      "test": "Testa Voce",
+      "testSaying": "Trentotto trentini entrarono a Trento tutti e trentotto trotterellando.",
+      "pronunciations": "Pronunce Personalizzate",
+      "pronunciationsDesc": "Configura sostituzioni di pronuncia per scorciatoie di directory, abbreviazioni di codice o termini tecnici.",
+      "pronunciationsOriginal": "Parola / Corrispondenza",
+      "pronunciationsReplacement": "Pronuncia Parlata",
+      "pronunciationsPlaceholderWord": "es. src",
+      "pronunciationsPlaceholderReplacement": "es. source",
+      "pronunciationsAdd": "Aggiungi Regola",
+      "pronunciationsReset": "Ripristina Regole",
+      "testDesc": "Personalizza e testa la voce sintetizzata con il tuo testo.",
+      "testReset": "Ripristina testo"
     }
   },
   "updater": {

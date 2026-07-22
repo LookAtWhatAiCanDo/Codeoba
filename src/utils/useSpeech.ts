@@ -101,6 +101,42 @@ export function extractSpeechItems(session: Session): SpeechItem[] {
   return items;
 }
 
+export const DEFAULT_PRONUNCIATIONS: Record<string, string> = {
+  newline: "new line",
+  newlines: "new lines",
+  codeoba: "code o-buh",
+  src: "source",
+  tauri: "tor ee",
+  tts: "tee tee ess",
+  rs: "are ess",
+  js: "jay ess",
+  ts: "tee ess",
+  tsx: "tee ess ex",
+};
+
+export function applyPronunciations(text: string): string {
+  let rules = DEFAULT_PRONUNCIATIONS;
+  try {
+    const saved = localStorage.getItem("codeoba-tts-pronunciations");
+    if (saved) {
+      rules = { ...DEFAULT_PRONUNCIATIONS, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    // fallback to default dictionary
+  }
+
+  let result = text;
+  const sortedKeys = Object.keys(rules).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
+    const replacement = rules[key];
+    if (!key || typeof replacement !== "string") continue;
+    const escapedKey = key.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const regex = new RegExp(`\\b${escapedKey}\\b`, "gi");
+    result = result.replace(regex, replacement);
+  }
+  return result;
+}
+
 const [sentences, setSentences] = createSignal<SpeechItem[]>([]);
 const [currentSentenceIndex, setCurrentSentenceIndex] = createSignal(-1);
 const [isPlaying, setIsPlaying] = createSignal(false);
@@ -183,6 +219,10 @@ export function useSpeech() {
     setCurrentSentenceIndex(-1);
     lastSpokenSessionId = null;
 
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "none";
+    }
+
     invoke("update_playback_metadata", {
       title: "",
       artist: "",
@@ -222,6 +262,27 @@ export function useSpeech() {
     setIsPlaying(true);
     setIsPaused(false);
 
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentItem.text,
+        artist: currentItem.sessionTitle || "Untitled Session",
+        album: "Codeoba Read Aloud",
+      });
+      navigator.mediaSession.playbackState = "playing";
+      navigator.mediaSession.setActionHandler("play", () => {
+        play();
+      });
+      navigator.mediaSession.setActionHandler("pause", () => {
+        play();
+      });
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        next();
+      });
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        prev();
+      });
+    }
+
     invoke("update_playback_metadata", {
       title: currentItem.text,
       artist: currentItem.sessionTitle || "Untitled Session",
@@ -237,7 +298,8 @@ export function useSpeech() {
         activeUtterance = null;
       }
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      const processedText = applyPronunciations(textToSpeak);
+      const utterance = new SpeechSynthesisUtterance(processedText);
 
       // Load custom voice settings from localStorage if available
       const savedVoiceName = localStorage.getItem("codeoba-tts-voice");
@@ -360,6 +422,9 @@ export function useSpeech() {
     if (isPlaying()) {
       if (isPaused()) {
         setIsPaused(false);
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "playing";
+        }
         if (window.speechSynthesis) window.speechSynthesis.resume();
         const list = sentences();
         const idx = currentSentenceIndex();
@@ -373,6 +438,9 @@ export function useSpeech() {
         });
       } else {
         setIsPaused(true);
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "paused";
+        }
         if (window.speechSynthesis) window.speechSynthesis.pause();
         const list = sentences();
         const idx = currentSentenceIndex();
@@ -648,6 +716,64 @@ export function useSpeech() {
     setCurrentSentenceIndex(-1);
   };
 
+  const speakDirectText = async (rawText: string): Promise<void> => {
+    stop();
+    const text = applyPronunciations(rawText);
+
+    if (!window.speechSynthesis) {
+      throw new Error("Web Speech API not supported");
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const savedVoiceName = localStorage.getItem("codeoba-tts-voice");
+    let voiceAssigned = false;
+    if (savedVoiceName) {
+      const voices = window.speechSynthesis.getVoices();
+      const matchedVoice = voices.find((v) => v.name === savedVoiceName);
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+        utterance.lang = matchedVoice.lang;
+        voiceAssigned = true;
+      }
+    }
+
+    if (!voiceAssigned) {
+      if (currentLanguage === "zh-TW") {
+        utterance.lang = "zh-TW";
+      } else if (currentLanguage === "zh") {
+        utterance.lang = "zh-CN";
+      } else {
+        utterance.lang = currentLanguage;
+      }
+    }
+
+    const savedRate = localStorage.getItem("codeoba-tts-rate");
+    if (savedRate) {
+      utterance.rate = parseFloat(savedRate);
+    }
+    const savedPitch = localStorage.getItem("codeoba-tts-pitch");
+    if (savedPitch) {
+      utterance.pitch = parseFloat(savedPitch);
+    }
+
+    setIsPlaying(true);
+    setIsPaused(false);
+
+    return new Promise<void>((resolve, reject) => {
+      utterance.onend = () => {
+        stop();
+        resolve();
+      };
+      utterance.onerror = (e) => {
+        stop();
+        reject(e);
+      };
+
+      activeUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
+    });
+  };
+
   const setLanguage = (lang: string) => {
     currentLanguage = lang;
   };
@@ -681,6 +807,7 @@ export function useSpeech() {
     playFromHere,
     goToIndex,
     clearReadAloudHistory,
+    speakDirectText,
     removeSentence,
     setLanguage,
   };

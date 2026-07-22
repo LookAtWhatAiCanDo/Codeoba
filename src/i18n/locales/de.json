@@ -292,7 +292,19 @@
       "rateDesc": "Passen Sie die Geschwindigkeit an, mit der Text gesprochen wird.",
       "pitch": "Stimmhöhe",
       "pitchDesc": "Passen Sie die Tonhöhe der gesprochenen Stimme an.",
-      "reset": "Auf Standardwerte zurücksetzen"
+      "reset": "Auf Standardwerte zurücksetzen",
+      "test": "Stimme testen",
+      "testSaying": "Fischers Fritze fischt frische Fische, frische Fische fischt Fischers Fritze.",
+      "pronunciations": "Benutzerdefinierte Aussprache",
+      "pronunciationsDesc": "Konfigurieren Sie benutzerdefinierte Schreibweisen für Verzeichnisverknüpfungen, Code-Abkürzungen oder Fachbegriffe.",
+      "pronunciationsOriginal": "Wort / Treffer",
+      "pronunciationsReplacement": "Gesprochene Aussprache",
+      "pronunciationsPlaceholderWord": "z. B. src",
+      "pronunciationsPlaceholderReplacement": "z. B. source",
+      "pronunciationsAdd": "Regel hinzufügen",
+      "pronunciationsReset": "Regeln zurücksetzen",
+      "testDesc": "Passen Sie die synthetisierte Stimme an und testen Sie sie mit Ihrem eigenen Text.",
+      "testReset": "Text zurücksetzen"
     }
   },
   "updater": {

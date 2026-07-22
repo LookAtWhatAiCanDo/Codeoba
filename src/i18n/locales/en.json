@@ -297,7 +297,19 @@
       "rateDesc": "Adjust the speed at which text is spoken.",
       "pitch": "Speech Pitch",
       "pitchDesc": "Adjust the tone pitch of the voice.",
-      "reset": "Reset to Defaults"
+      "reset": "Reset to Defaults",
+      "test": "Test Voice",
+      "testDesc": "Customize and test the synthesized voice with your own text.",
+      "testSaying": "How much wood would a woodchuck chuck if a woodchuck could chuck wood?",
+      "testReset": "Reset Text",
+      "pronunciations": "Custom Pronunciations",
+      "pronunciationsDesc": "Configure custom spelling overrides for directory shortcuts, code abbreviations, or technical terms.",
+      "pronunciationsOriginal": "Word / Match",
+      "pronunciationsReplacement": "Spoken Pronunciation",
+      "pronunciationsPlaceholderWord": "e.g., src",
+      "pronunciationsPlaceholderReplacement": "e.g., source",
+      "pronunciationsAdd": "Add Override",
+      "pronunciationsReset": "Reset Mappings"
     }
   },
   "updater": {

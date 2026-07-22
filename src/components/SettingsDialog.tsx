@@ -13,6 +13,9 @@ import {
   Globe,
   SlidersHorizontal,
   Volume2,
+  Edit2,
+  Play,
+  Check,
 } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -23,6 +26,7 @@ import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
 import { getLocalizedAppError } from "../utils/errorHelper";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { SourceMetadata } from "../types";
+import { useSpeech, DEFAULT_PRONUNCIATIONS } from "../utils/useSpeech";
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -125,6 +129,97 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [selectedVoiceName, setSelectedVoiceName] = createSignal("");
   const [speechRate, setSpeechRate] = createSignal(1.0);
   const [speechPitch, setSpeechPitch] = createSignal(1.0);
+  const [testText, setTestText] = createSignal("");
+
+  const [rules, setRules] = createSignal<Record<string, string>>({});
+  const [newWord, setNewWord] = createSignal("");
+  const [newReplacement, setNewReplacement] = createSignal("");
+  const [editingWord, setEditingWord] = createSignal<string | null>(null);
+  const [editWordVal, setEditWordVal] = createSignal("");
+  const [editRepVal, setEditRepVal] = createSignal("");
+
+  const handleSaveEdit = (oldWord: string) => {
+    const word = editWordVal().trim().toLowerCase();
+    const rep = editRepVal().trim();
+    if (!word || !rep) return;
+    const updated = { ...rules() };
+    if (word !== oldWord) {
+      delete updated[oldWord];
+    }
+    updated[word] = rep;
+    setRules(updated);
+    localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(updated));
+    setEditingWord(null);
+  };
+
+  const loadRules = () => {
+    try {
+      const saved = localStorage.getItem("codeoba-tts-pronunciations");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge missing defaults
+        let changed = false;
+        for (const key of Object.keys(DEFAULT_PRONUNCIATIONS)) {
+          if (!(key in parsed)) {
+            parsed[key] = DEFAULT_PRONUNCIATIONS[key];
+            changed = true;
+          }
+        }
+        if (changed) {
+          localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(parsed));
+        }
+        setRules(parsed);
+      } else {
+        setRules(DEFAULT_PRONUNCIATIONS);
+      }
+    } catch (e) {
+      setRules(DEFAULT_PRONUNCIATIONS);
+    }
+  };
+
+  const handleAddRule = (e: Event) => {
+    e.preventDefault();
+    const word = newWord().trim().toLowerCase();
+    const rep = newReplacement().trim();
+    if (!word || !rep) return;
+    const updated = { ...rules(), [word]: rep };
+    setRules(updated);
+    localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(updated));
+    setNewWord("");
+    setNewReplacement("");
+  };
+
+  const handleDeleteRule = (word: string) => {
+    const updated = { ...rules() };
+    delete updated[word];
+    setRules(updated);
+    localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(updated));
+  };
+
+  const handleResetRules = () => {
+    setRules(DEFAULT_PRONUNCIATIONS);
+    localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(DEFAULT_PRONUNCIATIONS));
+  };
+
+  const speech = useSpeech();
+
+  const handleTestVoice = async () => {
+    const saying = testText().trim() || t("settings.readAloud.testSaying");
+    try {
+      await speech.speakDirectText(saying);
+    } catch (err) {
+      console.error("[TTS] Test voice failed:", err);
+      alert(
+        "Failed to play system voice. Please check your system speech synthesizer configuration."
+      );
+    }
+  };
+
+  const handleResetTestText = () => {
+    const defaultText = t("settings.readAloud.testSaying");
+    setTestText(defaultText);
+    localStorage.removeItem("codeoba-tts-test-text");
+  };
 
   const loadVoices = () => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -154,6 +249,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     localStorage.removeItem("codeoba-tts-voice");
     localStorage.removeItem("codeoba-tts-rate");
     localStorage.removeItem("codeoba-tts-pitch");
+    handleResetRules();
   };
 
   // Custom Theme HSL Adjusters
@@ -296,6 +392,10 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       localStorage.getItem("codeoba-tts-pitch")
         ? parseFloat(localStorage.getItem("codeoba-tts-pitch")!)
         : 1.0
+    );
+    loadRules();
+    setTestText(
+      localStorage.getItem("codeoba-tts-test-text") || t("settings.readAloud.testSaying")
     );
   });
 
@@ -979,6 +1079,198 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                     <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
                       {speechPitch().toFixed(1)}
                     </div>
+                  </div>
+                </div>
+
+                {/* Voice Testing controls */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3.5 px-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="text-xs font-bold text-text-primary">
+                        {t("settings.readAloud.test")}
+                      </h4>
+                      <p class="text-[0.625rem] text-text-secondary/70">
+                        {t("settings.readAloud.testDesc")}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2 w-full min-w-0">
+                    <input
+                      type="text"
+                      maxLength={300}
+                      value={testText()}
+                      onInput={(e) => {
+                        setTestText(e.currentTarget.value);
+                        localStorage.setItem("codeoba-tts-test-text", e.currentTarget.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleTestVoice();
+                        }
+                      }}
+                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
+                      placeholder={t("settings.readAloud.testSaying")}
+                    />
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleResetTestText}
+                        class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-secondary hover:text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                        title={t("settings.readAloud.testReset")}
+                      >
+                        {t("settings.readAloud.testReset")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTestVoice}
+                        class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-accent-text rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
+                      >
+                        {t("settings.readAloud.test")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pronunciation rules dictionary editor */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3.5 px-4 space-y-3">
+                  <div>
+                    <h4 class="text-xs font-bold text-text-primary">
+                      {t("settings.readAloud.pronunciations")}
+                    </h4>
+                    <p class="text-[0.625rem] text-text-secondary/70">
+                      {t("settings.readAloud.pronunciationsDesc")}
+                    </p>
+                  </div>
+
+                  <div class="max-h-40 overflow-y-auto border border-border/50 rounded-xl bg-background/50 divide-y divide-border/30">
+                    <For each={Object.keys(rules()).sort()}>
+                      {(word) => {
+                        const isEditing = () => editingWord() === word;
+                        return (
+                          <div class="flex items-center justify-between px-3 py-2 text-xs gap-3">
+                            <Show
+                              when={isEditing()}
+                              fallback={
+                                <>
+                                  <div class="flex items-center gap-2 min-w-0 flex-1">
+                                    <span class="font-mono text-accent/90 font-medium truncate">
+                                      {word}
+                                    </span>
+                                    <span class="text-text-secondary/50 font-medium">➔</span>
+                                    <span class="text-text-secondary truncate">
+                                      {rules()[word]}
+                                    </span>
+                                  </div>
+                                  <div class="flex items-center gap-1 flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => speech.speakDirectText(rules()[word])}
+                                      class="text-text-secondary/50 hover:text-accent transition-colors p-1"
+                                      title={t("readAloud.speechPlay")}
+                                    >
+                                      <Play class="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingWord(word);
+                                        setEditWordVal(word);
+                                        setEditRepVal(rules()[word] || "");
+                                      }}
+                                      class="text-text-secondary/50 hover:text-accent transition-colors p-1"
+                                      title={t("common.edit")}
+                                    >
+                                      <Edit2 class="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteRule(word)}
+                                      class="text-text-secondary/50 hover:text-red-500 transition-colors p-1"
+                                      title={t("common.delete")}
+                                    >
+                                      <Trash2 class="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </>
+                              }
+                            >
+                              <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <input
+                                  type="text"
+                                  value={editWordVal()}
+                                  onInput={(e) => setEditWordVal(e.currentTarget.value)}
+                                  class="bg-background border border-border/80 rounded-xl px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent w-24 font-mono font-medium"
+                                />
+                                <span class="text-text-secondary/50 font-medium">➔</span>
+                                <input
+                                  type="text"
+                                  value={editRepVal()}
+                                  onInput={(e) => setEditRepVal(e.currentTarget.value)}
+                                  class="bg-background border border-border/80 rounded-xl px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 font-medium"
+                                />
+                              </div>
+                              <div class="flex items-center gap-1.5 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEdit(word)}
+                                  class="text-green-500 hover:text-green-600 transition-colors p-1"
+                                  title={t("common.save")}
+                                >
+                                  <Check class="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingWord(null)}
+                                  class="text-text-secondary/50 hover:text-text-primary transition-colors p-1"
+                                  title={t("common.cancel")}
+                                >
+                                  <X class="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </Show>
+                          </div>
+                        );
+                      }}
+                    </For>
+                    <Show when={Object.keys(rules()).length === 0}>
+                      <div class="text-center py-4 text-text-secondary/50 text-xs">
+                        No pronunciations defined.
+                      </div>
+                    </Show>
+                  </div>
+
+                  <form onSubmit={handleAddRule} class="flex items-center gap-2 w-full min-w-0">
+                    <input
+                      type="text"
+                      placeholder={t("settings.readAloud.pronunciationsPlaceholderWord")}
+                      value={newWord()}
+                      onInput={(e) => setNewWord(e.currentTarget.value)}
+                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
+                    />
+                    <input
+                      type="text"
+                      placeholder={t("settings.readAloud.pronunciationsPlaceholderReplacement")}
+                      value={newReplacement()}
+                      onInput={(e) => setNewReplacement(e.currentTarget.value)}
+                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
+                    />
+                    <button
+                      type="submit"
+                      class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-accent-text rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
+                    >
+                      {t("settings.readAloud.pronunciationsAdd")}
+                    </button>
+                  </form>
+
+                  <div class="flex justify-start">
+                    <button
+                      type="button"
+                      onClick={handleResetRules}
+                      class="text-[0.625rem] text-accent hover:underline font-semibold"
+                    >
+                      {t("settings.readAloud.pronunciationsReset")}
+                    </button>
                   </div>
                 </div>
 
