@@ -34,6 +34,14 @@ pub struct SessionCacheManager {
     active_caches: Mutex<HashMap<String, HashMap<String, CacheEntry>>>,
     // source_id -> seen file_paths
     seen_paths: Mutex<HashMap<String, HashSet<String>>>,
+    // source_id -> number of scans currently in flight for that source.
+    //
+    // `parse_all_sessions` is reachable from two independent subsystems (the index
+    // rebuild and the file watcher), neither of which excludes the other, so scans of
+    // the same source do overlap. Without this counter the second `start_scan` wiped
+    // the first scan's `seen` set and the first `end_scan` tore down the shared state,
+    // which made the loser return zero sessions and marked live sessions `is_deleted`.
+    scan_depth: Mutex<HashMap<String, usize>>,
     hit_counter: Mutex<HashMap<String, usize>>,
     miss_counter: Mutex<HashMap<String, usize>>,
 }
@@ -44,6 +52,7 @@ pub fn get_cache_manager() -> &'static SessionCacheManager {
     CACHE_MANAGER.get_or_init(|| SessionCacheManager {
         active_caches: Mutex::new(HashMap::new()),
         seen_paths: Mutex::new(HashMap::new()),
+        scan_depth: Mutex::new(HashMap::new()),
         hit_counter: Mutex::new(HashMap::new()),
         miss_counter: Mutex::new(HashMap::new()),
     })
@@ -56,6 +65,19 @@ impl SessionCacheManager {
         }
         if let Ok(mut seen_guard) = self.seen_paths.lock() {
             seen_guard.clear();
+        }
+        if let Ok(mut depth_guard) = self.scan_depth.lock() {
+            depth_guard.clear();
+        }
+    }
+
+    /// Drops the per-source scan working state (in-memory cache map + seen set).
+    fn clear_scan_state(&self, source_id: &str) {
+        if let Ok(mut active_guard) = self.active_caches.lock() {
+            active_guard.remove(source_id);
+        }
+        if let Ok(mut seen_guard) = self.seen_paths.lock() {
+            seen_guard.remove(source_id);
         }
     }
 
@@ -77,6 +99,9 @@ impl SessionCacheManager {
         }
         if let Ok(mut seen_guard) = self.seen_paths.lock() {
             seen_guard.clear();
+        }
+        if let Ok(mut depth_guard) = self.scan_depth.lock() {
+            depth_guard.clear();
         }
         let dir = self.get_cache_dir();
         if let Ok(entries) = fs::read_dir(dir) {
@@ -154,7 +179,33 @@ impl SessionCacheManager {
         }
     }
 
+    /// Begins (or joins) a scan of `source_id`.
+    ///
+    /// Only the outermost scan initializes the shared state. A scan that starts while
+    /// another is already in flight joins it: both accumulate into the same `seen` set,
+    /// and finalization is deferred to whichever finishes last, so the set is always
+    /// complete before it is used to decide what was deleted.
     pub fn start_scan(&self, source_id: &str) {
+        let is_outermost = {
+            match self.scan_depth.lock() {
+                Ok(mut depth_guard) => {
+                    let depth = depth_guard.entry(source_id.to_string()).or_insert(0);
+                    *depth += 1;
+                    *depth == 1
+                }
+                // A poisoned lock must not silently reset another scan's state.
+                Err(_) => false,
+            }
+        };
+
+        if !is_outermost {
+            crate::log_debug!(
+                "[cache] Scan for '{}' joined an in-flight scan; not resetting scan state.",
+                source_id
+            );
+            return;
+        }
+
         let cache_map = self.load_cache(source_id);
         if let Ok(mut active_guard) = self.active_caches.lock() {
             active_guard.insert(source_id.to_string(), cache_map);
@@ -286,6 +337,43 @@ impl SessionCacheManager {
     }
 
     pub fn end_scan(&self, source_id: &str) -> Vec<Session> {
+        // Only the last scan still in flight for this source may finalize. An inner
+        // scan returns what is currently cached rather than an empty Vec: returning
+        // nothing here is what made a whole source vanish from the sidebar, because
+        // the rebuild treated "no sessions" as "everything was deleted".
+        let is_outermost = {
+            match self.scan_depth.lock() {
+                Ok(mut depth_guard) => {
+                    let remaining = match depth_guard.get_mut(source_id) {
+                        Some(d) => {
+                            *d = d.saturating_sub(1);
+                            *d
+                        }
+                        None => 0,
+                    };
+                    if remaining == 0 {
+                        depth_guard.remove(source_id);
+                    }
+                    remaining == 0
+                }
+                Err(_) => true,
+            }
+        };
+
+        if !is_outermost {
+            crate::log_debug!(
+                "[cache] Scan for '{}' finished while another is still in flight; \
+                 deferring finalization.",
+                source_id
+            );
+            if let Ok(active_guard) = self.active_caches.lock() {
+                if let Some(cache_map) = active_guard.get(source_id) {
+                    return cache_map.values().map(|e| e.session.clone()).collect();
+                }
+            }
+            return Vec::new();
+        }
+
         let entries_to_save = {
             let mut active_guard = match self.active_caches.lock() {
                 Ok(g) => g,
@@ -304,6 +392,24 @@ impl SessionCacheManager {
                 Some(s) => s,
                 None => return Vec::new(),
             };
+
+            // A scan that saw nothing at all, against a non-empty cache, did not
+            // observe an empty source — it failed (unreadable dir, permissions, an
+            // early return). Trusting it would mark every session deleted and prune
+            // the cache, so leave the cache untouched and report what we already have.
+            if seen.is_empty() && !cache_map.is_empty() {
+                crate::log_warn!(
+                    "[cache] Scan for '{}' saw no files but {} are cached; treating the \
+                     scan as failed and preserving the cache.",
+                    source_id,
+                    cache_map.len()
+                );
+                let sessions = cache_map.values().map(|e| e.session.clone()).collect();
+                drop(seen_guard);
+                drop(active_guard);
+                self.clear_scan_state(source_id);
+                return sessions;
+            }
 
             let prune_deleted = crate::config::load_fallback_config()
                 .get("prune_deleted_sessions")
@@ -382,5 +488,123 @@ pub fn calculate_file_md5<P: AsRef<Path>>(path: P) -> String {
         format!("{:x}", digest)
     } else {
         String::new()
+    }
+}
+
+#[cfg(test)]
+mod scan_lifecycle_tests {
+    use super::get_cache_manager;
+    use crate::models::Session;
+
+    fn session(id: &str, source_id: &str) -> Session {
+        Session {
+            id: id.to_string(),
+            source_id: source_id.to_string(),
+            file_path: format!("/home/{id}.jsonl"),
+            timestamp: 0,
+            updated_at: 1,
+            cwd: None,
+            thread_name: Some("t".to_string()),
+            turns: vec![crate::models::Turn {
+                turn_id: "t0".to_string(),
+                user_message: "u".to_string(),
+                assistant_message: "a".to_string(),
+                timestamp: 0,
+                input_tokens: None,
+                output_tokens: None,
+                extra_data: std::collections::HashMap::new(),
+                images: None,
+            }],
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
+    fn put(source: &str, path: &str, id: &str) {
+        get_cache_manager().put_cached_session(source, path, 0, 0, "h", session(id, source));
+    }
+
+    /// The core race: a second scan starting mid-flight used to wipe the first scan's
+    /// `seen` set, and whichever `end_scan` ran first tore down the shared state so the
+    /// other returned zero sessions. Now the inner scan joins, and the inner `end_scan`
+    /// reports the cached sessions instead of nothing.
+    #[test]
+    fn overlapping_scans_do_not_lose_sessions() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        let src = "race_src";
+        // Outer scan (e.g. the index rebuild) starts and sees one file.
+        mgr.start_scan(src);
+        put(src, "/home/a.jsonl", "a");
+
+        // Inner scan (e.g. a watcher event) starts while the outer is still running.
+        mgr.start_scan(src);
+        put(src, "/home/b.jsonl", "b");
+
+        // The inner scan finishing must NOT finalize or return nothing.
+        let inner = mgr.end_scan(src);
+        assert!(
+            !inner.is_empty(),
+            "an inner scan must report cached sessions, not an empty list"
+        );
+
+        // The outer scan finalizes with the union of what both saw.
+        let outer = mgr.end_scan(src);
+        let ids: Vec<String> = outer.iter().map(|s| s.id.clone()).collect();
+        assert!(
+            ids.contains(&"a".to_string()) && ids.contains(&"b".to_string()),
+            "both scans' files must survive, got {ids:?}"
+        );
+        assert!(
+            outer.iter().all(|s| !s.is_deleted),
+            "no live session may be marked deleted by overlapping scans"
+        );
+
+        mgr.clear_in_memory_caches();
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// A scan that observes no files at all against a non-empty cache has failed
+    /// (unreadable dir, early return). It must not mark everything deleted.
+    #[test]
+    fn scan_that_saw_nothing_preserves_cache() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        let src = "empty_scan_src";
+        // Populate and finalize a good scan.
+        mgr.start_scan(src);
+        put(src, "/home/a.jsonl", "a");
+        let first = mgr.end_scan(src);
+        assert_eq!(first.len(), 1);
+
+        // Now a scan that sees nothing.
+        mgr.start_scan(src);
+        let second = mgr.end_scan(src);
+
+        assert_eq!(
+            second.len(),
+            1,
+            "a scan that saw no files must preserve the cached session"
+        );
+        assert!(
+            second.iter().all(|s| !s.is_deleted),
+            "a failed scan must not mark sessions deleted"
+        );
+
+        mgr.clear_in_memory_caches();
+        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

@@ -1468,7 +1468,7 @@ fn test_cache_orphan_preservation() {
             let source_id = "test_preservation_source";
             cache_mgr.clear_all_caches();
 
-            let session = Session {
+            let session_template = Session {
                 id: "preserved-session".to_string(),
                 source_id: source_id.to_string(),
                 file_path: "/path/to/old_file.jsonl".to_string(),
@@ -1502,19 +1502,47 @@ fn test_cache_orphan_preservation() {
                 1000,
                 100,
                 "",
-                session,
+                session_template.clone(),
             );
 
             // Start scan (this loads from disk cache into memory cache AND initializes seen_paths as empty)
             cache_mgr.start_scan(source_id);
 
+            // The scan must observe at least one file for its "what did I not see?"
+            // conclusion to be trustworthy. A scan that sees NOTHING is treated as a
+            // failed scan and deliberately preserves the cache untouched (see
+            // cache::scan_lifecycle_tests::scan_that_saw_nothing_preserves_cache), so
+            // seeing a live file here is what makes old_file.jsonl a genuine orphan.
+            let mut live_session = session_template.clone();
+            live_session.id = "live-session".to_string();
+            live_session.file_path = "/path/to/live_file.jsonl".to_string();
+            cache_mgr.put_cached_session(
+                source_id,
+                "/path/to/live_file.jsonl",
+                2000,
+                100,
+                "",
+                live_session,
+            );
+
             // End scan (this cleans up orphans that were not seen during this scan)
             let sessions = cache_mgr.end_scan(source_id);
-            assert_eq!(sessions.len(), 1);
-            assert_eq!(sessions[0].id, "preserved-session");
+            assert_eq!(sessions.len(), 2);
+            let orphan = sessions
+                .iter()
+                .find(|s| s.id == "preserved-session")
+                .expect("orphan session should still be present");
+            let live = sessions
+                .iter()
+                .find(|s| s.id == "live-session")
+                .expect("live session should be present");
             assert!(
-                sessions[0].is_deleted,
+                orphan.is_deleted,
                 "Preserved orphan session should have is_deleted set to true"
+            );
+            assert!(
+                !live.is_deleted,
+                "A session seen during the scan must not be marked deleted"
             );
 
             // Verify it is NOT pruned since turns is not empty

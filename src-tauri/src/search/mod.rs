@@ -205,9 +205,26 @@ impl SearchIndexState {
 
         emit_progress("start", 0.0, "Initializing search index...");
 
+        // Snapshot BEFORE parsing, not after. Parsing is the long phase, so it is the
+        // window during which a concurrent `update_session` can land. Taking the
+        // snapshot afterwards (as this used to) made it identical to `live` and turned
+        // the concurrency guard in `merge_rebuilt_sessions` into dead code.
+        let existing_sessions: Option<HashMap<String, crate::models::Session>> = {
+            if let Ok(guard) = self.sessions.read() {
+                Some(guard.clone())
+            } else {
+                None
+            }
+        };
+
         let parse_start = std::time::Instant::now();
         let sources = crate::parsers::get_sources_list();
         let mut all_sessions = Vec::new();
+        // Which sources actually produced sessions this pass. A source that yields
+        // nothing did not necessarily lose all its sessions — its scan may have been
+        // clobbered by a concurrent scan (see SessionCacheManager::end_scan) — so its
+        // existing sessions must be preserved rather than treated as deleted.
+        let mut sources_with_results: HashSet<String> = HashSet::new();
 
         let available_sources: Vec<_> = sources.iter().filter(|s| s.is_available()).collect();
         let total_sources = available_sources.len() as f32;
@@ -219,7 +236,17 @@ impl SearchIndexState {
             emit_progress("parsing", pct, source.display_name());
 
             let source_start = std::time::Instant::now();
-            all_sessions.extend(source.parse_all_sessions().await);
+            let parsed = source.parse_all_sessions().await;
+            if parsed.is_empty() {
+                crate::log_warn!(
+                    "[rebuild] Source '{}' returned no sessions; preserving its existing \
+                     sessions instead of treating them as deleted.",
+                    source.id()
+                );
+            } else {
+                sources_with_results.insert(source.id().to_string());
+            }
+            all_sessions.extend(parsed);
             crate::log_info!(
                 "[rebuild] Parsed source '{}' in {:?}",
                 source.id(),
@@ -234,19 +261,15 @@ impl SearchIndexState {
             session_map.insert(session.id.clone(), session);
         }
 
-        let existing_sessions: Option<HashMap<String, crate::models::Session>> = {
-            if let Ok(guard) = self.sessions.read() {
-                Some(guard.clone())
-            } else {
-                None
-            }
-        };
-
         if let Ok(mut sessions_guard) = self.sessions.write() {
             match &existing_sessions {
                 Some(snapshot) => {
-                    let (merged, _, _) =
-                        merge_rebuilt_sessions(session_map, &sessions_guard, snapshot);
+                    let (merged, _, _) = merge_rebuilt_sessions(
+                        session_map,
+                        &sessions_guard,
+                        snapshot,
+                        &sources_with_results,
+                    );
                     *sessions_guard = merged;
                 }
                 None => {
@@ -306,12 +329,18 @@ impl SearchIndexState {
 ///     concurrently, so it wins over this rebuild's older view;
 ///   - a snapshot entry now missing from live was deleted concurrently, so it is dropped.
 ///
-/// Returns the merged map plus the ids that were preserved / deleted, so the embeddings map can be
-/// reconciled the same way.
+/// `sources_with_results` lists the sources that actually returned sessions this pass. A source
+/// absent from it produced nothing, which is ambiguous: either every one of its sessions really is
+/// gone, or its scan was clobbered and returned empty (see `SessionCacheManager::end_scan`). The
+/// second case is the one observed in practice — a whole source silently vanishing from the sidebar
+/// — so a source that reported nothing never causes deletions.
+///
+/// Returns the merged map plus the ids that were preserved / deleted.
 fn merge_rebuilt_sessions(
     rebuilt: HashMap<String, crate::models::Session>,
     live: &HashMap<String, crate::models::Session>,
     snapshot: &HashMap<String, crate::models::Session>,
+    sources_with_results: &HashSet<String>,
 ) -> (
     HashMap<String, crate::models::Session>,
     Vec<String>,
@@ -322,12 +351,23 @@ fn merge_rebuilt_sessions(
     let mut deleted = Vec::new();
 
     for (id, live_session) in live {
+        // A source that reported nothing cannot be trusted to have reported deletions
+        // either, so keep everything it previously had.
+        let source_reported = sources_with_results.contains(&live_session.source_id);
+        if !source_reported {
+            merged.insert(id.clone(), live_session.clone());
+            preserved.push(id.clone());
+            continue;
+        }
         if snapshot.get(id) != Some(live_session) {
             merged.insert(id.clone(), live_session.clone());
             preserved.push(id.clone());
         }
     }
-    for id in snapshot.keys() {
+    for (id, snapshot_session) in snapshot {
+        if !sources_with_results.contains(&snapshot_session.source_id) {
+            continue;
+        }
         if !live.contains_key(id) {
             merged.remove(id);
             deleted.push(id.clone());
@@ -411,6 +451,72 @@ mod rebuild_merge_tests {
         entries.into_iter().map(|s| (s.id.clone(), s)).collect()
     }
 
+    fn sess_from(id: &str, source_id: &str, updated_at: i64) -> Session {
+        Session {
+            source_id: source_id.to_string(),
+            ..sess(id, updated_at)
+        }
+    }
+
+    /// Every source reported, so normal reconciliation applies.
+    fn all_reported() -> std::collections::HashSet<String> {
+        ["codex".to_string()].into_iter().collect()
+    }
+
+    /// The bug behind "a whole source disappears from the sidebar": antigravity's scan
+    /// was clobbered by a concurrent scan and returned zero sessions, so the rebuild's
+    /// result contained none of them. The merge must preserve them, not delete them.
+    #[test]
+    fn source_that_reported_nothing_keeps_its_sessions() {
+        let live = map(vec![
+            sess_from("ag1", "antigravity", 1),
+            sess_from("ag2", "antigravity", 1),
+            sess_from("cx1", "codex", 1),
+        ]);
+        let snapshot = live.clone();
+        // antigravity yielded nothing this pass; codex parsed fine.
+        let rebuilt = map(vec![sess_from("cx1", "codex", 2)]);
+        let reported: std::collections::HashSet<String> =
+            ["codex".to_string()].into_iter().collect();
+
+        let (merged, _, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot, &reported);
+
+        assert!(
+            merged.contains_key("ag1") && merged.contains_key("ag2"),
+            "sessions from a source that reported nothing must be preserved"
+        );
+        assert_eq!(
+            merged.get("cx1").unwrap().updated_at,
+            2,
+            "the source that did report keeps the rebuild's fresh value"
+        );
+        assert!(
+            deleted.is_empty(),
+            "a source reporting nothing must never produce deletions"
+        );
+    }
+
+    /// A genuine deletion from a source that DID report is still honored.
+    #[test]
+    fn reporting_source_still_honors_real_deletions() {
+        let snapshot = map(vec![
+            sess_from("cx1", "codex", 1),
+            sess_from("cx2", "codex", 1),
+        ]);
+        // cx2 was deleted concurrently.
+        let live = map(vec![sess_from("cx1", "codex", 1)]);
+        let rebuilt = map(vec![
+            sess_from("cx1", "codex", 1),
+            sess_from("cx2", "codex", 1),
+        ]);
+
+        let (merged, _, deleted) =
+            merge_rebuilt_sessions(rebuilt, &live, &snapshot, &all_reported());
+
+        assert!(!merged.contains_key("cx2"), "real deletion must be honored");
+        assert_eq!(deleted, vec!["cx2".to_string()]);
+    }
+
     /// A concurrent update, insert, and delete during the embedding pass must survive the rebuild
     /// writeback rather than being clobbered by the rebuild's older snapshot.
     #[test]
@@ -421,7 +527,8 @@ mod rebuild_merge_tests {
         // What the rebuild computed (its older view, ~= snapshot).
         let rebuilt = map(vec![sess("a", 1), sess("b", 1), sess("c", 1)]);
 
-        let (merged, mut preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
+        let (merged, mut preserved, deleted) =
+            merge_rebuilt_sessions(rebuilt, &live, &snapshot, &all_reported());
 
         assert_eq!(
             merged.get("a").unwrap().updated_at,
@@ -455,7 +562,8 @@ mod rebuild_merge_tests {
         let live = snapshot.clone();
         let rebuilt = map(vec![sess("a", 5), sess("b", 5)]); // rebuild refreshed both
 
-        let (merged, preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
+        let (merged, preserved, deleted) =
+            merge_rebuilt_sessions(rebuilt, &live, &snapshot, &all_reported());
 
         assert_eq!(merged.get("a").unwrap().updated_at, 5);
         assert_eq!(merged.get("b").unwrap().updated_at, 5);
