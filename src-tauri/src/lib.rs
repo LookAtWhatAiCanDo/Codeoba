@@ -20,13 +20,43 @@ pub fn get_home_dir() -> std::path::PathBuf {
     if let Ok(mock_home) = std::env::var("CODEOBA_MOCK_HOME") {
         return std::path::PathBuf::from(mock_home);
     }
-    if let Ok(home) = std::env::var("HOME") {
-        return std::path::PathBuf::from(home);
+
+    // Safety net for test builds: NEVER fall through to the user's real home directory.
+    // Tests isolate ~/.codeoba by setting the process-global CODEOBA_MOCK_HOME, but under
+    // parallel execution another test can transiently clear it, and with the SQLite store a
+    // single stray write — or a clear_all_caches — against the real ~/.codeoba/cache would
+    // clobber real user data (this actually happened: a run wiped the live sessions.db). A
+    // miss here routes to a throwaway temp dir instead, so a test can only ever damage
+    // scratch state.
+    #[cfg(test)]
+    return test_home_fallback();
+
+    #[cfg(not(test))]
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            return std::path::PathBuf::from(home);
+        }
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            return std::path::PathBuf::from(userprofile);
+        }
+        dirs::home_dir().unwrap_or_default()
     }
-    if let Ok(userprofile) = std::env::var("USERPROFILE") {
-        return std::path::PathBuf::from(userprofile);
-    }
-    dirs::home_dir().unwrap_or_default()
+}
+
+/// A per-process throwaway home used only in test builds when `CODEOBA_MOCK_HOME` is unset,
+/// so a test that races the env var lands in scratch space instead of the real `~`.
+#[cfg(test)]
+fn test_home_fallback() -> std::path::PathBuf {
+    use std::sync::OnceLock;
+    static FALLBACK: OnceLock<std::path::PathBuf> = OnceLock::new();
+    FALLBACK
+        .get_or_init(|| {
+            let dir =
+                std::env::temp_dir().join(format!("codeoba-test-home-{}", std::process::id()));
+            let _ = std::fs::create_dir_all(&dir);
+            dir
+        })
+        .clone()
 }
 
 use tauri::Manager;

@@ -156,7 +156,11 @@ where
     std::env::set_var("USERPROFILE", temp_dir.path());
     std::env::set_var("APPDATA", temp_dir.path().join("AppData/Roaming"));
     std::env::set_var("LOCALAPPDATA", temp_dir.path().join("AppData/Local"));
-    std::env::remove_var("CODEOBA_MOCK_HOME");
+    // Isolate via CODEOBA_MOCK_HOME, the single home-override signal get_home_dir honors in
+    // test builds. (This used to set only HOME and *remove* CODEOBA_MOCK_HOME, which left
+    // two competing isolation styles: tests that leaked to the real HOME could clobber the
+    // real ~/.codeoba/cache — with the SQLite store, catastrophically.)
+    std::env::set_var("CODEOBA_MOCK_HOME", temp_dir.path());
 
     // Clear any previous global cache references before mock execution
     crate::parsers::cache::get_cache_manager().clear_in_memory_caches();
