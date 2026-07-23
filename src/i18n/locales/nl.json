@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "Voorleesgeschiedenis wissen",
     "confirmClearHistory": "Weet u zeker dat u uw gehele geschiedenis van voorgelezen tekst wilt wissen? Deze actie kan niet ongedaan gemaakt worden.",
     "noSpokenHistory": "Nog geen geschiedenis van gesproken tekst.",
-    "time": "Tijd"
+    "time": "Tijd",
+    "side": "Zijde"
   },
   "detailPane": {
     "noSelection": "Geen gesprek geselecteerd",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "Voorlezen",
-      "voice": "Tekst-naar-spraakstem",
-      "voiceDesc": "Selecteer de stemsynthesizer voor het voorlezen van tekst.",
+      "voiceAssistant": "Stem: Assistent",
+      "voiceAssistantDesc": "Selecteer de stemsynthesizer voor het voorlezen van antwoorden van de assistent.",
+      "voiceUser": "Stem: Gebruiker",
+      "voiceUserDesc": "Selecteer de stemsynthesizer voor het voorlezen van berichten van de gebruiker.",
       "defaultVoice": "Standaard systeemstem",
       "rate": "Spraaksnelheid",
-      "rateDesc": "Pas de snelheid aan waarmee tekst wordt uitgesproken.",
       "pitch": "Spraaktoonhoogte",
-      "pitchDesc": "Pas de toonhoogte van de gesproken stem aan.",
       "reset": "Standaardwaarden herstellen",
+      "resetVoice": "Stem herstellen",
+      "confirmResetAll": "Alle voorleesinstellingen herstellen?",
       "test": "Stem testen",
+      "testDesc": "Pas de gesynthetiseerde stem aan en test deze met uw eigen tekst.",
+      "testAssistant": "Assistent testen",
+      "testUser": "Gebruiker testen",
       "testSaying": "De kat krabt de krullen van de trap.",
+      "testReset": "Tekst herstellen",
       "pronunciations": "Aangepaste uitspraken",
       "pronunciationsDesc": "Configureer spellingregels voor mapkoppelingen, afkortingen in code of technische termen.",
-      "pronunciationsOriginal": "Woord / Overeenkomst",
-      "pronunciationsReplacement": "Gesproken uitspraak",
       "pronunciationsPlaceholderWord": "bijv. src",
       "pronunciationsPlaceholderReplacement": "bijv. source",
       "pronunciationsAdd": "Regel toevoegen",
-      "pronunciationsReset": "Regels herstellen",
-      "testDesc": "Pas de gesynthetiseerde stem aan en test deze met uw eigen tekst.",
-      "testReset": "Tekst herstellen"
+      "pronunciationsReset": "Regels herstellen"
     }
   },
   "updater": {

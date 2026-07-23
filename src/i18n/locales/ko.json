@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "읽기 기록 지우기",
     "confirmClearHistory": "소리 내어 읽은 텍스트 기록을 모두 지우시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "noSpokenHistory": "아직 말한 텍스트 기록이 없습니다.",
-    "time": "시간"
+    "time": "시간",
+    "side": "구분"
   },
   "detailPane": {
     "noSelection": "선택된 대화가 없습니다",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "소리 내어 읽기",
-      "voice": "음성 합성 목소리",
-      "voiceDesc": "텍스트를 읽을 음성 합성 엔진을 선택합니다.",
+      "voiceAssistant": "목소리: 어시스턴트",
+      "voiceAssistantDesc": "어시스턴트 응답 텍스트를 읽을 음성 합성 엔진을 선택합니다.",
+      "voiceUser": "목소리: 사용자",
+      "voiceUserDesc": "사용자 프롬프트 텍스트를 읽을 음성 합성 엔진을 선택합니다.",
       "defaultVoice": "시스템 기본 목소리",
       "rate": "음성 속도",
-      "rateDesc": "텍스트를 읽는 속도를 조절합니다.",
       "pitch": "음성 피치",
-      "pitchDesc": "말하는 목소리의 톤(피치)을 조절합니다.",
       "reset": "기본값으로 재설정",
+      "resetVoice": "음성 재설정",
+      "confirmResetAll": "모든 낭독 설정을 재설정하시겠습니까?",
       "test": "음성 테스트",
+      "testDesc": "사용자 정의 텍스트로 합성된 음성을 맞춤설정하고 테스트하세요.",
+      "testAssistant": "어시스턴트 테스트",
+      "testUser": "사용자 테스트",
       "testSaying": "간장 공장 공장장은 강 공장장이고 된장 공장 공장장은 공 공장장이다.",
+      "testReset": "텍스트 재설정",
       "pronunciations": "사용자 지정 발음",
       "pronunciationsDesc": "디렉터리 단축키, 코드 약어 또는 기술 용어의 커스텀 발음 규칙을 설정합니다.",
-      "pronunciationsOriginal": "단어 / 일치",
-      "pronunciationsReplacement": "실제 발음",
       "pronunciationsPlaceholderWord": "예: src",
       "pronunciationsPlaceholderReplacement": "예: source",
       "pronunciationsAdd": "규칙 추가",
-      "pronunciationsReset": "규칙 초기화",
-      "testDesc": "사용자 정의 텍스트로 합성된 음성을 맞춤설정하고 테스트하세요.",
-      "testReset": "텍스트 재설정"
+      "pronunciationsReset": "규칙 초기화"
     }
   },
   "updater": {

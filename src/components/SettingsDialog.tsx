@@ -126,10 +126,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [appVersion, setAppVersion] = createSignal("0.1.0");
 
   const [voices, setVoices] = createSignal<SpeechSynthesisVoice[]>([]);
-  const [selectedVoiceName, setSelectedVoiceName] = createSignal("");
-  const [speechRate, setSpeechRate] = createSignal(1.0);
-  const [speechPitch, setSpeechPitch] = createSignal(1.0);
+  const [selectedAssistantVoiceName, setSelectedAssistantVoiceName] = createSignal("");
+  const [selectedUserVoiceName, setSelectedUserVoiceName] = createSignal("");
+  const [assistantSpeechRate, setAssistantSpeechRate] = createSignal(1.0);
+  const [assistantSpeechPitch, setAssistantSpeechPitch] = createSignal(1.0);
+  const [userSpeechRate, setUserSpeechRate] = createSignal(1.0);
+  const [userSpeechPitch, setUserSpeechPitch] = createSignal(1.0);
   const [testText, setTestText] = createSignal("");
+  const [confirmResetReadAloud, setConfirmResetReadAloud] = createSignal(false);
 
   const [rules, setRules] = createSignal<Record<string, string>>({});
   const [newWord, setNewWord] = createSignal("");
@@ -203,10 +207,10 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
   const speech = useSpeech();
 
-  const handleTestVoice = async () => {
+  const handleTestVoice = async (speaker: "assistant" | "user" = "assistant") => {
     const saying = testText().trim() || t("settings.readAloud.testSaying");
     try {
-      await speech.speakDirectText(saying);
+      await speech.speakDirectText(saying, speaker);
     } catch (err) {
       console.error("[TTS] Test voice failed:", err);
       alert(
@@ -227,28 +231,67 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     }
   };
 
-  const handleVoiceChange = (val: string) => {
-    setSelectedVoiceName(val);
-    localStorage.setItem("codeoba-tts-voice", val);
+  const handleAssistantVoiceChange = (val: string) => {
+    setSelectedAssistantVoiceName(val);
+    localStorage.setItem("codeoba-tts-voice-assistant", val);
   };
 
-  const handleRateChange = (val: number) => {
-    setSpeechRate(val);
-    localStorage.setItem("codeoba-tts-rate", String(val));
+  const handleUserVoiceChange = (val: string) => {
+    setSelectedUserVoiceName(val);
+    localStorage.setItem("codeoba-tts-voice-user", val);
   };
 
-  const handlePitchChange = (val: number) => {
-    setSpeechPitch(val);
-    localStorage.setItem("codeoba-tts-pitch", String(val));
+  const handleAssistantRateChange = (val: number) => {
+    setAssistantSpeechRate(val);
+    localStorage.setItem("codeoba-tts-rate-assistant", String(val));
+  };
+
+  const handleAssistantPitchChange = (val: number) => {
+    setAssistantSpeechPitch(val);
+    localStorage.setItem("codeoba-tts-pitch-assistant", String(val));
+  };
+
+  const handleUserRateChange = (val: number) => {
+    setUserSpeechRate(val);
+    localStorage.setItem("codeoba-tts-rate-user", String(val));
+  };
+
+  const handleUserPitchChange = (val: number) => {
+    setUserSpeechPitch(val);
+    localStorage.setItem("codeoba-tts-pitch-user", String(val));
+  };
+
+  const handleResetAssistantVoice = () => {
+    setSelectedAssistantVoiceName("");
+    setAssistantSpeechRate(1.0);
+    setAssistantSpeechPitch(1.0);
+    localStorage.removeItem("codeoba-tts-voice-assistant");
+    localStorage.removeItem("codeoba-tts-rate-assistant");
+    localStorage.removeItem("codeoba-tts-pitch-assistant");
+  };
+
+  const handleResetUserVoice = () => {
+    setSelectedUserVoiceName("");
+    setUserSpeechRate(1.0);
+    setUserSpeechPitch(1.0);
+    localStorage.removeItem("codeoba-tts-voice-user");
+    localStorage.removeItem("codeoba-tts-rate-user");
+    localStorage.removeItem("codeoba-tts-pitch-user");
   };
 
   const handleResetReadAloudDefaults = () => {
-    setSelectedVoiceName("");
-    setSpeechRate(1.0);
-    setSpeechPitch(1.0);
-    localStorage.removeItem("codeoba-tts-voice");
-    localStorage.removeItem("codeoba-tts-rate");
-    localStorage.removeItem("codeoba-tts-pitch");
+    setSelectedAssistantVoiceName("");
+    setSelectedUserVoiceName("");
+    setAssistantSpeechRate(1.0);
+    setAssistantSpeechPitch(1.0);
+    setUserSpeechRate(1.0);
+    setUserSpeechPitch(1.0);
+    localStorage.removeItem("codeoba-tts-voice-assistant");
+    localStorage.removeItem("codeoba-tts-voice-user");
+    localStorage.removeItem("codeoba-tts-rate-assistant");
+    localStorage.removeItem("codeoba-tts-pitch-assistant");
+    localStorage.removeItem("codeoba-tts-rate-user");
+    localStorage.removeItem("codeoba-tts-pitch-user");
     handleResetRules();
   };
 
@@ -382,15 +425,26 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-    setSelectedVoiceName(localStorage.getItem("codeoba-tts-voice") || "");
-    setSpeechRate(
-      localStorage.getItem("codeoba-tts-rate")
-        ? parseFloat(localStorage.getItem("codeoba-tts-rate")!)
+    setSelectedAssistantVoiceName(localStorage.getItem("codeoba-tts-voice-assistant") || "");
+    setSelectedUserVoiceName(localStorage.getItem("codeoba-tts-voice-user") || "");
+    setAssistantSpeechRate(
+      localStorage.getItem("codeoba-tts-rate-assistant")
+        ? parseFloat(localStorage.getItem("codeoba-tts-rate-assistant")!)
         : 1.0
     );
-    setSpeechPitch(
-      localStorage.getItem("codeoba-tts-pitch")
-        ? parseFloat(localStorage.getItem("codeoba-tts-pitch")!)
+    setAssistantSpeechPitch(
+      localStorage.getItem("codeoba-tts-pitch-assistant")
+        ? parseFloat(localStorage.getItem("codeoba-tts-pitch-assistant")!)
+        : 1.0
+    );
+    setUserSpeechRate(
+      localStorage.getItem("codeoba-tts-rate-user")
+        ? parseFloat(localStorage.getItem("codeoba-tts-rate-user")!)
+        : 1.0
+    );
+    setUserSpeechPitch(
+      localStorage.getItem("codeoba-tts-pitch-user")
+        ? parseFloat(localStorage.getItem("codeoba-tts-pitch-user")!)
         : 1.0
     );
     loadRules();
@@ -1000,84 +1054,158 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                   {t("settings.readAloud.title")}
                 </h3>
 
-                {/* Voice Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.readAloud.voice")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.readAloud.voiceDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={selectedVoiceName()}
-                    onChange={(e) => handleVoiceChange(e.currentTarget.value)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
-                  >
-                    <option value="">{t("settings.readAloud.defaultVoice")}</option>
-                    <For each={voices()}>
-                      {(voice) => (
-                        <option value={voice.name}>
-                          {voice.name} ({voice.lang})
-                        </option>
-                      )}
-                    </For>
-                  </select>
-                </div>
-
-                {/* Speech Rate Slider */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
+                {/* Voice: Assistant Settings Group */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.readAloud.rate")}
+                        {t("settings.readAloud.voiceAssistant")}
                       </h4>
                       <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.readAloud.rateDesc")}
+                        {t("settings.readAloud.voiceAssistantDesc")}
                       </p>
                     </div>
+                    <div class="flex items-center gap-2">
+                      <select
+                        value={selectedAssistantVoiceName()}
+                        onChange={(e) => handleAssistantVoiceChange(e.currentTarget.value)}
+                        class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
+                      >
+                        <option value="">{t("settings.readAloud.defaultVoice")}</option>
+                        <For each={voices()}>
+                          {(voice) => (
+                            <option value={voice.name}>
+                              {voice.name} ({voice.lang})
+                            </option>
+                          )}
+                        </For>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleResetAssistantVoice}
+                        class="text-[0.625rem] text-text-secondary/60 hover:text-accent font-semibold transition-colors whitespace-nowrap cursor-pointer px-1 py-0.5"
+                        title={t("settings.readAloud.resetVoice")}
+                      >
+                        {t("settings.readAloud.resetVoice")}
+                      </button>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2.0"
-                      step="0.1"
-                      value={speechRate()}
-                      onInput={(e) => handleRateChange(parseFloat(e.currentTarget.value))}
-                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
-                      {speechRate().toFixed(1)}x
+
+                  <div class="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
+                        <span>{t("settings.readAloud.rate")}</span>
+                        <span class="font-bold text-text-primary">
+                          {assistantSpeechRate().toFixed(1)}x
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.1"
+                        value={assistantSpeechRate()}
+                        onInput={(e) =>
+                          handleAssistantRateChange(parseFloat(e.currentTarget.value))
+                        }
+                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
+                        <span>{t("settings.readAloud.pitch")}</span>
+                        <span class="font-bold text-text-primary">
+                          {assistantSpeechPitch().toFixed(1)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="1.5"
+                        step="0.1"
+                        value={assistantSpeechPitch()}
+                        onInput={(e) =>
+                          handleAssistantPitchChange(parseFloat(e.currentTarget.value))
+                        }
+                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Speech Pitch Slider */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
+                {/* Voice: User Settings Group */}
+                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
                   <div class="flex items-center justify-between">
                     <div>
                       <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.readAloud.pitch")}
+                        {t("settings.readAloud.voiceUser")}
                       </h4>
                       <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.readAloud.pitchDesc")}
+                        {t("settings.readAloud.voiceUserDesc")}
                       </p>
                     </div>
+                    <div class="flex items-center gap-2">
+                      <select
+                        value={selectedUserVoiceName()}
+                        onChange={(e) => handleUserVoiceChange(e.currentTarget.value)}
+                        class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
+                      >
+                        <option value="">{t("settings.readAloud.defaultVoice")}</option>
+                        <For each={voices()}>
+                          {(voice) => (
+                            <option value={voice.name}>
+                              {voice.name} ({voice.lang})
+                            </option>
+                          )}
+                        </For>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleResetUserVoice}
+                        class="text-[0.625rem] text-text-secondary/60 hover:text-accent font-semibold transition-colors whitespace-nowrap cursor-pointer px-1 py-0.5"
+                        title={t("settings.readAloud.resetVoice")}
+                      >
+                        {t("settings.readAloud.resetVoice")}
+                      </button>
+                    </div>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="1.5"
-                      step="0.1"
-                      value={speechPitch()}
-                      onInput={(e) => handlePitchChange(parseFloat(e.currentTarget.value))}
-                      class="flex-grow accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div class="w-12 py-1 bg-background border border-border rounded-lg text-center text-xs font-bold text-text-primary">
-                      {speechPitch().toFixed(1)}
+
+                  <div class="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
+                        <span>{t("settings.readAloud.rate")}</span>
+                        <span class="font-bold text-text-primary">
+                          {userSpeechRate().toFixed(1)}x
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="2.0"
+                        step="0.1"
+                        value={userSpeechRate()}
+                        onInput={(e) => handleUserRateChange(parseFloat(e.currentTarget.value))}
+                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                      />
+                    </div>
+
+                    <div class="space-y-1">
+                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
+                        <span>{t("settings.readAloud.pitch")}</span>
+                        <span class="font-bold text-text-primary">
+                          {userSpeechPitch().toFixed(1)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="1.5"
+                        step="0.1"
+                        value={userSpeechPitch()}
+                        onInput={(e) => handleUserPitchChange(parseFloat(e.currentTarget.value))}
+                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1123,10 +1251,17 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                       </button>
                       <button
                         type="button"
-                        onClick={handleTestVoice}
-                        class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-accent-text rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
+                        onClick={() => handleTestVoice("assistant")}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 hover:border-accent/40 rounded-xl text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
                       >
-                        {t("settings.readAloud.test")}
+                        {t("settings.readAloud.testAssistant")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTestVoice("user")}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 hover:border-accent/40 rounded-xl text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
+                      >
+                        {t("settings.readAloud.testUser")}
                       </button>
                     </div>
                   </div>
@@ -1275,12 +1410,41 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
                 </div>
 
                 <div class="flex justify-end pt-1 border-t border-border/20">
-                  <button
-                    onClick={handleResetReadAloudDefaults}
-                    class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-all text-xs font-semibold cursor-pointer"
+                  <Show
+                    when={confirmResetReadAloud()}
+                    fallback={
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetReadAloud(true)}
+                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 rounded-xl text-text-secondary hover:text-red-400 transition-all text-xs font-semibold cursor-pointer"
+                      >
+                        {t("settings.readAloud.reset")}
+                      </button>
+                    }
                   >
-                    {t("settings.readAloud.reset")}
-                  </button>
+                    <div class="flex items-center gap-2 animate-in fade-in duration-150">
+                      <span class="text-xs text-red-400 font-medium select-none">
+                        {t("settings.readAloud.confirmResetAll")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleResetReadAloudDefaults();
+                          setConfirmResetReadAloud(false);
+                        }}
+                        class="px-3 py-1 bg-red-500/90 hover:bg-red-600 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        {t("common.confirm")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmResetReadAloud(false)}
+                        class="px-3 py-1 bg-background hover:bg-surface border border-border/80 text-text-secondary hover:text-text-primary rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </Show>
                 </div>
               </div>
             </Show>

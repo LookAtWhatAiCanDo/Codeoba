@@ -1850,7 +1850,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     </Show>
                   </Show>
 
-                  <Show when={context().type === "assistant"}>
+                  <Show when={context().type === "assistant" || context().type === "user"}>
                     <div class="h-[1px] bg-border/20 my-1" />
                     <button
                       class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
@@ -1912,7 +1912,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                     <span>{copiedText() ? t("common.copied") : getLabel()}</span>
                   </button>
 
-                  <Show when={context().type === "assistant"}>
+                  <Show when={context().type === "assistant" || context().type === "user"}>
                     <button
                       class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
                       onClick={() => {
@@ -2111,6 +2111,10 @@ const VirtualTurn = (props: VirtualTurnProps) => {
                   matchCase={props.matchCase}
                   wholeWord={props.wholeWord}
                   useRegex={props.useRegex}
+                  sessionId={props.sessionId}
+                  turnIndex={props.actualIndex}
+                  sourceId={props.sourceId}
+                  filePath={props.filePath}
                 />
                 <Show when={props.turn.images && props.turn.images.length > 0}>
                   <div class="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-border/30">

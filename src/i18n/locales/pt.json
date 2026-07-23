@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "Limpar histórico de leitura",
     "confirmClearHistory": "Tem certeza de que deseja limpar todo o histórico de texto lido em voz alta? Esta ação não pode ser desfeita.",
     "noSpokenHistory": "Nenhum histórico de texto falado ainda.",
-    "time": "Hora"
+    "time": "Hora",
+    "side": "Lado"
   },
   "detailPane": {
     "noSelection": "Nenhuma conversa selecionada",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "Leitura em voz alta",
-      "voice": "Voz de texto para fala",
-      "voiceDesc": "Selecione o sintetizador de voz para ler o texto descritivo.",
+      "voiceAssistant": "Voz: Assistente",
+      "voiceAssistantDesc": "Selecione o sintetizador de voz para ler respostas do assistente.",
+      "voiceUser": "Voz: Usuário",
+      "voiceUserDesc": "Selecione o sintetizador de voz para ler mensagens do usuário.",
       "defaultVoice": "Voz do sistema padrão",
       "rate": "Velocidade da fala",
-      "rateDesc": "Ajuste a velocidade em que o texto é falado.",
       "pitch": "Tom da fala",
-      "pitchDesc": "Ajuste o tom da voz falada.",
       "reset": "Redefinir para padrões",
+      "resetVoice": "Redefinir voz",
+      "confirmResetAll": "Redefinir todas as configurações de leitura em voz alta?",
       "test": "Testar Voz",
+      "testDesc": "Personalize e teste a voz sintetizada com o seu próprio texto.",
+      "testAssistant": "Testar Assistente",
+      "testUser": "Testar Usuário",
       "testSaying": "O rato roeu a roupa do rei de Roma.",
+      "testReset": "Restaurar texto",
       "pronunciations": "Pronúncias Personalizadas",
       "pronunciationsDesc": "Configure substituições ortográficas para atalhos de diretório, abreviações de código ou termos técnicos.",
-      "pronunciationsOriginal": "Palavra / Correspondência",
-      "pronunciationsReplacement": "Pronúncia Falada",
       "pronunciationsPlaceholderWord": "ex: src",
       "pronunciationsPlaceholderReplacement": "ex: source",
       "pronunciationsAdd": "Adicionar Regra",
-      "pronunciationsReset": "Restaurar Regras",
-      "testDesc": "Personalize e teste a voz sintetizada com o seu próprio texto.",
-      "testReset": "Restaurar texto"
+      "pronunciationsReset": "Restaurar Regras"
     }
   },
   "updater": {

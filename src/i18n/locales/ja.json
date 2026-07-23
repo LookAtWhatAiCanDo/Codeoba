@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "読み上げ履歴をクリア",
     "confirmClearHistory": "読み上げられたテキストの履歴をすべてクリアしてもよろしいですか？この操作は取り消せません。",
     "noSpokenHistory": "発話されたテキストの履歴はまだありません。",
-    "time": "時間"
+    "time": "時間",
+    "side": "送信元"
   },
   "detailPane": {
     "noSelection": "会話が選択されていません",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "読み上げ",
-      "voice": "音声合成の音声",
-      "voiceDesc": "トランスクリプトのテキストを読み上げるための音声合成エンジンを選択します。",
+      "voiceAssistant": "音声: アシスタント",
+      "voiceAssistantDesc": "アシスタントの応答テキストを読み上げるための音声合成エンジンを選択します。",
+      "voiceUser": "音声: ユーザー",
+      "voiceUserDesc": "ユーザーの入力テキストを読み上げるための音声合成エンジンを選択します。",
       "defaultVoice": "システムのデフォルト音声",
       "rate": "読み上げ速度",
-      "rateDesc": "テキストを読み上げる速度を調整します。",
       "pitch": "音声のピッチ",
-      "pitchDesc": "読み上げ音声のトーン（ピッチ）を調整します。",
       "reset": "デフォルトに戻す",
+      "resetVoice": "声をリセット",
+      "confirmResetAll": "すべての読み上げ設定をリセットしますか？",
       "test": "音声をテスト",
+      "testDesc": "独自のテキストで合成音声をカスタマイズしてテストします。",
+      "testAssistant": "アシスタントをテスト",
+      "testUser": "ユーザーをテスト",
       "testSaying": "隣の客はよく柿食う客だ。",
+      "testReset": "テキストのリセット",
       "pronunciations": "カスタム発音",
       "pronunciationsDesc": "ディレクトリのショートカット、コードの略称、または技術用語のカスタム表記発音を設定します。",
-      "pronunciationsOriginal": "単語 / マッチ",
-      "pronunciationsReplacement": "読み方（発音）",
       "pronunciationsPlaceholderWord": "例: src",
       "pronunciationsPlaceholderReplacement": "例: source",
       "pronunciationsAdd": "ルールを追加",
-      "pronunciationsReset": "ルールをリセット",
-      "testDesc": "独自のテキストで合成音声をカスタマイズしてテストします。",
-      "testReset": "テキストのリセット"
+      "pronunciationsReset": "ルールをリセット"
     }
   },
   "updater": {

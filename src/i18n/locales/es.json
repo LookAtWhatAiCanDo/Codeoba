@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "Limpiar historial de lectura",
     "confirmClearHistory": "¿Está seguro de que desea borrar todo el historial de texto leído en voz alta? Esta acción no se puede deshacer.",
     "noSpokenHistory": "Aún no hay historial de texto hablado.",
-    "time": "Hora"
+    "time": "Hora",
+    "side": "Lado"
   },
   "detailPane": {
     "noSelection": "Ninguna conversación seleccionada",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "Lectura en voz alta",
-      "voice": "Voz de texto a voz",
-      "voiceDesc": "Seleccione el sintetizador de voz para leer el texto descriptivo.",
+      "voiceAssistant": "Voz: Asistente",
+      "voiceAssistantDesc": "Seleccione el sintetizador de voz para leer respuestas del asistente.",
+      "voiceUser": "Voz: Usuario",
+      "voiceUserDesc": "Seleccione el sintetizador de voz para leer mensajes del usuario.",
       "defaultVoice": "Voz del sistema por defecto",
       "rate": "Velocidad de voz",
-      "rateDesc": "Ajuste la velocidad con la que se habla el texto.",
       "pitch": "Tono de voz",
-      "pitchDesc": "Ajuste el tono de la voz hablada.",
       "reset": "Restablecer a valores predeterminados",
+      "resetVoice": "Restablecer voz",
+      "confirmResetAll": "¿Restablecer toda la configuración de lectura en voz alta?",
       "test": "Probar voz",
+      "testDesc": "Personalice y pruebe la voz sintetizada con su propio texto.",
+      "testAssistant": "Probar Asistente",
+      "testUser": "Probar Usuario",
       "testSaying": "Tres tristes tigres tragan trigo en un trigal.",
+      "testReset": "Restablecer texto",
       "pronunciations": "Pronunciaciones personalizadas",
       "pronunciationsDesc": "Configure sustituciones de ortografía personalizadas para atajos de directorio, abreviaturas de código o términos técnicos.",
-      "pronunciationsOriginal": "Palabra / Coincidencia",
-      "pronunciationsReplacement": "Pronunciación hablada",
       "pronunciationsPlaceholderWord": "ej. src",
       "pronunciationsPlaceholderReplacement": "ej. source",
       "pronunciationsAdd": "Añadir regla",
-      "pronunciationsReset": "Restablecer reglas",
-      "testDesc": "Personalice y pruebe la voz sintetizada con su propio texto.",
-      "testReset": "Restablecer texto"
+      "pronunciationsReset": "Restablecer reglas"
     }
   },
   "updater": {

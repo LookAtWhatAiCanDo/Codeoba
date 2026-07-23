@@ -9,6 +9,7 @@ export interface SpeechItem {
   globalIndex: number;
   turnIndex: number;
   blockIndex?: number;
+  speaker?: "assistant" | "user";
   text: string;
   timestamp: number;
   sessionId?: string;
@@ -71,29 +72,51 @@ export function extractSpeechItems(session: Session): SpeechItem[] {
   for (let turnIndex = 0; turnIndex < session.turns.length; turnIndex++) {
     const turn = session.turns[turnIndex]!;
 
-    // Extract high-level text excluding tools from the assistantMessage property of Turn
-    const parsed = parseAssistantMessage(turn.assistantMessage || "");
-    const narrativeTexts = parsed
-      .filter((part) => part.type === "text")
-      .map((part) => part.content)
-      .join("\n");
+    // 1. Process user prompt message blocks
+    if (turn.userMessage) {
+      const userBlocks = splitIntoLogicalBlocks(turn.userMessage);
+      let userBlockIndex = 0;
+      for (const rawBlock of userBlocks) {
+        if (/^[-*_]{3,}$/.test(rawBlock)) continue;
 
-    const blocks = splitIntoLogicalBlocks(narrativeTexts);
-    let blockIndex = 0;
-    for (const rawBlock of blocks) {
-      // Skip horizontal rules (e.g. ---, ***, ___)
-      if (/^[-*_]{3,}$/.test(rawBlock)) continue;
+        const sanitized = sanitizeBlockForSpeech(rawBlock);
+        if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
+          items.push({
+            globalIndex: globalIndex++,
+            turnIndex,
+            blockIndex: userBlockIndex++,
+            speaker: "user",
+            text: sanitized,
+            timestamp: turn.timestamp || session.timestamp || Date.now(),
+          });
+        }
+      }
+    }
 
-      const sanitized = sanitizeBlockForSpeech(rawBlock);
-      // Skip blocks that contain no letters or numbers in any language
-      if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
-        items.push({
-          globalIndex: globalIndex++,
-          turnIndex,
-          blockIndex: blockIndex++,
-          text: sanitized,
-          timestamp: turn.timestamp || session.timestamp || Date.now(),
-        });
+    // 2. Process assistant response message blocks
+    if (turn.assistantMessage) {
+      const parsed = parseAssistantMessage(turn.assistantMessage);
+      const narrativeTexts = parsed
+        .filter((part) => part.type === "text")
+        .map((part) => part.content)
+        .join("\n");
+
+      const assistantBlocks = splitIntoLogicalBlocks(narrativeTexts);
+      let assistantBlockIndex = 0;
+      for (const rawBlock of assistantBlocks) {
+        if (/^[-*_]{3,}$/.test(rawBlock)) continue;
+
+        const sanitized = sanitizeBlockForSpeech(rawBlock);
+        if (sanitized && /\p{L}|\p{N}/u.test(sanitized)) {
+          items.push({
+            globalIndex: globalIndex++,
+            turnIndex,
+            blockIndex: assistantBlockIndex++,
+            speaker: "assistant",
+            text: sanitized,
+            timestamp: turn.timestamp || session.timestamp || Date.now(),
+          });
+        }
       }
     }
   }
@@ -302,7 +325,11 @@ export function useSpeech() {
       const utterance = new SpeechSynthesisUtterance(processedText);
 
       // Load custom voice settings from localStorage if available
-      const savedVoiceName = localStorage.getItem("codeoba-tts-voice");
+      const speaker = currentItem.speaker || "assistant";
+      const savedVoiceName =
+        speaker === "user"
+          ? localStorage.getItem("codeoba-tts-voice-user")
+          : localStorage.getItem("codeoba-tts-voice-assistant");
       let voiceAssigned = false;
       if (savedVoiceName) {
         const voices = window.speechSynthesis.getVoices();
@@ -325,14 +352,17 @@ export function useSpeech() {
         }
       }
 
-      // Load speed rate and pitch settings from localStorage
-      const savedRate = localStorage.getItem("codeoba-tts-rate");
-      if (savedRate) {
-        utterance.rate = parseFloat(savedRate);
-      }
-      const savedPitch = localStorage.getItem("codeoba-tts-pitch");
-      if (savedPitch) {
-        utterance.pitch = parseFloat(savedPitch);
+      // Load speed rate and pitch settings from localStorage for the specific speaker
+      if (speaker === "user") {
+        const savedRate = localStorage.getItem("codeoba-tts-rate-user");
+        if (savedRate) utterance.rate = parseFloat(savedRate);
+        const savedPitch = localStorage.getItem("codeoba-tts-pitch-user");
+        if (savedPitch) utterance.pitch = parseFloat(savedPitch);
+      } else {
+        const savedRate = localStorage.getItem("codeoba-tts-rate-assistant");
+        if (savedRate) utterance.rate = parseFloat(savedRate);
+        const savedPitch = localStorage.getItem("codeoba-tts-pitch-assistant");
+        if (savedPitch) utterance.pitch = parseFloat(savedPitch);
       }
 
       utterance.onend = () => {
@@ -373,6 +403,11 @@ export function useSpeech() {
       if (a.sessionId === b.sessionId) {
         if (a.turnIndex !== b.turnIndex) {
           return a.turnIndex - b.turnIndex;
+        }
+        const aSpeakerOrder = a.speaker === "user" ? 0 : 1;
+        const bSpeakerOrder = b.speaker === "user" ? 0 : 1;
+        if (aSpeakerOrder !== bSpeakerOrder) {
+          return aSpeakerOrder - bSpeakerOrder;
         }
         const aBlock = a.blockIndex ?? 0;
         const bBlock = b.blockIndex ?? 0;
@@ -539,6 +574,7 @@ export function useSpeech() {
           (existing) =>
             existing.sessionId === session.id &&
             existing.turnIndex === item.turnIndex &&
+            existing.speaker === item.speaker &&
             existing.blockIndex === item.blockIndex
         );
         if (exists) return;
@@ -547,6 +583,7 @@ export function useSpeech() {
           globalIndex: 0,
           turnIndex: item.turnIndex,
           blockIndex: item.blockIndex,
+          speaker: item.speaker,
           text: item.text,
           timestamp: item.timestamp,
           sessionId: session.id,
@@ -665,6 +702,7 @@ export function useSpeech() {
           (existing) =>
             existing.sessionId === sessionId &&
             existing.turnIndex === item.turnIndex &&
+            existing.speaker === item.speaker &&
             existing.blockIndex === item.blockIndex
         );
         if (!exists) {
@@ -716,7 +754,10 @@ export function useSpeech() {
     setCurrentSentenceIndex(-1);
   };
 
-  const speakDirectText = async (rawText: string): Promise<void> => {
+  const speakDirectText = async (
+    rawText: string,
+    speaker: "assistant" | "user" = "assistant"
+  ): Promise<void> => {
     stop();
     const text = applyPronunciations(rawText);
 
@@ -725,7 +766,10 @@ export function useSpeech() {
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const savedVoiceName = localStorage.getItem("codeoba-tts-voice");
+    const savedVoiceName =
+      speaker === "user"
+        ? localStorage.getItem("codeoba-tts-voice-user")
+        : localStorage.getItem("codeoba-tts-voice-assistant");
     let voiceAssigned = false;
     if (savedVoiceName) {
       const voices = window.speechSynthesis.getVoices();
@@ -747,13 +791,16 @@ export function useSpeech() {
       }
     }
 
-    const savedRate = localStorage.getItem("codeoba-tts-rate");
-    if (savedRate) {
-      utterance.rate = parseFloat(savedRate);
-    }
-    const savedPitch = localStorage.getItem("codeoba-tts-pitch");
-    if (savedPitch) {
-      utterance.pitch = parseFloat(savedPitch);
+    if (speaker === "user") {
+      const savedRate = localStorage.getItem("codeoba-tts-rate-user");
+      if (savedRate) utterance.rate = parseFloat(savedRate);
+      const savedPitch = localStorage.getItem("codeoba-tts-pitch-user");
+      if (savedPitch) utterance.pitch = parseFloat(savedPitch);
+    } else {
+      const savedRate = localStorage.getItem("codeoba-tts-rate-assistant");
+      if (savedRate) utterance.rate = parseFloat(savedRate);
+      const savedPitch = localStorage.getItem("codeoba-tts-pitch-assistant");
+      if (savedPitch) utterance.pitch = parseFloat(savedPitch);
     }
 
     setIsPlaying(true);

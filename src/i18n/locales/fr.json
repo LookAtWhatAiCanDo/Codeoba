@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "Effacer l'historique de lecture à haute voix",
     "confirmClearHistory": "Êtes-vous sûr de vouloir effacer tout votre historique de texte lu à haute voix ? Cette action est irréversible.",
     "noSpokenHistory": "Pas encore d'historique de texte parlé.",
-    "time": "Heure"
+    "time": "Heure",
+    "side": "Côté"
   },
   "detailPane": {
     "noSelection": "Aucune conversation sélectionnée",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "Lecture à haute voix",
-      "voice": "Voix de synthèse vocale",
-      "voiceDesc": "Sélectionnez le synthétiseur de voix pour lire le texte descriptif.",
+      "voiceAssistant": "Voix : Assistant",
+      "voiceAssistantDesc": "Sélectionnez le synthétiseur de voix pour lire les réponses de l'assistant.",
+      "voiceUser": "Voix : Utilisateur",
+      "voiceUserDesc": "Sélectionnez le synthétiseur de voix pour lire les messages de l'utilisateur.",
       "defaultVoice": "Voix système par défaut",
       "rate": "Vitesse de parole",
-      "rateDesc": "Ajustez la vitesse de lecture du texte.",
       "pitch": "Hauteur de la voix",
-      "pitchDesc": "Ajustez la hauteur de ton de la voix parlée.",
       "reset": "Réinitialiser",
+      "resetVoice": "Réinitialiser la voix",
+      "confirmResetAll": "Réinitialiser tous les paramètres de lecture à haute voix ?",
       "test": "Tester la voix",
+      "testDesc": "Personnalisez et testez la voix synthétisée avec votre propre texte.",
+      "testAssistant": "Tester Assistant",
+      "testUser": "Tester Utilisateur",
       "testSaying": "Un chasseur sachant chasser doit savoir chasser sans son chien.",
+      "testReset": "Réinitialiser le texte",
       "pronunciations": "Prononciations personnalisées",
       "pronunciationsDesc": "Configurez des règles d'orthographe personnalisées pour les raccourcis de répertoire, les abréviations de code ou les termes techniques.",
-      "pronunciationsOriginal": "Mot / Correspondance",
-      "pronunciationsReplacement": "Prononciation parlée",
       "pronunciationsPlaceholderWord": "ex. src",
       "pronunciationsPlaceholderReplacement": "ex. source",
       "pronunciationsAdd": "Ajouter une règle",
-      "pronunciationsReset": "Réinitialiser les règles",
-      "testDesc": "Personnalisez et testez la voix synthétisée avec votre propre texte.",
-      "testReset": "Réinitialiser le texte"
+      "pronunciationsReset": "Réinitialiser les règles"
     }
   },
   "updater": {

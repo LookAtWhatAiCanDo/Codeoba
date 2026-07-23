@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "清除朗读历史",
     "confirmClearHistory": "您确定要清除所有已朗读的文本历史记录吗？此操作无法撤销。",
     "noSpokenHistory": "暂无已朗读的文本历史记录。",
-    "time": "时间"
+    "time": "时间",
+    "side": "角色"
   },
   "detailPane": {
     "noSelection": "未选择对话",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "朗读",
-      "voice": "语音合成声音",
-      "voiceDesc": "选择朗读转录文本的语音合成引擎。",
+      "voiceAssistant": "语音：助手",
+      "voiceAssistantDesc": "选择朗读助手回复文本的语音合成引擎。",
+      "voiceUser": "语音：用户",
+      "voiceUserDesc": "选择朗读用户输入文本的语音合成引擎。",
       "defaultVoice": "系统默认声音",
       "rate": "朗读速度",
-      "rateDesc": "调整文本朗读的速度。",
       "pitch": "朗读音调",
-      "pitchDesc": "调整说话声音的音调。",
       "reset": "恢复默认值",
+      "resetVoice": "重置语音",
+      "confirmResetAll": "重置所有朗读设置？",
       "test": "测试声音",
+      "testDesc": "使用您自己的文本自定义并测试合成语音。",
+      "testAssistant": "测试助手",
+      "testUser": "测试用户",
       "testSaying": "吃葡萄不吐葡萄皮，不吃葡萄倒吐葡萄皮。",
+      "testReset": "重置文本",
       "pronunciations": "自定义发音",
       "pronunciationsDesc": "为目录快捷方式、代码缩写或技术术语配置自定义拼写替换规则。",
-      "pronunciationsOriginal": "单词 / 匹配",
-      "pronunciationsReplacement": "口头读音",
       "pronunciationsPlaceholderWord": "例如 src",
       "pronunciationsPlaceholderReplacement": "例如 source",
       "pronunciationsAdd": "添加规则",
-      "pronunciationsReset": "重置规则",
-      "testDesc": "使用您自己的文本自定义并测试合成语音。",
-      "testReset": "重置文本"
+      "pronunciationsReset": "重置规则"
     }
   },
   "updater": {

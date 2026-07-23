@@ -82,7 +82,8 @@
     "clearReadAloudHistory": "Cancella cronologia di lettura",
     "confirmClearHistory": "Sei sicuro di voler cancellare l'intera cronologia del testo letto ad alta voce? Questa azione non può essere annullata.",
     "noSpokenHistory": "Nessuna cronologia di testi parlati ancora.",
-    "time": "Ora"
+    "time": "Ora",
+    "side": "Lato"
   },
   "detailPane": {
     "noSelection": "Nessuna conversazione selezionata",
@@ -285,26 +286,28 @@
     },
     "readAloud": {
       "title": "Lettura ad alta voce",
-      "voice": "Voce di sintesi vocale",
-      "voiceDesc": "Seleziona il sintetizzatore vocale per leggere il testo narrativo.",
+      "voiceAssistant": "Voce: Assistente",
+      "voiceAssistantDesc": "Seleziona il sintetizzatore vocale per leggere le risposte dell'assistente.",
+      "voiceUser": "Voce: Utente",
+      "voiceUserDesc": "Seleziona il sintetizzatore vocale per leggere i messaggi dell'utente.",
       "defaultVoice": "Voce di sistema predefinita",
       "rate": "Velocità di lettura",
-      "rateDesc": "Regola la velocità con cui viene letto il testo.",
       "pitch": "Tonalità della voce",
-      "pitchDesc": "Regola la tonalità della voce parlata.",
       "reset": "Ripristina predefiniti",
+      "resetVoice": "Ripristina voce",
+      "confirmResetAll": "Ripristinare tutte le impostazioni di lettura ad alta voce?",
       "test": "Testa Voce",
+      "testDesc": "Personalizza e testa la voce sintetizzata con il tuo testo.",
+      "testAssistant": "Testa Assistente",
+      "testUser": "Testa Utente",
       "testSaying": "Trentotto trentini entrarono a Trento tutti e trentotto trotterellando.",
+      "testReset": "Ripristina testo",
       "pronunciations": "Pronunce Personalizzate",
       "pronunciationsDesc": "Configura sostituzioni di pronuncia per scorciatoie di directory, abbreviazioni di codice o termini tecnici.",
-      "pronunciationsOriginal": "Parola / Corrispondenza",
-      "pronunciationsReplacement": "Pronuncia Parlata",
       "pronunciationsPlaceholderWord": "es. src",
       "pronunciationsPlaceholderReplacement": "es. source",
       "pronunciationsAdd": "Aggiungi Regola",
-      "pronunciationsReset": "Ripristina Regole",
-      "testDesc": "Personalizza e testa la voce sintetizzata con il tuo testo.",
-      "testReset": "Ripristina testo"
+      "pronunciationsReset": "Ripristina Regole"
     }
   },
   "updater": {

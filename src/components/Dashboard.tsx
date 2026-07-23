@@ -652,6 +652,9 @@ export const Dashboard = (props: DashboardProps) => {
                           class="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-accent/40 active:bg-accent transition-colors z-10"
                         />
                       </th>
+                      <th class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-1 w-px whitespace-nowrap border-b border-border/40">
+                        {t("dashboard.side")}
+                      </th>
                       <th class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-1 w-full border-b border-border/40">
                         {t("dashboard.text")}
                       </th>
@@ -662,7 +665,7 @@ export const Dashboard = (props: DashboardProps) => {
                       each={speech.sentences()}
                       fallback={
                         <tr>
-                          <td colspan="4" class="p-8 text-center text-text-secondary select-none">
+                          <td colspan="5" class="p-8 text-center text-text-secondary select-none">
                             {t("dashboard.noSpokenHistory")}
                           </td>
                         </tr>
@@ -766,6 +769,22 @@ export const Dashboard = (props: DashboardProps) => {
                               title={item.sessionTitle}
                             >
                               {item.sessionTitle}
+                            </td>
+
+                            {/* Side (User / Assistant) */}
+                            <td
+                              onClick={() => speech.goToIndex(item.globalIndex)}
+                              class="px-4 py-1 select-none cursor-pointer whitespace-nowrap w-px"
+                            >
+                              <span
+                                class={`inline-block px-2 py-0.5 text-[0.625rem] rounded font-sans font-bold uppercase tracking-wider ${
+                                  item.speaker === "user"
+                                    ? "bg-accent/15 text-accent border border-accent/30"
+                                    : "bg-surface/80 text-text-secondary border border-border/50"
+                                }`}
+                              >
+                                {item.speaker === "user" ? t("common.user") : t("common.assistant")}
+                              </span>
                             </td>
 
                             {/* Spoken Text */}
