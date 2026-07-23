@@ -1952,10 +1952,10 @@ impl SourceAdapter for AntigravitySource {
             .clone()
     }
 
-    async fn parse_all_sessions(&self) -> Vec<Session> {
+    async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let base_dir = self.get_base_dir();
         if !base_dir.exists() || !base_dir.is_dir() {
-            return Vec::new();
+            return crate::parsers::cache::ScanResult::failed();
         }
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
@@ -2005,8 +2005,22 @@ impl SourceAdapter for AntigravitySource {
 
         let mut sessions = Vec::new();
         let mut walk_stack = vec![base_dir];
+        // Any directory we fail to read makes this scan's absences meaningless.
+        let mut complete = true;
         while let Some(current_dir) = walk_stack.pop() {
-            if let Ok(entries) = fs::read_dir(current_dir) {
+            let entries = match fs::read_dir(&current_dir) {
+                Ok(e) => e,
+                Err(e) => {
+                    crate::log_warn!(
+                        "[antigravity] Could not read {}: {}",
+                        current_dir.display(),
+                        e
+                    );
+                    complete = false;
+                    continue;
+                }
+            };
+            {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if path.is_dir() {
@@ -2022,6 +2036,6 @@ impl SourceAdapter for AntigravitySource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id())
+        crate::parsers::cache::get_cache_manager().end_scan(self.id(), complete)
     }
 }

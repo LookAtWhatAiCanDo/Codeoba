@@ -707,7 +707,7 @@ fn test_cursor_sqlite_parsing() {
             }
 
             let source = CursorSource::new();
-            let sessions = source.parse_all_sessions().await;
+            let sessions = source.parse_all_sessions().await.sessions;
 
             assert_eq!(sessions.len(), 1);
             let s = &sessions[0];
@@ -1196,8 +1196,8 @@ fn test_hybrid_telemetry_validation_harness() {
             let cursor_source = CursorSource::new();
             let claude_source = ClaudeSource;
 
-            let cursor_sessions = cursor_source.parse_all_sessions().await;
-            let claude_sessions = claude_source.parse_all_sessions().await;
+            let cursor_sessions = cursor_source.parse_all_sessions().await.sessions;
+            let claude_sessions = claude_source.parse_all_sessions().await.sessions;
 
             assert_eq!(cursor_sessions.len(), 2);
             let c1 = cursor_sessions
@@ -1526,7 +1526,7 @@ fn test_cache_orphan_preservation() {
             );
 
             // End scan (this cleans up orphans that were not seen during this scan)
-            let sessions = cache_mgr.end_scan(source_id);
+            let sessions = cache_mgr.end_scan(source_id, true).sessions;
             assert_eq!(sessions.len(), 2);
             let orphan = sessions
                 .iter()

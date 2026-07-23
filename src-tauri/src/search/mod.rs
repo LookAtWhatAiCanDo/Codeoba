@@ -237,16 +237,19 @@ impl SearchIndexState {
 
             let source_start = std::time::Instant::now();
             let parsed = source.parse_all_sessions().await;
-            if parsed.is_empty() {
+            // Completeness, not emptiness, decides whether this source may drive
+            // deletions. A completed scan that found nothing really did find nothing;
+            // an incomplete one proves nothing either way.
+            if parsed.complete {
+                sources_with_results.insert(source.id().to_string());
+            } else {
                 crate::log_warn!(
-                    "[rebuild] Source '{}' returned no sessions; preserving its existing \
-                     sessions instead of treating them as deleted.",
+                    "[rebuild] Scan of source '{}' did not complete; preserving its \
+                     existing sessions instead of treating them as deleted.",
                     source.id()
                 );
-            } else {
-                sources_with_results.insert(source.id().to_string());
             }
-            all_sessions.extend(parsed);
+            all_sessions.extend(parsed.sessions);
             crate::log_info!(
                 "[rebuild] Parsed source '{}' in {:?}",
                 source.id(),
@@ -316,6 +319,60 @@ impl SearchIndexState {
         }
 
         Ok(())
+    }
+
+    /// The single authority for incremental, absence-driven deletion from the index.
+    ///
+    /// Given `observed` — the session ids a scan of `source_id` actually saw — removes
+    /// every *other* session of that source from the index and returns their ids so the
+    /// caller can emit `session-deleted`. It is the one place the watcher's
+    /// directory-removed, inode-changed, and database-reload paths decide a session is
+    /// gone; previously each did it inline with its own copy of the read/remove/emit
+    /// dance, and each could fire on an empty result and wipe the whole source.
+    ///
+    /// `complete` gates the whole operation: a scan that did not enumerate the source
+    /// (`false`) makes NO changes, because absence in an incomplete scan is not evidence
+    /// of deletion. This is the invariant that stops a transient unreadable directory or
+    /// a clobbered concurrent scan from dropping every session of a source.
+    ///
+    /// Deliberately NOT routed through here: removals driven by *positive*
+    /// identification rather than absence — evicting a session positively identified as
+    /// a subagent, or removing the one session whose file was observed deleted. Those
+    /// carry their own certainty and have bounded blast radius, so they keep their own
+    /// paths.
+    pub fn reconcile_source(
+        &self,
+        source_id: &str,
+        observed: &HashSet<String>,
+        complete: bool,
+    ) -> Vec<String> {
+        if !complete {
+            crate::log_warn!(
+                "[reconcile] Scan of source '{}' did not complete; skipping deletion \
+                 detection to avoid dropping live sessions.",
+                source_id
+            );
+            return Vec::new();
+        }
+
+        let mut removed = Vec::new();
+        if let Ok(mut guard) = self.sessions.write() {
+            guard.retain(|id, sess| {
+                let gone = sess.source_id == source_id && !observed.contains(id);
+                if gone {
+                    removed.push(id.clone());
+                }
+                !gone
+            });
+        }
+        if !removed.is_empty() {
+            if let Ok(mut ttl_guard) = self.status_ttl_cache.write() {
+                for id in &removed {
+                    ttl_guard.remove(id);
+                }
+            }
+        }
+        removed
     }
 }
 
@@ -418,6 +475,96 @@ mod update_session_tests {
         tauri::async_runtime::block_on(state.update_session(session_with_turns("s1", 2))).unwrap();
 
         assert!(state.sessions.read().unwrap().contains_key("s1"));
+    }
+
+    fn session_of(id: &str, source_id: &str) -> Session {
+        Session {
+            source_id: source_id.to_string(),
+            ..session_with_turns(id, 1)
+        }
+    }
+
+    fn seed(state: &SearchIndexState, sessions: &[Session]) {
+        let mut guard = state.sessions.write().unwrap();
+        for s in sessions {
+            guard.insert(s.id.clone(), s.clone());
+        }
+    }
+
+    fn ids(state: &SearchIndexState) -> std::collections::HashSet<String> {
+        state.sessions.read().unwrap().keys().cloned().collect()
+    }
+
+    fn observed(list: &[&str]) -> std::collections::HashSet<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// A complete scan that no longer sees a session removes exactly that one, leaves
+    /// the source's other sessions, and never touches a different source.
+    #[test]
+    fn reconcile_removes_only_unobserved_of_that_source() {
+        let state = SearchIndexState::new();
+        seed(
+            &state,
+            &[
+                session_of("keep", "codex"),
+                session_of("gone", "codex"),
+                session_of("other", "claude"),
+            ],
+        );
+
+        let removed = state.reconcile_source("codex", &observed(&["keep"]), true);
+
+        assert_eq!(removed, vec!["gone".to_string()]);
+        assert_eq!(
+            ids(&state),
+            observed(&["keep", "other"]),
+            "only the unobserved codex session is removed; claude is untouched"
+        );
+    }
+
+    /// The whole point: an incomplete scan makes no deletions, even if it observed
+    /// nothing. This is the guard against a transient failure wiping a source.
+    #[test]
+    fn reconcile_incomplete_scan_is_a_noop() {
+        let state = SearchIndexState::new();
+        seed(
+            &state,
+            &[
+                session_of("a", "antigravity"),
+                session_of("b", "antigravity"),
+            ],
+        );
+
+        let removed = state.reconcile_source("antigravity", &observed(&[]), false);
+
+        assert!(removed.is_empty());
+        assert_eq!(
+            ids(&state),
+            observed(&["a", "b"]),
+            "an incomplete scan must not remove anything"
+        );
+    }
+
+    /// A complete scan that genuinely saw nothing does remove the source's sessions —
+    /// this is the legitimate "you deleted everything" case, now expressible.
+    #[test]
+    fn reconcile_complete_empty_scan_removes_the_source() {
+        let state = SearchIndexState::new();
+        seed(
+            &state,
+            &[
+                session_of("a", "cursor"),
+                session_of("b", "cursor"),
+                session_of("keep", "codex"),
+            ],
+        );
+
+        let mut removed = state.reconcile_source("cursor", &observed(&[]), true);
+        removed.sort();
+
+        assert_eq!(removed, vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(ids(&state), observed(&["keep"]), "other sources survive");
     }
 }
 

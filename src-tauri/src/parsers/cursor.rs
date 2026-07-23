@@ -521,10 +521,10 @@ impl SourceAdapter for CursorSource {
         Some(session)
     }
 
-    async fn parse_all_sessions(&self) -> Vec<Session> {
+    async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let global_db = self.get_global_db_file();
         if !global_db.exists() {
-            return Vec::new();
+            return crate::parsers::cache::ScanResult::failed();
         }
 
         crate::parsers::cache::get_cache_manager().start_scan(self.id());
@@ -534,7 +534,11 @@ impl SourceAdapter for CursorSource {
             "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%';",
         );
         if rows.is_empty() {
-            return crate::parsers::cache::get_cache_manager().end_scan(self.id());
+            // `query_db` collapses errors (locked DB, WAL contention, schema drift)
+            // into an empty Vec, so "no rows" cannot be distinguished from "query
+            // failed". Report the scan as incomplete rather than let absence be read
+            // as deletion.
+            return crate::parsers::cache::get_cache_manager().end_scan(self.id(), false);
         }
 
         let (ws_map, active_ids) = self.build_workspace_map();
@@ -597,7 +601,7 @@ impl SourceAdapter for CursorSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id())
+        crate::parsers::cache::get_cache_manager().end_scan(self.id(), true)
     }
 }
 

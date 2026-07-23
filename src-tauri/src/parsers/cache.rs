@@ -29,6 +29,48 @@ pub struct SourceCache {
     pub entries: Vec<CacheEntry>,
 }
 
+/// Outcome of one full scan of a source.
+///
+/// `sessions` alone is ambiguous: an empty list means either "this source genuinely
+/// has no sessions" or "the scan failed and observed nothing". Callers act on that
+/// difference by deleting every session of the source, so the distinction must be
+/// carried explicitly rather than inferred.
+#[derive(Debug, Clone)]
+pub struct ScanResult {
+    pub sessions: Vec<Session>,
+    /// True only when the scan enumerated the whole source without error. When false,
+    /// `sessions` may be partial and must never be used to conclude anything was
+    /// deleted.
+    pub complete: bool,
+}
+
+impl ScanResult {
+    /// The scan enumerated the source to completion; `sessions` is authoritative.
+    pub fn complete(sessions: Vec<Session>) -> Self {
+        Self {
+            sessions,
+            complete: true,
+        }
+    }
+
+    /// The scan could not enumerate the source (unreadable dir, early return, or a
+    /// concurrent scan still in flight). `sessions` is best-effort only.
+    pub fn partial(sessions: Vec<Session>) -> Self {
+        Self {
+            sessions,
+            complete: false,
+        }
+    }
+
+    /// The scan produced nothing usable.
+    pub fn failed() -> Self {
+        Self {
+            sessions: Vec::new(),
+            complete: false,
+        }
+    }
+}
+
 pub struct SessionCacheManager {
     // source_id -> (file_path -> CacheEntry)
     active_caches: Mutex<HashMap<String, HashMap<String, CacheEntry>>>,
@@ -336,7 +378,14 @@ impl SessionCacheManager {
         }
     }
 
-    pub fn end_scan(&self, source_id: &str) -> Vec<Session> {
+    /// Finalizes (or defers) the scan of `source_id`.
+    ///
+    /// `enumeration_complete` is the caller's report of whether it managed to walk the
+    /// whole source. Deletion detection here works by absence -- an entry not in `seen`
+    /// is presumed gone -- which is only sound when the walk actually completed. A
+    /// caller that hit an unreadable directory or returned early must pass false, and
+    /// no session will be marked deleted.
+    pub fn end_scan(&self, source_id: &str, enumeration_complete: bool) -> ScanResult {
         // Only the last scan still in flight for this source may finalize. An inner
         // scan returns what is currently cached rather than an empty Vec: returning
         // nothing here is what made a whole source vanish from the sidebar, because
@@ -368,48 +417,52 @@ impl SessionCacheManager {
             );
             if let Ok(active_guard) = self.active_caches.lock() {
                 if let Some(cache_map) = active_guard.get(source_id) {
-                    return cache_map.values().map(|e| e.session.clone()).collect();
+                    return ScanResult::partial(
+                        cache_map.values().map(|e| e.session.clone()).collect(),
+                    );
                 }
             }
-            return Vec::new();
+            return ScanResult::failed();
+        }
+
+        // The caller could not enumerate the source, so absence proves nothing. Report
+        // what is cached and leave the cache exactly as it was.
+        if !enumeration_complete {
+            crate::log_warn!(
+                "[cache] Scan for '{}' did not complete enumeration; preserving cache \
+                 and skipping deletion detection.",
+                source_id
+            );
+            let sessions = if let Ok(active_guard) = self.active_caches.lock() {
+                active_guard
+                    .get(source_id)
+                    .map(|m| m.values().map(|e| e.session.clone()).collect())
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+            self.clear_scan_state(source_id);
+            return ScanResult::partial(sessions);
         }
 
         let entries_to_save = {
             let mut active_guard = match self.active_caches.lock() {
                 Ok(g) => g,
-                Err(_) => return Vec::new(),
+                Err(_) => return ScanResult::failed(),
             };
             let seen_guard = match self.seen_paths.lock() {
                 Ok(g) => g,
-                Err(_) => return Vec::new(),
+                Err(_) => return ScanResult::failed(),
             };
 
             let cache_map = match active_guard.get_mut(source_id) {
                 Some(m) => m,
-                None => return Vec::new(),
+                None => return ScanResult::failed(),
             };
             let seen = match seen_guard.get(source_id) {
                 Some(s) => s,
-                None => return Vec::new(),
+                None => return ScanResult::failed(),
             };
-
-            // A scan that saw nothing at all, against a non-empty cache, did not
-            // observe an empty source — it failed (unreadable dir, permissions, an
-            // early return). Trusting it would mark every session deleted and prune
-            // the cache, so leave the cache untouched and report what we already have.
-            if seen.is_empty() && !cache_map.is_empty() {
-                crate::log_warn!(
-                    "[cache] Scan for '{}' saw no files but {} are cached; treating the \
-                     scan as failed and preserving the cache.",
-                    source_id,
-                    cache_map.len()
-                );
-                let sessions = cache_map.values().map(|e| e.session.clone()).collect();
-                drop(seen_guard);
-                drop(active_guard);
-                self.clear_scan_state(source_id);
-                return sessions;
-            }
 
             let prune_deleted = crate::config::load_fallback_config()
                 .get("prune_deleted_sessions")
@@ -475,10 +528,12 @@ impl SessionCacheManager {
             seen_guard.remove(source_id);
         }
 
-        entries_to_save
-            .into_iter()
-            .map(|entry| entry.session)
-            .collect()
+        ScanResult::complete(
+            entries_to_save
+                .into_iter()
+                .map(|entry| entry.session)
+                .collect(),
+        )
     }
 }
 
@@ -550,22 +605,27 @@ mod scan_lifecycle_tests {
         mgr.start_scan(src);
         put(src, "/home/b.jsonl", "b");
 
-        // The inner scan finishing must NOT finalize or return nothing.
-        let inner = mgr.end_scan(src);
+        // The inner scan finishing must NOT finalize, and must not report nothing.
+        let inner = mgr.end_scan(src, true);
         assert!(
-            !inner.is_empty(),
+            !inner.sessions.is_empty(),
             "an inner scan must report cached sessions, not an empty list"
+        );
+        assert!(
+            !inner.complete,
+            "an inner scan is not authoritative and must not claim completeness"
         );
 
         // The outer scan finalizes with the union of what both saw.
-        let outer = mgr.end_scan(src);
-        let ids: Vec<String> = outer.iter().map(|s| s.id.clone()).collect();
+        let outer = mgr.end_scan(src, true);
+        assert!(outer.complete, "the outermost scan finalizes");
+        let ids: Vec<String> = outer.sessions.iter().map(|s| s.id.clone()).collect();
         assert!(
             ids.contains(&"a".to_string()) && ids.contains(&"b".to_string()),
             "both scans' files must survive, got {ids:?}"
         );
         assert!(
-            outer.iter().all(|s| !s.is_deleted),
+            outer.sessions.iter().all(|s| !s.is_deleted),
             "no live session may be marked deleted by overlapping scans"
         );
 
@@ -573,35 +633,64 @@ mod scan_lifecycle_tests {
         std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
-    /// A scan that observes no files at all against a non-empty cache has failed
-    /// (unreadable dir, early return). It must not mark everything deleted.
+    /// A scan that could not enumerate the source proves nothing by absence, so it must
+    /// leave the cache untouched.
     #[test]
-    fn scan_that_saw_nothing_preserves_cache() {
+    fn incomplete_scan_preserves_cache() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp = tempfile::tempdir().unwrap();
         std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
         let mgr = get_cache_manager();
         mgr.clear_in_memory_caches();
 
-        let src = "empty_scan_src";
-        // Populate and finalize a good scan.
+        let src = "incomplete_src";
         mgr.start_scan(src);
         put(src, "/home/a.jsonl", "a");
-        let first = mgr.end_scan(src);
-        assert_eq!(first.len(), 1);
+        assert!(mgr.end_scan(src, true).complete);
 
-        // Now a scan that sees nothing.
+        // A scan that failed to enumerate: sees nothing, reports incomplete.
         mgr.start_scan(src);
-        let second = mgr.end_scan(src);
+        let result = mgr.end_scan(src, false);
 
+        assert!(!result.complete);
         assert_eq!(
-            second.len(),
+            result.sessions.len(),
             1,
-            "a scan that saw no files must preserve the cached session"
+            "an incomplete scan must preserve the cached session"
         );
         assert!(
-            second.iter().all(|s| !s.is_deleted),
-            "a failed scan must not mark sessions deleted"
+            result.sessions.iter().all(|s| !s.is_deleted),
+            "an incomplete scan must not mark sessions deleted"
+        );
+
+        mgr.clear_in_memory_caches();
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// The other half, and the point of making completeness explicit: a scan that DID
+    /// enumerate the source and genuinely found nothing is authoritative, and its
+    /// absences are real deletions.
+    #[test]
+    fn complete_scan_seeing_nothing_marks_deleted() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        let src = "emptied_src";
+        mgr.start_scan(src);
+        put(src, "/home/a.jsonl", "a");
+        assert!(mgr.end_scan(src, true).complete);
+
+        // The user really did delete everything; the scan completed and saw no files.
+        mgr.start_scan(src);
+        let result = mgr.end_scan(src, true);
+
+        assert!(result.complete);
+        assert!(
+            result.sessions.iter().all(|s| s.is_deleted),
+            "a completed scan that saw nothing must mark its orphans deleted"
         );
 
         mgr.clear_in_memory_caches();

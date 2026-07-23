@@ -120,6 +120,49 @@ fn is_directory_not_empty(path: &Path) -> bool {
     }
 }
 
+/// Reparses `source_id` off disk and applies the result to the index through the single
+/// reconciliation authority: upserts every session the scan saw, then — only if the scan
+/// completed — removes the ones it did not.
+///
+/// The watcher's directory-removed and inode-changed paths both use this instead of
+/// deciding deletions from the raw filesystem event. Those events fire on atomic renames
+/// and transient unavailability, not just real deletions, so acting on them directly
+/// wiped whole sources; routing through a rescan means a genuinely missing directory
+/// yields an incomplete scan and `reconcile_source` preserves the sessions.
+fn spawn_rescan_and_reconcile<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    source_id: String,
+) {
+    let app_handle = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        let sources = get_sources_list();
+        let src = match sources.iter().find(|s| s.id() == source_id) {
+            Some(s) => s,
+            None => return,
+        };
+        let scan = src.parse_all_sessions().await;
+        let idx_state = app_handle.state::<crate::search::SearchIndexState>();
+
+        let observed: std::collections::HashSet<String> =
+            scan.sessions.iter().map(|s| s.id.clone()).collect();
+        for sess in &scan.sessions {
+            let _ = idx_state.update_session(sess.clone()).await;
+            emit_session_update(&app_handle, sess);
+        }
+        let removed = idx_state.reconcile_source(&source_id, &observed, scan.complete);
+        if !removed.is_empty() {
+            crate::log_info!(
+                "Removing {} stale sessions from index for source: {}",
+                removed.len(),
+                source_id
+            );
+            for id in &removed {
+                let _ = app_handle.emit("session-deleted", id);
+            }
+        }
+    });
+}
+
 pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
     let sources = get_sources_list();
     let state = app_handle.state::<WatcherState>();
@@ -242,7 +285,12 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
         };
 
         if !exists {
-            // Target was deleted. Clean index, remove watch, but DO NOT CREATE IT!
+            // Target is missing. The event fires on genuine deletion AND on transient
+            // absence (atomic rename, an unmounted/remounted volume), so it is not
+            // trustworthy on its own -- acting on it directly used to wipe the whole
+            // source. Unwatch, then rescan: if the directory really is gone the rescan
+            // is incomplete and `reconcile_source` preserves the sessions; if it came
+            // back, the rescan reconciles it correctly. DO NOT recreate the watch here.
             let has_sessions = if let Ok(s_guard) = idx_state.sessions.read() {
                 s_guard.values().any(|sess| sess.source_id == source_id)
             } else {
@@ -251,7 +299,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
 
             if stored_ino.is_some() || has_sessions {
                 crate::log_info!(
-                    "Monitored directory was deleted: {:?}. Cleaning index for source: {}",
+                    "Monitored directory missing: {:?}. Unwatching and rescanning source: {}",
                     target,
                     source_id
                 );
@@ -259,32 +307,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                 if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
                     inodes_guard.remove(&target);
                 }
-
-                // Remove sessions from index
-                let mut removed_session_ids = Vec::new();
-                if let Ok(s_guard) = idx_state.sessions.read() {
-                    for (id, sess) in s_guard.iter() {
-                        if sess.source_id == source_id {
-                            removed_session_ids.push(id.clone());
-                        }
-                    }
-                }
-                if !removed_session_ids.is_empty() {
-                    crate::log_info!(
-                        "Removing {} sessions from index due to deleted directory for source: {}",
-                        removed_session_ids.len(),
-                        source_id
-                    );
-                    if let Ok(mut s_guard) = idx_state.sessions.write() {
-                        for id in &removed_session_ids {
-                            s_guard.remove(id);
-                        }
-                    }
-
-                    for id in &removed_session_ids {
-                        let _ = app_handle.emit("session-deleted", id);
-                    }
-                }
+                spawn_rescan_and_reconcile(app_handle, source_id.clone());
             }
         } else if stored_ino != Some(current_ino) {
             // Inode mismatch or not registered yet, start/restore watch
@@ -295,49 +318,12 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                 inodes_guard.insert(target.clone(), current_ino);
             }
 
-            // If it was already watched (stored_ino.is_some()) but the inode changed,
-            // we must clear the old sessions for this source from the index before reloading.
-            if stored_ino.is_some() {
-                let mut removed_session_ids = Vec::new();
-                if let Ok(s_guard) = idx_state.sessions.read() {
-                    for (id, sess) in s_guard.iter() {
-                        if sess.source_id == source_id {
-                            removed_session_ids.push(id.clone());
-                        }
-                    }
-                }
-                if !removed_session_ids.is_empty() {
-                    crate::log_info!(
-                        "Removing {} sessions from index due to inode change for source: {}",
-                        removed_session_ids.len(),
-                        source_id
-                    );
-                    if let Ok(mut s_guard) = idx_state.sessions.write() {
-                        for id in &removed_session_ids {
-                            s_guard.remove(id);
-                        }
-                    }
-
-                    for id in &removed_session_ids {
-                        let _ = app_handle.emit("session-deleted", id);
-                    }
-                }
-            }
-
-            // Trigger async reload
-            let app_handle_clone = app_handle.clone();
-            let source_id_clone = source_id.clone();
-            tauri::async_runtime::spawn(async move {
-                let sources = get_sources_list();
-                if let Some(src) = sources.iter().find(|s| s.id() == source_id_clone) {
-                    let sessions = src.parse_all_sessions().await;
-                    let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
-                    for sess in sessions {
-                        let _ = idx_state.update_session(sess.clone()).await;
-                        emit_session_update(&app_handle_clone, &sess);
-                    }
-                }
-            });
+            // Reload through the reconciliation authority. The rescan is authoritative;
+            // deletions come only from its completeness-checked result, not from the
+            // inode change itself (which also fires on legitimate log rotation). This
+            // replaces an inline clear-then-reload that dropped every session of the
+            // source before the reload, leaving it empty if the reload came back short.
+            spawn_rescan_and_reconcile(app_handle, source_id.clone());
         }
     }
 }
@@ -469,6 +455,9 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
 /// knows it is a subagent. The moment the parent is parsed the relationship is
 /// known, so evict the child here rather than leaving it visible until the next
 /// full rebuild.
+///
+/// Positive identification (the adapter names the ids to remove), not absence within a
+/// scan, so this does not go through `reconcile_source`.
 fn evict_excluded_sessions<R: tauri::Runtime>(
     app_handle: &tauri::AppHandle<R>,
     excluded: HashSet<String>,
@@ -624,33 +613,24 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                 file_path,
                                 src.display_name()
                             );
-                            let sessions = src.parse_all_sessions().await;
+                            let scan = src.parse_all_sessions().await;
+                            let sessions = scan.sessions;
                             let idx_state =
                                 app_handle_clone.state::<crate::search::SearchIndexState>();
 
-                            // 1. Identify and remove any stale/deleted database sessions
-                            let new_session_ids: std::collections::HashSet<String> =
+                            // 1. Remove any sessions this source no longer has, via the
+                            //    single reconciliation authority (completeness-gated, so
+                            //    an incomplete scan never drops live sessions).
+                            let observed: std::collections::HashSet<String> =
                                 sessions.iter().map(|s| s.id.clone()).collect();
-                            let mut removed_session_ids = Vec::new();
-
-                            if let Ok(guard) = idx_state.sessions.read() {
-                                for (id, existing_sess) in guard.iter() {
-                                    if existing_sess.source_id == source_id
-                                        && !new_session_ids.contains(id)
-                                    {
-                                        removed_session_ids.push(id.clone());
-                                    }
-                                }
-                            }
-
+                            let removed_session_ids =
+                                idx_state.reconcile_source(&source_id, &observed, scan.complete);
                             if !removed_session_ids.is_empty() {
-                                crate::log_info!("Removing {} stale/deleted database sessions from index for source: {}", removed_session_ids.len(), source_id);
-                                if let Ok(mut guard) = idx_state.sessions.write() {
-                                    for id in &removed_session_ids {
-                                        guard.remove(id);
-                                    }
-                                }
-
+                                crate::log_info!(
+                                    "Removing {} stale/deleted database sessions from index for source: {}",
+                                    removed_session_ids.len(),
+                                    source_id
+                                );
                                 for id in &removed_session_ids {
                                     let _ = app_handle_clone.emit("session-deleted", id);
                                 }
@@ -690,7 +670,11 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             // can be dropped now.
                             evict_excluded_sessions(&app_handle_clone, src.excluded_session_ids());
                         } else {
-                            // Check if file exists (if not, it's deleted)
+                            // Single-file deletion: positive identification of ONE file,
+                            // not absence within a scan, so it does not go through
+                            // reconcile_source. Blast radius is one session, and a false
+                            // positive (an atomic-rename blip) is re-added by the next
+                            // scan, so the bounded risk is acceptable.
                             if !Path::new(&file_path).exists() {
                                 crate::log_info!(
                                     "Session file deleted: {}. Removing from index...",
@@ -753,7 +737,7 @@ mod watcher_tests {
     use crate::search::SearchIndexState;
 
     #[test]
-    fn test_restore_watched_paths_removes_sessions() {
+    fn test_missing_directory_preserves_sessions() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -848,12 +832,18 @@ mod watcher_tests {
         // Check if directory was recreated (should NOT be recreated anymore)
         assert!(!codex_dir.exists());
 
-        // Check if Codex session was removed from search index!
+        // New contract: a missing directory is an untrustworthy signal -- it also fires
+        // on transient unavailability (unmount) and atomic renames -- so the source is no
+        // longer wiped synchronously. The watch is dropped and a rescan decides; a
+        // genuinely missing directory yields an incomplete scan, so reconcile_source
+        // PRESERVES the sessions rather than dropping the whole source. (This is the fix
+        // for a source silently vanishing from the sidebar; genuine cleanup goes through
+        // reload-with-bypass-cache.)
         let idx = app_handle.state::<SearchIndexState>();
         let guard = idx.sessions.read().unwrap();
         assert!(
-            !guard.contains_key("codex-test"),
-            "Codex session was NOT removed!"
+            guard.contains_key("codex-test"),
+            "session must be preserved when the directory is missing, not wiped by an ambiguous signal"
         );
 
         if let Some(h) = original_home {
@@ -865,7 +855,7 @@ mod watcher_tests {
     }
 
     #[test]
-    fn test_restore_watched_paths_removes_sessions_on_inode_change() {
+    fn test_inode_change_rewatches_and_updates_stored_inode() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -950,15 +940,12 @@ mod watcher_tests {
         // Run check_and_restore_watched_paths
         check_and_restore_watched_paths(&app_handle);
 
-        // Check if Codex session was removed from search index due to inode mismatch detection!
-        let idx = app_handle.state::<SearchIndexState>();
-        let guard = idx.sessions.read().unwrap();
-        assert!(
-            !guard.contains_key("codex-test-inode"),
-            "Codex session was NOT removed on inode change!"
-        );
-
-        // Check if the stored inode was updated to the actual inode
+        // New contract: an inode change rewatches and updates the stored inode
+        // synchronously, but no longer wipes the source synchronously. Any deletion now
+        // flows through a rescan + reconcile_source (completeness-gated, and unit-tested
+        // there), so the inline clear-then-reload that could leave the source empty on a
+        // short reload is gone. This test asserts the synchronous, deterministic effect:
+        // the stored inode is updated.
         let state = app_handle.state::<WatcherState>();
         let inodes_guard = state.watched_inodes.lock().unwrap();
         let stored_ino = inodes_guard.get(&codex_dir).copied().unwrap_or(0);
@@ -1063,7 +1050,8 @@ mod watcher_tests {
 
         // 3. Load sessions initially via source to populate index
         let src = crate::parsers::antigravity::AntigravitySource::default();
-        let sessions = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let sessions =
+            tauri::async_runtime::block_on(async { src.parse_all_sessions().await }).sessions;
         assert_eq!(sessions.len(), 1);
         assert_eq!(
             sessions[0].thread_name.as_deref(),
