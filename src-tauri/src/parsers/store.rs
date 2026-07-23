@@ -338,6 +338,114 @@ fn upsert_entry(
     Ok(())
 }
 
+/// Number of sessions stored (all sources).
+pub fn count_sessions(conn: &Connection) -> rusqlite::Result<i64> {
+    conn.query_row("SELECT count(*) FROM sessions", [], |r| r.get(0))
+}
+
+/// Streams every stored session (with its turns) through `f`, one at a time, holding only
+/// one batch in memory at a time.
+///
+/// This is what lets search and listing run without loading the whole corpus into RAM:
+/// callers score/collect each session and drop it. Pagination is keyset (`row_id > last`),
+/// so it stays O(n) rather than degrading like `OFFSET`. Turns for a page are fetched by the
+/// same `row_id` range that bounds the page, avoiding a per-session query.
+pub fn for_each_session(
+    conn: &Connection,
+    batch_size: i64,
+    mut f: impl FnMut(Session),
+) -> rusqlite::Result<()> {
+    let mut session_stmt = conn.prepare(
+        "SELECT row_id, id, source_id, file_path, timestamp, updated_at, cwd, thread_name, \
+         is_archived, is_pinned, is_deleted, status, workspace_name, snippet, summary_json \
+         FROM sessions WHERE row_id > ?1 ORDER BY row_id LIMIT ?2",
+    )?;
+    let mut turn_stmt = conn.prepare(
+        "SELECT session_row_id, turn_id, user_message, assistant_message, timestamp, \
+         input_tokens, output_tokens, extra_data_json, images_json FROM turns \
+         WHERE session_row_id > ?1 AND session_row_id <= ?2 ORDER BY session_row_id, turn_index",
+    )?;
+
+    let mut prev: i64 = 0;
+    loop {
+        let mut page: Vec<(i64, Session)> = Vec::new();
+        let rows = session_stmt.query_map(params![prev, batch_size], |r| {
+            let row_id: i64 = r.get(0)?;
+            let summary_json: Option<String> = r.get(14)?;
+            let session = Session {
+                id: r.get(1)?,
+                source_id: r.get(2)?,
+                file_path: r.get(3)?,
+                timestamp: r.get(4)?,
+                updated_at: r.get(5)?,
+                cwd: r.get(6)?,
+                thread_name: r.get(7)?,
+                turns: Vec::new(),
+                is_archived: r.get::<_, i64>(8)? != 0,
+                is_pinned: r.get::<_, i64>(9)? != 0,
+                summary: summary_json
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok()),
+                snippet: r.get(13)?,
+                workspace_name: r.get(12)?,
+                status: r.get(11)?,
+                is_deleted: r.get::<_, i64>(10)? != 0,
+            };
+            Ok((row_id, session))
+        })?;
+        for row in rows {
+            page.push(row?);
+        }
+        if page.is_empty() {
+            break;
+        }
+        let page_len = page.len() as i64;
+        let new_prev = page.last().map(|(id, _)| *id).unwrap_or(prev);
+
+        // All of this page's turns live in (prev, new_prev]; fetch them in one query and
+        // attach by row_id.
+        let mut turns_by_row: HashMap<i64, Vec<Turn>> = HashMap::new();
+        let turn_rows = turn_stmt.query_map(params![prev, new_prev], |r| {
+            let row_id: i64 = r.get(0)?;
+            let extra_json: Option<String> = r.get(7)?;
+            let images_json: Option<String> = r.get(8)?;
+            let turn = Turn {
+                turn_id: r.get(1)?,
+                user_message: r.get(2)?,
+                assistant_message: r.get(3)?,
+                timestamp: r.get(4)?,
+                input_tokens: r.get(5)?,
+                output_tokens: r.get(6)?,
+                extra_data: extra_json
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok())
+                    .unwrap_or_default(),
+                images: images_json
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok()),
+            };
+            Ok((row_id, turn))
+        })?;
+        for row in turn_rows {
+            let (row_id, turn) = row?;
+            turns_by_row.entry(row_id).or_default().push(turn);
+        }
+
+        for (row_id, mut session) in page {
+            if let Some(turns) = turns_by_row.remove(&row_id) {
+                session.turns = turns;
+            }
+            f(session);
+        }
+
+        prev = new_prev;
+        if page_len < batch_size {
+            break;
+        }
+    }
+    Ok(())
+}
+
 /// Removes every cached session (and, by cascade, every turn). Used by the "reload,
 /// bypassing cache" path.
 pub fn clear_all(conn: &Connection) -> rusqlite::Result<()> {

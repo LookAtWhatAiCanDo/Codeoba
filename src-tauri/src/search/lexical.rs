@@ -63,6 +63,132 @@ pub(crate) fn parse_query_terms(query: &str) -> Vec<String> {
     terms
 }
 
+/// Builds the set of regexes a query expands to, or empty if the query is blank or cannot
+/// be compiled. Multi-term queries (the default) become one regex per deduplicated term
+/// (AND-combined by the caller); a regex query or one containing a newline stays a single
+/// pattern. Shared by the in-memory and SQLite-backed search paths so both interpret a
+/// query identically.
+pub(crate) fn build_query_regexes(query: &str, filter: &SearchFilter) -> Vec<Regex> {
+    if query.trim().is_empty() {
+        return Vec::new();
+    }
+    let is_single_pattern = filter.use_regex || query.contains('\n');
+    if is_single_pattern {
+        build_find_regex(
+            query,
+            filter.match_case,
+            filter.whole_word,
+            filter.use_regex,
+        )
+        .map(|r| vec![r])
+        .unwrap_or_default()
+    } else {
+        let mut terms = parse_query_terms(query);
+        // Deduplicate query terms to avoid redundant regex operations
+        terms.sort();
+        terms.dedup();
+        terms
+            .iter()
+            .filter_map(|t| build_find_regex(t, filter.match_case, filter.whole_word, false))
+            .collect()
+    }
+}
+
+/// Scores one session against pre-built query `regexes`, returning a `SearchResult` if it
+/// matches (all terms present — AND logic) with a positive score, else `None`. This is the
+/// per-session core of lexical search, factored out so it can run over the in-memory index
+/// (via rayon) or over sessions streamed from SQLite, with byte-identical semantics.
+pub(crate) fn score_session(
+    session: &Session,
+    regexes: &[Regex],
+    filter: &SearchFilter,
+) -> Option<SearchResult> {
+    if !filter.matches(session) {
+        return None;
+    }
+
+    let thread_name = session.thread_name.as_deref().unwrap_or("");
+    let cwd = session.cwd.as_deref().unwrap_or("");
+
+    // All query terms must match somewhere in the session (AND logic)
+    for regex in regexes {
+        let matches_thread = regex.is_match(thread_name);
+        let matches_cwd = !cwd.is_empty() && regex.is_match(cwd);
+        let matches_turns = session.turns.iter().any(|turn| {
+            regex.is_match(&turn.user_message) || regex.is_match(&turn.assistant_message)
+        });
+        if !matches_thread && !matches_cwd && !matches_turns {
+            return None;
+        }
+    }
+
+    let mut score = 0.0;
+    let mut matched_turn_indexes = Vec::new();
+
+    // 1. Thread name matches (Title boost - matches in title are heavily weighted)
+    for regex in regexes {
+        let matches = regex.find_iter(thread_name).count();
+        if matches > 0 {
+            score += matches as f32 * 10.0;
+        }
+    }
+
+    // 2. Cwd matches
+    if !cwd.is_empty() {
+        for regex in regexes {
+            let matches = regex.find_iter(cwd).count();
+            if matches > 0 {
+                score += matches as f32 * 3.0;
+            }
+        }
+    }
+
+    // 3. Saturated Turn matches per query term (prevents stop word flooding in long sessions)
+    for regex in regexes {
+        let mut term_turn_matches = 0;
+        for (index, turn) in session.turns.iter().enumerate() {
+            let user_matches = regex.find_iter(&turn.user_message).count();
+            let assistant_matches = regex.find_iter(&turn.assistant_message).count();
+            let turn_matches = user_matches * 2 + assistant_matches;
+            if turn_matches > 0 {
+                term_turn_matches += turn_matches;
+                if !matched_turn_indexes.contains(&index) {
+                    matched_turn_indexes.push(index);
+                }
+            }
+        }
+        if term_turn_matches > 0 {
+            // BM25-like saturation formula: TF * (k1 + 1) / (TF + k1) with k1 = 1.0. Capped at 2.0 per term.
+            let saturated_score =
+                (term_turn_matches as f32 * 2.0) / (term_turn_matches as f32 + 1.0);
+            score += saturated_score;
+        }
+    }
+
+    matched_turn_indexes.sort_unstable();
+
+    if score > 0.0 {
+        Some(SearchResult {
+            session: session.clone(),
+            matched_turn_indexes,
+            score,
+        })
+    } else {
+        None
+    }
+}
+
+/// Orders search results the way every search path must present them: highest score first,
+/// then most recently updated. Extracted so the in-memory and SQLite paths sort identically.
+pub(crate) fn sort_results(results: &mut [SearchResult]) {
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| b.session.updated_at.cmp(&a.session.updated_at))
+    });
+}
+
 pub fn lexical_search<'a>(
     sessions: impl IntoIterator<Item = &'a Session>,
     query: &str,
@@ -87,122 +213,16 @@ pub fn lexical_search<'a>(
         return results;
     }
 
-    let is_single_pattern = filter.use_regex || query.contains('\n');
-    let regexes: Vec<Regex> = if is_single_pattern {
-        build_find_regex(
-            query,
-            filter.match_case,
-            filter.whole_word,
-            filter.use_regex,
-        )
-        .map(|r| vec![r])
-        .unwrap_or_default()
-    } else {
-        let mut terms = parse_query_terms(query);
-        // Deduplicate query terms to avoid redundant regex operations
-        terms.sort();
-        terms.dedup();
-        terms
-            .iter()
-            .filter_map(|t| build_find_regex(t, filter.match_case, filter.whole_word, false))
-            .collect()
-    };
-
+    let regexes = build_query_regexes(query, filter);
     if regexes.is_empty() {
         return Vec::new();
     }
 
     let mut results: Vec<SearchResult> = sessions
         .into_par_iter()
-        .filter_map(|session| {
-            if !filter.matches(session) {
-                return None;
-            }
-
-            let thread_name = session.thread_name.as_deref().unwrap_or("");
-            let cwd = session.cwd.as_deref().unwrap_or("");
-
-            // All query terms must match somewhere in the session (AND logic)
-            let mut all_terms_match = true;
-            for regex in &regexes {
-                let matches_thread = regex.is_match(thread_name);
-                let matches_cwd = !cwd.is_empty() && regex.is_match(cwd);
-                let matches_turns = session.turns.iter().any(|turn| {
-                    regex.is_match(&turn.user_message) || regex.is_match(&turn.assistant_message)
-                });
-                if !matches_thread && !matches_cwd && !matches_turns {
-                    all_terms_match = false;
-                    break;
-                }
-            }
-
-            if !all_terms_match {
-                return None;
-            }
-
-            let mut score = 0.0;
-            let mut matched_turn_indexes = Vec::new();
-
-            // 1. Thread name matches (Title boost - matches in title are heavily weighted)
-            for regex in &regexes {
-                let matches = regex.find_iter(thread_name).count();
-                if matches > 0 {
-                    score += matches as f32 * 10.0;
-                }
-            }
-
-            // 2. Cwd matches
-            if !cwd.is_empty() {
-                for regex in &regexes {
-                    let matches = regex.find_iter(cwd).count();
-                    if matches > 0 {
-                        score += matches as f32 * 3.0;
-                    }
-                }
-            }
-
-            // 3. Saturated Turn matches per query term (prevents stop word flooding in long sessions)
-            for regex in &regexes {
-                let mut term_turn_matches = 0;
-                for (index, turn) in session.turns.iter().enumerate() {
-                    let user_matches = regex.find_iter(&turn.user_message).count();
-                    let assistant_matches = regex.find_iter(&turn.assistant_message).count();
-                    let turn_matches = user_matches * 2 + assistant_matches;
-                    if turn_matches > 0 {
-                        term_turn_matches += turn_matches;
-                        if !matched_turn_indexes.contains(&index) {
-                            matched_turn_indexes.push(index);
-                        }
-                    }
-                }
-                if term_turn_matches > 0 {
-                    // BM25-like saturation formula: TF * (k1 + 1) / (TF + k1) with k1 = 1.0. Capped at 2.0 per term.
-                    let saturated_score =
-                        (term_turn_matches as f32 * 2.0) / (term_turn_matches as f32 + 1.0);
-                    score += saturated_score;
-                }
-            }
-
-            matched_turn_indexes.sort_unstable();
-
-            if score > 0.0 {
-                Some(SearchResult {
-                    session: session.clone(),
-                    matched_turn_indexes,
-                    score,
-                })
-            } else {
-                None
-            }
-        })
+        .filter_map(|session| score_session(session, &regexes, filter))
         .collect();
 
-    results.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| b.session.updated_at.cmp(&a.session.updated_at))
-    });
-
+    sort_results(&mut results);
     results
 }

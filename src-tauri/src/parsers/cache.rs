@@ -178,7 +178,7 @@ impl SessionCacheManager {
     /// re-derived from the current home, which the tests rely on when they point
     /// `CODEOBA_MOCK_HOME` at a temp dir. Returns `None` (and logs) if the store cannot be
     /// opened, so a storage failure degrades gracefully instead of panicking.
-    fn open_db(&self) -> Option<rusqlite::Connection> {
+    pub fn open_db(&self) -> Option<rusqlite::Connection> {
         let path = self.db_path();
         match crate::parsers::store::open(&path) {
             Ok(conn) => Some(conn),

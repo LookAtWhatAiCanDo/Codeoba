@@ -433,6 +433,227 @@ fn merge_rebuilt_sessions(
     (merged, preserved, deleted)
 }
 
+/// Runs a lexical search directly against the SQLite store, streaming sessions in batches
+/// so the whole corpus is never held in memory at once.
+///
+/// Produces byte-identical results to [`lexical::lexical_search`] over the same sessions —
+/// it reuses the exact same query compilation and per-session scoring — but reads from the
+/// store instead of the in-memory index. This is what lets the in-memory corpus be dropped:
+/// the RAM cost of a search is now one batch, and only matches are retained. Every current
+/// feature (substring, regex, case-sensitivity, whole-word, multi-term AND) is preserved,
+/// because the matcher is unchanged; only the source of the sessions moved.
+pub fn search_store(
+    conn: &rusqlite::Connection,
+    query: &str,
+    filter: &SearchFilter,
+) -> rusqlite::Result<Vec<SearchResult>> {
+    /// Sessions loaded per keyset page. Large enough to amortize query overhead, small
+    /// enough that peak memory is a slice of the corpus rather than all of it.
+    const BATCH: i64 = 512;
+
+    let is_empty_query = query.trim().is_empty();
+    let regexes = if is_empty_query {
+        Vec::new()
+    } else {
+        let rx = lexical::build_query_regexes(query, filter);
+        if rx.is_empty() {
+            // An unparseable / all-stopword query matches nothing, same as lexical_search.
+            return Ok(Vec::new());
+        }
+        rx
+    };
+
+    let mut results: Vec<SearchResult> = Vec::new();
+    crate::parsers::store::for_each_session(conn, BATCH, |session| {
+        if is_empty_query {
+            // Blank query = "list everything that passes the filter", mirroring the empty
+            // branch of lexical_search (score 1.0, no matched turns).
+            if filter.matches(&session) {
+                results.push(SearchResult {
+                    session,
+                    matched_turn_indexes: Vec::new(),
+                    score: 1.0,
+                });
+            }
+        } else if let Some(result) = lexical::score_session(&session, &regexes, filter) {
+            results.push(result);
+        }
+    })?;
+
+    if is_empty_query {
+        results.sort_by_key(|r| std::cmp::Reverse(r.session.updated_at));
+    } else {
+        lexical::sort_results(&mut results);
+    }
+    Ok(results)
+}
+
+#[cfg(test)]
+mod sqlite_search_tests {
+    use super::{search_store, SearchFilter};
+    use crate::models::{Session, Turn};
+    use crate::parsers::cache::CacheEntry;
+
+    fn turn(u: &str, a: &str) -> Turn {
+        Turn {
+            turn_id: format!("{u}-{a}"),
+            user_message: u.to_string(),
+            assistant_message: a.to_string(),
+            timestamp: 0,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+            images: None,
+        }
+    }
+
+    fn session(id: &str, source: &str, updated_at: i64, thread: &str, turns: Vec<Turn>) -> Session {
+        Session {
+            id: id.to_string(),
+            source_id: source.to_string(),
+            file_path: format!("/p/{id}.jsonl"),
+            timestamp: 0,
+            updated_at,
+            cwd: Some("/work/project".to_string()),
+            thread_name: Some(thread.to_string()),
+            turns,
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
+    fn entry(s: &Session) -> CacheEntry {
+        CacheEntry {
+            file_path: s.file_path.clone(),
+            last_modified: 0,
+            size: 0,
+            hash: s.id.clone(),
+            session: s.clone(),
+        }
+    }
+
+    /// A representative corpus with distinct `updated_at` values (so the (score, updated_at)
+    /// sort has no ties to make the comparison order-dependent), spread across two sources.
+    fn corpus() -> Vec<Session> {
+        vec![
+            session(
+                "a",
+                "codex",
+                100,
+                "Rayon parallel search",
+                vec![turn(
+                    "how do I use rayon",
+                    "use rayon::prelude and par_iter",
+                )],
+            ),
+            session(
+                "b",
+                "codex",
+                200,
+                "Crayons and colors",
+                vec![turn("my kid loves crayons", "crayons are waxy")],
+            ),
+            session(
+                "c",
+                "claude",
+                300,
+                "SQLite migration",
+                vec![
+                    turn("migrate the cache to sqlite", "use rusqlite with WAL"),
+                    turn("what about rayon here", "rayon is unrelated to sqlite"),
+                ],
+            ),
+            session(
+                "d",
+                "claude",
+                400,
+                "Unrelated thread",
+                vec![turn("nothing to match", "still nothing")],
+            ),
+        ]
+    }
+
+    /// A helper key that captures everything the frontend depends on: which sessions
+    /// matched, in what order, with what score and matched-turn indexes.
+    fn key(results: &[super::SearchResult]) -> Vec<(String, f32, Vec<usize>)> {
+        results
+            .iter()
+            .map(|r| {
+                (
+                    r.session.id.clone(),
+                    r.score,
+                    r.matched_turn_indexes.clone(),
+                )
+            })
+            .collect()
+    }
+
+    /// The core Phase 2 guarantee: searching the SQLite store returns exactly what searching
+    /// the in-memory index would, for every kind of query — substring, multi-term, regex,
+    /// case-sensitive, whole-word — so dropping the in-memory corpus changes nothing a user
+    /// can observe.
+    #[test]
+    fn sqlite_search_matches_in_memory_search() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = temp.path().join("t.db");
+        let mut conn = crate::parsers::store::open(&db).unwrap();
+
+        let sessions = corpus();
+        for source in ["codex", "claude"] {
+            let entries: Vec<CacheEntry> = sessions
+                .iter()
+                .filter(|s| s.source_id == source)
+                .map(entry)
+                .collect();
+            crate::parsers::store::save_source(&mut conn, source, &entries).unwrap();
+        }
+
+        let cases: Vec<(&str, SearchFilter)> = vec![
+            ("rayon", SearchFilter::default()),
+            ("crayons", SearchFilter::default()),
+            ("sqlite rayon", SearchFilter::default()), // multi-term AND
+            (
+                "Rayon",
+                SearchFilter {
+                    match_case: true,
+                    ..Default::default()
+                },
+            ),
+            (
+                "rayon",
+                SearchFilter {
+                    whole_word: true,
+                    ..Default::default()
+                },
+            ),
+            (
+                "ray.n",
+                SearchFilter {
+                    use_regex: true,
+                    ..Default::default()
+                },
+            ),
+            ("zzz-no-match", SearchFilter::default()),
+            ("", SearchFilter::default()), // blank = list all
+        ];
+
+        for (query, filter) in cases {
+            let in_memory = crate::search::lexical::lexical_search(sessions.iter(), query, &filter);
+            let from_store = search_store(&conn, query, &filter).unwrap();
+            assert_eq!(
+                key(&from_store),
+                key(&in_memory),
+                "SQLite and in-memory search disagree for query {query:?}"
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod update_session_tests {
     use super::SearchIndexState;
