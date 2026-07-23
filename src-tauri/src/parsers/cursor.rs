@@ -524,7 +524,12 @@ impl SourceAdapter for CursorSource {
     async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let global_db = self.get_global_db_file();
         if !global_db.exists() {
-            return crate::parsers::cache::ScanResult::failed();
+            // The state DB is gone (Cursor uninstalled / data cleared): authoritative
+            // "no sessions", so mark this source's cached sessions deleted (soft; hard
+            // only under prune) rather than preserving them. This differs from the
+            // empty-query case below, which is treated as an incomplete scan because
+            // `query_db` cannot distinguish no rows from a failed read.
+            return crate::parsers::cache::get_cache_manager().scan_absent_source(self.id());
         }
 
         crate::parsers::cache::get_cache_manager().start_scan(self.id());

@@ -125,10 +125,11 @@ fn is_directory_not_empty(path: &Path) -> bool {
 /// completed — removes the ones it did not.
 ///
 /// The watcher's directory-removed and inode-changed paths both use this instead of
-/// deciding deletions from the raw filesystem event. Those events fire on atomic renames
-/// and transient unavailability, not just real deletions, so acting on them directly
-/// wiped whole sources; routing through a rescan means a genuinely missing directory
-/// yields an incomplete scan and `reconcile_source` preserves the sessions.
+/// deciding deletions from the raw filesystem event, which fires on rotation and momentary
+/// states as well as real changes. The rescan is authoritative: if the source root is gone
+/// or unreadable, `parse_all_sessions` reports a completed scan of an absent source and its
+/// sessions are marked deleted (soft; hard only under prune); if the root is present but a
+/// deeper read fails, the scan is incomplete and `reconcile_source` changes nothing.
 fn spawn_rescan_and_reconcile<R: tauri::Runtime>(
     app_handle: &tauri::AppHandle<R>,
     source_id: String,
@@ -285,12 +286,13 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
         };
 
         if !exists {
-            // Target is missing. The event fires on genuine deletion AND on transient
-            // absence (atomic rename, an unmounted/remounted volume), so it is not
-            // trustworthy on its own -- acting on it directly used to wipe the whole
-            // source. Unwatch, then rescan: if the directory really is gone the rescan
-            // is incomplete and `reconcile_source` preserves the sessions; if it came
-            // back, the rescan reconciles it correctly. DO NOT recreate the watch here.
+            // Target is missing. Rather than delete straight from this event, unwatch and
+            // rescan: the rescan sees the root is gone and reports a completed scan of an
+            // absent source, so its sessions are marked deleted (soft; hard only under
+            // prune) through the one reconciliation path -- the same outcome the old
+            // inline removal produced, but funneled through a single, completeness-gated
+            // authority so a *present* directory whose scan merely came back short can
+            // never wipe the source. DO NOT recreate the watch here.
             let has_sessions = if let Ok(s_guard) = idx_state.sessions.read() {
                 s_guard.values().any(|sess| sess.source_id == source_id)
             } else {
@@ -737,7 +739,7 @@ mod watcher_tests {
     use crate::search::SearchIndexState;
 
     #[test]
-    fn test_missing_directory_preserves_sessions() {
+    fn test_missing_directory_is_not_recreated() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -829,21 +831,16 @@ mod watcher_tests {
         // Run check_and_restore_watched_paths
         check_and_restore_watched_paths(&app_handle);
 
-        // Check if directory was recreated (should NOT be recreated anymore)
-        assert!(!codex_dir.exists());
-
-        // New contract: a missing directory is an untrustworthy signal -- it also fires
-        // on transient unavailability (unmount) and atomic renames -- so the source is no
-        // longer wiped synchronously. The watch is dropped and a rescan decides; a
-        // genuinely missing directory yields an incomplete scan, so reconcile_source
-        // PRESERVES the sessions rather than dropping the whole source. (This is the fix
-        // for a source silently vanishing from the sidebar; genuine cleanup goes through
-        // reload-with-bypass-cache.)
-        let idx = app_handle.state::<SearchIndexState>();
-        let guard = idx.sessions.read().unwrap();
+        // Synchronous contract: the missing directory is NOT recreated. (A prior bug
+        // recreated it here.) The session-deletion behavior for a missing root is
+        // handled off-thread by spawn_rescan_and_reconcile -> scan_absent_source ->
+        // reconcile_source, and is unit-tested deterministically there
+        // (cache::scan_lifecycle_tests::absent_source_soft_deletes_cached_sessions and
+        // search::update_session_tests::reconcile_*), not asserted here where it races
+        // the spawned task.
         assert!(
-            guard.contains_key("codex-test"),
-            "session must be preserved when the directory is missing, not wiped by an ambiguous signal"
+            !codex_dir.exists(),
+            "missing directory must not be recreated"
         );
 
         if let Some(h) = original_home {

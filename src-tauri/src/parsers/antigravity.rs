@@ -1954,8 +1954,12 @@ impl SourceAdapter for AntigravitySource {
 
     async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let base_dir = self.get_base_dir();
-        if !base_dir.exists() || !base_dir.is_dir() {
-            return crate::parsers::cache::ScanResult::failed();
+        if !crate::parsers::cache::source_root_readable(&base_dir) {
+            // Root gone or unreadable: authoritative "source has no sessions", so its
+            // cached sessions are marked deleted (soft; hard only under prune) rather than
+            // preserved. A deeper read error below is different -- it only makes the scan
+            // partial and preserves.
+            return crate::parsers::cache::get_cache_manager().scan_absent_source(self.id());
         }
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");

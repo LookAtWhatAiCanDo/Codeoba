@@ -257,6 +257,24 @@ impl SessionCacheManager {
         }
     }
 
+    /// Records that a source's root is gone or unreadable — an uninstall, or revoked
+    /// access, which for our purposes is the same thing.
+    ///
+    /// Unlike a mid-walk read error (which only makes a scan *partial*, so it must not
+    /// delete), an inaccessible root is authoritative: from here the source has no
+    /// sessions. This runs an empty *completed* scan so the normal `end_scan` policy
+    /// applies — every cached session is marked `is_deleted` (soft), and hard-removed only
+    /// when `prune_deleted_sessions` is on. A later scan that finds the root again clears
+    /// the flag, because `end_scan` recomputes `is_deleted` from what it sees.
+    ///
+    /// If a real scan of the same source is concurrently in flight, the `scan_depth`
+    /// reference count turns this into a deferred, non-authoritative finalize, so it can
+    /// never delete out from under a live scan.
+    pub fn scan_absent_source(&self, source_id: &str) -> ScanResult {
+        self.start_scan(source_id);
+        self.end_scan(source_id, true)
+    }
+
     pub fn get_cached_session_for_file(
         &self,
         source_id: &str,
@@ -537,6 +555,16 @@ impl SessionCacheManager {
     }
 }
 
+/// Whether a source's root directory can be enumerated right now.
+///
+/// `false` means the source is gone or inaccessible — missing, not a directory, or a
+/// permission failure reading it — which callers treat as "this source has no sessions"
+/// (see `SessionCacheManager::scan_absent_source`). This is deliberately distinct from a
+/// failure deeper in the walk, which only makes a scan partial and must never delete.
+pub fn source_root_readable(dir: &Path) -> bool {
+    dir.is_dir() && fs::read_dir(dir).is_ok()
+}
+
 pub fn calculate_file_md5<P: AsRef<Path>>(path: P) -> String {
     if let Ok(bytes) = fs::read(path) {
         let digest = md5::compute(&bytes);
@@ -691,6 +719,47 @@ mod scan_lifecycle_tests {
         assert!(
             result.sessions.iter().all(|s| s.is_deleted),
             "a completed scan that saw nothing must mark its orphans deleted"
+        );
+
+        mgr.clear_in_memory_caches();
+        std::env::remove_var("CODEOBA_MOCK_HOME");
+    }
+
+    /// scan_absent_source is the "the source's root is gone/unreadable" entry point used
+    /// by the adapters. It must behave like a completed scan that saw nothing: the cached
+    /// sessions come back marked deleted (soft), so an uninstalled source moves to the
+    /// Deleted filter rather than lingering as if live.
+    #[test]
+    fn absent_source_soft_deletes_cached_sessions() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        let src = "absent_src";
+        // Persist a session via a normal completed scan.
+        mgr.start_scan(src);
+        put(src, "/home/a.jsonl", "a");
+        let seeded = mgr.end_scan(src, true);
+        assert_eq!(seeded.sessions.len(), 1);
+        assert!(!seeded.sessions[0].is_deleted);
+
+        // Now the root is gone.
+        let result = mgr.scan_absent_source(src);
+
+        assert!(
+            result.complete,
+            "an absent source is an authoritative result"
+        );
+        assert_eq!(
+            result.sessions.len(),
+            1,
+            "the session is kept (soft delete)"
+        );
+        assert!(
+            result.sessions[0].is_deleted,
+            "an absent source marks its cached sessions deleted"
         );
 
         mgr.clear_in_memory_caches();
