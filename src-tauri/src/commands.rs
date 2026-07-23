@@ -499,18 +499,25 @@ pub fn save_credential(key: String, value: Option<String>) {
 
 #[tauri::command]
 pub async fn search_sessions<R: tauri::Runtime>(
-    app_handle: tauri::AppHandle<R>,
+    _app_handle: tauri::AppHandle<R>,
     query: String,
     filter: SearchFilter,
 ) -> Result<Vec<SearchResult>, AppErrorPayload> {
-    let state = app_handle.state::<SearchIndexState>();
-
-    let sessions_guard = state
-        .sessions
-        .read()
-        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+    // Search runs against the SQLite store, streamed so the whole corpus is never held in
+    // memory. It is offloaded to a blocking thread because the scan is synchronous DB work
+    // and must not stall the async runtime. The store is authoritative and kept current by
+    // the scan/parse machinery, so results match the in-memory index (proven by
+    // search::sqlite_search_tests).
     let mut results =
-        crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter);
+        tauri::async_runtime::spawn_blocking(move || -> Result<Vec<SearchResult>, String> {
+            let conn = crate::parsers::cache::get_cache_manager()
+                .open_db()
+                .ok_or_else(|| "session store unavailable".to_string())?;
+            crate::search::search_store(&conn, &query, &filter).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e))?;
 
     for res in &mut results {
         res.session = res.session.to_lightweight();
