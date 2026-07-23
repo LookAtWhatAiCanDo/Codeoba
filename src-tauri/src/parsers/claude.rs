@@ -283,15 +283,22 @@ impl ClaudeSource {
                             } else {
                                 Some(images)
                             };
-                            raw_turns.push(RawTurn {
-                                is_user: true,
-                                text: text_trimmed,
-                                timestamp,
-                                model: None,
-                                is_compaction: false,
-                                compaction_time_ms: 0,
-                                images: images_opt,
-                            });
+
+                            // Only record a user RawTurn if there is actual user input (text or images).
+                            // Claude Code outputs tool results as line_type == "user" with content items of type "tool_result"
+                            // (and empty text/images). Treating these empty tool_result payloads as user turns causes
+                            // blank user prompt entries in Codeoba transcripts and splits single assistant responses across multiple turns.
+                            if !text_trimmed.is_empty() || images_opt.is_some() {
+                                raw_turns.push(RawTurn {
+                                    is_user: true,
+                                    text: text_trimmed,
+                                    timestamp,
+                                    model: None,
+                                    is_compaction: false,
+                                    compaction_time_ms: 0,
+                                    images: images_opt,
+                                });
+                            }
                         }
                     } else if line_type == "assistant" {
                         if let Some(msg_obj) = obj.get("message").and_then(|v| v.as_object()) {

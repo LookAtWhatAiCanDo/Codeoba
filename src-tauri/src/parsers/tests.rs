@@ -280,6 +280,34 @@ fn test_claude_compaction_parsing() {
 }
 
 #[test]
+fn test_claude_tool_result_parsing() {
+    tauri::async_runtime::block_on(async {
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        let temp_path = temp_file.path().to_string_lossy().to_string();
+
+        fs::write(
+            &temp_path,
+            r#"{"type":"user","timestamp":"2026-05-20T02:00:00Z","message":{"role":"user","content":"proceed"},"sessionId":"sessionToolRes","cwd":"/path/to/project","slug":"test-session"}
+{"type":"assistant","timestamp":"2026-05-20T02:00:05Z","message":{"role":"assistant","content":[{"type":"text","text":"Proceeding. Let me read lexical.rs."},{"type":"tool_use","id":"tool1","name":"Read"}]}}
+{"type":"user","timestamp":"2026-05-20T02:00:06Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool1","content":"file contents here"}]}}
+{"type":"assistant","timestamp":"2026-05-20T02:00:10Z","message":{"role":"assistant","content":[{"type":"text","text":"Now I'll refactor lexical.rs."}]}}
+"#,
+        ).unwrap();
+
+        let source = crate::parsers::Source::Claude(ClaudeSource);
+        let session = source.parse_session(&temp_path).await.unwrap();
+
+        assert_eq!(session.id, "sessionToolRes");
+        assert_eq!(session.turns.len(), 1);
+        assert_eq!(session.turns[0].user_message, "proceed");
+        assert_eq!(
+            session.turns[0].assistant_message,
+            "Proceeding. Let me read lexical.rs.\n\nNow I'll refactor lexical.rs."
+        );
+    });
+}
+
+#[test]
 fn test_antigravity_source_parsing() {
     tauri::async_runtime::block_on(async {
         let temp_file = tempfile::NamedTempFile::new().unwrap();
