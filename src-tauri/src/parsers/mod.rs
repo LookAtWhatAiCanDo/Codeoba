@@ -14,6 +14,7 @@ pub mod cursor;
 pub mod permissions;
 pub mod resolver;
 pub mod source_decisions;
+pub mod store;
 
 #[cfg(test)]
 // Test fixtures slice known-ASCII literals by byte index; that's acceptable in tests.

@@ -1,32 +1,20 @@
 use crate::models::Session;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::OnceLock;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+/// One cached session plus the parse-cache metadata used to detect that its underlying file
+/// changed. Persisted by [`super::store`] across the normalized `sessions`/`turns` tables;
+/// this in-memory shape is what the scan lifecycle passes around.
+#[derive(Clone, Debug)]
 pub struct CacheEntry {
     pub file_path: String,
     pub last_modified: i64,
     pub size: i64,
     pub hash: String,
     pub session: Session,
-}
-
-const CURRENT_CACHE_VERSION: &str = "v11";
-
-fn default_cache_version() -> String {
-    "v0".to_string()
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SourceCache {
-    #[serde(default = "default_cache_version")]
-    pub version: String,
-    pub entries: Vec<CacheEntry>,
 }
 
 /// Outcome of one full scan of a source.
@@ -145,11 +133,23 @@ impl SessionCacheManager {
         if let Ok(mut depth_guard) = self.scan_depth.lock() {
             depth_guard.clear();
         }
-        let dir = self.get_cache_dir();
-        if let Ok(entries) = fs::read_dir(dir) {
+        if let Some(conn) = self.open_db() {
+            if let Err(e) = crate::parsers::store::clear_all(&conn) {
+                crate::log_error!("[cache] Failed to clear session store: {}", e);
+            }
+        }
+        // Best-effort removal of the pre-SQLite JSON caches, so they stop wasting disk
+        // once the store has taken over. Harmless if already gone.
+        if let Ok(entries) = fs::read_dir(self.get_cache_dir()) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() {
+                if path.extension().and_then(|e| e.to_str()) == Some("json")
+                    && path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.starts_with("cache_"))
+                        .unwrap_or(false)
+                {
                     let _ = fs::remove_file(&path);
                 }
             }
@@ -163,61 +163,62 @@ impl SessionCacheManager {
         dir
     }
 
-    fn get_cache_file(&self, source_id: &str) -> PathBuf {
-        self.get_cache_dir()
-            .join(format!("cache_{}.json", source_id))
+    /// Path of the SQLite session store. Derived from the current home on every call so
+    /// tests that switch `CODEOBA_MOCK_HOME` stay isolated (see the fresh-connection note
+    /// on `open_db`).
+    fn db_path(&self) -> PathBuf {
+        self.get_cache_dir().join("sessions.db")
     }
 
-    #[allow(clippy::expect_used)]
+    /// Opens a fresh connection to the session store.
+    ///
+    /// A fresh connection per call (rather than a cached one) is deliberate: the store is
+    /// touched only twice per source per scan — `load_cache` at `start_scan` and
+    /// `save_cache` at `end_scan` — so open cost is negligible, and it keeps the path
+    /// re-derived from the current home, which the tests rely on when they point
+    /// `CODEOBA_MOCK_HOME` at a temp dir. Returns `None` (and logs) if the store cannot be
+    /// opened, so a storage failure degrades gracefully instead of panicking.
+    fn open_db(&self) -> Option<rusqlite::Connection> {
+        let path = self.db_path();
+        match crate::parsers::store::open(&path) {
+            Ok(conn) => Some(conn),
+            Err(e) => {
+                crate::log_error!("[cache] Failed to open session store at {:?}: {}", path, e);
+                None
+            }
+        }
+    }
+
     pub fn load_cache(&self, source_id: &str) -> HashMap<String, CacheEntry> {
         let _start = std::time::Instant::now();
-        let path = self.get_cache_file(source_id);
-        if !path.exists() {
-            return HashMap::new();
-        }
-        let mut file = match fs::File::open(&path) {
-            Ok(f) => f,
-            Err(_) => return HashMap::new(),
+        let conn = match self.open_db() {
+            Some(c) => c,
+            None => return HashMap::new(),
         };
-        let mut raw_data = Vec::new();
-        use std::io::Read;
-        if file.read_to_end(&mut raw_data).is_err() {
-            return HashMap::new();
-        }
-
-        if let Ok(source_cache) = serde_json::from_slice::<SourceCache>(&raw_data) {
-            if source_cache.version == CURRENT_CACHE_VERSION {
-                let res: HashMap<_, _> = source_cache
-                    .entries
-                    .into_iter()
-                    .map(|e| (e.file_path.clone(), e))
-                    .collect();
+        match crate::parsers::store::load_source(&conn, source_id) {
+            Ok(map) => {
                 crate::log_debug!(
-                    "[load_cache] Loaded cache for '{}' in {:?}",
+                    "[load_cache] Loaded {} cached sessions for '{}' in {:?}",
+                    map.len(),
                     source_id,
                     _start.elapsed()
                 );
-                return res;
-            } else {
-                crate::log_error!(
-                    "Parser cache version mismatch for '{}': expected {}, found {}. Discarding cache.",
-                    source_id,
-                    CURRENT_CACHE_VERSION,
-                    source_cache.version
-                );
+                map
+            }
+            Err(e) => {
+                crate::log_error!("[cache] Failed to load sessions for '{}': {}", source_id, e);
+                HashMap::new()
             }
         }
-        HashMap::new()
     }
 
     fn save_cache(&self, source_id: &str, entries: Vec<CacheEntry>) {
-        let path = self.get_cache_file(source_id);
-        let cache = SourceCache {
-            version: CURRENT_CACHE_VERSION.to_string(),
-            entries,
+        let mut conn = match self.open_db() {
+            Some(c) => c,
+            None => return,
         };
-        if let Ok(plaintext_json) = serde_json::to_vec(&cache) {
-            let _ = crate::fs_util::atomic_write(&path, &plaintext_json);
+        if let Err(e) = crate::parsers::store::save_source(&mut conn, source_id, &entries) {
+            crate::log_error!("[cache] Failed to save sessions for '{}': {}", source_id, e);
         }
     }
 
