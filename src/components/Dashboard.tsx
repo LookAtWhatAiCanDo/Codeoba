@@ -21,7 +21,7 @@ import {
   Locate,
   AlertTriangle,
 } from "lucide-solid";
-import { getSessionComputeTimeMs, formatSpeed, formatDuration } from "./Sidebar";
+import { getSessionComputeTimeMs, formatSpeed, formatDuration } from "../utils/sessionMetrics";
 import { Session, DashboardTab } from "../types";
 import { useSpeech } from "../utils/useSpeech";
 

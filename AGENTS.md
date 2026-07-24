@@ -57,7 +57,8 @@ To ensure the project context remains accurate:
   - `types.ts`: Central declaration of common type interfaces (Turn, Session, SearchResult, SourceMetadata).
   - `App.css`: Tailwind CSS entry stylesheet introducing variables.
   - `components/`: Reusable UI elements and panels:
-    * `Sidebar.tsx`: Search inputs, source selectors, sorting dropdowns, and index thread lists.
+    * `Sidebar.tsx`: Modular layout coordinator composing sub-components under `sidebar/` (`search/`, `filters/`, `groups/`, `list/`, `overlays/`, `hooks/`).
+    * `sidebar/`: Domain sub-components for the sidebar panel (SidebarSearchControls, SearchHistoryOverlay, SidebarFilterBar, GroupTreeItem, DeleteGroupModal, SessionCard, SidebarContextMenu, and custom hooks).
     * `DetailPane.tsx`: Modular layout coordinator composing sub-components under `detail/` (`header/`, `turn/`, `overlays/`, `meta/`, `hooks/`).
     * `detail/`: Domain sub-components for the conversation viewer (DetailHeader, VirtualTurn, AssistantMessageRenderer, WorkedForBlock, ToolOutputBlock, DetailSearchOverlay, DateTimelineOverlay, DetailContextMenu, LightboxOverlay, SessionMetadataPanel, SessionSummaryCard, DetailSkeleton, DetailPaneEmptyState, and custom hooks).
     * `SettingsDialog.tsx`: General settings, source path managers, permissions console, and app updates.
