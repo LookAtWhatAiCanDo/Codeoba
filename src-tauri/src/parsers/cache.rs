@@ -138,21 +138,46 @@ impl SessionCacheManager {
                 crate::log_error!("[cache] Failed to clear session store: {}", e);
             }
         }
-        // Best-effort removal of the pre-SQLite JSON caches, so they stop wasting disk
-        // once the store has taken over. Harmless if already gone.
-        if let Ok(entries) = fs::read_dir(self.get_cache_dir()) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.extension().and_then(|e| e.to_str()) == Some("json")
-                    && path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|n| n.starts_with("cache_"))
-                        .unwrap_or(false)
-                {
-                    let _ = fs::remove_file(&path);
-                }
+        self.remove_legacy_json_caches();
+    }
+
+    /// Deletes the pre-SQLite per-source `cache_*.json` files.
+    ///
+    /// Nothing reads or writes them any more — `load_cache`/`save_cache` both go to the
+    /// store — so on an upgraded install they are pure dead weight (95 MB on the author's
+    /// machine). This used to run only from `clear_all_caches`, which also wipes
+    /// `sessions.db` and forces a full re-index, so reclaiming the space cost the user
+    /// their whole index; hence it is also called once at startup.
+    ///
+    /// Best-effort by design: a failure here must never block startup, so every error is
+    /// swallowed. Only `cache_*.json` directly inside the cache directory is considered,
+    /// so `sessions.db` and anything unrecognized are left untouched.
+    pub fn remove_legacy_json_caches(&self) {
+        let Ok(entries) = fs::read_dir(self.get_cache_dir()) else {
+            return;
+        };
+        let mut removed = 0usize;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
             }
+            if path.extension().and_then(|e| e.to_str()) == Some("json")
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with("cache_"))
+                    .unwrap_or(false)
+                && fs::remove_file(&path).is_ok()
+            {
+                removed += 1;
+            }
+        }
+        if removed > 0 {
+            crate::log_info!(
+                "[cache] Removed {} legacy JSON cache file(s) superseded by the SQLite store.",
+                removed
+            );
         }
     }
 
@@ -634,6 +659,39 @@ mod scan_lifecycle_tests {
 
     fn put(source: &str, path: &str, id: &str) {
         get_cache_manager().put_cached_session(source, path, 0, 0, "h", session(id, source));
+    }
+
+    /// Legacy JSON caches must be reclaimed WITHOUT taking the store with them, which is
+    /// the whole reason this moved out of `clear_all_caches`.
+    #[test]
+    fn legacy_json_caches_are_removed_but_the_store_is_untouched() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+
+        let mgr = get_cache_manager();
+        let dir = temp.path().join(".codeoba/cache");
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let legacy = dir.join("cache_claude.json");
+        let db = dir.join("sessions.db");
+        let unrelated = dir.join("settings.json");
+        let nested = dir.join("sub");
+        std::fs::create_dir_all(&nested).unwrap();
+        let nested_legacy = nested.join("cache_claude.json");
+        for f in [&legacy, &db, &unrelated, &nested_legacy] {
+            std::fs::write(f, b"x").unwrap();
+        }
+
+        mgr.remove_legacy_json_caches();
+
+        assert!(!legacy.exists(), "legacy cache_*.json must be removed");
+        assert!(db.exists(), "sessions.db must survive");
+        assert!(unrelated.exists(), "unrelated .json must survive");
+        assert!(
+            nested_legacy.exists(),
+            "only the cache dir itself is swept, not subdirectories"
+        );
     }
 
     /// A placeholder title must be resolved on BOTH entry paths.

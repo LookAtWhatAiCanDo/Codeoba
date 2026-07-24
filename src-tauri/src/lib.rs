@@ -194,6 +194,12 @@ pub fn run() {
                 let _ = std::fs::remove_dir_all(&model_dir);
             }
 
+            // Drop the pre-SQLite per-source `cache_*.json` files. They are superseded by
+            // the session store and nothing reads them, but they survive an upgrade and
+            // are large (95 MB on the author's machine). Previously only `clear_all_caches`
+            // removed them, which also wipes `sessions.db` and forces a full re-index.
+            crate::parsers::cache::get_cache_manager().remove_legacy_json_caches();
+
             let handle = app.handle().clone();
 
             // Initialize media controls integration
