@@ -22,6 +22,10 @@
   - Act as a candid Second-in-Command (XO): if a design choice or order proposed by the user contains a bug, logical contradiction, or doesn't align with the codebase, point it out directly and suggest a better alternative.
   - Once you have voiced your concern, if the user explicitly orders you to proceed anyway, execute the order without further debate (provided it doesn't violate Directive 1).
 
+### Directive 4: Targeted Edits Only (No Full-File Overwrites for Large Files)
+- Never use `write_to_file` with `Overwrite: true` to modify existing files larger than 300 lines.
+- Always use `replace_file_content` or `multi_replace_file_content` with explicit `StartLine` and `EndLine` ranges so unaffected code is never touched or lost during context window compression.
+
 ---
 
 Welcome! You are an AI coding assistant working on the Tauri migration of **Codeoba**—a platform-agnostic, zero-external-dependency, 100% local search application that indexes, monitors, and searches conversation transcripts across Claude Code, Google Antigravity, Cursor, OpenAI Codex, and GitHub Copilot.
@@ -56,7 +60,9 @@ To ensure the project context remains accurate:
   - `App.tsx`: App layout coordinator (managing navigation and pane displays).
   - `types.ts`: Central declaration of common type interfaces (Turn, Session, SearchResult, SourceMetadata).
   - `App.css`: Tailwind CSS entry stylesheet introducing variables.
+  - `hooks/`: Custom application hooks (`useAppTheme.ts`, `useAutoUpdater.ts`).
   - `components/`: Reusable UI elements and panels:
+    * `app/`: Top-level application coordinator components (`AppModalsCoordinator.tsx`).
     * `Sidebar.tsx`: Modular layout coordinator composing sub-components under `sidebar/` (`search/`, `filters/`, `groups/`, `list/`, `overlays/`, `hooks/`).
     * `sidebar/`: Domain sub-components for the sidebar panel (SidebarSearchControls, SearchHistoryOverlay, SidebarFilterBar, GroupTreeItem, DeleteGroupModal, SessionCard, SidebarContextMenu, and custom hooks).
     * `DetailPane.tsx`: Modular layout coordinator composing sub-components under `detail/` (`header/`, `turn/`, `overlays/`, `meta/`, `hooks/`).

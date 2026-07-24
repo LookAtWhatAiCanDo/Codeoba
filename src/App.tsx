@@ -12,99 +12,45 @@ import {
 } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import packageJson from "../package.json";
 import { Sidebar } from "./components/Sidebar";
 import { DetailPane } from "./components/DetailPane";
 import { Dashboard } from "./components/Dashboard";
-import { SettingsDialog } from "./components/SettingsDialog";
-import { LicensesDialog } from "./components/LicensesDialog";
-import { PrivacyDialog } from "./components/PrivacyDialog";
-import { FileViewerDialog } from "./components/FileViewerDialog";
 import { TitleBar } from "./components/TitleBar";
 import GroupDetailsView from "./components/GroupDetailsView";
-import { ConsentModal } from "./components/ConsentModal";
-import { UpdateModal } from "./components/UpdateModal";
-import { CheckingUpdatesModal } from "./components/CheckingUpdatesModal";
-import { SourceDetectedModal } from "./components/SourceDetectedModal";
-import FeedbackDialog from "./components/FeedbackDialog";
+import { AppModalsCoordinator } from "./components/app/AppModalsCoordinator";
+
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
 import { getLocalizedAppError } from "./utils/errorHelper";
 import { useSpeech } from "./utils/useSpeech";
+import { useAppTheme, getLuminanceFromHsl } from "./hooks/useAppTheme";
+import { useAutoUpdater } from "./hooks/useAutoUpdater";
+
 import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
 import "./App.css";
 
-function getLuminanceFromHsl(h: number, s: number, l: number) {
-  const sPct = s / 100;
-  const lPct = l / 100;
-  const c = (1 - Math.abs(2 * lPct - 1)) * sPct;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = lPct - c / 2;
-  let rVal = 0,
-    gVal = 0,
-    bVal = 0;
-  if (h >= 0 && h < 60) {
-    rVal = c;
-    gVal = x;
-    bVal = 0;
-  } else if (h >= 60 && h < 120) {
-    rVal = x;
-    gVal = c;
-    bVal = 0;
-  } else if (h >= 120 && h < 180) {
-    rVal = 0;
-    gVal = c;
-    bVal = x;
-  } else if (h >= 180 && h < 240) {
-    rVal = 0;
-    gVal = x;
-    bVal = c;
-  } else if (h >= 240 && h < 300) {
-    rVal = x;
-    gVal = 0;
-    bVal = c;
-  } else if (h >= 300 && h < 360) {
-    rVal = c;
-    gVal = 0;
-    bVal = x;
-  }
-  const r = rVal + m;
-  const g = gVal + m;
-  const b = bVal + m;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
 function App() {
   const { t, locale } = useI18n();
-  const [appearance, setAppearance] = createSignal(
-    localStorage.getItem("codeoba-appearance") || "dark"
-  );
-  const [darkTheme, setDarkTheme] = createSignal(
-    localStorage.getItem("codeoba-dark-theme") || "obsidian"
-  );
-  const [lightTheme, setLightTheme] = createSignal(
-    localStorage.getItem("codeoba-light-theme") || "obsidian-light"
-  );
-  const [systemDark, setSystemDark] = createSignal(
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
 
-  const theme = createMemo(() => {
-    const appMode = appearance();
-    if (appMode === "system") {
-      return systemDark() ? darkTheme() : lightTheme();
-    }
-    return appMode === "dark" ? darkTheme() : lightTheme();
-  });
-
-  const activeColorMode = () => {
-    const appMode = appearance();
-    return appMode === "system" ? (systemDark() ? "dark" : "light") : appMode;
-  };
+  // Theme hook
+  const {
+    appearance,
+    setAppearance,
+    darkTheme,
+    setDarkTheme,
+    lightTheme,
+    setLightTheme,
+    setSystemDark,
+    theme,
+    activeColorMode,
+    customDarkTheme,
+    customLightTheme,
+    currentCustomTheme,
+    handleCustomThemeChange,
+  } = useAppTheme();
 
   const initialWidthRem = (() => {
     const remVal = localStorage.getItem("codeoba-sidebar-width-rem");
@@ -121,14 +67,29 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = createSignal(
     localStorage.getItem("codeoba-sidebar-collapsed") === "true"
   );
+  // Auto updater hook
+  const {
+    updateManifest,
+    setUpdateManifest,
+    showUpdateModal,
+    setShowUpdateModal,
+    isUpdating,
+    updateProgress,
+    updateError,
+    showConsentModal,
+    setShowConsentModal,
+    showCheckingModal,
+    setShowCheckingModal,
+    checkingStatus,
+    checkingErrorMsg,
+    runUpdateCheck,
+    handleConsentDecision,
+    triggerManualUpdateCheck,
+    handleStartUpdate,
+  } = useAutoUpdater();
   const [showSettings, setShowSettings] = createSignal(false);
   const [showLicenses, setShowLicenses] = createSignal(false);
   const [showPrivacy, setShowPrivacy] = createSignal(false);
-  const [showCheckingModal, setShowCheckingModal] = createSignal(false);
-  const [checkingStatus, setCheckingStatus] = createSignal<"checking" | "upToDate" | "error">(
-    "checking"
-  );
-  const [checkingErrorMsg, setCheckingErrorMsg] = createSignal<string | null>(null);
   const [showFeedback, setShowFeedback] = createSignal(false);
   const [detectedSources, setDetectedSources] = createSignal<Record<string, boolean>>({});
   const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
@@ -148,7 +109,6 @@ function App() {
   const [excludedPaths, setExcludedPaths] = createSignal(
     localStorage.getItem("codeoba-excluded-paths") || ""
   );
-  // Matches the backend default; the real value is loaded from config on mount.
   const [indexSubagents, setIndexSubagents] = createSignal(false);
   const [fontSize, setFontSize] = createSignal(
     parseInt(localStorage.getItem("codeoba-font-size") || "15", 10)
@@ -196,104 +156,6 @@ function App() {
   const handleNumberFormatChange = (val: string) => {
     setNumberFormat(val);
     localStorage.setItem("codeoba-number-format", val);
-  };
-
-  // Auto-update states
-  const [updateManifest, setUpdateManifest] = createSignal<any>(null);
-  const [showUpdateModal, setShowUpdateModal] = createSignal(false);
-  const [isUpdating, setIsUpdating] = createSignal(false);
-  const [updateProgress, setUpdateProgress] = createSignal(0);
-  const [updateError, setUpdateError] = createSignal<string | null>(null);
-  const [showConsentModal, setShowConsentModal] = createSignal(false);
-
-  const handleConsentDecision = (consented: boolean) => {
-    localStorage.setItem("codeoba-auto-update", String(consented));
-    localStorage.setItem("codeoba-auto-update-consent", consented ? "given" : "declined");
-    setShowConsentModal(false);
-    logFE("info", `Update check consent set to: ${consented}`);
-    if (consented) {
-      runUpdateCheck();
-    }
-  };
-
-  const runUpdateCheck = () => {
-    setTimeout(async () => {
-      try {
-        const updaterActive = await invoke<boolean>("is_updater_active");
-        if (!updaterActive) {
-          return;
-        }
-
-        const currentVersion = await getVersion();
-        logFE(
-          "info",
-          `Background Updater: Initiating background check. Current version: v${currentVersion}`
-        );
-        logFE("info", "Background Updater: Querying the update service...");
-        const update = await check({
-          headers: {
-            "Accept-Language": locale(),
-          },
-        });
-        if (update && update.available) {
-          logFE(
-            "info",
-            `Background Updater: Update check successful. Found newer version: v${update.version} (released on ${update.date || "unknown date"})`
-          );
-          setUpdateManifest(update);
-          setShowUpdateModal(true);
-        } else {
-          logFE(
-            "info",
-            "Background Updater: Update check successful. The application is up to date."
-          );
-        }
-      } catch (err: any) {
-        logFE("error", `Background Updater: Update check failed. Error details: ${err}`);
-      }
-    }, 2000);
-  };
-
-  const triggerManualUpdateCheck = async () => {
-    // Open the checking progress modal
-    setCheckingStatus("checking");
-    setCheckingErrorMsg(null);
-    setShowCheckingModal(true);
-
-    try {
-      // Set checking indicator text on native menu item
-      await invoke("set_menu_item_text", {
-        id: "check-updates",
-        text: t("settings.updates.checking"),
-      });
-
-      logFE("info", "Manual Updater: Initiating check...");
-      const update = await check({
-        headers: {
-          "Accept-Language": locale(),
-        },
-      });
-      if (update && update.available) {
-        logFE("info", `Manual Updater: Update found: v${update.version}`);
-        // Close checking progress modal and open the update available modal
-        setShowCheckingModal(false);
-        setUpdateManifest(update);
-        setShowUpdateModal(true);
-      } else {
-        logFE("info", "Manual Updater: Up to date");
-        setCheckingStatus("upToDate");
-      }
-    } catch (err: any) {
-      logFE("error", `Manual Updater: Failed: ${err}`);
-      setCheckingStatus("error");
-      setCheckingErrorMsg(t("settings.updates.error", { error: err.toString() }));
-    } finally {
-      // Reset text back to standard label on native menu item
-      await invoke("set_menu_item_text", {
-        id: "check-updates",
-        text: t("settings.updates.checkUpdate"),
-      });
-    }
   };
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
@@ -369,42 +231,6 @@ function App() {
   const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(
     new Set(JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]"))
   );
-
-  const getStoredHsl = (
-    mode: "dark" | "light",
-    prefix: string,
-    defH: number,
-    defS: number,
-    defL: number
-  ) => {
-    const h = parseInt(
-      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-h`) || String(defH),
-      10
-    );
-    const s = parseInt(
-      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-s`) || String(defS),
-      10
-    );
-    const l = parseInt(
-      localStorage.getItem(`codeoba-custom-${mode}-${prefix}-l`) || String(defL),
-      10
-    );
-    return { h, s, l };
-  };
-
-  const [customDarkTheme, setCustomDarkTheme] = createSignal({
-    bg: getStoredHsl("dark", "bg", 228, 15, 8),
-    surface: getStoredHsl("dark", "surface", 228, 15, 11),
-    accent1: getStoredHsl("dark", "accent1", 238, 82, 66),
-    accent2: getStoredHsl("dark", "accent2", 244, 79, 58),
-  });
-
-  const [customLightTheme, setCustomLightTheme] = createSignal({
-    bg: getStoredHsl("light", "bg", 210, 20, 95),
-    surface: getStoredHsl("light", "surface", 210, 20, 98),
-    accent1: getStoredHsl("light", "accent1", 238, 82, 66),
-    accent2: getStoredHsl("light", "accent2", 244, 79, 58),
-  });
 
   createEffect(() => {
     const filter = activeGroupFilter();
@@ -1645,48 +1471,6 @@ function App() {
     );
   });
 
-  const handleStartUpdate = async () => {
-    const update = updateManifest();
-    if (!update) return;
-
-    setIsUpdating(true);
-    setUpdateError(null);
-    setUpdateProgress(0);
-
-    try {
-      logFE("info", `Starting download and installation for v${update.version}...`);
-
-      let downloaded = 0;
-      let contentLength = 0;
-
-      await update.downloadAndInstall((event: any) => {
-        switch (event.event) {
-          case "Started":
-            contentLength = event.data?.contentLength || 0;
-            logFE("info", `Download started. Size: ${contentLength}`);
-            break;
-          case "Progress":
-            downloaded += event.data?.chunkLength || 0;
-            if (contentLength > 0) {
-              setUpdateProgress(Math.round((downloaded / contentLength) * 100));
-            }
-            break;
-          case "Finished":
-            logFE("info", "Download finished.");
-            setUpdateProgress(100);
-            break;
-        }
-      });
-
-      logFE("info", "Update installation completed successfully. Relaunching...");
-      await relaunch();
-    } catch (err: any) {
-      logFE("error", `Failed to download and install update: ${err}`);
-      setUpdateError(String(err));
-      setIsUpdating(false);
-    }
-  };
-
   // Handle debounced search changes
   createEffect(() => {
     const query = searchQuery();
@@ -2167,9 +1951,10 @@ function App() {
         </div>
       </div>
 
-      <SettingsDialog
-        isOpen={showSettings()}
-        onClose={handleCloseSettings}
+      {/* Unified Modals & Dialogs Coordinator */}
+      <AppModalsCoordinator
+        showSettings={showSettings()}
+        onCloseSettings={handleCloseSettings}
         theme={theme()}
         onThemeChange={(newTheme) => {
           if (activeColorMode() === "dark") {
@@ -2180,10 +1965,8 @@ function App() {
         }}
         appearance={appearance()}
         onAppearanceChange={setAppearance}
-        customTheme={activeColorMode() === "dark" ? customDarkTheme() : customLightTheme()}
-        onCustomThemeChange={
-          activeColorMode() === "dark" ? setCustomDarkTheme : setCustomLightTheme
-        }
+        currentCustomTheme={currentCustomTheme()}
+        onCustomThemeChange={handleCustomThemeChange}
         sources={sources()}
         onRefreshSources={() => {
           invoke<SourceMetadata[]>("get_sources").then((metadata) => {
@@ -2199,7 +1982,6 @@ function App() {
               console.error("Failed to load prune_deleted_sessions setting:", err);
             });
         }}
-
         dateFormat={dateFormat()}
         onDateFormatChange={handleDateFormatChange}
         timeFormat={timeFormat()}
@@ -2216,56 +1998,37 @@ function App() {
           setUpdateManifest(update);
           setShowUpdateModal(true);
         }}
-        onCheckUpdates={triggerManualUpdateCheck}
+        triggerManualUpdateCheck={triggerManualUpdateCheck}
         fontSize={fontSize()}
         onFontSizeChange={handleFontSizeChange}
-      />
-      <FileViewerDialog sessionCwd={selectedSession()?.cwd} />
-
-      {/* GDPR/CCPA Consent Modal */}
-      <ConsentModal isOpen={showConsentModal()} onDecision={handleConsentDecision} />
-
-      {/* Update Modal Overlay */}
-      <UpdateModal
-        isOpen={showUpdateModal()}
+        selectedSession={selectedSession()}
+        showConsentModal={showConsentModal()}
+        onConsentDecision={handleConsentDecision}
+        showUpdateModal={showUpdateModal()}
         updateManifest={updateManifest()}
         isUpdating={isUpdating()}
         updateProgress={updateProgress()}
         updateError={updateError()}
-        onClose={() => setShowUpdateModal(false)}
+        onCloseUpdateModal={() => setShowUpdateModal(false)}
         onStartUpdate={handleStartUpdate}
-      />
-
-      {/* Manual Checking Progress Modal */}
-      <CheckingUpdatesModal
-        isOpen={showCheckingModal()}
-        status={checkingStatus()}
-        errorMsg={checkingErrorMsg()}
-        onClose={() => setShowCheckingModal(false)}
-      />
-
-      {/* Source Detected Prompt Modal */}
-      <SourceDetectedModal
-        isOpen={hasDetectedSources()}
+        showCheckingModal={showCheckingModal()}
+        checkingStatus={checkingStatus()}
+        checkingErrorMsg={checkingErrorMsg()}
+        onCloseCheckingModal={() => setShowCheckingModal(false)}
+        hasDetectedSources={hasDetectedSources()}
         detectedSources={detectedSources()}
-        onToggleSource={handleToggleDetectedSource}
-        onIgnoreAll={handleIgnoreAllDetectedSources}
-        onSave={handleSaveDetectedSources}
+        onToggleDetectedSource={handleToggleDetectedSource}
+        onIgnoreAllDetectedSources={handleIgnoreAllDetectedSources}
+        onSaveDetectedSources={handleSaveDetectedSources}
         getSourceDisplayNameById={getSourceDisplayNameById}
-      />
-
-      {/* Feedback Modal */}
-      <FeedbackDialog
-        isOpen={showFeedback()}
-        onClose={() => setShowFeedback(false)}
+        showFeedback={showFeedback()}
+        onCloseFeedback={() => setShowFeedback(false)}
         appVersion={appVersion()}
+        showLicenses={showLicenses()}
+        onCloseLicenses={() => setShowLicenses(false)}
+        showPrivacy={showPrivacy()}
+        onClosePrivacy={() => setShowPrivacy(false)}
       />
-
-      {/* Licenses Modal */}
-      <LicensesDialog isOpen={showLicenses()} onClose={() => setShowLicenses(false)} />
-
-      {/* Privacy Modal */}
-      <PrivacyDialog isOpen={showPrivacy()} onClose={() => setShowPrivacy(false)} />
     </div>
   );
 }
