@@ -1552,6 +1552,25 @@ function App() {
       const list = await invoke<Session[]>("get_all_sessions");
       setSessions(list);
 
+      // A rebuild updates the SQLite store but, unlike a live watcher event, emits no
+      // per-session full-turn update. The sidebar list refresh above does not carry turns,
+      // so the open conversation would keep the stale turns it loaded at startup (this was
+      // the "relaunch to see the latest" bug). Re-fetch the selected session's full data.
+      const sel = selectedSession();
+      if (sel) {
+        const full = await invoke<Session | null>("get_session", {
+          sourceId: sel.sourceId,
+          filePath: sel.filePath,
+        });
+        if (
+          full &&
+          full.id === sel.id &&
+          (full.updatedAt !== sel.updatedAt || full.turns.length !== sel.turns.length)
+        ) {
+          setSelectedSession(full);
+        }
+      }
+
       const query = searchQuery();
       if (query.trim() !== "") {
         performSearch(query);
