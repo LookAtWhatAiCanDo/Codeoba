@@ -1795,37 +1795,66 @@ impl SourceAdapter for AntigravitySource {
             false
         };
 
-        // Scan for media files in the brain directory
+        // Scan for media files in the brain directory and its subdirectories (.user_uploaded, attachments)
         let mut session_images = Vec::new();
-        if let Some(brain_dir) = path
-            .parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
-        {
-            if let Ok(entries) = fs::read_dir(brain_dir) {
-                for entry in entries.filter_map(Result::ok) {
-                    let entry_path = entry.path();
-                    if entry_path.is_file() {
-                        if let Some(filename) = entry_path.file_name().and_then(|s| s.to_str()) {
-                            if filename.starts_with("media__") {
-                                if let Some(ext) = entry_path.extension().and_then(|e| e.to_str()) {
-                                    let ext_lower = ext.to_lowercase();
-                                    if ext_lower == "png"
-                                        || ext_lower == "jpg"
-                                        || ext_lower == "jpeg"
-                                        || ext_lower == "gif"
-                                        || ext_lower == "webp"
+        let mut possible_brain_dirs = Vec::new();
+        if let Some(parent1) = path.parent() {
+            if let Some(parent2) = parent1.parent() {
+                if let Some(parent3) = parent2.parent() {
+                    possible_brain_dirs.push(parent3.to_path_buf());
+                }
+                possible_brain_dirs.push(parent2.to_path_buf());
+            }
+            possible_brain_dirs.push(parent1.to_path_buf());
+        }
+
+        let brain_dir = possible_brain_dirs.into_iter().find(|d| {
+            d.join(".system_generated").is_dir()
+                || d.join(".user_uploaded").is_dir()
+                || d.join("transcript.jsonl").is_file()
+                || d.join("transcript_full.jsonl").is_file()
+        });
+
+        if let Some(brain_dir) = brain_dir {
+            let mut dirs_to_scan = vec![brain_dir.clone()];
+            let user_uploaded = brain_dir.join(".user_uploaded");
+            if user_uploaded.is_dir() {
+                dirs_to_scan.push(user_uploaded);
+            }
+            let attachments = brain_dir.join("attachments");
+            if attachments.is_dir() {
+                dirs_to_scan.push(attachments);
+            }
+
+            for scan_dir in dirs_to_scan {
+                if let Ok(entries) = fs::read_dir(scan_dir) {
+                    for entry in entries.filter_map(Result::ok) {
+                        let entry_path = entry.path();
+                        if entry_path.is_file() {
+                            if let Some(filename) = entry_path.file_name().and_then(|s| s.to_str())
+                            {
+                                if filename.starts_with("media__") {
+                                    if let Some(ext) =
+                                        entry_path.extension().and_then(|e| e.to_str())
                                     {
-                                        let ts_str = filename
-                                            .strip_prefix("media__")
-                                            .and_then(|s| s.split('.').next())
-                                            .unwrap_or("");
-                                        if let Ok(ts) = ts_str.parse::<i64>() {
-                                            session_images.push((
-                                                ts,
-                                                entry_path.to_string_lossy().to_string(),
-                                                ext_lower,
-                                            ));
+                                        let ext_lower = ext.to_lowercase();
+                                        if ext_lower == "png"
+                                            || ext_lower == "jpg"
+                                            || ext_lower == "jpeg"
+                                            || ext_lower == "gif"
+                                            || ext_lower == "webp"
+                                        {
+                                            let ts_str = filename
+                                                .strip_prefix("media__")
+                                                .and_then(|s| s.split('.').next())
+                                                .unwrap_or("");
+                                            if let Ok(ts) = ts_str.parse::<i64>() {
+                                                session_images.push((
+                                                    ts,
+                                                    entry_path.to_string_lossy().to_string(),
+                                                    ext_lower,
+                                                ));
+                                            }
                                         }
                                     }
                                 }
@@ -1857,12 +1886,17 @@ impl SourceAdapter for AntigravitySource {
                 };
                 let img_ref = crate::models::ImageReference {
                     id: uuid::Uuid::new_v4().to_string(),
-                    path: Some(img_path),
+                    path: Some(img_path.clone()),
                     base64: None,
                     media_type: Some(mime.to_string()),
                 };
                 if let Some(ref mut img_list) = turns[best_index].images {
-                    img_list.push(img_ref);
+                    if !img_list
+                        .iter()
+                        .any(|r| r.path.as_deref() == Some(&img_path))
+                    {
+                        img_list.push(img_ref);
+                    }
                 } else {
                     turns[best_index].images = Some(vec![img_ref]);
                 }
