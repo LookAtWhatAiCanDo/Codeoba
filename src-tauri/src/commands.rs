@@ -243,9 +243,11 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
     let mut statuses = std::collections::HashMap::new();
 
     let probes: Vec<StatusProbe> = {
-        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        let conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .ok_or_else(|| "session store unavailable".to_string())?;
         let mut probes = Vec::new();
-        for s in guard.values() {
+        crate::parsers::store::for_each_session(&conn, 512, |s| {
             // Same recompute policy as get_all_sessions: antigravity/claude have
             // dynamic statuses; other sources keep their parse-time status.
             let is_dynamic = s.source_id == "antigravity"
@@ -254,7 +256,7 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
             if !is_dynamic {
                 if let Some(ref stored) = s.status {
                     statuses.insert(s.id.clone(), stored.clone());
-                    continue;
+                    return;
                 }
             }
 
@@ -274,7 +276,8 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
                 cwd: s.cwd.clone(),
                 edge_turns,
             });
-        }
+        })
+        .map_err(|e| e.to_string())?;
         probes
     };
 
