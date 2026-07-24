@@ -1,125 +1,27 @@
-import { createSignal, For, Show, onMount } from "solid-js";
-import {
-  X,
-  Trash2,
-  AlertTriangle,
-  RefreshCw,
-  Palette,
-  Shield,
-  Layers,
-  Settings,
-  Shuffle,
-  FolderMinus,
-  Globe,
-  SlidersHorizontal,
-  Volume2,
-  Edit2,
-  Play,
-  Check,
-} from "lucide-solid";
+import { createSignal, Show, onMount } from "solid-js";
+import { X } from "lucide-solid";
 import { invoke } from "@tauri-apps/api/core";
-
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { logFE } from "../utils/logger";
-import { useI18n, LOCALES, LOCALE_NAMES, Locale } from "../i18n/i18n";
+import { useI18n } from "../i18n/i18n";
 import { getLocalizedAppError } from "../utils/errorHelper";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { SourceMetadata } from "../types";
 import { useSpeech, DEFAULT_PRONUNCIATIONS } from "../utils/useSpeech";
 
-interface SettingsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  theme: string;
-  onThemeChange: (theme: string) => void;
-  appearance: string;
-  onAppearanceChange: (val: string) => void;
-  sources: SourceMetadata[];
-  onRefreshSources: () => void;
-  onUpdateAvailable?: (update: any) => void;
-  dateFormat: string;
-  onDateFormatChange: (val: string) => void;
-  timeFormat: string;
-  onTimeFormatChange: (val: string) => void;
-  showSeconds: boolean;
-  onShowSecondsChange: (val: boolean) => void;
-  numberFormat?: string;
-  onNumberFormatChange: (val: string) => void;
-  excludedPaths: string;
-  onExcludedPathsChange: (val: string) => void;
-  indexSubagents: boolean;
-  onIndexSubagentsChange: (val: boolean) => void;
-  customTheme?: {
-    bg: { h: number; s: number; l: number };
-    surface: { h: number; s: number; l: number };
-    accent1: { h: number; s: number; l: number };
-    accent2: { h: number; s: number; l: number };
-  };
-  onCustomThemeChange?: (val: any) => void;
-  onCheckUpdates?: () => void;
-  fontSize: number;
-  onFontSizeChange: (val: number) => void;
-}
-
-type Category =
-  | "general"
-  | "regional"
-  | "read-aloud"
-  | "theme"
-  | "sources"
-  | "exclusions"
-  | "permissions"
-  | "updates";
-
-const DARK_THEMES = [
-  { id: "obsidian", nameKey: "themeObsidian", color: "bg-[#0d0e12] border-slate-700" },
-  { id: "nordic-frost", nameKey: "themeNordicFrost", color: "bg-[#0b1116] border-sky-950" },
-  { id: "emerald-forest", nameKey: "themeEmeraldForest", color: "bg-[#09110f] border-emerald-950" },
-  { id: "sunset-copper", nameKey: "themeSunsetCopper", color: "bg-[#130f0d] border-amber-950" },
-  { id: "royal-amethyst", nameKey: "themeRoyalAmethyst", color: "bg-[#100d18] border-purple-950" },
-  { id: "dracula", nameKey: "themeDracula", color: "bg-[#1e1e2e] border-pink-950" },
-  { id: "cyberpunk-neon", nameKey: "themeCyberpunk", color: "bg-[#080710] border-pink-700" },
-  { id: "monochrome-slate", nameKey: "themeMonochrome", color: "bg-[#0f172a] border-slate-700" },
-  {
-    id: "custom",
-    nameKey: "themeCustom",
-    color: "bg-linear-to-r from-red-500 via-green-500 to-blue-500 border-white/20",
-  },
-];
-
-const LIGHT_THEMES = [
-  { id: "obsidian-light", nameKey: "themeQuartz", color: "bg-[#f8fafc] border-slate-300" },
-  { id: "nordic-light", nameKey: "themeGlacier", color: "bg-[#f0f4f8] border-blue-200" },
-  { id: "emerald-light", nameKey: "themeMint", color: "bg-[#f0fdf4] border-green-200" },
-  { id: "sunset-light", nameKey: "themeAmber", color: "bg-[#fffbeb] border-amber-200" },
-  { id: "royal-light", nameKey: "themeLavender", color: "bg-[#faf5ff] border-purple-200" },
-  { id: "dracula-light", nameKey: "themePastel", color: "bg-[#fff0f6] border-pink-200" },
-  { id: "cyberpunk-light", nameKey: "themeNeon", color: "bg-[#fdf4ff] border-pink-300" },
-  { id: "monochrome-light", nameKey: "themePaper", color: "bg-[#ffffff] border-slate-200" },
-  {
-    id: "custom",
-    nameKey: "themeCustom",
-    color: "bg-linear-to-r from-red-500 via-green-500 to-blue-500 border-white/20",
-  },
-];
+import { Category, SettingsDialogProps } from "./settings/types";
+import { SettingsNav } from "./settings/SettingsNav";
+import { GeneralTab } from "./settings/tabs/GeneralTab";
+import { ThemeTab } from "./settings/tabs/ThemeTab";
+import { ReadAloudTab } from "./settings/tabs/ReadAloudTab";
+import { SourcesTab } from "./settings/tabs/SourcesTab";
+import { PermissionsTab, PermissionEntry } from "./settings/tabs/PermissionsTab";
+import { UpdatesTab } from "./settings/tabs/UpdatesTab";
 
 export const SettingsDialog = (props: SettingsDialogProps) => {
-  const { locale, setLocale, t } = useI18n();
+  const { locale, t } = useI18n();
   const [activeCategory, setActiveCategory] = createSignal<Category>("general");
 
-  const systemIsDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const currentMode = () =>
-    props.appearance === "system" ? (systemIsDark() ? "dark" : "light") : props.appearance;
-  const activeThemesList = () => (currentMode() === "dark" ? DARK_THEMES : LIGHT_THEMES);
-
   const [deletingSourceId, setDeletingSourceId] = createSignal<string | null>(null);
-  const getDeletingSourceDisplayName = () => {
-    const id = deletingSourceId();
-    if (!id) return "";
-    const found = props.sources?.find((s) => s.id === id);
-    return found ? found.displayName : id;
-  };
   const [checkingUpdates, setCheckingUpdates] = createSignal(false);
   const [updateCheckResult, setUpdateCheckResult] = createSignal<string | null>(null);
   const [updaterActive, setUpdaterActive] = createSignal(false);
@@ -133,7 +35,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [userSpeechRate, setUserSpeechRate] = createSignal(1.0);
   const [userSpeechPitch, setUserSpeechPitch] = createSignal(1.0);
   const [testText, setTestText] = createSignal("");
-  const [confirmResetReadAloud, setConfirmResetReadAloud] = createSignal(false);
 
   const [rules, setRules] = createSignal<Record<string, string>>({});
   const [newWord, setNewWord] = createSignal("");
@@ -141,6 +42,28 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [editingWord, setEditingWord] = createSignal<string | null>(null);
   const [editWordVal, setEditWordVal] = createSignal("");
   const [editRepVal, setEditRepVal] = createSignal("");
+
+  // General Settings
+  const [cacheEnabled, setCacheEnabled] = createSignal(
+    localStorage.getItem("codeoba-cache-enabled") !== "false"
+  );
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = createSignal(
+    localStorage.getItem("codeoba-auto-update") !== "false"
+  );
+  const [parserMode, setParserMode] = createSignal(
+    localStorage.getItem("codeoba-parser-mode") || "standard"
+  );
+  const [pruneDeleted, setPruneDeleted] = createSignal(false);
+
+  // Path Permissions
+  const [permissions, setPermissions] = createSignal<PermissionEntry[]>([]);
+
+  // Source decisions (mock list stored in localStorage)
+  const [sourceDecisions, setSourceDecisions] = createSignal<
+    Record<string, "allow" | "deny" | "ask">
+  >(JSON.parse(localStorage.getItem("codeoba-source-decisions") || "{}"));
+
+  const speech = useSpeech();
 
   const handleSaveEdit = (oldWord: string) => {
     const word = editWordVal().trim().toLowerCase();
@@ -161,7 +84,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       const saved = localStorage.getItem("codeoba-tts-pronunciations");
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Merge missing defaults
         let changed = false;
         for (const key of Object.keys(DEFAULT_PRONUNCIATIONS)) {
           if (!(key in parsed)) {
@@ -204,8 +126,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setRules(DEFAULT_PRONUNCIATIONS);
     localStorage.setItem("codeoba-tts-pronunciations", JSON.stringify(DEFAULT_PRONUNCIATIONS));
   };
-
-  const speech = useSpeech();
 
   const handleTestVoice = async (speaker: "assistant" | "user" = "assistant") => {
     const saying = testText().trim() || t("settings.readAloud.testSaying");
@@ -295,87 +215,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     handleResetRules();
   };
 
-  // Custom Theme HSL Adjusters
-  const [activeColorIndex, setActiveColorIndex] = createSignal<string>("bg");
-
-  const activeColorHsl = () => {
-    const key = activeColorIndex();
-    const theme = props.customTheme || {
-      bg: { h: 228, s: 15, l: 8 },
-      surface: { h: 228, s: 15, l: 11 },
-      accent1: { h: 238, s: 82, l: 66 },
-      accent2: { h: 244, s: 79, l: 58 },
-    };
-    return (theme as any)[key] || { h: 0, s: 0, l: 0 };
-  };
-
-  const handleSliderChange = (param: "h" | "s" | "l", val: number) => {
-    if (!props.customTheme || !props.onCustomThemeChange) return;
-    const key = activeColorIndex();
-    const current = { ...props.customTheme };
-    const color = { ...(current as any)[key] };
-    color[param] = val;
-    (current as any)[key] = color;
-
-    // Save to local storage with mode prefix
-    const keyPrefix = currentMode() === "dark" ? "dark" : "light";
-    localStorage.setItem(`codeoba-custom-${keyPrefix}-${key}-${param}`, String(val));
-
-    props.onCustomThemeChange(current);
-  };
-
-  const handleRollTheme = () => {
-    if (!props.customTheme || !props.onCustomThemeChange) return;
-
-    const isDarkMode = currentMode() === "dark";
-
-    const h1 = Math.floor(Math.random() * 360);
-    const relations = [150, 180, 210];
-    const relation = relations[Math.floor(Math.random() * relations.length)];
-    const h2 = (h1 + relation) % 360;
-
-    const bgHOffsets = [-30, 0, 30];
-    const bgHOffset = bgHOffsets[Math.floor(Math.random() * bgHOffsets.length)];
-    const bgH = (h1 + bgHOffset + 360) % 360;
-
-    let bgS, bgL, surfaceL, accent1S, accent1L, accent2S, accent2L;
-
-    if (isDarkMode) {
-      bgS = 8 + Math.floor(Math.random() * 8); // 8-15%
-      bgL = 4 + Math.floor(Math.random() * 4); // 4-7%
-      surfaceL = 8 + Math.floor(Math.random() * 4); // 8-11%
-      accent1S = 85 + Math.floor(Math.random() * 16); // 85-100%
-      accent1L = 50 + Math.floor(Math.random() * 11); // 50-60%
-      accent2S = 75 + Math.floor(Math.random() * 21); // 75-95%
-      accent2L = 55 + Math.floor(Math.random() * 11); // 55-65%
-    } else {
-      bgS = 10 + Math.floor(Math.random() * 10); // 10-20%
-      bgL = 93 + Math.floor(Math.random() * 4); // 93-96%
-      surfaceL = 97 + Math.floor(Math.random() * 4); // 97-100%
-      accent1S = 75 + Math.floor(Math.random() * 20); // 75-95%
-      accent1L = 40 + Math.floor(Math.random() * 15); // 40-55%
-      accent2S = 65 + Math.floor(Math.random() * 25); // 65-90%
-      accent2L = 35 + Math.floor(Math.random() * 15); // 35-50%
-    }
-
-    const rolled = {
-      bg: { h: bgH, s: bgS, l: bgL },
-      surface: { h: bgH, s: bgS, l: surfaceL },
-      accent1: { h: h1, s: accent1S, l: accent1L },
-      accent2: { h: h2, s: accent2S, l: accent2L },
-    };
-
-    // Save to local storage
-    const keyPrefix = isDarkMode ? "dark" : "light";
-    Object.entries(rolled).forEach(([colorKey, colorVal]) => {
-      localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-h`, String(colorVal.h));
-      localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-s`, String(colorVal.s));
-      localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-l`, String(colorVal.l));
-    });
-
-    props.onCustomThemeChange(rolled);
-  };
-
   onMount(async () => {
     // 1. Check updater status
     try {
@@ -453,23 +292,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     );
   });
 
-  // General Settings
-  const [cacheEnabled, setCacheEnabled] = createSignal(
-    localStorage.getItem("codeoba-cache-enabled") !== "false"
-  );
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = createSignal(
-    localStorage.getItem("codeoba-auto-update") !== "false"
-  );
-  const [parserMode, setParserMode] = createSignal(
-    localStorage.getItem("codeoba-parser-mode") || "standard"
-  );
-  const [pruneDeleted, setPruneDeleted] = createSignal(false);
-
-  // Path Permissions
-  const [permissions, setPermissions] = createSignal<
-    Array<{ path: string; preview: string; external: string }>
-  >([]);
-
   const refreshPermissions = async () => {
     try {
       const backendPermissions = await invoke<
@@ -504,11 +326,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       logFE("error", `Failed to load path permissions: ${err}`);
     }
   };
-
-  // Source decisions (mock list stored in localStorage)
-  const [sourceDecisions, setSourceDecisions] = createSignal<
-    Record<string, "allow" | "deny" | "ask">
-  >(JSON.parse(localStorage.getItem("codeoba-source-decisions") || "{}"));
 
   const handleToggleCache = (val: boolean) => {
     setCacheEnabled(val);
@@ -547,7 +364,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     setCheckingUpdates(true);
     setUpdateCheckResult(null);
     try {
-      // Set checking indicator text on native menu item
       await invoke("set_menu_item_text", {
         id: "check-updates",
         text: t("settings.updates.checking"),
@@ -579,7 +395,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       setCheckingUpdates(false);
       setUpdateCheckResult(t("settings.updates.error", { error: String(err) }));
 
-      // Attempt diagnostic connection to extract actual HTTP response status and body
       try {
         logFE("info", "Settings: Attempting diagnostic connection to find root cause...");
         const endpoints = await invoke<string[]>("get_resolved_updater_endpoints");
@@ -607,7 +422,6 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
         logFE("error", `Settings: Diagnostic connection failed: ${diagErr.message || diagErr}`);
       }
     } finally {
-      // Reset text back to standard label on native menu item
       await invoke("set_menu_item_text", {
         id: "check-updates",
         text: t("settings.updates.checkUpdate"),
@@ -684,7 +498,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
         {/* Settings Dialog box */}
         <div
           class="w-[760px] h-[520px] bg-surface border border-border/80 rounded-2xl flex overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200"
-          onClick={(e) => e.stopPropagation()} // Consume clicks
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Close button in top-right */}
           <button
@@ -695,1305 +509,126 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           </button>
 
           {/* Left Sidebar categories list */}
-          <div class="w-[200px] border-r border-border/60 flex flex-col p-4 pt-6 gap-6 flex-shrink-0">
-            <div class="flex items-center gap-2 px-2">
-              <Settings class="w-4 h-4 text-accent" />
-              <span class="font-bold text-text-primary tracking-wide">{t("settings.title")}</span>
-            </div>
-
-            <div class="flex flex-col gap-1">
-              <button
-                onClick={() => setActiveCategory("general")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "general"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <SlidersHorizontal class="w-3.5 h-3.5" />
-                <span>{t("settings.general.title")}</span>
-              </button>
-              <button
-                onClick={() => setActiveCategory("regional")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "regional"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Globe class="w-3.5 h-3.5" />
-                <span>{t("settings.regional.title")}</span>
-              </button>
-              <button
-                onClick={() => setActiveCategory("read-aloud")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "read-aloud"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Volume2 class="w-3.5 h-3.5" />
-                <span>{t("settings.readAloud.title")}</span>
-              </button>
-              <button
-                onClick={() => setActiveCategory("theme")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "theme"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Palette class="w-3.5 h-3.5" />
-                <span>{t("settings.theme.title")}</span>
-              </button>
-              <button
-                onClick={() => setActiveCategory("sources")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "sources"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Layers class="w-3.5 h-3.5" />
-                <span>{t("settings.agents.tab")}</span>
-              </button>
-              <button
-                onClick={() => setActiveCategory("exclusions")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "exclusions"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <FolderMinus class="w-3.5 h-3.5" />
-                <span>{t("settings.exclusions.title")}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveCategory("permissions")}
-                class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                  activeCategory() === "permissions"
-                    ? "bg-accent-light/20 text-accent border border-accent/20"
-                    : "text-text-secondary hover:text-text-primary border border-transparent"
-                }`}
-              >
-                <Shield class="w-3.5 h-3.5" />
-                <span>{t("settings.permissions.tab")}</span>
-              </button>
-
-              <Show when={updaterActive()}>
-                <button
-                  onClick={() => setActiveCategory("updates")}
-                  class={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer text-left ${
-                    activeCategory() === "updates"
-                      ? "bg-accent-light/20 text-accent border border-accent/20"
-                      : "text-text-secondary hover:text-text-primary border border-transparent"
-                  }`}
-                >
-                  <RefreshCw class="w-3.5 h-3.5" />
-                  <span>{t("settings.updates.tab")}</span>
-                </button>
-              </Show>
-            </div>
+          <div class="flex flex-col h-full flex-shrink-0">
+            <SettingsNav
+              activeCategory={activeCategory()}
+              onSelectCategory={(cat) => setActiveCategory(cat)}
+            />
 
             {/* Version Display */}
-            <div class="mt-auto px-3 py-2 bg-background/50 border border-border/40 rounded-xl flex items-center justify-between text-[0.625rem] text-text-secondary font-medium">
-              <span>Codeoba</span>
-              <span class="font-mono bg-surface border border-border/60 px-1.5 py-0.5 rounded text-accent">
-                v{appVersion()}
-              </span>
+            <div class="mt-auto p-4 pt-0">
+              <div class="px-3 py-2 bg-background/50 border border-border/40 rounded-xl flex items-center justify-between text-[0.625rem] text-text-secondary font-medium">
+                <span>Codeoba</span>
+                <span class="font-mono bg-surface border border-border/60 px-1.5 py-0.5 rounded text-accent">
+                  v{appVersion()}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Right Pane Content Area */}
           <div class="flex-grow h-full flex flex-col p-6 pt-8 overflow-y-auto min-w-0">
-            <Show when={activeCategory() === "general"}>
-              {/* General Settings Tab */}
-              <div class="space-y-3">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.general.title")}
-                </h3>
+            <GeneralTab
+              activeCategory={activeCategory()}
+              cacheEnabled={cacheEnabled()}
+              onToggleCache={handleToggleCache}
+              pruneDeleted={pruneDeleted()}
+              onTogglePruneDeleted={handleTogglePruneDeleted}
+              fontSize={props.fontSize}
+              onFontSizeChange={props.onFontSizeChange}
+              parserMode={parserMode()}
+              onParserModeChange={handleParserModeChange}
+              dateFormat={props.dateFormat}
+              onDateFormatChange={props.onDateFormatChange}
+              timeFormat={props.timeFormat}
+              onTimeFormatChange={props.onTimeFormatChange}
+              showSeconds={props.showSeconds}
+              onShowSecondsChange={props.onShowSecondsChange}
+              numberFormat={props.numberFormat}
+              onNumberFormatChange={props.onNumberFormatChange}
+              excludedPaths={props.excludedPaths}
+              onExcludedPathsChange={props.onExcludedPathsChange}
+              indexSubagents={props.indexSubagents}
+              onIndexSubagentsChange={props.onIndexSubagentsChange}
+            />
 
-                {/* Persistent cache switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.cache")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.cacheDesc")}
-                    </p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={cacheEnabled()}
-                      onChange={(e) => handleToggleCache(e.currentTarget.checked)}
-                      class="sr-only peer"
-                    />
-                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                  </label>
-                </div>
+            <ThemeTab
+              activeCategory={activeCategory()}
+              theme={props.theme}
+              onThemeChange={props.onThemeChange}
+              appearance={props.appearance}
+              onAppearanceChange={props.onAppearanceChange}
+              customTheme={props.customTheme}
+              onCustomThemeChange={props.onCustomThemeChange}
+            />
 
-                {/* Prune deleted sessions switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.pruneDeleted")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.pruneDeletedDesc")}
-                    </p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pruneDeleted()}
-                      onChange={(e) => handleTogglePruneDeleted(e.currentTarget.checked)}
-                      class="sr-only peer"
-                    />
-                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                  </label>
-                </div>
+            <ReadAloudTab
+              activeCategory={activeCategory()}
+              voices={voices()}
+              selectedAssistantVoiceName={selectedAssistantVoiceName()}
+              onAssistantVoiceChange={handleAssistantVoiceChange}
+              selectedUserVoiceName={selectedUserVoiceName()}
+              onUserVoiceChange={handleUserVoiceChange}
+              assistantSpeechRate={assistantSpeechRate()}
+              onAssistantRateChange={handleAssistantRateChange}
+              assistantSpeechPitch={assistantSpeechPitch()}
+              onAssistantPitchChange={handleAssistantPitchChange}
+              userSpeechRate={userSpeechRate()}
+              onUserRateChange={handleUserRateChange}
+              userSpeechPitch={userSpeechPitch()}
+              onUserPitchChange={handleUserPitchChange}
+              onResetAssistantVoice={handleResetAssistantVoice}
+              onResetUserVoice={handleResetUserVoice}
+              onResetReadAloudDefaults={handleResetReadAloudDefaults}
+              testText={testText()}
+              setTestText={setTestText}
+              rules={rules()}
+              onAddRule={handleAddRule}
+              newWord={newWord()}
+              setNewWord={setNewWord}
+              newReplacement={newReplacement()}
+              setNewReplacement={setNewReplacement}
+              editingWord={editingWord()}
+              setEditingWord={setEditingWord}
+              editWordVal={editWordVal()}
+              setEditWordVal={setEditWordVal}
+              editRepVal={editRepVal()}
+              setEditRepVal={setEditRepVal}
+              onSaveEdit={handleSaveEdit}
+              onDeleteRule={handleDeleteRule}
+              onResetRules={handleResetRules}
+              onTestVoice={handleTestVoice}
+              onResetTestText={handleResetTestText}
+            />
 
-                {/* Font Size controls */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.fontSize")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.fontSizeDesc")}
-                    </p>
-                  </div>
-                  <div class="flex items-center gap-2 select-none">
-                    <button
-                      onClick={() => props.onFontSizeChange(Math.max(10, props.fontSize - 1))}
-                      class="px-2 py-1 bg-background hover:bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span
-                      onDblClick={() => props.onFontSizeChange(15)}
-                      class="text-xs font-mono min-w-[32px] text-center text-text-secondary cursor-pointer hover:text-text-primary select-none"
-                      title={t("detailPane.resetFontSize")}
-                    >
-                      {props.fontSize}px
-                    </span>
-                    <button
-                      onClick={() => props.onFontSizeChange(Math.min(24, props.fontSize + 1))}
-                      class="px-2 py-1 bg-background hover:bg-surface border border-border rounded-lg text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
+            <SourcesTab
+              activeCategory={activeCategory()}
+              sources={props.sources}
+              getSourceDecision={getSourceDecision}
+              onToggleSourceDecision={handleToggleSourceDecision}
+              deletingSourceId={deletingSourceId()}
+              setDeletingSourceId={setDeletingSourceId}
+              onDeleteSourceData={handleDeleteSourceData}
+            />
 
-                {/* Log Parsing Mode */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.logMode")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.logModeDesc")}
-                    </p>
-                  </div>
-                  <div class="flex bg-background p-1 rounded-lg border border-border/60">
-                    <button
-                      onClick={() => handleParserModeChange("standard")}
-                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        parserMode() === "standard"
-                          ? "bg-surface text-accent border border-border/80 shadow-sm"
-                          : "text-text-secondary hover:text-text-primary"
-                      }`}
-                    >
-                      {t("settings.general.modeStandard")}
-                    </button>
-                    <button
-                      onClick={() => handleParserModeChange("summarizing")}
-                      class={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                        parserMode() === "summarizing"
-                          ? "bg-surface text-accent border border-border/80 shadow-sm"
-                          : "text-text-secondary hover:text-text-primary"
-                      }`}
-                    >
-                      {t("settings.general.modeCompact")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Show>
+            <PermissionsTab
+              activeCategory={activeCategory()}
+              permissions={permissions()}
+              onResetPermission={handleResetPermission}
+              onClearAllPermissions={handleClearAllPermissions}
+            />
 
-            <Show when={activeCategory() === "regional"}>
-              {/* Region & Language Settings Tab */}
-              <div class="space-y-3 animate-in fade-in duration-200">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.regional.title")}
-                </h3>
-
-                {/* Language Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.language")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.languageDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={locale()}
-                    onChange={(e) => setLocale(e.currentTarget.value as Locale)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
-                  >
-                    <For each={LOCALES}>
-                      {(lang) => <option value={lang}>{LOCALE_NAMES[lang]}</option>}
-                    </For>
-                  </select>
-                </div>
-
-                {/* Date Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.dateFormat")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.dateFormatDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={props.dateFormat}
-                    onChange={(e) => props.onDateFormatChange(e.currentTarget.value)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
-                  >
-                    <option value="system">
-                      {t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}
-                    </option>
-                    <option value="iso">{t("settings.general.dateFormatISO")}</option>
-                    <option value="us">{t("settings.general.dateFormatUS")}</option>
-                    <option value="eu">{t("settings.general.dateFormatEU")}</option>
-                  </select>
-                </div>
-
-                {/* Time Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.timeFormat")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.timeFormatDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={props.timeFormat}
-                    onChange={(e) => props.onTimeFormatChange(e.currentTarget.value)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
-                  >
-                    <option value="system">
-                      {t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}
-                    </option>
-                    <option value="12">{t("settings.general.timeFormat12")}</option>
-                    <option value="24">{t("settings.general.timeFormat24")}</option>
-                  </select>
-                </div>
-
-                {/* Show Seconds Switch */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.showSeconds")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.showSecondsDesc")}
-                    </p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={props.showSeconds}
-                      onChange={(e) => props.onShowSecondsChange(e.currentTarget.checked)}
-                      class="sr-only peer"
-                    />
-                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                  </label>
-                </div>
-
-                {/* Number Format Selector */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.numberFormat")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.numberFormatDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={props.numberFormat}
-                    onChange={(e) => props.onNumberFormatChange(e.currentTarget.value)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
-                  >
-                    <option value="system">
-                      {t("settings.general.matchLanguage", { lang: LOCALE_NAMES[locale()] })}
-                    </option>
-                    <option value="us">{t("settings.general.numberFormatUS")}</option>
-                    <option value="eu">{t("settings.general.numberFormatEU")}</option>
-                    <option value="fr">{t("settings.general.numberFormatFR")}</option>
-                  </select>
-                </div>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "read-aloud"}>
-              {/* Read Aloud Settings Tab */}
-              <div class="space-y-3 animate-in fade-in duration-200">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2 select-none">
-                  {t("settings.readAloud.title")}
-                </h3>
-
-                {/* Voice: Assistant Settings Group */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.readAloud.voiceAssistant")}
-                      </h4>
-                      <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.readAloud.voiceAssistantDesc")}
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <select
-                        value={selectedAssistantVoiceName()}
-                        onChange={(e) => handleAssistantVoiceChange(e.currentTarget.value)}
-                        class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
-                      >
-                        <option value="">{t("settings.readAloud.defaultVoice")}</option>
-                        <For each={voices()}>
-                          {(voice) => (
-                            <option value={voice.name}>
-                              {voice.name} ({voice.lang})
-                            </option>
-                          )}
-                        </For>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={handleResetAssistantVoice}
-                        class="text-[0.625rem] text-text-secondary/60 hover:text-accent font-semibold transition-colors whitespace-nowrap cursor-pointer px-1 py-0.5"
-                        title={t("settings.readAloud.resetVoice")}
-                      >
-                        {t("settings.readAloud.resetVoice")}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
-                        <span>{t("settings.readAloud.rate")}</span>
-                        <span class="font-bold text-text-primary">
-                          {assistantSpeechRate().toFixed(1)}x
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="2.0"
-                        step="0.1"
-                        value={assistantSpeechRate()}
-                        onInput={(e) =>
-                          handleAssistantRateChange(parseFloat(e.currentTarget.value))
-                        }
-                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
-                        <span>{t("settings.readAloud.pitch")}</span>
-                        <span class="font-bold text-text-primary">
-                          {assistantSpeechPitch().toFixed(1)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="1.5"
-                        step="0.1"
-                        value={assistantSpeechPitch()}
-                        onInput={(e) =>
-                          handleAssistantPitchChange(parseFloat(e.currentTarget.value))
-                        }
-                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Voice: User Settings Group */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl p-4 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.readAloud.voiceUser")}
-                      </h4>
-                      <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.readAloud.voiceUserDesc")}
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <select
-                        value={selectedUserVoiceName()}
-                        onChange={(e) => handleUserVoiceChange(e.currentTarget.value)}
-                        class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer max-w-xs"
-                      >
-                        <option value="">{t("settings.readAloud.defaultVoice")}</option>
-                        <For each={voices()}>
-                          {(voice) => (
-                            <option value={voice.name}>
-                              {voice.name} ({voice.lang})
-                            </option>
-                          )}
-                        </For>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={handleResetUserVoice}
-                        class="text-[0.625rem] text-text-secondary/60 hover:text-accent font-semibold transition-colors whitespace-nowrap cursor-pointer px-1 py-0.5"
-                        title={t("settings.readAloud.resetVoice")}
-                      >
-                        {t("settings.readAloud.resetVoice")}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
-                        <span>{t("settings.readAloud.rate")}</span>
-                        <span class="font-bold text-text-primary">
-                          {userSpeechRate().toFixed(1)}x
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="2.0"
-                        step="0.1"
-                        value={userSpeechRate()}
-                        onInput={(e) => handleUserRateChange(parseFloat(e.currentTarget.value))}
-                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-[0.625rem] font-medium text-text-secondary">
-                        <span>{t("settings.readAloud.pitch")}</span>
-                        <span class="font-bold text-text-primary">
-                          {userSpeechPitch().toFixed(1)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="1.5"
-                        step="0.1"
-                        value={userSpeechPitch()}
-                        onInput={(e) => handleUserPitchChange(parseFloat(e.currentTarget.value))}
-                        class="w-full accent-accent h-1.5 bg-background rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Voice Testing controls */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3.5 px-4 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.readAloud.test")}
-                      </h4>
-                      <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.readAloud.testDesc")}
-                      </p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 w-full min-w-0">
-                    <input
-                      type="text"
-                      maxLength={300}
-                      value={testText()}
-                      onInput={(e) => {
-                        setTestText(e.currentTarget.value);
-                        localStorage.setItem("codeoba-tts-test-text", e.currentTarget.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleTestVoice();
-                        }
-                      }}
-                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
-                      placeholder={t("settings.readAloud.testSaying")}
-                    />
-                    <div class="flex items-center gap-1.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleResetTestText}
-                        class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-secondary hover:text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
-                        title={t("settings.readAloud.testReset")}
-                      >
-                        {t("settings.readAloud.testReset")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTestVoice("assistant")}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 hover:border-accent/40 rounded-xl text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
-                      >
-                        {t("settings.readAloud.testAssistant")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTestVoice("user")}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 hover:border-accent/40 rounded-xl text-text-primary text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
-                      >
-                        {t("settings.readAloud.testUser")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pronunciation rules dictionary editor */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3.5 px-4 space-y-3">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.readAloud.pronunciations")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.readAloud.pronunciationsDesc")}
-                    </p>
-                  </div>
-
-                  <div class="max-h-40 overflow-y-auto border border-border/50 rounded-xl bg-background/50 divide-y divide-border/30">
-                    <For each={Object.keys(rules()).sort()}>
-                      {(word) => {
-                        const isEditing = () => editingWord() === word;
-                        return (
-                          <div class="flex items-center justify-between px-3 py-2 text-xs gap-3">
-                            <Show
-                              when={isEditing()}
-                              fallback={
-                                <>
-                                  <div class="flex items-center gap-2 min-w-0 flex-1">
-                                    <span class="font-mono text-accent/90 font-medium truncate">
-                                      {word}
-                                    </span>
-                                    <span class="text-text-secondary/50 font-medium">➔</span>
-                                    <span class="text-text-secondary truncate">
-                                      {rules()[word]}
-                                    </span>
-                                  </div>
-                                  <div class="flex items-center gap-1 flex-shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => speech.speakDirectText(rules()[word])}
-                                      class="text-text-secondary/50 hover:text-accent transition-colors p-1"
-                                      title={t("readAloud.speechPlay")}
-                                    >
-                                      <Play class="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditingWord(word);
-                                        setEditWordVal(word);
-                                        setEditRepVal(rules()[word] || "");
-                                      }}
-                                      class="text-text-secondary/50 hover:text-accent transition-colors p-1"
-                                      title={t("common.edit")}
-                                    >
-                                      <Edit2 class="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteRule(word)}
-                                      class="text-text-secondary/50 hover:text-red-500 transition-colors p-1"
-                                      title={t("common.delete")}
-                                    >
-                                      <Trash2 class="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </>
-                              }
-                            >
-                              <div class="flex items-center gap-2 min-w-0 flex-1">
-                                <input
-                                  type="text"
-                                  value={editWordVal()}
-                                  onInput={(e) => setEditWordVal(e.currentTarget.value)}
-                                  class="bg-background border border-border/80 rounded-xl px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent w-24 font-mono font-medium"
-                                />
-                                <span class="text-text-secondary/50 font-medium">➔</span>
-                                <input
-                                  type="text"
-                                  value={editRepVal()}
-                                  onInput={(e) => setEditRepVal(e.currentTarget.value)}
-                                  class="bg-background border border-border/80 rounded-xl px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 font-medium"
-                                />
-                              </div>
-                              <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveEdit(word)}
-                                  class="text-green-500 hover:text-green-600 transition-colors p-1"
-                                  title={t("common.save")}
-                                >
-                                  <Check class="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingWord(null)}
-                                  class="text-text-secondary/50 hover:text-text-primary transition-colors p-1"
-                                  title={t("common.cancel")}
-                                >
-                                  <X class="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </Show>
-                          </div>
-                        );
-                      }}
-                    </For>
-                    <Show when={Object.keys(rules()).length === 0}>
-                      <div class="text-center py-4 text-text-secondary/50 text-xs">
-                        No pronunciations defined.
-                      </div>
-                    </Show>
-                  </div>
-
-                  <form onSubmit={handleAddRule} class="flex items-center gap-2 w-full min-w-0">
-                    <input
-                      type="text"
-                      placeholder={t("settings.readAloud.pronunciationsPlaceholderWord")}
-                      value={newWord()}
-                      onInput={(e) => setNewWord(e.currentTarget.value)}
-                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
-                    />
-                    <input
-                      type="text"
-                      placeholder={t("settings.readAloud.pronunciationsPlaceholderReplacement")}
-                      value={newReplacement()}
-                      onInput={(e) => setNewReplacement(e.currentTarget.value)}
-                      class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent flex-1 min-w-0 font-medium"
-                    />
-                    <button
-                      type="submit"
-                      class="px-3 py-1.5 bg-accent hover:bg-accent-hover text-accent-text rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex-shrink-0"
-                    >
-                      {t("settings.readAloud.pronunciationsAdd")}
-                    </button>
-                  </form>
-
-                  <div class="flex justify-start">
-                    <button
-                      type="button"
-                      onClick={handleResetRules}
-                      class="text-[0.625rem] text-accent hover:underline font-semibold"
-                    >
-                      {t("settings.readAloud.pronunciationsReset")}
-                    </button>
-                  </div>
-                </div>
-
-                <div class="flex justify-end pt-1 border-t border-border/20">
-                  <Show
-                    when={confirmResetReadAloud()}
-                    fallback={
-                      <button
-                        type="button"
-                        onClick={() => setConfirmResetReadAloud(true)}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border/80 rounded-xl text-text-secondary hover:text-red-400 transition-all text-xs font-semibold cursor-pointer"
-                      >
-                        {t("settings.readAloud.reset")}
-                      </button>
-                    }
-                  >
-                    <div class="flex items-center gap-2 animate-in fade-in duration-150">
-                      <span class="text-xs text-red-400 font-medium select-none">
-                        {t("settings.readAloud.confirmResetAll")}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleResetReadAloudDefaults();
-                          setConfirmResetReadAloud(false);
-                        }}
-                        class="px-3 py-1 bg-red-500/90 hover:bg-red-600 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                      >
-                        {t("common.confirm")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmResetReadAloud(false)}
-                        class="px-3 py-1 bg-background hover:bg-surface border border-border/80 text-text-secondary hover:text-text-primary rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                      >
-                        {t("common.cancel")}
-                      </button>
-                    </div>
-                  </Show>
-                </div>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "theme"}>
-              {/* Theme Settings Tab */}
-              <div class="space-y-3 animate-in fade-in duration-200">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.theme.title")}
-                </h3>
-
-                {/* Appearance Mode Selection */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.appearance")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.appearanceDesc")}
-                    </p>
-                  </div>
-                  <select
-                    value={props.appearance}
-                    onChange={(e) => props.onAppearanceChange(e.currentTarget.value)}
-                    class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
-                  >
-                    <option value="dark">{t("settings.general.appearanceDark")}</option>
-                    <option value="light">{t("settings.general.appearanceLight")}</option>
-                    <option value="system">{t("settings.general.appearanceSystem")}</option>
-                  </select>
-                </div>
-
-                {/* Theme Selector Dot Bar */}
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-2">
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <h4 class="text-xs font-bold text-text-primary">
-                        {t("settings.general.theme")}
-                      </h4>
-                      <p class="text-[0.625rem] text-text-secondary/70">
-                        {t("settings.general.themeDesc")}
-                      </p>
-                    </div>
-                    <span class="text-xs font-semibold text-accent">
-                      {props.theme === "custom"
-                        ? t("settings.general.themeCustom")
-                        : t(
-                            "settings.general." +
-                              (activeThemesList().find((tTheme) => tTheme.id === props.theme)
-                                ?.nameKey || props.theme)
-                          )}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 pt-1 flex-wrap">
-                    <For each={activeThemesList()}>
-                      {(themeItem) => (
-                        <button
-                          onClick={() => props.onThemeChange(themeItem.id)}
-                          title={
-                            themeItem.id === "custom"
-                              ? t("settings.general.themeCustom")
-                              : t("settings.general.themeSwitchTo", {
-                                  name: t("settings.general." + themeItem.nameKey),
-                                })
-                          }
-                          class={`w-5 h-5 rounded-full border cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-150 ${themeItem.color} ${
-                            props.theme === themeItem.id
-                              ? "scale-105 ring-2 ring-accent ring-offset-2 ring-offset-background"
-                              : ""
-                          }`}
-                        />
-                      )}
-                    </For>
-                  </div>
-                </div>
-
-                {/* Custom HSL Theme Editor */}
-                <Show when={props.theme === "custom"}>
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-4 animate-in fade-in duration-200">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <h4 class="text-xs font-bold text-text-primary">
-                          {t("settings.general.customThemeTitle")}
-                        </h4>
-                        <p class="text-[0.625rem] text-text-secondary/70">
-                          {t("settings.general.customThemeDesc")}
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleRollTheme}
-                        title={t("settings.general.customThemeRollTooltip")}
-                        class="p-2 bg-accent/15 hover:bg-accent/25 border border-accent/30 rounded-xl text-accent transition-all cursor-pointer flex items-center justify-center"
-                      >
-                        <Shuffle class="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div class="grid grid-cols-4 gap-2">
-                      <For
-                        each={[
-                          {
-                            key: "bg",
-                            label: t("settings.general.customThemeBg"),
-                            color: props.customTheme?.bg,
-                          },
-                          {
-                            key: "surface",
-                            label: t("settings.general.customThemeSurface"),
-                            color: props.customTheme?.surface,
-                          },
-                          {
-                            key: "accent1",
-                            label: t("settings.general.customThemeAccent1"),
-                            color: props.customTheme?.accent1,
-                          },
-                          {
-                            key: "accent2",
-                            label: t("settings.general.customThemeAccent2"),
-                            color: props.customTheme?.accent2,
-                          },
-                        ]}
-                      >
-                        {(item) => (
-                          <button
-                            onClick={() => setActiveColorIndex(item.key)}
-                            class={`flex flex-col items-center p-2 rounded-xl border transition-all cursor-pointer ${
-                              activeColorIndex() === item.key
-                                ? "bg-accent/10 border-accent/40 text-accent font-semibold"
-                                : "bg-background/40 border-border/30 text-text-secondary hover:text-text-primary hover:border-border/60"
-                            }`}
-                          >
-                            <span class="text-[0.5rem] uppercase tracking-wider mb-1.5 font-bold truncate max-w-full">
-                              {item.label}
-                            </span>
-                            <div
-                              class="w-5 h-5 rounded-full border border-border/80"
-                              style={{
-                                "background-color": `hsl(${item.color?.h}, ${item.color?.s}%, ${item.color?.l}%)`,
-                              }}
-                            />
-                          </button>
-                        )}
-                      </For>
-                    </div>
-
-                    {/* Sliders for the active HSL setting */}
-                    <div class="bg-background/30 border border-border/40 rounded-xl p-3 space-y-3">
-                      <div class="flex items-center justify-between text-[0.625rem] font-semibold text-text-secondary">
-                        <span class="font-bold text-text-primary">
-                          {activeColorIndex() === "bg"
-                            ? t("settings.general.customThemeBg")
-                            : activeColorIndex() === "surface"
-                              ? t("settings.general.customThemeSurface")
-                              : activeColorIndex() === "accent1"
-                                ? t("settings.general.customThemeAccent1")
-                                : t("settings.general.customThemeAccent2")}
-                        </span>
-                        <span class="font-mono">
-                          hsl({activeColorHsl().h}, {activeColorHsl().s}%, {activeColorHsl().l}%)
-                        </span>
-                      </div>
-
-                      <div class="space-y-2">
-                        {/* Hue Slider */}
-                        <div class="flex items-center gap-3">
-                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">
-                            {t("settings.general.customThemeHue")}
-                          </span>
-                          <input
-                            type="range"
-                            min="0"
-                            max="360"
-                            value={activeColorHsl().h}
-                            onInput={(e) =>
-                              handleSliderChange("h", parseInt(e.currentTarget.value))
-                            }
-                            class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
-                          />
-                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">
-                            {activeColorHsl().h}°
-                          </span>
-                        </div>
-
-                        {/* Saturation Slider */}
-                        <div class="flex items-center gap-3">
-                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">
-                            {t("settings.general.customThemeSat")}
-                          </span>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={activeColorHsl().s}
-                            onInput={(e) =>
-                              handleSliderChange("s", parseInt(e.currentTarget.value))
-                            }
-                            class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
-                          />
-                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">
-                            {activeColorHsl().s}%
-                          </span>
-                        </div>
-
-                        {/* Lightness Slider */}
-                        <div class="flex items-center gap-3">
-                          <span class="text-[0.625rem] w-20 font-semibold text-text-secondary">
-                            {t("settings.general.customThemeLight")}
-                          </span>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={activeColorHsl().l}
-                            onInput={(e) =>
-                              handleSliderChange("l", parseInt(e.currentTarget.value))
-                            }
-                            class="flex-grow h-1 bg-background rounded-lg appearance-none cursor-pointer accent-accent"
-                          />
-                          <span class="text-[0.625rem] w-6 font-mono text-right text-text-secondary">
-                            {activeColorHsl().l}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Show>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "sources"}>
-              {/* Sources & Adapters Tab */}
-              <div class="space-y-3">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.agents.title")}
-                </h3>
-
-                <div class="space-y-3">
-                  <For each={props.sources}>
-                    {(src) => {
-                      const dec = getSourceDecision(src.id);
-                      return (
-                        <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between gap-4">
-                          <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2 flex-wrap">
-                              <h4 class="text-xs font-bold text-text-primary">{src.displayName}</h4>
-                              <Show when={src.productUrl && !src.isAvailable}>
-                                <button
-                                  onClick={() => openUrl(src.productUrl!)}
-                                  class="text-[0.625rem] text-accent hover:text-accent/80 hover:underline transition-all cursor-pointer font-medium"
-                                  title={t("settings.agents.getInstaller")}
-                                >
-                                  {t("settings.agents.getInstaller")}
-                                </button>
-                              </Show>
-                            </div>
-                            <p class="text-[0.625rem] text-text-secondary/70 truncate">
-                              {t("settings.agents.status")}:{" "}
-                              {src.isAvailable
-                                ? t("settings.agents.available")
-                                : t("settings.agents.notInstalled")}
-                            </p>
-                          </div>
-
-                          <div class="flex items-center gap-2">
-                            {/* Segmented controls for allow/deny/ask */}
-                            <div class="flex bg-background p-0.5 rounded-lg border border-border/50 text-[0.625rem] font-semibold text-text-primary">
-                              <For each={["allow", "deny", "ask"] as const}>
-                                {(option) => (
-                                  <button
-                                    onClick={() => handleToggleSourceDecision(src.id, option)}
-                                    class={`px-2 py-1 rounded transition-all cursor-pointer ${
-                                      dec === option
-                                        ? "bg-surface text-accent font-bold"
-                                        : "text-text-secondary hover:text-text-primary"
-                                    }`}
-                                  >
-                                    {
-                                      {
-                                        allow: t("settings.agents.allow"),
-                                        deny: t("settings.agents.deny"),
-                                        ask: t("settings.agents.ask"),
-                                      }[option]
-                                    }
-                                  </button>
-                                )}
-                              </For>
-                            </div>
-
-                            {/* Trash button to delete source cache */}
-                            <button
-                              onClick={() => setDeletingSourceId(src.id)}
-                              title={t("settings.agents.deleteDataTooltip")}
-                              class="p-2 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-text-secondary hover:text-red-400 transition-all cursor-pointer"
-                            >
-                              <Trash2 class="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  </For>
-                </div>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "permissions"}>
-              {/* Path Permissions Tab */}
-              <div class="space-y-3">
-                <div class="flex items-center justify-between border-b border-border/30 pb-2 mb-2 flex-shrink-0">
-                  <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-                    {t("settings.permissions.title")}
-                  </h3>
-                  <Show when={permissions().length > 0}>
-                    <button
-                      onClick={handleClearAllPermissions}
-                      class="px-2.5 py-1.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-red-400 transition-all text-xs font-semibold cursor-pointer"
-                    >
-                      {t("settings.permissions.clearAll")}
-                    </button>
-                  </Show>
-                </div>
-
-                <Show
-                  when={permissions().length > 0}
-                  fallback={
-                    <div class="flex-grow flex flex-col items-center justify-center p-8 text-text-secondary select-none text-xs">
-                      {t("settings.permissions.noPermissions")}
-                    </div>
-                  }
-                >
-                  <div class="space-y-3">
-                    <For each={permissions()}>
-                      {(p) => (
-                        <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
-                          <div class="space-y-1">
-                            <div
-                              class="text-xs font-mono font-bold text-text-primary truncate"
-                              title={p.path}
-                            >
-                              {p.path}
-                            </div>
-                            <div class="flex gap-4 text-[0.625rem] text-text-secondary/70">
-                              <span>
-                                {t("fileViewer.title")}:{" "}
-                                <span
-                                  class={p.preview === "allow" ? "text-accent font-semibold" : ""}
-                                >
-                                  {p.preview}
-                                </span>
-                              </span>
-                              <span>
-                                {t("settings.permissions.external")}:{" "}
-                                <span
-                                  class={p.external === "allow" ? "text-accent font-semibold" : ""}
-                                >
-                                  {p.external}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-
-                          <div class="flex gap-2 justify-end border-t border-border/20 pt-2.5 text-[0.65625rem]">
-                            <Show when={p.preview !== "ask"}>
-                              <button
-                                onClick={() => handleResetPermission(p.path, "preview")}
-                                class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-primary transition-all font-semibold cursor-pointer"
-                              >
-                                {t("settings.permissions.resetPreview")}
-                              </button>
-                            </Show>
-                            <Show when={p.external !== "ask"}>
-                              <button
-                                onClick={() => handleResetPermission(p.path, "external")}
-                                class="px-2.5 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-text-primary transition-all font-semibold cursor-pointer"
-                              >
-                                {t("settings.permissions.resetExternal")}
-                              </button>
-                            </Show>
-                            <button
-                              onClick={() => handleResetPermission(p.path, "all")}
-                              class="px-2.5 py-1.5 bg-background hover:bg-red-500/10 border border-border hover:border-red-500/20 rounded-xl text-red-400 transition-all font-semibold cursor-pointer shadow-red-500/5 shadow"
-                            >
-                              {t("common.delete")}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "exclusions"}>
-              {/* Exclusions Tab */}
-              <div class="space-y-3">
-                <div class="border-b border-border/30 pb-2 mb-2 flex-shrink-0">
-                  <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
-                    {t("settings.exclusions.title")}
-                  </h3>
-                </div>
-
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex flex-col gap-3">
-                  <div>
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.general.excludedPaths")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70">
-                      {t("settings.general.excludedPathsDesc")}
-                    </p>
-                  </div>
-                  <textarea
-                    value={props.excludedPaths}
-                    onInput={(e) => props.onExcludedPathsChange(e.currentTarget.value)}
-                    placeholder="e.g. node_modules, dist, temp, .git"
-                    class="w-full bg-background border border-border/80 rounded-xl p-3 text-xs text-text-primary focus:outline-none focus:border-accent font-mono resize-none h-32 placeholder:text-text-secondary/30 leading-normal"
-                  />
-                </div>
-
-                <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 flex items-center justify-between transition-all duration-200">
-                  <div class="flex-1 pr-4">
-                    <h4 class="text-xs font-bold text-text-primary">
-                      {t("settings.exclusions.indexSubagents")}
-                    </h4>
-                    <p class="text-[0.625rem] text-text-secondary/70 mt-1 leading-normal">
-                      {t("settings.exclusions.indexSubagentsDesc")}
-                    </p>
-                  </div>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={props.indexSubagents}
-                      onChange={(e) => props.onIndexSubagentsChange(e.currentTarget.checked)}
-                      class="sr-only peer"
-                    />
-                    <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                  </label>
-                </div>
-              </div>
-            </Show>
-
-            <Show when={activeCategory() === "updates"}>
-              {/* Updates Tab */}
-              <div class="space-y-3">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary mb-2">
-                  {t("settings.updates.title")}
-                </h3>
-
-                {/* Auto Update Check */}
-                <Show
-                  when={updaterActive()}
-                  fallback={
-                    <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 text-center text-xs text-text-secondary">
-                      {t("settings.updates.notActive")}
-                    </div>
-                  }
-                >
-                  <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-3">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <h4 class="text-xs font-bold text-text-primary">
-                          {t("settings.updates.autoUpdate")}
-                        </h4>
-                        <p class="text-[0.625rem] text-text-secondary/70">
-                          {t("settings.updates.autoUpdateDesc")}
-                        </p>
-                      </div>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={autoUpdateEnabled()}
-                          onChange={(e) => handleToggleAutoUpdate(e.currentTarget.checked)}
-                          class="sr-only peer"
-                        />
-                        <div class="w-9 h-5 bg-background peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent peer-checked:after:bg-background" />
-                      </label>
-                    </div>
-                    <div class="flex items-center justify-between pt-1 text-[0.6875rem] border-t border-border/30">
-                      <span class="text-text-secondary">
-                        {t("settings.updates.version")}: v{appVersion()}
-                      </span>
-                      <button
-                        onClick={() =>
-                          props.onCheckUpdates ? props.onCheckUpdates() : handleCheckUpdates()
-                        }
-                        disabled={checkingUpdates()}
-                        class="px-3 py-1.5 bg-background hover:bg-surface border border-border rounded-xl text-accent hover:text-accent-hover transition-colors text-xs font-semibold cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 min-w-[120px]"
-                      >
-                        <Show
-                          when={checkingUpdates()}
-                          fallback={<span>{t("settings.updates.checkUpdate")}</span>}
-                        >
-                          <RefreshCw class="w-3.5 h-3.5 animate-spin" />
-                          <span>{t("settings.updates.checking")}</span>
-                        </Show>
-                      </button>
-                    </div>
-                    <Show when={updateCheckResult()}>
-                      <div
-                        class="text-[0.6875rem] font-semibold"
-                        classList={{
-                          "text-red-400":
-                            updateCheckResult()?.startsWith("Error") ||
-                            updateCheckResult()?.startsWith("Failed"),
-                          "text-emerald-400": !(
-                            updateCheckResult()?.startsWith("Error") ||
-                            updateCheckResult()?.startsWith("Failed")
-                          ),
-                        }}
-                      >
-                        {updateCheckResult()}
-                      </div>
-                    </Show>
-                  </div>
-                </Show>
-              </div>
-            </Show>
+            <UpdatesTab
+              activeCategory={activeCategory()}
+              updaterActive={updaterActive()}
+              autoUpdateEnabled={autoUpdateEnabled()}
+              onToggleAutoUpdate={handleToggleAutoUpdate}
+              appVersion={appVersion()}
+              checkingUpdates={checkingUpdates()}
+              updateCheckResult={updateCheckResult()}
+              onCheckUpdates={props.onCheckUpdates || handleCheckUpdates}
+            />
           </div>
-
-          {/* Delete Data Confirmation Scrim overlay */}
-          <Show when={deletingSourceId() !== null}>
-            <div class="absolute inset-0 bg-black/85 z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
-              <div class="w-[400px] bg-surface border border-border/80 p-6 rounded-2xl flex flex-col items-center gap-4 text-center shadow-2xl animate-in zoom-in-95 duration-200">
-                <AlertTriangle class="w-12 h-12 text-red-500 animate-pulse" />
-                <h3 class="text-base font-bold text-red-500 uppercase tracking-wide">
-                  {t("settings.agents.deleteData")}?
-                </h3>
-                <p class="text-xs text-text-secondary/80 leading-relaxed">
-                  {t("settings.agents.confirmDeleteSource", {
-                    source: getDeletingSourceDisplayName(),
-                  })}
-                </p>
-                <div class="flex gap-3 w-full pt-2">
-                  <button
-                    onClick={() => setDeletingSourceId(null)}
-                    class="flex-1 py-2 border border-border bg-background hover:bg-surface rounded-xl text-xs font-semibold text-text-secondary hover:text-text-primary transition-all cursor-pointer"
-                  >
-                    {t("common.cancel")}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSourceData(deletingSourceId()!)}
-                    class="flex-1 py-2 bg-red-500 hover:bg-red-600 border border-red-600 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer shadow-md"
-                  >
-                    {t("common.delete")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Show>
         </div>
       </div>
     </Show>
