@@ -141,16 +141,18 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
 ) -> Result<Vec<Session>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
 
-    // Copy the lightweight sessions out from under the read lock, then release it before doing
-    // any filesystem work. resolve_workspace_name walks the filesystem, per session — holding the
-    // read lock across that I/O would block the rebuild writer (and every other reader) for the
-    // whole scan on every load.
+    // Read the session list straight from the SQLite store (streamed, lightweight), rather
+    // than a separate in-memory index. The store is authoritative and kept current by the
+    // scan/parse machinery; removed sessions carry is_deleted (the frontend filters them out
+    // of the Active view), so this list is consistent with search and with the Deleted view.
     let mut all_sessions: Vec<Session> = {
-        let guard = state
-            .sessions
-            .read()
+        let conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .ok_or_else(|| AppErrorPayload::new(ERR_SESSION_READ_LOCK))?;
+        let mut out = Vec::new();
+        crate::parsers::store::for_each_session(&conn, 512, |s| out.push(s.to_lightweight()))
             .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard.values().map(|s| s.to_lightweight()).collect()
+        out
     };
 
     let now = std::time::SystemTime::now()
@@ -1479,10 +1481,21 @@ mod get_all_sessions_tests {
         handle.manage(GroupState::new());
 
         {
-            let state = handle.state::<SearchIndexState>();
-            let mut guard = state.sessions.write().unwrap();
-            guard.insert("a".to_string(), codex_session("a", 100));
-            guard.insert("b".to_string(), codex_session("b", 200));
+            // get_all_sessions now reads from the SQLite store, so seed there.
+            let mgr = crate::parsers::cache::get_cache_manager();
+            let mut conn = mgr.open_db().unwrap();
+            let entries: Vec<crate::parsers::cache::CacheEntry> =
+                [codex_session("a", 100), codex_session("b", 200)]
+                    .into_iter()
+                    .map(|s| crate::parsers::cache::CacheEntry {
+                        file_path: s.file_path.clone(),
+                        last_modified: 0,
+                        size: 0,
+                        hash: s.id.clone(),
+                        session: s,
+                    })
+                    .collect();
+            crate::parsers::store::save_source(&mut conn, "codex", &entries).unwrap();
         }
 
         let result = tauri::async_runtime::block_on(get_all_sessions(handle.clone())).unwrap();
