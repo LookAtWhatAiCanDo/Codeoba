@@ -352,7 +352,16 @@ impl SessionCacheManager {
         None
     }
 
+    /// Updates the cached session for an *unchanged* file (the adapters' cache-hit path).
+    ///
+    /// Post-processes for the same reason [`Self::put_cached_session`] does, and this is
+    /// the path that actually matters for an existing corpus: an unchanged transcript is
+    /// never re-parsed, so `put_cached_session` is never reached for it and a placeholder
+    /// title already sitting in SQLite would survive every future scan untouched.
     pub fn update_cached_session(&self, source_id: &str, file_path: &str, session: Session) {
+        let mut session = session;
+        crate::parsers::post_process_session(&mut session);
+
         if let Ok(mut active_guard) = self.active_caches.lock() {
             if let Some(map) = active_guard.get_mut(source_id) {
                 if let Some(entry) = map.get_mut(file_path) {
@@ -371,6 +380,20 @@ impl SessionCacheManager {
         hash: &str,
         session: Session,
     ) {
+        // Derive the real title BEFORE the session is cached, because everything that
+        // reaches SQLite goes through this cache (`end_scan` -> `save_cache`). Adapters
+        // hand us a placeholder ("Claude Session", "Cursor Session", ...) when they
+        // cannot name a session from its own metadata; `post_process_session` replaces
+        // that from the first user message.
+        //
+        // This used to run only in `Source::parse_session` / `parse_all_sessions`, i.e.
+        // AFTER the adapter had already called this method. The corrected title existed
+        // only on the returned in-memory copy and was never written back, so the store
+        // kept the placeholder: the sidebar looked right until relaunch, then reverted
+        // to the generic title. Doing it here covers all 8 adapter call sites at once.
+        let mut session = session;
+        crate::parsers::post_process_session(&mut session);
+
         let entry = CacheEntry {
             file_path: file_path.to_string(),
             last_modified,
@@ -611,6 +634,49 @@ mod scan_lifecycle_tests {
 
     fn put(source: &str, path: &str, id: &str) {
         get_cache_manager().put_cached_session(source, path, 0, 0, "h", session(id, source));
+    }
+
+    /// A placeholder title must be resolved on BOTH entry paths.
+    ///
+    /// `update_cached_session` is the one that matters for an existing corpus: an
+    /// unchanged transcript is never re-parsed, so it never reaches
+    /// `put_cached_session`, and a generic title already in SQLite would otherwise
+    /// survive every subsequent scan. Fixing only `put_cached_session` left 35 of 37
+    /// real sessions still reading "Claude Session" after a relaunch.
+    #[test]
+    fn placeholder_titles_are_resolved_on_both_cache_entry_paths() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        let src = "title_src";
+        mgr.start_scan(src);
+
+        let mut generic = session("a", src);
+        generic.thread_name = Some("Claude Session".to_string());
+        generic.turns[0].user_message = "Refactor the session store".to_string();
+
+        // Path 1: freshly parsed file.
+        mgr.put_cached_session(src, "/home/a.jsonl", 0, 0, "h", generic.clone());
+
+        // Path 2: unchanged file served from cache.
+        let mut generic_b = generic.clone();
+        generic_b.id = "b".to_string();
+        mgr.put_cached_session(src, "/home/b.jsonl", 0, 0, "h", session("b", src));
+        mgr.update_cached_session(src, "/home/b.jsonl", generic_b);
+
+        let result = mgr.end_scan(src, true);
+        assert_eq!(result.sessions.len(), 2);
+        for s in &result.sessions {
+            assert_eq!(
+                s.thread_name.as_deref(),
+                Some("Refactor the session store"),
+                "placeholder survived for {}",
+                s.file_path
+            );
+        }
     }
 
     /// The core race: a second scan starting mid-flight used to wipe the first scan's
