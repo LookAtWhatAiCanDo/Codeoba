@@ -69,7 +69,19 @@ pub struct Session {
 }
 
 impl Session {
+    /// A list-payload copy of this session: metadata + a 100-char `snippet`, with turn
+    /// *message text* stripped. The sidebar renders only a title, timestamp, and snippet, so
+    /// shipping every turn's full text (the last turn alone was ~8.8 MB across the corpus)
+    /// was pure IPC waste. Turn *structure* is kept (count, timestamps, token counts,
+    /// extra_data) because the frontend sorts on it (turns/tokens/speed/duration).
     pub fn to_lightweight(&self) -> Self {
+        self.to_lightweight_keeping_turns(&[])
+    }
+
+    /// Like [`to_lightweight`], but preserves the message text of the turns at `keep_text`
+    /// (their indices). Used for search results so the snippet of the *matched* turn — which
+    /// may be any turn, not the last — survives; the browse list keeps none.
+    pub fn to_lightweight_keeping_turns(&self, keep_text: &[usize]) -> Self {
         let snippet = self.snippet.clone().or_else(|| {
             self.turns.last().map(|turn| {
                 let msg = if !turn.user_message.is_empty() {
@@ -102,15 +114,15 @@ impl Session {
                 .iter()
                 .enumerate()
                 .map(|(i, t)| {
-                    let is_last = i == self.turns.len() - 1;
+                    let keep = keep_text.contains(&i);
                     Turn {
                         turn_id: t.turn_id.clone(),
-                        user_message: if is_last {
+                        user_message: if keep {
                             t.user_message.clone()
                         } else {
                             String::new()
                         },
-                        assistant_message: if is_last {
+                        assistant_message: if keep {
                             t.assistant_message.clone()
                         } else {
                             String::new()
@@ -808,6 +820,62 @@ mod to_lightweight_tests {
     fn snippet_short_message_unchanged() {
         let light = session_with_last_user_message("hello").to_lightweight();
         assert_eq!(light.snippet.as_deref(), Some("hello"));
+    }
+
+    fn multi_turn_session() -> Session {
+        let mut s = session_with_last_user_message("last message");
+        s.turns.insert(
+            0,
+            Turn {
+                turn_id: "t0".to_string(),
+                user_message: "first user message".to_string(),
+                assistant_message: "first assistant reply".to_string(),
+                timestamp: 0,
+                input_tokens: Some(3),
+                output_tokens: Some(4),
+                extra_data: std::collections::HashMap::new(),
+                images: None,
+            },
+        );
+        s
+    }
+
+    /// The browse payload strips ALL turn message text (the sidebar uses `snippet`), but
+    /// keeps turn structure — count and token counts — that the frontend sorts on.
+    #[test]
+    fn to_lightweight_strips_all_turn_text_but_keeps_structure() {
+        let s = multi_turn_session();
+        let light = s.to_lightweight();
+        assert_eq!(light.turns.len(), s.turns.len(), "turn count preserved");
+        assert!(
+            light
+                .turns
+                .iter()
+                .all(|t| t.user_message.is_empty() && t.assistant_message.is_empty()),
+            "all turn text is stripped"
+        );
+        assert_eq!(
+            light.turns[0].input_tokens,
+            Some(3),
+            "token counts preserved"
+        );
+        assert!(
+            light.snippet.is_some(),
+            "snippet still populated for the row"
+        );
+    }
+
+    /// The search payload keeps the text of the matched turns (which may be any turn, not
+    /// the last) so their snippet survives; everything else is stripped.
+    #[test]
+    fn to_lightweight_keeping_turns_preserves_matched_text() {
+        let s = multi_turn_session();
+        let light = s.to_lightweight_keeping_turns(&[0]);
+        assert_eq!(light.turns[0].user_message, "first user message");
+        assert!(
+            light.turns[1].user_message.is_empty(),
+            "unmatched turns are still stripped"
+        );
     }
 }
 

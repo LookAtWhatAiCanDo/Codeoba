@@ -519,7 +519,11 @@ pub async fn search_sessions<R: tauri::Runtime>(
         .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e))?;
 
     for res in &mut results {
-        res.session = res.session.to_lightweight();
+        // Keep the text of the matched turns so the frontend can show the matching
+        // snippet (which may be any turn, not the last); strip the rest.
+        res.session = res
+            .session
+            .to_lightweight_keeping_turns(&res.matched_turn_indexes);
     }
     Ok(results)
 }
