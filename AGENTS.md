@@ -58,7 +58,8 @@ To ensure the project context remains accurate:
   - `App.css`: Tailwind CSS entry stylesheet introducing variables.
   - `components/`: Reusable UI elements and panels:
     * `Sidebar.tsx`: Search inputs, source selectors, sorting dropdowns, and index thread lists.
-    * `DetailPane.tsx`: Conversation dialogue display, Markdown parsing, metadata tags, local find-in-page search, and copy buttons.
+    * `DetailPane.tsx`: Modular layout coordinator composing sub-components under `detail/` (`header/`, `turn/`, `overlays/`, `meta/`, `hooks/`).
+    * `detail/`: Domain sub-components for the conversation viewer (DetailHeader, VirtualTurn, AssistantMessageRenderer, WorkedForBlock, ToolOutputBlock, DetailSearchOverlay, DateTimelineOverlay, DetailContextMenu, LightboxOverlay, SessionMetadataPanel, SessionSummaryCard, DetailSkeleton, DetailPaneEmptyState, and custom hooks).
     * `SettingsDialog.tsx`: General settings, source path managers, permissions console, and app updates.
   - `services/`: Bridges to call Tauri commands via TS functions (`tauriBridge.ts`).
 
