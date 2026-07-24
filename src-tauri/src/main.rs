@@ -27,16 +27,24 @@ fn main() {
                 return;
             }
 
-            let sessions = {
-                let guard = state.sessions.read().unwrap_or_else(|e| e.into_inner());
-                println!("Total sessions in index: {}", guard.len());
-                guard.values().cloned().collect::<Vec<_>>()
+            // The rebuild populated the SQLite store; search reads from it directly.
+            let conn = match codeoba_lib::parsers::cache::get_cache_manager().open_db() {
+                Some(c) => c,
+                None => {
+                    println!("Error: could not open the session store");
+                    return;
+                }
             };
+            println!(
+                "Total sessions in store: {}",
+                codeoba_lib::parsers::store::count_sessions(&conn).unwrap_or(0)
+            );
 
             let filter = codeoba_lib::search::SearchFilter::default();
 
             let search_start = std::time::Instant::now();
-            let results = codeoba_lib::search::lexical::lexical_search(&sessions, query, &filter);
+            let results =
+                codeoba_lib::search::search_store(&conn, query, &filter).unwrap_or_default();
             println!("[main] Search execution time: {:?}", search_start.elapsed());
 
             let print_start = std::time::Instant::now();

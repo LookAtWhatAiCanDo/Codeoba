@@ -10,15 +10,14 @@
 //! collision across sources cannot clobber a row. Turns hang off the surrogate
 //! `sessions.row_id`.
 //!
-//! Writes are incremental: [`save_source`] rewrites a session's row and turns only when its
-//! parse-cache metadata (`hash`/`size`/`last_modified`) actually changed, flips just the
-//! `is_deleted` column when only that differs, and leaves untouched sessions alone. That is
-//! the win over the old JSON store, which re-serialized and rewrote the entire source file
-//! on every scan.
+//! Writes are incremental: [`save_source`] always syncs a session's cheap metadata row but
+//! rewrites its turns — the bulk — only when the parse-cache metadata
+//! (`hash`/`size`/`last_modified`) actually changed. That is the win over the old JSON store,
+//! which re-serialized and rewrote the entire source file on every scan.
 
 use crate::models::{Session, Turn};
 use crate::parsers::cache::CacheEntry;
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::HashMap;
 
 /// Bumped only when the schema changes in a way that requires a rebuild. A fresh re-parse
@@ -81,12 +80,11 @@ CREATE TABLE IF NOT EXISTS turns (
 "#;
 
 /// The parse-cache metadata an entry is keyed by; a change in any of these means the
-/// session's row and turns must be rewritten.
+/// session's turns must be rewritten (the row's metadata is always synced regardless).
 struct Meta {
     hash: String,
     size: i64,
     last_modified: i64,
-    is_deleted: bool,
 }
 
 /// Loads every cached session for `source_id`, keyed by `file_path` (the shape the scan
@@ -182,10 +180,11 @@ pub fn load_source(
 
 /// Persists the full set of entries for `source_id`, incrementally.
 ///
-/// Sessions whose `(hash, size, last_modified)` are unchanged are not rewritten; if only
-/// `is_deleted` changed, just that column is updated; new or changed sessions are fully
-/// upserted (row + turns); sessions no longer present are deleted (turns cascade). All in
-/// one transaction, so a crash mid-write cannot leave a source half-persisted.
+/// Every session's metadata row is upserted (cheap, and required because derived fields such
+/// as the antigravity title can change without the content hash changing); its turns — the
+/// bulk — are rewritten only when `(hash, size, last_modified)` changed. Sessions no longer
+/// present are deleted (turns cascade). All in one transaction, so a crash mid-write cannot
+/// leave a source half-persisted.
 pub fn save_source(
     conn: &mut Connection,
     source_id: &str,
@@ -195,22 +194,20 @@ pub fn save_source(
     let tx = conn.transaction()?;
     {
         for entry in entries {
-            match existing.get(&entry.file_path) {
-                Some(meta)
-                    if meta.hash == entry.hash
-                        && meta.size == entry.size
-                        && meta.last_modified == entry.last_modified =>
-                {
-                    // Unchanged content. Only the delete flag can still differ.
-                    if meta.is_deleted != entry.session.is_deleted {
-                        tx.execute(
-                            "UPDATE sessions SET is_deleted = ?1 WHERE source_id = ?2 AND file_path = ?3",
-                            params![entry.session.is_deleted as i64, source_id, entry.file_path],
-                        )?;
-                    }
+            let content_changed = match existing.get(&entry.file_path) {
+                Some(meta) => {
+                    meta.hash != entry.hash
+                        || meta.size != entry.size
+                        || meta.last_modified != entry.last_modified
                 }
-                _ => upsert_entry(&tx, source_id, entry)?,
-            }
+                None => true,
+            };
+            // Always sync the session row's metadata columns: fields derived from a
+            // separate file — the antigravity title (from a summaries .pb), archival
+            // annotations, status — can change without the content hash changing, and the
+            // store is authoritative for reads. Only the turns (the bulk) are gated on a
+            // real content change, which preserves the incremental-write win.
+            upsert_entry(&tx, source_id, entry, content_changed)?;
         }
 
         // Delete sessions this scan no longer lists. `end_scan` has already applied the
@@ -231,7 +228,7 @@ pub fn save_source(
 
 fn load_meta(conn: &Connection, source_id: &str) -> rusqlite::Result<HashMap<String, Meta>> {
     let mut stmt = conn.prepare(
-        "SELECT file_path, hash, size, last_modified, is_deleted FROM sessions WHERE source_id = ?1",
+        "SELECT file_path, hash, size, last_modified FROM sessions WHERE source_id = ?1",
     )?;
     let rows = stmt.query_map(params![source_id], |r| {
         Ok((
@@ -240,7 +237,6 @@ fn load_meta(conn: &Connection, source_id: &str) -> rusqlite::Result<HashMap<Str
                 hash: r.get(1)?,
                 size: r.get(2)?,
                 last_modified: r.get(3)?,
-                is_deleted: r.get::<_, i64>(4)? != 0,
             },
         ))
     })?;
@@ -252,10 +248,14 @@ fn load_meta(conn: &Connection, source_id: &str) -> rusqlite::Result<HashMap<Str
     Ok(map)
 }
 
+/// Upserts a session's row (always) and, when `rewrite_turns`, replaces its turns. Turns are
+/// the bulk, so they are rewritten only on a genuine content change; the row's metadata is
+/// always kept current.
 fn upsert_entry(
     tx: &rusqlite::Transaction,
     source_id: &str,
     entry: &CacheEntry,
+    rewrite_turns: bool,
 ) -> rusqlite::Result<()> {
     let s = &entry.session;
     let summary_json = s
@@ -301,8 +301,11 @@ fn upsert_entry(
         |r| r.get(0),
     )?;
 
-    // Replace the turn set wholesale — a session's turns are only rewritten when its
-    // content actually changed, so this runs rarely.
+    if !rewrite_turns {
+        return Ok(());
+    }
+
+    // Replace the turn set wholesale — only reached on a genuine content change.
     tx.execute(
         "DELETE FROM turns WHERE session_row_id = ?1",
         params![row_id],
@@ -444,6 +447,142 @@ pub fn for_each_session(
         }
     }
     Ok(())
+}
+
+/// Loads one full session (with turns) by its natural key. Used by the detail pane, which
+/// needs the complete session regardless of source type (a direct store read works for
+/// DB-backed sources whose `file_path` is not a real file).
+pub fn get_session_by_path(
+    conn: &Connection,
+    source_id: &str,
+    file_path: &str,
+) -> rusqlite::Result<Option<Session>> {
+    let row: Option<(i64, Session)> = conn
+        .query_row(
+            "SELECT row_id, id, timestamp, updated_at, cwd, thread_name, is_archived, \
+             is_pinned, is_deleted, status, workspace_name, snippet, summary_json \
+             FROM sessions WHERE source_id = ?1 AND file_path = ?2",
+            params![source_id, file_path],
+            |r| {
+                let summary_json: Option<String> = r.get(12)?;
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    Session {
+                        id: r.get(1)?,
+                        source_id: source_id.to_string(),
+                        file_path: file_path.to_string(),
+                        timestamp: r.get(2)?,
+                        updated_at: r.get(3)?,
+                        cwd: r.get(4)?,
+                        thread_name: r.get(5)?,
+                        turns: Vec::new(),
+                        is_archived: r.get::<_, i64>(6)? != 0,
+                        is_pinned: r.get::<_, i64>(7)? != 0,
+                        summary: summary_json
+                            .as_deref()
+                            .and_then(|s| serde_json::from_str(s).ok()),
+                        snippet: r.get(11)?,
+                        workspace_name: r.get(10)?,
+                        status: r.get(9)?,
+                        is_deleted: r.get::<_, i64>(8)? != 0,
+                    },
+                ))
+            },
+        )
+        .optional()?;
+
+    let (row_id, mut session) = match row {
+        Some(v) => v,
+        None => return Ok(None),
+    };
+
+    let mut turn_stmt = conn.prepare(
+        "SELECT turn_id, user_message, assistant_message, timestamp, input_tokens, \
+         output_tokens, extra_data_json, images_json FROM turns \
+         WHERE session_row_id = ?1 ORDER BY turn_index",
+    )?;
+    let turns = turn_stmt.query_map(params![row_id], |r| {
+        let extra_json: Option<String> = r.get(6)?;
+        let images_json: Option<String> = r.get(7)?;
+        Ok(Turn {
+            turn_id: r.get(0)?,
+            user_message: r.get(1)?,
+            assistant_message: r.get(2)?,
+            timestamp: r.get(3)?,
+            input_tokens: r.get(4)?,
+            output_tokens: r.get(5)?,
+            extra_data: extra_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_default(),
+            images: images_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok()),
+        })
+    })?;
+    for turn in turns {
+        session.turns.push(turn?);
+    }
+    Ok(Some(session))
+}
+
+/// The minimal per-session fingerprint the sidebar cares about, used to decide — by
+/// diffing a source's state before and after a scan — which live events to emit. Equality
+/// means "nothing worth a `session-updated` changed": `hash` captures any content change
+/// (it is the file/content hash), `is_deleted` captures a soft delete, `is_archived`
+/// captures an archival toggle. Status is excluded (it drifts on its own and rides the
+/// separate status heartbeat); pins are frontend-only.
+#[derive(PartialEq, Clone, Debug)]
+pub struct SessionState {
+    pub hash: String,
+    pub is_deleted: bool,
+    pub is_archived: bool,
+}
+
+/// Every session of `source_id` as an id -> fingerprint map. Cheap (no turns).
+pub fn session_states(
+    conn: &Connection,
+    source_id: &str,
+) -> rusqlite::Result<HashMap<String, SessionState>> {
+    let mut stmt = conn
+        .prepare("SELECT id, hash, is_deleted, is_archived FROM sessions WHERE source_id = ?1")?;
+    let rows = stmt.query_map(params![source_id], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            SessionState {
+                hash: r.get(1)?,
+                is_deleted: r.get::<_, i64>(2)? != 0,
+                is_archived: r.get::<_, i64>(3)? != 0,
+            },
+        ))
+    })?;
+    let mut map = HashMap::new();
+    for row in rows {
+        let (id, state) = row?;
+        map.insert(id, state);
+    }
+    Ok(map)
+}
+
+/// Whether the source has any stored sessions (used by the watcher to decide if a missing
+/// directory is worth reacting to).
+pub fn source_has_sessions(conn: &Connection, source_id: &str) -> rusqlite::Result<bool> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sessions WHERE source_id = ?1)",
+        params![source_id],
+        |r| r.get::<_, i64>(0),
+    )
+    .map(|n| n != 0)
+}
+
+/// Hard-removes the given session ids (turns cascade). Used only for positive-identification
+/// removals — subagents that must not be indexed — not absence-based deletion.
+pub fn delete_sessions(conn: &mut Connection, ids: &[String]) -> rusqlite::Result<()> {
+    let tx = conn.transaction()?;
+    for id in ids {
+        tx.execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
+    }
+    tx.commit()
 }
 
 /// Removes every cached session (and, by cascade, every turn). Used by the "reload,

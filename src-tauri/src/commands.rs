@@ -362,18 +362,12 @@ pub async fn get_session<R: tauri::Runtime>(
 
     let state = app_handle.state::<SearchIndexState>();
 
-    let in_memory_cached = {
-        let guard = state
-            .sessions
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard
-            .values()
-            .find(|s| s.source_id == source_id && s.file_path == file_path)
-            .cloned()
-    };
+    let stored = crate::parsers::cache::get_cache_manager()
+        .open_db()
+        .and_then(|c| crate::parsers::store::get_session_by_path(&c, &source_id, &file_path).ok())
+        .flatten();
 
-    if let Some(mut session) = in_memory_cached {
+    if let Some(mut session) = stored {
         if session.workspace_name.is_none() && session.cwd.is_some() {
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }

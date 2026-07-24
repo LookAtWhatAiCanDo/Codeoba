@@ -365,14 +365,14 @@ pub fn run() {
                 }
             }
 
-            // Load cached sessions in background thread on startup
+            // Signal cache readiness on startup. Sessions live in the SQLite store and are
+            // read on demand (get_all_sessions / search / get_session), so there is no
+            // in-memory corpus to preload here — the store is already populated from prior
+            // runs, and the frontend's startup rebuild refreshes it.
             let handle_clone = handle.clone();
             std::thread::spawn(move || {
                 tauri::async_runtime::block_on(async move {
                     let state = handle_clone.state::<search::SearchIndexState>();
-
-                    // Load cached sessions in the background
-                    state.load_cached_sessions();
 
                     let progress = search::IndexingProgress {
                         step: "complete".to_string(),

@@ -982,21 +982,6 @@ fn test_lexical_search_engine_filters() {
     assert_eq!(archived_results[0].session.id, "session-archived");
 }
 
-#[test]
-fn test_print_actual_cache_loads() {
-    let state = crate::search::SearchIndexState::new();
-    state.load_cached_sessions();
-    let guard = state.sessions.read().unwrap();
-    println!("ACTUAL LOADED SESSIONS COUNT: {}", guard.len());
-    let mut by_source = std::collections::HashMap::new();
-    for s in guard.values() {
-        *by_source.entry(s.source_id.clone()).or_insert(0) += 1;
-    }
-    for (source, count) in by_source {
-        println!("  Source: {}, Count: {}", source, count);
-    }
-}
-
 fn create_mock_cursor_logs(mock_home: &std::path::Path) {
     let cursor_dir = if cfg!(target_os = "windows") {
         mock_home.join("AppData/Roaming/Cursor/User")
