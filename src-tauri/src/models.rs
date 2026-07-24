@@ -159,7 +159,24 @@ impl Session {
 /// is harmless because a truncated JSON record simply fails to parse and is skipped.
 /// This is stateless (each call is independent) and makes no append-only assumption,
 /// so it stays correct even if the underlying tool rotates or rewrites the file.
+/// Retained for the tail-window/fallback tests; production callers all need the
+/// predicate form below.
+#[cfg(test)]
 fn last_json_object(path: &std::path::Path) -> Option<serde_json::Value> {
+    last_json_object_matching(path, |_| true)
+}
+
+/// Like [`last_json_object`], but returns the last object that satisfies `pred`.
+///
+/// Needed because a transcript's final line is usually NOT a message: sampling this
+/// machine's corpus, 63% of Claude transcripts end on a `mode` / `last-prompt` /
+/// `custom-title` line. Those carry no timestamp and say nothing about agent activity,
+/// so reading only the final line reports such a session idle no matter what it is
+/// actually doing. The caller filters for real `user`/`assistant` messages instead.
+fn last_json_object_matching(
+    path: &std::path::Path,
+    pred: impl Fn(&serde_json::Value) -> bool,
+) -> Option<serde_json::Value> {
     use std::io::{Read, Seek, SeekFrom};
     const TAIL_WINDOW: u64 = 64 * 1024;
 
@@ -191,7 +208,7 @@ fn last_json_object(path: &std::path::Path) -> Option<serde_json::Value> {
                 continue;
             }
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                if val.is_object() {
+                if val.is_object() && pred(&val) {
                     return Some(val);
                 }
             }
@@ -200,10 +217,29 @@ fn last_json_object(path: &std::path::Path) -> Option<serde_json::Value> {
     None
 }
 
+/// The last real message in a Claude transcript, as `(line_type, timestamp_ms, has_tool_use)`.
+///
+/// Skips non-message lines (`mode`, `last-prompt`, `custom-title`, `summary`, `system`,
+/// `queue-operation`, ...). They are appended after real messages and carry neither a
+/// timestamp nor any activity signal, so letting one of them be "the last event" hides
+/// whatever the agent is actually doing.
+///
+/// `has_tool_use` reports whether an `assistant` message ends on a `tool_use` block. A
+/// tool call is always followed by its `tool_result`, so an assistant message holding one
+/// is positive evidence the agent is still mid-turn rather than finished.
 fn get_last_event_info_claude(file_path: &str) -> Option<(String, i64, bool)> {
     let path = std::path::Path::new(file_path);
     if path.exists() && path.is_file() {
-        if let Some(obj) = last_json_object(path).as_ref().and_then(|v| v.as_object()) {
+        let is_message = |v: &serde_json::Value| {
+            matches!(
+                v.get("type").and_then(|t| t.as_str()),
+                Some("user") | Some("assistant")
+            )
+        };
+        if let Some(obj) = last_json_object_matching(path, is_message)
+            .as_ref()
+            .and_then(|v| v.as_object())
+        {
             let line_type = obj
                 .get("type")
                 .and_then(|v| v.as_str())
@@ -216,8 +252,17 @@ fn get_last_event_info_claude(file_path: &str) -> Option<(String, i64, bool)> {
                 .map(|dt| dt.timestamp_millis())
                 .unwrap_or(0);
 
-            let is_final_response = line_type == "assistant";
-            return Some((line_type, timestamp, is_final_response));
+            let has_tool_use = obj
+                .get("message")
+                .and_then(|m| m.get("content"))
+                .and_then(|c| c.as_array())
+                .is_some_and(|blocks| {
+                    blocks
+                        .iter()
+                        .any(|b| b.get("type").and_then(|t| t.as_str()) == Some("tool_use"))
+                });
+
+            return Some((line_type, timestamp, has_tool_use));
         }
     }
     None
@@ -643,17 +688,27 @@ pub fn resolve_session_status(
     }
 
     if source_id == "claude" {
-        if let Some((line_type, ts, _)) = get_last_event_info_claude(file_path) {
+        if let Some((line_type, ts, has_tool_use)) = get_last_event_info_claude(file_path) {
             if is_recent_event(now, ts) {
-                // Only a recent `user` line is positive evidence that the agent is
-                // working. Every other line type — `assistant` (turn finished) and
-                // metadata lines such as `mode` / `last-prompt` / `custom-title` /
-                // `system` / `summary` — says nothing about agent activity, so it
-                // resolves to idle.
+                // Decided from the last real message (metadata lines are skipped by
+                // `get_last_event_info_claude`; 63% of transcripts end on one, and
+                // treating those as the last event pinned sessions to idle while they
+                // were plainly working).
                 //
-                // This previously defaulted to "active" for any unrecognized type,
-                // which reported long-finished sessions as running.
-                if line_type == "user" {
+                // Mid-turn, i.e. "active":
+                //   - `user`: either a freshly submitted prompt or a `tool_result`
+                //     handed back to the agent. Both mean the agent has work to do.
+                //   - `assistant` carrying a `tool_use`: a tool call is always followed
+                //     by its result, so the turn cannot be over.
+                //
+                // Finished, i.e. "idle":
+                //   - `assistant` with only text/thinking: the turn ended here.
+                //
+                // An earlier version returned "active" for any unrecognized type, which
+                // reported long-finished sessions as running; the correction to "only a
+                // recent `user` line" then overshot the other way, reporting a working
+                // agent as idle for the whole time it was emitting prose.
+                if line_type == "user" || (line_type == "assistant" && has_tool_use) {
                     return Some("active".to_string());
                 }
                 return Some("idle".to_string());
@@ -965,6 +1020,80 @@ mod workspace_name_tests {
 
         let name = resolve_workspace_name(&Some(cwd.to_string_lossy().into_owned()));
         assert_eq!(name.as_deref(), Some("folder"));
+    }
+}
+
+#[cfg(test)]
+mod claude_status_tests {
+    use super::get_last_event_info_claude;
+    use std::io::Write;
+
+    fn transcript(lines: &[&str]) -> tempfile::NamedTempFile {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        for l in lines {
+            writeln!(f, "{}", l).unwrap();
+        }
+        f.flush().unwrap();
+        f
+    }
+
+    const ASSISTANT_TOOL_USE: &str = r#"{"type":"assistant","timestamp":"2026-07-24T12:00:00.000Z","message":{"content":[{"type":"tool_use","name":"Bash"}]}}"#;
+    const ASSISTANT_TEXT: &str = r#"{"type":"assistant","timestamp":"2026-07-24T12:00:01.000Z","message":{"content":[{"type":"text","text":"done"}]}}"#;
+    const USER_TOOL_RESULT: &str = r#"{"type":"user","timestamp":"2026-07-24T12:00:02.000Z","message":{"content":[{"type":"tool_result"}]}}"#;
+
+    /// Trailing metadata must not become "the last event". 63% of real transcripts end
+    /// on one of these, and letting them decide reported working sessions as idle.
+    #[test]
+    fn metadata_lines_are_skipped_to_reach_the_last_real_message() {
+        for meta in [
+            r#"{"type":"mode"}"#,
+            r#"{"type":"last-prompt"}"#,
+            r#"{"type":"custom-title"}"#,
+            r#"{"type":"queue-operation"}"#,
+        ] {
+            let f = transcript(&[ASSISTANT_TOOL_USE, meta]);
+            let (line_type, ts, has_tool_use) =
+                get_last_event_info_claude(f.path().to_str().unwrap()).expect("event");
+            assert_eq!(line_type, "assistant", "skipping {meta}");
+            assert!(has_tool_use, "skipping {meta}");
+            assert!(ts > 0, "timestamp must come from the message, not {meta}");
+        }
+    }
+
+    /// An assistant message ending on a tool_use is mid-turn: the tool_result has not
+    /// arrived yet, so the agent is still working.
+    #[test]
+    fn assistant_tool_use_is_reported_as_mid_turn() {
+        let f = transcript(&[ASSISTANT_TOOL_USE]);
+        let (line_type, _, has_tool_use) =
+            get_last_event_info_claude(f.path().to_str().unwrap()).unwrap();
+        assert_eq!(line_type, "assistant");
+        assert!(has_tool_use);
+    }
+
+    /// A text-only assistant message ends the turn.
+    #[test]
+    fn assistant_text_only_is_not_mid_turn() {
+        let f = transcript(&[ASSISTANT_TOOL_USE, USER_TOOL_RESULT, ASSISTANT_TEXT]);
+        let (line_type, _, has_tool_use) =
+            get_last_event_info_claude(f.path().to_str().unwrap()).unwrap();
+        assert_eq!(line_type, "assistant");
+        assert!(!has_tool_use);
+    }
+
+    /// A tool_result handed back to the agent means it has work to do.
+    #[test]
+    fn user_tool_result_is_the_last_message() {
+        let f = transcript(&[ASSISTANT_TOOL_USE, USER_TOOL_RESULT, r#"{"type":"mode"}"#]);
+        let (line_type, _, _) = get_last_event_info_claude(f.path().to_str().unwrap()).unwrap();
+        assert_eq!(line_type, "user");
+    }
+
+    /// A transcript with no messages at all yields no event rather than a bogus one.
+    #[test]
+    fn metadata_only_transcript_yields_no_event() {
+        let f = transcript(&[r#"{"type":"mode"}"#, r#"{"type":"last-prompt"}"#]);
+        assert!(get_last_event_info_claude(f.path().to_str().unwrap()).is_none());
     }
 }
 
