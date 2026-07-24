@@ -1,4 +1,5 @@
 import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup } from "solid-js";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import { useI18n } from "../i18n/i18n";
 import { getSourceDisplayName } from "../utils/sourceLabels";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
@@ -575,6 +576,22 @@ export const Sidebar = (props: SidebarProps) => {
     return items;
   });
 
+  // Virtualized session list: only the visible rows (plus a small overscan) are in the DOM,
+  // so a corpus of thousands of sessions no longer builds thousands of cards. Rows are
+  // variable height (title wraps to 2 lines, optional snippet), so heights are measured at
+  // runtime (`measureElement`) rather than assumed. `estimateSize` is only the pre-measure
+  // guess. Keyed by session id so a re-sort/filter reuses rows instead of remounting.
+  const [scrollEl, setScrollEl] = createSignal<HTMLDivElement | null>(null);
+  const virtualizer = createVirtualizer({
+    get count() {
+      return listItems().length;
+    },
+    getScrollElement: () => scrollEl(),
+    estimateSize: () => 96,
+    overscan: 8,
+    getItemKey: (index) => listItems()[index]?.session.id ?? index,
+  });
+
   // Keyboard Navigation
   const [highlightedIndex, setHighlightedIndex] = createSignal<number>(-1);
 
@@ -594,11 +611,9 @@ export const Sidebar = (props: SidebarProps) => {
   const scrollIndexIntoView = (index: number) => {
     const items = listItems();
     if (index >= 0 && index < items.length) {
-      const cardId = `session-card-${items[index].session.id}`;
-      const cardEl = document.getElementById(cardId);
-      if (cardEl) {
-        cardEl.scrollIntoView({ block: "nearest", behavior: "auto" });
-      }
+      // The target row may be virtualized out of the DOM, so ask the virtualizer to bring
+      // it into view (it scrolls the container and renders it) rather than looking it up.
+      virtualizer.scrollToIndex(index, { align: "auto" });
     }
   };
 
@@ -1020,12 +1035,25 @@ export const Sidebar = (props: SidebarProps) => {
         </div>
       </div>
 
-      {/* Sessions List Area */}
+      {/* Sessions List Area (virtualized). px-3 + pb-3 only: NO padding-top — the
+          virtualizer anchors item offsets to the sizer's top, so a top pad would shift
+          everything out of alignment. The top gap is recreated by each row's pt-2.5.
+
+          The ref publishes the scroll element only AFTER it is attached to the live
+          document. A bare `ref={setScrollEl}` fires while the node still belongs to
+          Solid's inert <template> contents document, whose `defaultView` is null. The
+          virtualizer reads `ownerDocument.defaultView` exactly once — on the first
+          scrollElement identity change — to set its `targetWindow`; a null there makes
+          `observeElementRect` return early, so no ResizeObserver is ever attached,
+          `scrollRect` stays {0,0}, and the computed range is empty (zero rows render).
+          Deferring to onMount makes that first identity change happen after the node is
+          adopted into the real document and laid out. */}
       <div
         id="sidebar-scroll-container"
+        ref={(el) => onMount(() => setScrollEl(el))}
         tabindex="-1"
         onKeyDown={handleSidebarKeyDown}
-        class="flex-grow overflow-y-auto min-h-0 p-3 flex flex-col gap-2.5 outline-none"
+        class="flex-grow overflow-y-auto min-h-0 px-3 pb-3 outline-none"
       >
         <Show
           when={listItems().length > 0}
@@ -1035,36 +1063,75 @@ export const Sidebar = (props: SidebarProps) => {
             </div>
           }
         >
-          <For each={listItems()}>
-            {({ session, matchedTurns, score }, index) => {
-              const isSelected = createMemo(() => props.selectedSessionId === session.id);
-              const isHighlighted = createMemo(() => highlightedIndex() === index());
-              const snippet = createMemo(() => getSessionSnippet(session, matchedTurns));
-              const sessionTimesText = createMemo(() =>
-                formatSessionTimes(session.timestamp, session.updatedAt)
-              );
-
-              return (
-                <SessionCard
-                  session={session}
-                  isPinned={props.pinnedSessionIds.has(session.id)}
-                  isReadAloudActive={speech.isReadAloudActive(session.id)}
-                  isSelected={isSelected()}
-                  isHighlighted={isHighlighted()}
-                  isLoading={props.loadingSessionId === session.id}
-                  onSelect={props.onSelectSession}
-                  snippet={snippet()}
-                  sessionTimesText={sessionTimesText()}
-                  score={score}
-                  getSourceStyle={getSourceStyle}
-                  getSourceLabel={getSourceLabel}
-                  groups={props.groups}
-                  onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
-                  onTogglePin={props.onTogglePinSession}
-                />
-              );
+          {/* Sizer: total scroll height; rows are absolutely positioned within it. */}
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: "relative",
+              width: "100%",
             }}
-          </For>
+          >
+            <For each={virtualizer.getVirtualItems()}>
+              {(virtualRow) => {
+                const item = createMemo(() => listItems()[virtualRow.index]);
+                const session = createMemo(() => item()?.session);
+                const isSelected = createMemo(() => props.selectedSessionId === session()?.id);
+                const isHighlighted = createMemo(() => highlightedIndex() === virtualRow.index);
+                const snippet = createMemo(() =>
+                  session() ? getSessionSnippet(session()!, item()?.matchedTurns) : ""
+                );
+                const sessionTimesText = createMemo(() => {
+                  const s = session();
+                  return s ? formatSessionTimes(s.timestamp, s.updatedAt) : "";
+                });
+
+                return (
+                  <Show when={session()}>
+                    <div
+                      data-index={virtualRow.index}
+                      // Measure only once the row is actually in the document. A manual
+                      // measureElement() call (no ResizeObserver entry) falls through to
+                      // `offsetHeight`, which is 0 for a detached node — and a row's FIRST
+                      // measurement is not cache-guarded, so a 0 gets written to
+                      // itemSizeCache and collapses every following row's offset, which
+                      // shows up as cards overlapping. onMount guarantees post-insertion,
+                      // and isConnected covers a row unmounted by fast scrolling before
+                      // the effect flushes. Re-measures afterwards come from the
+                      // virtualizer's own ResizeObserver, which guards isConnected itself.
+                      ref={(el) => onMount(() => el.isConnected && virtualizer.measureElement(el))}
+                      // pt-2.5 recreates the old inter-card gap (measured into the row height).
+                      class="pt-2.5"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <SessionCard
+                        session={session()!}
+                        isPinned={props.pinnedSessionIds.has(session()!.id)}
+                        isReadAloudActive={speech.isReadAloudActive(session()!.id)}
+                        isSelected={isSelected()}
+                        isHighlighted={isHighlighted()}
+                        isLoading={props.loadingSessionId === session()!.id}
+                        onSelect={props.onSelectSession}
+                        snippet={snippet()}
+                        sessionTimesText={sessionTimesText()}
+                        score={item()?.score}
+                        getSourceStyle={getSourceStyle}
+                        getSourceLabel={getSourceLabel}
+                        groups={props.groups}
+                        onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
+                        onTogglePin={props.onTogglePinSession}
+                      />
+                    </div>
+                  </Show>
+                );
+              }}
+            </For>
+          </div>
         </Show>
       </div>
 
