@@ -48,6 +48,87 @@ export function sanitizeBlockForSpeech(text: string): string {
   return clean.trim();
 }
 
+function translateSymbols(text: string): string {
+  let s = text;
+  // Replace checkmarks and crosses with clear phonemizable words
+  s = s.replace(/[\u274C\u2716\u2718]\s*/g, "No, "); // ❌ ✖ ✘
+  s = s.replace(/[\u2705\u2713\u2714]\s*/g, "Yes, "); // ✅ ✓ ✔
+  s = s.replace(/[-_]{2,}/g, " ");
+  // Clean up any double punctuation from replacement
+  s = s.replace(/,\s*,/g, ",");
+  s = s.replace(/,\s*\./g, ".");
+  return s.trim();
+}
+
+export function isTableSeparatorLine(line: string): boolean {
+  const trimmed = line.trim();
+  return /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(trimmed);
+}
+
+export function isTableRowLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  if (isTableSeparatorLine(trimmed)) return false;
+  const parts = trimmed.split("|").map((p) => p.trim());
+  const cells = parts.filter((p, idx) => {
+    if ((idx === 0 || idx === parts.length - 1) && p === "") return false;
+    return true;
+  });
+  return cells.length >= 1;
+}
+
+export function parseTableCells(line: string): string[] {
+  const trimmed = line.trim();
+  const rawParts = trimmed.split("|");
+  if (rawParts.length > 0 && rawParts[0].trim() === "") rawParts.shift();
+  if (rawParts.length > 0 && rawParts[rawParts.length - 1].trim() === "") rawParts.pop();
+  return rawParts.map((cell) => cell.trim());
+}
+
+export function formatTableLineForSpeech(
+  cells: string[],
+  headers: string[],
+  isHeader: boolean,
+  rowIndex?: number
+): string {
+  const cleanCells = cells.map((c) => sanitizeBlockForSpeech(c)).map(translateSymbols);
+  const cleanHeaders = headers.map((h) => sanitizeBlockForSpeech(h)).map(translateSymbols);
+
+  if (isHeader) {
+    const validHeaders = cleanCells.filter((c) => c.length > 0);
+    if (validHeaders.length === 0) return "";
+    return `Table headers: ${validHeaders.join(", ")}.`;
+  }
+
+  if (cleanCells.length === 0) return "";
+
+  const prefix = rowIndex !== undefined ? `Row ${rowIndex}, ` : "";
+
+  if (cleanHeaders.length >= cleanCells.length && cleanHeaders.length > 0) {
+    const parts: string[] = [];
+    for (let i = 0; i < cleanCells.length; i++) {
+      const headerName = cleanHeaders[i];
+      const cellVal = cleanCells[i];
+      if (cellVal) {
+        if (headerName) {
+          parts.push(`${headerName}: ${cellVal}`);
+        } else {
+          parts.push(cellVal);
+        }
+      }
+    }
+    return prefix + parts.join(". ") + ".";
+  }
+
+  return prefix + cleanCells.filter((c) => c.length > 0).join(". ") + ".";
+}
+
+export function formatTableIntro(rowCount: number, colCount: number): string {
+  const rStr = rowCount === 1 ? "1 row" : `${rowCount} rows`;
+  const cStr = colCount === 1 ? "1 column" : `${colCount} columns`;
+  return `Table with ${rStr} and ${cStr}.`;
+}
+
 // Split narrative text into logical block-level chunks (newlines and HTML tags)
 export function splitIntoLogicalBlocks(text: string): string[] {
   // First, strip multi-line markdown code blocks from the raw narrative texts
@@ -56,11 +137,65 @@ export function splitIntoLogicalBlocks(text: string): string[] {
   // Second, convert any HTML tags (e.g. <div>, <span>, </p>) to newlines
   clean = clean.replace(/<[^>]+>/g, "\n");
 
-  // Third, split by newlines, trim, and filter out empty blocks
-  return clean
-    .split(/\r?\n/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0);
+  const rawLines = clean.split(/\r?\n/);
+  const resultBlocks: string[] = [];
+
+  let lineIdx = 0;
+  while (lineIdx < rawLines.length) {
+    const line = rawLines[lineIdx]!;
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      lineIdx++;
+      continue;
+    }
+
+    if (isTableRowLine(trimmed)) {
+      // Collect all consecutive table lines
+      const tableLines: string[] = [];
+      while (lineIdx < rawLines.length) {
+        const cur = rawLines[lineIdx]!.trim();
+        if (isTableRowLine(cur) || isTableSeparatorLine(cur)) {
+          if (!isTableSeparatorLine(cur)) {
+            tableLines.push(cur);
+          }
+          lineIdx++;
+        } else {
+          break;
+        }
+      }
+
+      if (tableLines.length > 0) {
+        const headerCells = parseTableCells(tableLines[0]!);
+        const dataRows = tableLines.slice(1).map((l) => parseTableCells(l));
+        const rowCount = dataRows.length;
+        const colCount = headerCells.length;
+
+        // Emit structural table intro block
+        const intro =
+          rowCount > 0
+            ? formatTableIntro(rowCount, colCount)
+            : formatTableLineForSpeech(headerCells, headerCells, true);
+
+        if (intro) {
+          resultBlocks.push(intro);
+        }
+
+        // Emit data row blocks with Row N index prefix
+        for (let r = 0; r < dataRows.length; r++) {
+          const dataBlock = formatTableLineForSpeech(dataRows[r], headerCells, false, r + 1);
+          if (dataBlock.length > 0) {
+            resultBlocks.push(dataBlock);
+          }
+        }
+      }
+    } else {
+      resultBlocks.push(trimmed);
+      lineIdx++;
+    }
+  }
+
+  return resultBlocks;
 }
 
 // Helper to extract clean high-level speech items from a session
@@ -654,8 +789,13 @@ export function useSpeech() {
   const playFromHere = async (
     sessionId: string,
     turnIndex: number,
-    clickedText: string,
-    session: { sourceId: string; filePath: string }
+    _clickedText: string,
+    session: {
+      sourceId: string;
+      filePath: string;
+      speaker?: "assistant" | "user";
+      blockIndex?: number;
+    }
   ) => {
     try {
       // 1. Fetch full session to get all turns/blocks
@@ -672,18 +812,27 @@ export function useSpeech() {
         sessionTitle: fullSession.threadName || "Untitled Session",
       }));
 
-      // 3. Find the starting item by matching turnIndex and clickedText
-      const cleanClicked = clickedText.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+      // 3. Find starting item using direct O(1) blockIndex lookup
+      const targetSpeaker = session.speaker || "assistant";
       let startIdx = -1;
-      if (cleanClicked) {
-        startIdx = allSessionItems.findIndex((item) => {
-          if (item.turnIndex !== turnIndex) return false;
-          const cleanItemText = item.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-          return cleanItemText.includes(cleanClicked) || cleanClicked.includes(cleanItemText);
-        });
+
+      if (session.blockIndex !== undefined) {
+        startIdx = allSessionItems.findIndex(
+          (item) =>
+            item.turnIndex === turnIndex &&
+            item.speaker === targetSpeaker &&
+            item.blockIndex === session.blockIndex
+        );
       }
 
-      // Fallback to first item of the turn if text match fails
+      // Fallback to first item matching both turnIndex AND targetSpeaker
+      if (startIdx === -1) {
+        startIdx = allSessionItems.findIndex(
+          (item) => item.turnIndex === turnIndex && item.speaker === targetSpeaker
+        );
+      }
+
+      // Fallback to first item of the turn if speaker match fails
       if (startIdx === -1) {
         startIdx = allSessionItems.findIndex((item) => item.turnIndex === turnIndex);
       }

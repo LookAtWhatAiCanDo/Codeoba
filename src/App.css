@@ -767,7 +767,7 @@ pre[class*="language-"] {
   padding-right: 8px;
   padding-left: 0;
 }
-/* Extend hover trigger zone to the left/right gutters */
+/* Extend hover trigger zone to the left/right gutters for block elements */
 .group-play-block::before {
   content: "";
   position: absolute;
@@ -779,8 +779,27 @@ pre[class*="language-"] {
   pointer-events: auto;
   z-index: 5;
 }
+/* Disable table row element ::before to prevent table-wide overlay */
+tr.group-play-block::before {
+  display: none !important;
+}
+/* Scope table row gutter trigger zone strictly to first cell height */
+tr.group-play-block td:first-child::before,
+tr.group-play-block th:first-child::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -36px;
+  height: 100%;
+  width: 36px;
+  background: transparent;
+  pointer-events: auto;
+  z-index: 5;
+}
 :dir(rtl) .group-play-block::before,
-[dir="rtl"] .group-play-block::before {
+[dir="rtl"] .group-play-block::before,
+:dir(rtl) tr.group-play-block td:first-child::before,
+[dir="rtl"] tr.group-play-block td:first-child::before {
   right: -36px;
   left: auto;
 }
@@ -788,6 +807,15 @@ pre[class*="language-"] {
   border-color: var(--accent) !important;
   background-color: color-mix(in srgb, var(--accent) 5%, transparent) !important;
   border-radius: 4px;
+}
+tr.group-play-block.speech-highlight,
+tr.speech-highlight {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+  outline: 1px solid color-mix(in srgb, var(--accent) 40%, transparent) !important;
+}
+tr.speech-highlight td,
+tr.speech-highlight th {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
 }
 .read-aloud-play-btn {
   position: absolute;
@@ -812,7 +840,18 @@ pre[class*="language-"] {
   right: -26px;
   left: auto;
 }
-.group-play-block:hover:not(:has(.group-play-block:hover)) > .read-aloud-play-btn {
+tr.group-play-block td:first-child,
+tr.group-play-block th:first-child {
+  position: relative;
+}
+tr.group-play-block td:first-child > .read-aloud-play-btn,
+tr.group-play-block th:first-child > .read-aloud-play-btn {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.group-play-block:hover:not(:has(.group-play-block:hover)) > .read-aloud-play-btn,
+tr.group-play-block:hover > td:first-child > .read-aloud-play-btn,
+tr.group-play-block:hover > th:first-child > .read-aloud-play-btn {
   opacity: 0.5;
   pointer-events: auto;
 }

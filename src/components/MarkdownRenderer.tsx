@@ -775,7 +775,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
       const elements = Array.from(
         containerRef.querySelectorAll(
-          "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6"
+          "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6, tr"
         )
       );
       let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
@@ -798,11 +798,17 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         return true;
       });
 
+      let speakableCount = 0;
       narrativeElements.forEach((el) => {
         const htmlEl = el as HTMLElement;
 
         // Skip elements with no speakable text content
         if (!htmlEl.textContent || !/\p{L}|\p{N}/u.test(htmlEl.textContent)) return;
+
+        const currentBlockIdx = (props.startBlockIndex || 0) + speakableCount;
+        htmlEl.setAttribute("data-block-index", currentBlockIdx.toString());
+        speakableCount++;
+
         if (htmlEl.querySelector(".read-aloud-play-btn")) return; // already added
 
         // Add parent hover context classes
@@ -819,6 +825,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           const rectEl = htmlEl.getBoundingClientRect();
           const rectContainer = containerRef.getBoundingClientRect();
           if (rectEl.width === 0 || rectContainer.width === 0) return; // not laid out yet
+
           const isRtl = getComputedStyle(containerRef).direction === "rtl";
           if (isRtl) {
             const offsetRight = rectContainer.right - rectEl.right;
@@ -834,7 +841,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
         // Align initially
         alignPlayButton();
 
-        // Re-align on hover to guarantee correctness under any dynamic layout changes
+        // Re-align on hover to guarantee correctness under dynamic layout changes
         htmlEl.addEventListener("mouseenter", alignPlayButton);
 
         btn.onclick = (e) => {
@@ -842,16 +849,24 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
           const sid = props.sessionId;
           const tid = props.turnIndex;
           const text = htmlEl.textContent || "";
+          const idxAttr = htmlEl.getAttribute("data-block-index");
+          const blockIndex = idxAttr !== null ? parseInt(idxAttr, 10) : undefined;
           if (sid !== undefined && tid !== undefined) {
             speech.playFromHere(sid, tid, text, {
               sourceId: props.sourceId || "",
               filePath: props.filePath || "",
+              speaker: "assistant",
+              blockIndex,
             });
           }
         };
 
-        // Insert at the beginning of the element
-        htmlEl.insertBefore(btn, htmlEl.firstChild);
+        // Insert inside first table cell for table rows, or at top of block element
+        if (htmlEl.tagName.toLowerCase() === "tr" && htmlEl.firstElementChild) {
+          htmlEl.firstElementChild.insertBefore(btn, htmlEl.firstElementChild.firstChild);
+        } else {
+          htmlEl.insertBefore(btn, htmlEl.firstChild);
+        }
       });
     }, 100);
   });
@@ -878,7 +893,11 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     if (idx < 0 || idx >= list.length) return;
     const currentItem = list[idx]!;
 
-    if (currentItem.sessionId !== props.sessionId || currentItem.turnIndex !== props.turnIndex) {
+    if (
+      currentItem.sessionId !== props.sessionId ||
+      currentItem.turnIndex !== props.turnIndex ||
+      (currentItem.speaker && currentItem.speaker !== "assistant")
+    ) {
       return;
     }
 
@@ -909,7 +928,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     // Select text block elements in document order
     const elements = Array.from(
       containerRef.querySelectorAll(
-        "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6"
+        "p, .li-content-wrap, .br-content-wrap, li, blockquote, h1, h2, h3, h4, h5, h6, tr"
       )
     );
     let narrativeElements = elements.filter((el) => !el.closest("pre") && !el.closest("code"));
@@ -934,37 +953,64 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
     let targetEl: HTMLElement | null = null;
 
+    // Check if active item is a table header block vs data row
+    const isHeaderBlock =
+      currentItem.text.startsWith("Table headers:") || currentItem.text.startsWith("Table:");
+
     // Try text-similarity matching first (highly robust against off-by-one formatting/tag gaps)
     const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
     if (cleanSpeakText) {
       logFE("info", `TTS HIGHLIGHT scan for speakText: "${cleanSpeakText}"`);
       const matches = narrativeElements
         .map((el, i) => {
+          const isTheadTr = !!el.closest("thead");
+          const isTbodyTr = el.tagName.toLowerCase() === "tr" && !isTheadTr;
+
+          // If active item is a data row, DO NOT match thead tr (header row)
+          if (!isHeaderBlock && isTheadTr) {
+            return { el: el as HTMLElement, i, cleanElText: "", isMatch: false };
+          }
+
           let rawElText = el.textContent?.toLowerCase() || "";
           // Normalize angle brackets in the same way as speech text to ensure matching
           rawElText = rawElText.replace(/</g, " less than ").replace(/>/g, " greater than ");
           const cleanElText = rawElText.replace(/[^\p{L}\p{N}]/gu, "") || "";
           logFE("info", `  Element ${i} (${el.tagName}): "${cleanElText.substring(0, 60)}..."`);
-          const isMatch =
+          let isMatch =
             cleanElText.length > 0 &&
             (cleanElText.includes(cleanSpeakText) || cleanSpeakText.includes(cleanElText));
+
+          // For tbody table rows, check cell text overlap since speakText includes header labels
+          if (isTbodyTr) {
+            const cellTexts = Array.from(el.querySelectorAll("td")).map((c) =>
+              (c.textContent || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "")
+            );
+            const nonEmp = cellTexts.filter((c) => c.length >= 2);
+            const matchCount = nonEmp.filter((c) => cleanSpeakText.includes(c)).length;
+            if (nonEmp.length > 0 && matchCount >= Math.min(2, nonEmp.length)) {
+              isMatch = true;
+            } else {
+              isMatch = false;
+            }
+          }
+
           return { el: el as HTMLElement, i, cleanElText, isMatch };
         })
         .filter((m) => m.isMatch);
 
       if (matches.length > 0) {
         // Sort matches to find the best candidate:
-        // 1. Prefer smaller text length difference to match the innermost/most specific element
-        // 2. Prefer the element closest to the blockIndex position
+        // 1. Prefer element closest to the blockIndex position
+        // 2. Prefer smaller text length difference
         matches.sort((a, b) => {
-          const lenDiffA = Math.abs(a.cleanElText.length - cleanSpeakText.length);
-          const lenDiffB = Math.abs(b.cleanElText.length - cleanSpeakText.length);
-          if (lenDiffA !== lenDiffB) {
-            return lenDiffA - lenDiffB;
-          }
           const distA = Math.abs(a.i - (targetBlockIndex ?? 0));
           const distB = Math.abs(b.i - (targetBlockIndex ?? 0));
-          return distA - distB;
+          if (distA !== distB) {
+            return distA - distB;
+          }
+          const lenDiffA = Math.abs(a.cleanElText.length - cleanSpeakText.length);
+          const lenDiffB = Math.abs(b.cleanElText.length - cleanSpeakText.length);
+          return lenDiffA - lenDiffB;
         });
         targetEl = matches[0]!.el;
       }
