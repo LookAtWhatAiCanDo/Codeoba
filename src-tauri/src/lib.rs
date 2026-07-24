@@ -365,28 +365,15 @@ pub fn run() {
                 }
             }
 
-            // Signal cache readiness on startup. Sessions live in the SQLite store and are
-            // read on demand (get_all_sessions / search / get_session), so there is no
-            // in-memory corpus to preload here — the store is already populated from prior
-            // runs, and the frontend's startup rebuild refreshes it.
-            let handle_clone = handle.clone();
-            std::thread::spawn(move || {
-                tauri::async_runtime::block_on(async move {
-                    let state = handle_clone.state::<search::SearchIndexState>();
-
-                    let progress = search::IndexingProgress {
-                        step: "complete".to_string(),
-                        progress: 1.0,
-                        current_source: "Cache".to_string(),
-                    };
-                    if let Ok(mut guard) = state.last_progress.write() {
-                        *guard = Some(progress.clone());
-                    }
-                    use tauri::Emitter;
-                    let _ = handle_clone.emit("indexing-progress", progress);
-                });
-            });
-
+            // No startup preload: sessions live in the SQLite store and are read on demand
+            // (get_all_sessions / search / get_session), which the frontend already calls
+            // once on mount for an instant first paint. The frontend then triggers the
+            // startup rebuild, whose real progress events drive the refresh to fresh data.
+            //
+            // This used to emit a fake `indexing-progress {step:"complete"}` here — a
+            // leftover from when startup loaded a cache into an in-memory index. That fake
+            // "complete" raced the real rebuild's refresh (an extra, uncontrolled refetch
+            // from a background thread), so the list intermittently kept last-run data.
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
