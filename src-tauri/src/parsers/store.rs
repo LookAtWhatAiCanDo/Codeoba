@@ -101,6 +101,36 @@ CREATE TABLE IF NOT EXISTS turns (
 );
 "#;
 
+/// Deserializes a JSON blob column, logging instead of silently discarding a parse failure.
+///
+/// These columns (`summary_json`, `extra_data_json`, `images_json`) were read with a bare
+/// `.ok()`, which collapses two very different states into `None`: the column was NULL, or
+/// the column held damaged JSON. The second is data loss — `extra_data` carries `model`,
+/// `computeTimeMs` and `isCompaction`, so a truncated blob silently blanks a session's model
+/// and quietly under-counts the dashboard aggregates — and nothing anywhere said so.
+///
+/// Behavior is unchanged (still `None` on failure): the values are all regenerable by
+/// re-parsing the source transcript, so failing loudly would be worse than degrading. This
+/// only makes the degradation observable.
+///
+/// The blob itself is never logged: it holds transcript content, and this app is local-first
+/// precisely so that content stays out of places like log files. The column name plus serde's
+/// own line/column position is enough to identify the row and the damage.
+fn parse_json_column<T: serde::de::DeserializeOwned>(raw: &str, column: &str) -> Option<T> {
+    match serde_json::from_str(raw) {
+        Ok(value) => Some(value),
+        Err(_e) => {
+            crate::log_debug!(
+                "[store] Ignoring malformed {} ({} bytes): {}",
+                column,
+                raw.len(),
+                _e
+            );
+            None
+        }
+    }
+}
+
 /// The parse-cache metadata an entry is keyed by; a change in any of these means the
 /// session's turns must be rewritten (the row's metadata is always synced regardless).
 struct Meta {
@@ -137,7 +167,7 @@ pub fn load_source(
             is_pinned: r.get::<_, i64>(11)? != 0,
             summary: summary_json
                 .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok()),
+                .and_then(|s| parse_json_column(s, "summary_json")),
             snippet: r.get(15)?,
             workspace_name: r.get(14)?,
             status: r.get(13)?,
@@ -179,11 +209,11 @@ pub fn load_source(
             output_tokens: r.get(6)?,
             extra_data: extra_json
                 .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok())
+                .and_then(|s| parse_json_column(s, "extra_data_json"))
                 .unwrap_or_default(),
             images: images_json
                 .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok()),
+                .and_then(|s| parse_json_column(s, "images_json")),
         };
         Ok((row_id, turn))
     })?;
@@ -434,7 +464,7 @@ pub fn for_each_session_list_payload(
                 is_pinned: r.get::<_, i64>(9)? != 0,
                 summary: summary_json
                     .as_deref()
-                    .and_then(|s| serde_json::from_str(s).ok()),
+                    .and_then(|s| parse_json_column(s, "summary_json")),
                 snippet: r.get(13)?,
                 workspace_name: r.get(12)?,
                 status: r.get(11)?,
@@ -464,7 +494,7 @@ pub fn for_each_session_list_payload(
                 output_tokens: r.get(4)?,
                 extra_data: extra_json
                     .as_deref()
-                    .and_then(|s| serde_json::from_str(s).ok())
+                    .and_then(|s| parse_json_column(s, "extra_data_json"))
                     .unwrap_or_default(),
                 images: None,
             };
@@ -541,7 +571,7 @@ pub fn for_each_session(
                 is_pinned: r.get::<_, i64>(9)? != 0,
                 summary: summary_json
                     .as_deref()
-                    .and_then(|s| serde_json::from_str(s).ok()),
+                    .and_then(|s| parse_json_column(s, "summary_json")),
                 snippet: r.get(13)?,
                 workspace_name: r.get(12)?,
                 status: r.get(11)?,
@@ -574,11 +604,11 @@ pub fn for_each_session(
                 output_tokens: r.get(6)?,
                 extra_data: extra_json
                     .as_deref()
-                    .and_then(|s| serde_json::from_str(s).ok())
+                    .and_then(|s| parse_json_column(s, "extra_data_json"))
                     .unwrap_or_default(),
                 images: images_json
                     .as_deref()
-                    .and_then(|s| serde_json::from_str(s).ok()),
+                    .and_then(|s| parse_json_column(s, "images_json")),
             };
             Ok((row_id, turn))
         })?;
@@ -633,7 +663,7 @@ pub fn get_session_by_path(
                         is_pinned: r.get::<_, i64>(7)? != 0,
                         summary: summary_json
                             .as_deref()
-                            .and_then(|s| serde_json::from_str(s).ok()),
+                            .and_then(|s| parse_json_column(s, "summary_json")),
                         snippet: r.get(11)?,
                         workspace_name: r.get(10)?,
                         status: r.get(9)?,
@@ -666,11 +696,11 @@ pub fn get_session_by_path(
             output_tokens: r.get(5)?,
             extra_data: extra_json
                 .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok())
+                .and_then(|s| parse_json_column(s, "extra_data_json"))
                 .unwrap_or_default(),
             images: images_json
                 .as_deref()
-                .and_then(|s| serde_json::from_str(s).ok()),
+                .and_then(|s| parse_json_column(s, "images_json")),
         })
     })?;
     for turn in turns {
