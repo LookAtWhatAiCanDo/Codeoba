@@ -1249,8 +1249,6 @@ mod antigravity_status_tests {
 
         write_transcript(temp.path(), sid, &[USER_INPUT, PROPOSE_SLEEP]);
         assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// While an approved command runs as a background task the session is
@@ -1284,8 +1282,6 @@ mod antigravity_status_tests {
             ],
         );
         assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// Steps 7-8: a pending ask_question is "waiting"; the ASK_QUESTION line
@@ -1313,8 +1309,6 @@ mod antigravity_status_tests {
         lines.push(QUESTION_ANSWERED);
         write_transcript(temp.path(), sid, &lines);
         assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// Regression: task launch/finish lines mentioning dev-server-ish strings
@@ -1340,8 +1334,6 @@ mod antigravity_status_tests {
             &[USER_INPUT, launch, finish, FINAL_RESPONSE],
         );
         assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// Regression: `sender=` appears on EVERY inter-task message envelope,
@@ -1367,8 +1359,6 @@ mod antigravity_status_tests {
             ],
         );
         assert_eq!(resolve_antigravity_status("antigravity", sid), "active");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// Everything is idle the moment the Antigravity app is not running —
@@ -1389,7 +1379,6 @@ mod antigravity_status_tests {
         assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
 
         std::env::remove_var("CODEOBA_MOCK_AGENT_DEAD");
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// Timer expiry/cancellations or cancelled task lines should be parsed as finished
@@ -1409,8 +1398,6 @@ mod antigravity_status_tests {
             &[USER_INPUT, launch, cancel, FINAL_RESPONSE],
         );
         assert_eq!(resolve_antigravity_status("antigravity", sid), "idle");
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 

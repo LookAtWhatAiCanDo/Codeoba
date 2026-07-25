@@ -808,7 +808,6 @@ mod scan_lifecycle_tests {
         );
 
         mgr.clear_in_memory_caches();
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// A scan that could not enumerate the source proves nothing by absence, so it must
@@ -842,7 +841,6 @@ mod scan_lifecycle_tests {
         );
 
         mgr.clear_in_memory_caches();
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// The other half, and the point of making completeness explicit: a scan that DID
@@ -872,7 +870,6 @@ mod scan_lifecycle_tests {
         );
 
         mgr.clear_in_memory_caches();
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// scan_absent_source is the "the source's root is gone/unreadable" entry point used
@@ -913,6 +910,5 @@ mod scan_lifecycle_tests {
         );
 
         mgr.clear_in_memory_caches();
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

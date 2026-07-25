@@ -861,7 +861,6 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     #[test]
@@ -968,7 +967,6 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     fn helper_encode_varint(value: u64) -> Vec<u8> {
@@ -1117,6 +1115,5 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

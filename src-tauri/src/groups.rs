@@ -434,7 +434,6 @@ mod rename_tests {
         super::reset_groups_cache(); // isolate the process-wide cache between tests
         f();
         super::reset_groups_cache();
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     /// The cache is authoritative: after a save, load must serve from memory without touching disk.

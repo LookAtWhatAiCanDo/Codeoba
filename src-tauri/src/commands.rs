@@ -1382,8 +1382,6 @@ mod trusted_root_tests {
             resolve_trusted_root(Some(&repo.to_string_lossy())),
             Some(repo.canonicalize().unwrap())
         );
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     #[test]
@@ -1515,7 +1513,5 @@ mod get_all_sessions_tests {
         );
         // cwd is None, so workspace_name stays None.
         assert!(result.iter().all(|s| s.workspace_name.is_none()));
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

@@ -190,10 +190,10 @@ where
     } else {
         std::env::remove_var("LOCALAPPDATA");
     }
+    // Restore a prior value if there was one; otherwise leave whatever temp home is
+    // currently set. Never unset it -- see the commit that removed the remove_var calls.
     if let Some(mh) = original_mock_home {
         std::env::set_var("CODEOBA_MOCK_HOME", mh);
-    } else {
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
@@ -1272,7 +1272,6 @@ fn test_hybrid_tokenizer_calibration() {
     let original_mock_home = std::env::var_os("CODEOBA_MOCK_HOME");
 
     std::env::set_var("HOME", temp_dir.path());
-    std::env::remove_var("CODEOBA_MOCK_HOME");
 
     crate::tokenizer::clear_custom_tokenizers_cache();
 
@@ -1289,10 +1288,10 @@ fn test_hybrid_tokenizer_calibration() {
     } else {
         std::env::remove_var("HOME");
     }
+    // Restore a prior value if there was one; otherwise leave whatever temp home is
+    // currently set. Never unset it -- see the commit that removed the remove_var calls.
     if let Some(mh) = original_mock_home {
         std::env::set_var("CODEOBA_MOCK_HOME", mh);
-    } else {
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
