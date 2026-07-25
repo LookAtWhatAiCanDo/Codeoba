@@ -493,6 +493,7 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
 /// completeness-gated reindex path.
 fn evict_excluded_sessions<R: tauri::Runtime>(
     app_handle: &tauri::AppHandle<R>,
+    source_id: &str,
     excluded: HashSet<String>,
 ) {
     if excluded.is_empty() {
@@ -508,9 +509,11 @@ fn evict_excluded_sessions<R: tauri::Runtime>(
     let present: Vec<String> = excluded
         .iter()
         .filter(|id| {
+            // Scoped by source_id to match the delete below; `id` alone is not unique
+            // across sources by design (see the store module docs).
             conn.query_row(
-                "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?1)",
-                [id],
+                "SELECT EXISTS(SELECT 1 FROM sessions WHERE source_id = ?1 AND id = ?2)",
+                rusqlite::params![source_id, id],
                 |r| r.get::<_, i64>(0),
             )
             .map(|n| n != 0)
@@ -522,7 +525,7 @@ fn evict_excluded_sessions<R: tauri::Runtime>(
         return;
     }
 
-    if let Err(e) = crate::parsers::store::delete_sessions(&mut conn, &present) {
+    if let Err(e) = crate::parsers::store::delete_sessions(&mut conn, source_id, &present) {
         crate::log_error!("[evict] Failed to delete subagent sessions: {}", e);
         return;
     }
@@ -666,7 +669,11 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             // The reparse above refreshed the parent->child map, so a
                             // subagent indexed before its parent was known can be dropped
                             // now (positive identification, so not part of reindex).
-                            evict_excluded_sessions(&app_handle_clone, src.excluded_session_ids());
+                            evict_excluded_sessions(
+                                &app_handle_clone,
+                                &source_id,
+                                src.excluded_session_ids(),
+                            );
                         } else if !Path::new(&file_path).exists() {
                             // A watched file is gone. Reindex the whole source: the missing
                             // file's session is soft-deleted by the completeness-gated scan
@@ -690,7 +697,11 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             // is what reveals its children, and parsing a known subagent
                             // yields None while that child may still be indexed from an
                             // earlier tick.
-                            evict_excluded_sessions(&app_handle_clone, src.excluded_session_ids());
+                            evict_excluded_sessions(
+                                &app_handle_clone,
+                                &source_id,
+                                src.excluded_session_ids(),
+                            );
 
                             if let Some(session) = parsed {
                                 crate::log_debug!(

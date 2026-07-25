@@ -34,6 +34,21 @@ pub fn open(path: &std::path::Path) -> rusqlite::Result<Connection> {
 
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
     if version != SCHEMA_VERSION {
+        // Drop before recreating. `SCHEMA` is entirely `CREATE TABLE IF NOT EXISTS`, so on a
+        // version bump against an EXISTING database it would be a silent no-op: the old
+        // tables survive with the old columns, yet `user_version` is stamped to the new
+        // value — which also makes the breakage self-concealing, because the next open sees
+        // a matching version and never retries. Dropping first is what makes the "recreated
+        // empty, next scan repopulates" contract above actually true.
+        //
+        // Nothing durable is lost: sessions/turns are wholly derived from the source
+        // transcripts, `is_pinned` lives in config.json, and `is_archived` is re-parsed.
+        conn.execute_batch(
+            "PRAGMA foreign_keys=OFF;\
+             DROP TABLE IF EXISTS turns;\
+             DROP TABLE IF EXISTS sessions;\
+             PRAGMA foreign_keys=ON;",
+        )?;
         conn.execute_batch(SCHEMA)?;
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
@@ -537,6 +552,14 @@ pub struct SessionState {
     pub hash: String,
     pub is_deleted: bool,
     pub is_archived: bool,
+    /// Part of the fingerprint because a title can change with the transcript untouched:
+    /// Antigravity reads it from a separate summaries `.pb`, and `post_process_session`
+    /// derives one for a placeholder. [`save_source`] therefore always syncs the metadata
+    /// row even when `hash` is unchanged — but the watcher diffs *this* struct to decide
+    /// what to emit, so leaving the title out meant the store was updated and no
+    /// `session-updated` ever fired, stranding a stale title in the sidebar until the next
+    /// full refresh.
+    pub thread_name: Option<String>,
 }
 
 /// Every session of `source_id` as an id -> fingerprint map. Cheap (no turns).
@@ -544,8 +567,9 @@ pub fn session_states(
     conn: &Connection,
     source_id: &str,
 ) -> rusqlite::Result<HashMap<String, SessionState>> {
-    let mut stmt = conn
-        .prepare("SELECT id, hash, is_deleted, is_archived FROM sessions WHERE source_id = ?1")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, hash, is_deleted, is_archived, thread_name FROM sessions WHERE source_id = ?1",
+    )?;
     let rows = stmt.query_map(params![source_id], |r| {
         Ok((
             r.get::<_, String>(0)?,
@@ -553,6 +577,7 @@ pub fn session_states(
                 hash: r.get(1)?,
                 is_deleted: r.get::<_, i64>(2)? != 0,
                 is_archived: r.get::<_, i64>(3)? != 0,
+                thread_name: r.get(4)?,
             },
         ))
     })?;
@@ -577,10 +602,20 @@ pub fn source_has_sessions(conn: &Connection, source_id: &str) -> rusqlite::Resu
 
 /// Hard-removes the given session ids (turns cascade). Used only for positive-identification
 /// removals — subagents that must not be indexed — not absence-based deletion.
-pub fn delete_sessions(conn: &mut Connection, ids: &[String]) -> rusqlite::Result<()> {
+pub fn delete_sessions(
+    conn: &mut Connection,
+    source_id: &str,
+    ids: &[String],
+) -> rusqlite::Result<()> {
     let tx = conn.transaction()?;
     for id in ids {
-        tx.execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
+        // Scoped by source_id on purpose: `id` is deliberately NOT the primary key (see the
+        // module docs) so that an id collision across sources cannot clobber a row. Deleting
+        // on a bare `id` would reintroduce exactly the collision the schema defends against.
+        tx.execute(
+            "DELETE FROM sessions WHERE source_id = ?1 AND id = ?2",
+            params![source_id, id],
+        )?;
     }
     tx.commit()
 }
@@ -602,6 +637,66 @@ mod tests {
         c.pragma_update(None, "foreign_keys", "ON").unwrap();
         c.execute_batch(SCHEMA).unwrap();
         c
+    }
+
+    /// A title-only change must be visible in the fingerprint the watcher diffs.
+    ///
+    /// `reindex_source_and_emit` decides whether to emit `session-updated` purely by
+    /// comparing `session_states` before and after a scan. A title can change with the
+    /// transcript byte-identical (Antigravity keeps it in a separate summaries `.pb`, and
+    /// `post_process_session` derives one to replace a placeholder), so `save_source`
+    /// deliberately syncs the metadata row even when `hash` is unchanged. If the title were
+    /// left out of `SessionState`, that write would produce an identical fingerprint, no
+    /// event would fire, and the sidebar would keep showing the old title until a full
+    /// refresh.
+    #[test]
+    fn session_states_fingerprint_changes_when_only_the_title_does() {
+        let mut c = conn();
+        let mut entry = full_entry();
+        entry.session.thread_name = Some("Claude Session".to_string());
+        save_source(&mut c, "codex", std::slice::from_ref(&entry)).unwrap();
+        let before = session_states(&c, "codex").unwrap();
+
+        // Same hash/size/last_modified: only the resolved title differs.
+        entry.session.thread_name = Some("Refactor the session store".to_string());
+        save_source(&mut c, "codex", std::slice::from_ref(&entry)).unwrap();
+        let after = session_states(&c, "codex").unwrap();
+
+        assert_ne!(
+            before.get("s1"),
+            after.get("s1"),
+            "a title-only change must alter the fingerprint, or no session-updated is emitted"
+        );
+        assert_eq!(
+            after.get("s1").unwrap().thread_name.as_deref(),
+            Some("Refactor the session store")
+        );
+    }
+
+    /// `id` is deliberately not unique across sources, so a hard delete must be scoped.
+    #[test]
+    fn delete_sessions_only_touches_the_named_source() {
+        let mut c = conn();
+        let mut a = full_entry();
+        a.session.source_id = "codex".to_string();
+        let mut b = full_entry();
+        b.session.source_id = "claude".to_string();
+        b.file_path = "/home/b.jsonl".to_string();
+        b.session.file_path = "/home/b.jsonl".to_string();
+        // Same session id in two different sources.
+        save_source(&mut c, "codex", std::slice::from_ref(&a)).unwrap();
+        save_source(&mut c, "claude", std::slice::from_ref(&b)).unwrap();
+
+        delete_sessions(&mut c, "codex", &["s1".to_string()]).unwrap();
+
+        assert!(
+            session_states(&c, "codex").unwrap().is_empty(),
+            "the targeted source's session should be gone"
+        );
+        assert!(
+            session_states(&c, "claude").unwrap().contains_key("s1"),
+            "a colliding id in another source must survive"
+        );
     }
 
     fn full_entry() -> CacheEntry {
