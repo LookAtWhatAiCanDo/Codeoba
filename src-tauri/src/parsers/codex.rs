@@ -530,10 +530,14 @@ impl SourceAdapter for CodexSource {
         Some(session)
     }
 
-    async fn parse_all_sessions(&self) -> Vec<Session> {
+    async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let base_dir = self.get_base_dir();
-        if !base_dir.exists() || !base_dir.is_dir() {
-            return Vec::new();
+        if !crate::parsers::cache::source_root_readable(&base_dir) {
+            // Root gone or unreadable: authoritative "source has no sessions", so its
+            // cached sessions are marked deleted (soft; hard only under prune) rather than
+            // preserved. A deeper read error below is different -- it only makes the scan
+            // partial and preserves.
+            return crate::parsers::cache::get_cache_manager().scan_absent_source(self.id());
         }
 
         self.build_session_title_map();
@@ -542,13 +546,27 @@ impl SourceAdapter for CodexSource {
 
         let mut sessions = Vec::new();
         let default_paths = self.get_default_log_paths();
+        // Any directory we fail to read makes this scan's absences meaningless.
+        let mut complete = true;
 
         for path_str in default_paths {
             let dir = Path::new(&path_str);
             if dir.exists() && dir.is_dir() {
                 let mut walk_stack = vec![dir.to_path_buf()];
                 while let Some(current_dir) = walk_stack.pop() {
-                    if let Ok(entries) = fs::read_dir(current_dir) {
+                    let entries = match fs::read_dir(&current_dir) {
+                        Ok(e) => e,
+                        Err(e) => {
+                            crate::log_warn!(
+                                "[codex] Could not read {}: {}",
+                                current_dir.display(),
+                                e
+                            );
+                            complete = false;
+                            continue;
+                        }
+                    };
+                    {
                         for entry in entries.flatten() {
                             let path = entry.path();
                             if path.is_dir() {
@@ -573,7 +591,7 @@ impl SourceAdapter for CodexSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id())
+        crate::parsers::cache::get_cache_manager().end_scan(self.id(), complete)
     }
 }
 

@@ -14,6 +14,7 @@ pub mod cursor;
 pub mod permissions;
 pub mod resolver;
 pub mod source_decisions;
+pub mod store;
 
 #[cfg(test)]
 // Test fixtures slice known-ASCII literals by byte index; that's acceptable in tests.
@@ -55,7 +56,7 @@ pub trait SourceAdapter: Send + Sync {
         }
     }
     async fn parse_session(&self, file_path: &str) -> Option<Session>;
-    async fn parse_all_sessions(&self) -> Vec<Session>;
+    async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult;
     fn is_app_installed(&self) -> bool {
         true
     }
@@ -342,8 +343,8 @@ impl Source {
         session
     }
 
-    pub async fn parse_all_sessions(&self) -> Vec<Session> {
-        let mut sessions = match self {
+    pub async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
+        let mut result = match self {
             Source::Claude(s) => s.parse_all_sessions().await,
             Source::Cursor(s) => s.parse_all_sessions().await,
             Source::Antigravity(s) => s.parse_all_sessions().await,
@@ -351,10 +352,10 @@ impl Source {
             Source::Copilot(s) => s.parse_all_sessions().await,
             Source::Codex(s) => s.parse_all_sessions().await,
         };
-        for s in &mut sessions {
+        for s in &mut result.sessions {
             post_process_session(s);
         }
-        sessions
+        result
     }
 
     pub fn is_app_installed(&self) -> bool {

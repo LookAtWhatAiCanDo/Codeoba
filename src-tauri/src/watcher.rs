@@ -120,6 +120,114 @@ fn is_directory_not_empty(path: &Path) -> bool {
     }
 }
 
+/// Reads the store fingerprint of every session in `source_id`, or `None` if the read failed.
+///
+/// Deliberately NOT `unwrap_or_default()`. An empty map and a failed read are the same value
+/// but opposite facts, and [`reindex_source_and_emit`] turns the difference into
+/// `session-deleted` for every session it cannot see — so defaulting a transient SQLite
+/// error to "empty" would wipe an entire source from the sidebar. This is the same ambiguity
+/// [`ScanResult`](crate::parsers::cache::ScanResult) exists to forbid, one layer up.
+fn read_session_states(
+    mgr: &crate::parsers::cache::SessionCacheManager,
+    source_id: &str,
+    phase: &str,
+) -> Option<HashMap<String, crate::parsers::store::SessionState>> {
+    let conn = mgr.open_db()?;
+    match crate::parsers::store::session_states(&conn, source_id) {
+        Ok(states) => Some(states),
+        Err(_e) => {
+            crate::log_error!(
+                "[reindex] Could not read {} state for '{}': {}. Skipping event emission \
+                 so nothing is reported deleted on the strength of an unreadable store.",
+                phase,
+                source_id,
+                _e
+            );
+            None
+        }
+    }
+}
+
+/// Reparses `source_id` off disk (the store is authoritative and the parse writes it) and
+/// emits exactly the live events implied by what changed.
+///
+/// The store fingerprint of every session in the source is captured BEFORE the parse and
+/// again AFTER, then diffed:
+///   - new or changed (content, soft-delete, or archival) → `session-updated` (a
+///     soft-deleted session carries is_deleted=true, so the frontend moves it to Deleted);
+///   - gone from the store entirely (pruned) → `session-deleted`.
+///
+/// Because deletion detection now reads the store's actual post-scan state rather than the
+/// scan's return value, an incomplete scan — a missing/unreadable directory, or a deeper
+/// read failure — leaves the store unchanged (`end_scan` is completeness-gated), so
+/// `after == before` and nothing is spuriously deleted. This replaces the old
+/// update_session + reconcile_source pair, which diffed against a separate in-memory index.
+///
+/// If either fingerprint read fails, this returns without emitting anything at all. The
+/// store itself is already correct (the parse wrote it); only the notifications are skipped,
+/// and the next scan reconciles. That is strictly better than the alternative of treating an
+/// unreadable store as an empty one, which would announce every session in the source as
+/// deleted.
+async fn reindex_source_and_emit<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    source_id: &str,
+) {
+    let mgr = crate::parsers::cache::get_cache_manager();
+
+    let Some(before) = read_session_states(mgr, source_id, "pre-scan") else {
+        return;
+    };
+
+    let sources = get_sources_list();
+    let src = match sources.iter().find(|s| s.id() == source_id) {
+        Some(s) => s,
+        None => return,
+    };
+    let scan = src.parse_all_sessions().await;
+
+    let Some(after) = read_session_states(mgr, source_id, "post-scan") else {
+        return;
+    };
+
+    // Full session objects, keyed by id, for the session-updated payload.
+    let scan_map: HashMap<String, crate::models::Session> = scan
+        .sessions
+        .into_iter()
+        .map(|s| (s.id.clone(), s))
+        .collect();
+
+    for (id, after_state) in &after {
+        if before.get(id) != Some(after_state) {
+            if let Some(session) = scan_map.get(id) {
+                emit_session_update(app_handle, session);
+            }
+        }
+    }
+
+    let idx_state = app_handle.state::<crate::search::SearchIndexState>();
+    let mut pruned = 0;
+    for id in before.keys() {
+        if !after.contains_key(id) {
+            let _ = app_handle.emit("session-deleted", id);
+            if let Ok(mut ttl) = idx_state.status_ttl_cache.write() {
+                ttl.remove(id);
+            }
+            pruned += 1;
+        }
+    }
+    if pruned > 0 {
+        crate::log_info!("Pruned {} sessions for source: {}", pruned, source_id);
+    }
+}
+
+/// Fire-and-forget [`reindex_source_and_emit`] on the async runtime.
+fn spawn_reindex_source<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, source_id: String) {
+    let app_handle = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        reindex_source_and_emit(&app_handle, &source_id).await;
+    });
+}
+
 pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>) {
     let sources = get_sources_list();
     let state = app_handle.state::<WatcherState>();
@@ -134,8 +242,6 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
         Some(w) => w,
         None => return,
     };
-
-    let idx_state = app_handle.state::<crate::search::SearchIndexState>();
 
     // 1. Passive addition detection for "ask" sources
     for source in sources {
@@ -242,16 +348,34 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
         };
 
         if !exists {
-            // Target was deleted. Clean index, remove watch, but DO NOT CREATE IT!
-            let has_sessions = if let Ok(s_guard) = idx_state.sessions.read() {
-                s_guard.values().any(|sess| sess.source_id == source_id)
-            } else {
-                false
+            // Target is missing. Rather than delete straight from this event, unwatch and
+            // rescan: the rescan sees the root is gone and reports a completed scan of an
+            // absent source, so its sessions are marked deleted (soft; hard only under
+            // prune) through the one reconciliation path -- the same outcome the old
+            // inline removal produced, but funneled through a single, completeness-gated
+            // authority so a *present* directory whose scan merely came back short can
+            // never wipe the source. DO NOT recreate the watch here.
+            // A read failure defaults to false, which merely skips the rescan trigger --
+            // the conservative direction -- but log it so it is not mistaken for "this
+            // source genuinely has no sessions".
+            let has_sessions = match crate::parsers::cache::get_cache_manager().open_db() {
+                Some(c) => match crate::parsers::store::source_has_sessions(&c, &source_id) {
+                    Ok(has) => has,
+                    Err(_e) => {
+                        crate::log_error!(
+                            "[watcher] Could not check whether '{}' has stored sessions: {}",
+                            source_id,
+                            _e
+                        );
+                        false
+                    }
+                },
+                None => false,
             };
 
             if stored_ino.is_some() || has_sessions {
                 crate::log_info!(
-                    "Monitored directory was deleted: {:?}. Cleaning index for source: {}",
+                    "Monitored directory missing: {:?}. Unwatching and rescanning source: {}",
                     target,
                     source_id
                 );
@@ -259,32 +383,7 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                 if let Ok(mut inodes_guard) = state.watched_inodes.lock() {
                     inodes_guard.remove(&target);
                 }
-
-                // Remove sessions from index
-                let mut removed_session_ids = Vec::new();
-                if let Ok(s_guard) = idx_state.sessions.read() {
-                    for (id, sess) in s_guard.iter() {
-                        if sess.source_id == source_id {
-                            removed_session_ids.push(id.clone());
-                        }
-                    }
-                }
-                if !removed_session_ids.is_empty() {
-                    crate::log_info!(
-                        "Removing {} sessions from index due to deleted directory for source: {}",
-                        removed_session_ids.len(),
-                        source_id
-                    );
-                    if let Ok(mut s_guard) = idx_state.sessions.write() {
-                        for id in &removed_session_ids {
-                            s_guard.remove(id);
-                        }
-                    }
-
-                    for id in &removed_session_ids {
-                        let _ = app_handle.emit("session-deleted", id);
-                    }
-                }
+                spawn_reindex_source(app_handle, source_id.clone());
             }
         } else if stored_ino != Some(current_ino) {
             // Inode mismatch or not registered yet, start/restore watch
@@ -295,49 +394,12 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
                 inodes_guard.insert(target.clone(), current_ino);
             }
 
-            // If it was already watched (stored_ino.is_some()) but the inode changed,
-            // we must clear the old sessions for this source from the index before reloading.
-            if stored_ino.is_some() {
-                let mut removed_session_ids = Vec::new();
-                if let Ok(s_guard) = idx_state.sessions.read() {
-                    for (id, sess) in s_guard.iter() {
-                        if sess.source_id == source_id {
-                            removed_session_ids.push(id.clone());
-                        }
-                    }
-                }
-                if !removed_session_ids.is_empty() {
-                    crate::log_info!(
-                        "Removing {} sessions from index due to inode change for source: {}",
-                        removed_session_ids.len(),
-                        source_id
-                    );
-                    if let Ok(mut s_guard) = idx_state.sessions.write() {
-                        for id in &removed_session_ids {
-                            s_guard.remove(id);
-                        }
-                    }
-
-                    for id in &removed_session_ids {
-                        let _ = app_handle.emit("session-deleted", id);
-                    }
-                }
-            }
-
-            // Trigger async reload
-            let app_handle_clone = app_handle.clone();
-            let source_id_clone = source_id.clone();
-            tauri::async_runtime::spawn(async move {
-                let sources = get_sources_list();
-                if let Some(src) = sources.iter().find(|s| s.id() == source_id_clone) {
-                    let sessions = src.parse_all_sessions().await;
-                    let idx_state = app_handle_clone.state::<crate::search::SearchIndexState>();
-                    for sess in sessions {
-                        let _ = idx_state.update_session(sess.clone()).await;
-                        emit_session_update(&app_handle_clone, &sess);
-                    }
-                }
-            });
+            // Reload through the reindex helper. The rescan is authoritative; deletions
+            // come only from the store's completeness-checked post-scan state, not from the
+            // inode change itself (which also fires on legitimate log rotation). This
+            // replaces an inline clear-then-reload that dropped every session of the source
+            // before the reload, leaving it empty if the reload came back short.
+            spawn_reindex_source(app_handle, source_id.clone());
         }
     }
 }
@@ -469,35 +531,51 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
 /// knows it is a subagent. The moment the parent is parsed the relationship is
 /// known, so evict the child here rather than leaving it visible until the next
 /// full rebuild.
+///
+/// Positive identification (the adapter names the ids to remove), not absence within a
+/// scan, so this hard-removes from the store directly rather than going through the
+/// completeness-gated reindex path.
 fn evict_excluded_sessions<R: tauri::Runtime>(
     app_handle: &tauri::AppHandle<R>,
+    source_id: &str,
     excluded: HashSet<String>,
 ) {
     if excluded.is_empty() {
         return;
     }
 
-    let idx_state = app_handle.state::<crate::search::SearchIndexState>();
-
-    let removed: Vec<String> = match idx_state.sessions.read() {
-        Ok(guard) => excluded
-            .into_iter()
-            .filter(|id| guard.contains_key(id))
-            .collect(),
-        Err(_) => return,
+    let mut conn = match crate::parsers::cache::get_cache_manager().open_db() {
+        Some(c) => c,
+        None => return,
     };
-    if removed.is_empty() {
+
+    // Only the ids actually present are worth an event; check, then hard-delete.
+    let present: Vec<String> = excluded
+        .iter()
+        .filter(|id| {
+            // Scoped by source_id to match the delete below; `id` alone is not unique
+            // across sources by design (see the store module docs).
+            conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM sessions WHERE source_id = ?1 AND id = ?2)",
+                rusqlite::params![source_id, id],
+                |r| r.get::<_, i64>(0),
+            )
+            .map(|n| n != 0)
+            .unwrap_or(false)
+        })
+        .cloned()
+        .collect();
+    if present.is_empty() {
         return;
     }
 
-    if let Ok(mut guard) = idx_state.sessions.write() {
-        for id in &removed {
-            guard.remove(id);
-        }
+    if let Err(e) = crate::parsers::store::delete_sessions(&mut conn, source_id, &present) {
+        crate::log_error!("[evict] Failed to delete subagent sessions: {}", e);
+        return;
     }
 
-    for id in &removed {
-        crate::log_debug!("Evicting subagent session from index: {}", id);
+    for id in &present {
+        crate::log_debug!("Evicting subagent session from store: {}", id);
         let _ = app_handle.emit("session-deleted", id);
     }
 }
@@ -624,117 +702,57 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                                 file_path,
                                 src.display_name()
                             );
-                            let sessions = src.parse_all_sessions().await;
-                            let idx_state =
-                                app_handle_clone.state::<crate::search::SearchIndexState>();
+                            // Reparse the whole source and emit exactly what changed,
+                            // diffing the store's pre- and post-scan state. This is the one
+                            // reconciliation path: it reparses (writing the store),
+                            // emits session-updated for new/changed/soft-deleted sessions
+                            // and session-deleted for pruned ones, and never deletes on an
+                            // incomplete scan.
+                            reindex_source_and_emit(&app_handle_clone, &source_id).await;
 
-                            // 1. Identify and remove any stale/deleted database sessions
-                            let new_session_ids: std::collections::HashSet<String> =
-                                sessions.iter().map(|s| s.id.clone()).collect();
-                            let mut removed_session_ids = Vec::new();
-
-                            if let Ok(guard) = idx_state.sessions.read() {
-                                for (id, existing_sess) in guard.iter() {
-                                    if existing_sess.source_id == source_id
-                                        && !new_session_ids.contains(id)
-                                    {
-                                        removed_session_ids.push(id.clone());
-                                    }
-                                }
-                            }
-
-                            if !removed_session_ids.is_empty() {
-                                crate::log_info!("Removing {} stale/deleted database sessions from index for source: {}", removed_session_ids.len(), source_id);
-                                if let Ok(mut guard) = idx_state.sessions.write() {
-                                    for id in &removed_session_ids {
-                                        guard.remove(id);
-                                    }
-                                }
-
-                                for id in &removed_session_ids {
-                                    let _ = app_handle_clone.emit("session-deleted", id);
-                                }
-                            }
-
-                            // 2. Detect modified or new sessions
-                            let mut modified_sessions = Vec::new();
-                            if let Ok(guard) = idx_state.sessions.read() {
-                                for sess in &sessions {
-                                    if let Some(existing) = guard.get(&sess.id) {
-                                        if existing.updated_at != sess.updated_at
-                                            || existing.turns.len() != sess.turns.len()
-                                            || existing.thread_name != sess.thread_name
-                                            || existing.is_archived != sess.is_archived
-                                            || existing.is_pinned != sess.is_pinned
-                                            || existing.status != sess.status
-                                        {
-                                            modified_sessions.push(sess.clone());
-                                        }
-                                    } else {
-                                        modified_sessions.push(sess.clone());
-                                    }
-                                }
-                            }
-
-                            // 3. Update index with modified sessions list and emit updates
-                            for sess in modified_sessions {
-                                crate::log_debug!("Updating index and emitting session-updated for database change: {}", sess.id);
-                                // The index keeps the full session; only the wire
-                                // payload is trimmed.
-                                let _ = idx_state.update_session(sess.clone()).await;
-                                emit_session_update(&app_handle_clone, &sess);
-                            }
-
-                            // parse_all_sessions above refreshed the parent->child
-                            // map, so a subagent indexed before its parent was known
-                            // can be dropped now.
-                            evict_excluded_sessions(&app_handle_clone, src.excluded_session_ids());
+                            // The reparse above refreshed the parent->child map, so a
+                            // subagent indexed before its parent was known can be dropped
+                            // now (positive identification, so not part of reindex).
+                            evict_excluded_sessions(
+                                &app_handle_clone,
+                                &source_id,
+                                src.excluded_session_ids(),
+                            );
+                        } else if !Path::new(&file_path).exists() {
+                            // A watched file is gone. Reindex the whole source: the missing
+                            // file's session is soft-deleted by the completeness-gated scan
+                            // and reindex emits the right event (moved to Deleted, or
+                            // session-deleted if pruned). A full reparse is fine here —
+                            // deletions are far rarer than edits.
+                            crate::log_info!(
+                                "Session file deleted: {}. Reindexing source {}...",
+                                file_path,
+                                source_id
+                            );
+                            reindex_source_and_emit(&app_handle_clone, &source_id).await;
                         } else {
-                            // Check if file exists (if not, it's deleted)
-                            if !Path::new(&file_path).exists() {
-                                crate::log_info!(
-                                    "Session file deleted: {}. Removing from index...",
+                            // A single file changed. Parse just that file (the parse writes
+                            // the store) and emit its update — no full-source rescan on every
+                            // edit.
+                            let parsed = src.parse_session(&file_path).await;
+
+                            // Deliberately outside the `if let` below, because it must run
+                            // whether or not this file yielded a session: parsing a PARENT
+                            // is what reveals its children, and parsing a known subagent
+                            // yields None while that child may still be indexed from an
+                            // earlier tick.
+                            evict_excluded_sessions(
+                                &app_handle_clone,
+                                &source_id,
+                                src.excluded_session_ids(),
+                            );
+
+                            if let Some(session) = parsed {
+                                crate::log_debug!(
+                                    "Session file updated: {}. Emitting session-updated...",
                                     file_path
                                 );
-                                let idx_state =
-                                    app_handle_clone.state::<crate::search::SearchIndexState>();
-                                let removed_session_id = {
-                                    if let Ok(mut guard) = idx_state.sessions.write() {
-                                        let found = guard
-                                            .iter()
-                                            .find(|(_, s)| s.file_path == file_path)
-                                            .map(|(k, _)| k.clone());
-                                        if let Some(ref id) = found {
-                                            guard.remove(id);
-                                        }
-                                        found
-                                    } else {
-                                        None
-                                    }
-                                };
-                                if let Some(session_id) = removed_session_id {
-                                    let _ = app_handle_clone.emit("session-deleted", &session_id);
-                                }
-                            } else {
-                                let parsed = src.parse_session(&file_path).await;
-
-                                // Deliberately outside the `if let` below, because it
-                                // must run whether or not this file yielded a session:
-                                // parsing a PARENT is what reveals its children, and
-                                // parsing a known subagent yields None while that child
-                                // may still be sitting in the index from an earlier tick.
-                                evict_excluded_sessions(
-                                    &app_handle_clone,
-                                    src.excluded_session_ids(),
-                                );
-
-                                if let Some(session) = parsed {
-                                    crate::log_debug!("Session file updated: {}. Updating index and emitting session-updated...", file_path);
-                                    let idx_state =
-                                        app_handle_clone.state::<crate::search::SearchIndexState>();
-                                    let _ = idx_state.update_session(session.clone()).await;
-                                    emit_session_update(&app_handle_clone, &session);
-                                }
+                                emit_session_update(&app_handle_clone, &session);
                             }
                         }
                     }
@@ -752,8 +770,75 @@ mod watcher_tests {
     use crate::parsers::SourceAdapter;
     use crate::search::SearchIndexState;
 
+    /// An unreadable store must NOT be reported as an empty one.
+    ///
+    /// `reindex_source_and_emit` derives `session-deleted` from ids present in the pre-scan
+    /// fingerprint and absent from the post-scan one. These reads used to end in
+    /// `.ok().unwrap_or_default()`, so a transient SQLite failure produced an empty map —
+    /// which the diff reads as "every session in this source is gone" and announces the
+    /// whole source as deleted. That is the exact inference `ScanResult`'s completeness
+    /// gating exists to forbid, reintroduced one layer above it.
+    ///
+    /// Failure is induced by dropping the `sessions` table: `open` only recreates the schema
+    /// on a `user_version` mismatch, so the connection opens fine and the query is what
+    /// fails — the same shape as corruption or a lock timeout, without needing either.
     #[test]
-    fn test_restore_watched_paths_removes_sessions() {
+    fn unreadable_store_yields_none_rather_than_an_empty_state_map() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = crate::parsers::cache::get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        // A healthy store reads as an (empty) map -- Some, not None.
+        assert!(
+            read_session_states(mgr, "claude", "pre-scan").is_some(),
+            "a readable store must produce a state map"
+        );
+
+        mgr.open_db()
+            .unwrap()
+            .execute_batch("DROP TABLE turns; DROP TABLE sessions;")
+            .unwrap();
+
+        assert!(
+            read_session_states(mgr, "claude", "pre-scan").is_none(),
+            "an unreadable store must be None, never an empty map: the caller would \
+             otherwise emit session-deleted for every session in the source"
+        );
+    }
+
+    /// Seeds a session into the SQLite store (which is now the index). Requires
+    /// CODEOBA_MOCK_HOME to point at the test's temp home.
+    fn seed_store(source_id: &str, session: Session) {
+        let mut conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .unwrap();
+        let entry = crate::parsers::cache::CacheEntry {
+            file_path: session.file_path.clone(),
+            last_modified: 0,
+            size: 0,
+            hash: session.id.clone(),
+            session,
+        };
+        crate::parsers::store::save_source(&mut conn, source_id, &[entry]).unwrap();
+    }
+
+    fn store_contains(id: &str) -> bool {
+        let conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .unwrap();
+        conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?1)",
+            [id],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|n| n != 0)
+        .unwrap_or(false)
+    }
+
+    #[test]
+    fn test_missing_directory_is_not_recreated() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -819,15 +904,11 @@ mod watcher_tests {
             is_deleted: false,
         };
 
-        tauri::async_runtime::block_on(async {
-            idx_state.update_session(session).await.unwrap();
-        });
-
-        // Verify session is in index
-        {
-            let guard = idx_state.sessions.read().unwrap();
-            assert!(guard.contains_key("codex-test"));
-        }
+        seed_store("codex", session);
+        assert!(
+            store_contains("codex-test"),
+            "seeded session should be in the store"
+        );
 
         // Manage idx_state in app state
         app_handle.manage(idx_state);
@@ -845,15 +926,16 @@ mod watcher_tests {
         // Run check_and_restore_watched_paths
         check_and_restore_watched_paths(&app_handle);
 
-        // Check if directory was recreated (should NOT be recreated anymore)
-        assert!(!codex_dir.exists());
-
-        // Check if Codex session was removed from search index!
-        let idx = app_handle.state::<SearchIndexState>();
-        let guard = idx.sessions.read().unwrap();
+        // Synchronous contract: the missing directory is NOT recreated. (A prior bug
+        // recreated it here.) The session-deletion behavior for a missing root is
+        // handled off-thread by spawn_rescan_and_reconcile -> scan_absent_source ->
+        // reconcile_source, and is unit-tested deterministically there
+        // (cache::scan_lifecycle_tests::absent_source_soft_deletes_cached_sessions and
+        // search::update_session_tests::reconcile_*), not asserted here where it races
+        // the spawned task.
         assert!(
-            !guard.contains_key("codex-test"),
-            "Codex session was NOT removed!"
+            !codex_dir.exists(),
+            "missing directory must not be recreated"
         );
 
         if let Some(h) = original_home {
@@ -861,11 +943,10 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     #[test]
-    fn test_restore_watched_paths_removes_sessions_on_inode_change() {
+    fn test_inode_change_rewatches_and_updates_stored_inode() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
@@ -940,9 +1021,7 @@ mod watcher_tests {
             is_deleted: false,
         };
 
-        tauri::async_runtime::block_on(async {
-            idx_state.update_session(session).await.unwrap();
-        });
+        seed_store("codex", session);
 
         // Manage idx_state in app state
         app_handle.manage(idx_state);
@@ -950,15 +1029,12 @@ mod watcher_tests {
         // Run check_and_restore_watched_paths
         check_and_restore_watched_paths(&app_handle);
 
-        // Check if Codex session was removed from search index due to inode mismatch detection!
-        let idx = app_handle.state::<SearchIndexState>();
-        let guard = idx.sessions.read().unwrap();
-        assert!(
-            !guard.contains_key("codex-test-inode"),
-            "Codex session was NOT removed on inode change!"
-        );
-
-        // Check if the stored inode was updated to the actual inode
+        // New contract: an inode change rewatches and updates the stored inode
+        // synchronously, but no longer wipes the source synchronously. Any deletion now
+        // flows through a rescan + reconcile_source (completeness-gated, and unit-tested
+        // there), so the inline clear-then-reload that could leave the source empty on a
+        // short reload is gone. This test asserts the synchronous, deterministic effect:
+        // the stored inode is updated.
         let state = app_handle.state::<WatcherState>();
         let inodes_guard = state.watched_inodes.lock().unwrap();
         let stored_ino = inodes_guard.get(&codex_dir).copied().unwrap_or(0);
@@ -973,7 +1049,6 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     fn helper_encode_varint(value: u64) -> Vec<u8> {
@@ -1061,19 +1136,16 @@ mod watcher_tests {
             helper_encode_length_delimited(1, &[uuid_field.clone(), info_field].concat());
         std::fs::write(&pb_file, &entry_field).unwrap();
 
-        // 3. Load sessions initially via source to populate index
+        // 3. Load sessions initially via source. The parse writes the SQLite store (via
+        //    end_scan), so this both seeds the store and verifies the initial title.
         let src = crate::parsers::antigravity::AntigravitySource::default();
-        let sessions = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let sessions =
+            tauri::async_runtime::block_on(async { src.parse_all_sessions().await }).sessions;
         assert_eq!(sessions.len(), 1);
         assert_eq!(
             sessions[0].thread_name.as_deref(),
             Some("Exploring Physics")
         );
-
-        // Put initial session into search index
-        tauri::async_runtime::block_on(async {
-            idx_state.update_session(sessions[0].clone()).await.unwrap();
-        });
 
         app_handle.manage(idx_state);
 
@@ -1095,16 +1167,22 @@ mod watcher_tests {
 
         handle_file_change(&app_handle, &pb_file);
 
-        // 6. Give the async reload handler a moment to execute
-        let idx = app_handle.state::<SearchIndexState>();
+        // 6. Give the async reload handler a moment to execute, polling the store for the
+        //    reindexed title.
         let mut title_updated = false;
         for _ in 0..50 {
-            if let Ok(guard) = idx.sessions.read() {
-                if let Some(session_in_idx) = guard.get("session-antigravity-123") {
-                    if session_in_idx.thread_name.as_deref() == Some("New Physics Title") {
-                        title_updated = true;
-                        break;
-                    }
+            if let Some(conn) = crate::parsers::cache::get_cache_manager().open_db() {
+                let title: Option<String> = conn
+                    .query_row(
+                        "SELECT thread_name FROM sessions WHERE id = ?1",
+                        ["session-antigravity-123"],
+                        |r| r.get::<_, Option<String>>(0),
+                    )
+                    .ok()
+                    .flatten();
+                if title.as_deref() == Some("New Physics Title") {
+                    title_updated = true;
+                    break;
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(100));
@@ -1119,6 +1197,5 @@ mod watcher_tests {
         } else {
             std::env::remove_var("HOME");
         }
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

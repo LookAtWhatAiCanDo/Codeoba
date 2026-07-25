@@ -141,16 +141,20 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
 ) -> Result<Vec<Session>, AppErrorPayload> {
     let state = app_handle.state::<SearchIndexState>();
 
-    // Copy the lightweight sessions out from under the read lock, then release it before doing
-    // any filesystem work. resolve_workspace_name walks the filesystem, per session — holding the
-    // read lock across that I/O would block the rebuild writer (and every other reader) for the
-    // whole scan on every load.
+    // Read the session list straight from the SQLite store (streamed, lightweight), rather
+    // than a separate in-memory index. The store is authoritative and kept current by the
+    // scan/parse machinery; removed sessions carry is_deleted (the frontend filters them out
+    // of the Active view), so this list is consistent with search and with the Deleted view.
     let mut all_sessions: Vec<Session> = {
-        let guard = state
-            .sessions
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard.values().map(|s| s.to_lightweight()).collect()
+        let conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .ok_or_else(|| AppErrorPayload::new(ERR_SESSION_READ_LOCK))?;
+        let mut out = Vec::new();
+        crate::parsers::store::for_each_session_list_payload(&conn, 512, |s| {
+            out.push(s.to_lightweight())
+        })
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        out
     };
 
     let now = std::time::SystemTime::now()
@@ -241,9 +245,11 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
     let mut statuses = std::collections::HashMap::new();
 
     let probes: Vec<StatusProbe> = {
-        let guard = state.sessions.read().map_err(|e| e.to_string())?;
+        let conn = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .ok_or_else(|| "session store unavailable".to_string())?;
         let mut probes = Vec::new();
-        for s in guard.values() {
+        crate::parsers::store::for_each_session_list_payload(&conn, 512, |s| {
             // Same recompute policy as get_all_sessions: antigravity/claude have
             // dynamic statuses; other sources keep their parse-time status.
             let is_dynamic = s.source_id == "antigravity"
@@ -252,7 +258,7 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
             if !is_dynamic {
                 if let Some(ref stored) = s.status {
                     statuses.insert(s.id.clone(), stored.clone());
-                    continue;
+                    return;
                 }
             }
 
@@ -272,7 +278,8 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
                 cwd: s.cwd.clone(),
                 edge_turns,
             });
-        }
+        })
+        .map_err(|e| e.to_string())?;
         probes
     };
 
@@ -357,18 +364,27 @@ pub async fn get_session<R: tauri::Runtime>(
 
     let state = app_handle.state::<SearchIndexState>();
 
-    let in_memory_cached = {
-        let guard = state
-            .sessions
-            .read()
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
-        guard
-            .values()
-            .find(|s| s.source_id == source_id && s.file_path == file_path)
-            .cloned()
+    // A read failure here falls through to re-parsing the file, which is the right
+    // degradation -- but log it, because silently taking the slow path is how a corrupt or
+    // locked database hides in plain sight while every session load pays for it.
+    let stored = match crate::parsers::cache::get_cache_manager().open_db() {
+        Some(c) => match crate::parsers::store::get_session_by_path(&c, &source_id, &file_path) {
+            Ok(found) => found,
+            Err(_e) => {
+                crate::log_error!(
+                    "[get_session] Store read failed for {}/{}: {}. Falling back to parsing \
+                     the file.",
+                    source_id,
+                    file_path,
+                    _e
+                );
+                None
+            }
+        },
+        None => None,
     };
 
-    if let Some(mut session) = in_memory_cached {
+    if let Some(mut session) = stored {
         if session.workspace_name.is_none() && session.cwd.is_some() {
             session.workspace_name = crate::models::resolve_workspace_name(&session.cwd);
         }
@@ -499,21 +515,32 @@ pub fn save_credential(key: String, value: Option<String>) {
 
 #[tauri::command]
 pub async fn search_sessions<R: tauri::Runtime>(
-    app_handle: tauri::AppHandle<R>,
+    _app_handle: tauri::AppHandle<R>,
     query: String,
     filter: SearchFilter,
 ) -> Result<Vec<SearchResult>, AppErrorPayload> {
-    let state = app_handle.state::<SearchIndexState>();
-
-    let sessions_guard = state
-        .sessions
-        .read()
-        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+    // Search runs against the SQLite store, streamed so the whole corpus is never held in
+    // memory. It is offloaded to a blocking thread because the scan is synchronous DB work
+    // and must not stall the async runtime. The store is authoritative and kept current by
+    // the scan/parse machinery, so results match the in-memory index (proven by
+    // search::sqlite_search_tests).
     let mut results =
-        crate::search::lexical::lexical_search(sessions_guard.values(), &query, &filter);
+        tauri::async_runtime::spawn_blocking(move || -> Result<Vec<SearchResult>, String> {
+            let conn = crate::parsers::cache::get_cache_manager()
+                .open_db()
+                .ok_or_else(|| "session store unavailable".to_string())?;
+            crate::search::search_store(&conn, &query, &filter).map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e))?;
 
     for res in &mut results {
-        res.session = res.session.to_lightweight();
+        // Keep the text of the matched turns so the frontend can show the matching
+        // snippet (which may be any turn, not the last); strip the rest.
+        res.session = res
+            .session
+            .to_lightweight_keeping_turns(&res.matched_turn_indexes);
     }
     Ok(results)
 }
@@ -1370,8 +1397,6 @@ mod trusted_root_tests {
             resolve_trusted_root(Some(&repo.to_string_lossy())),
             Some(repo.canonicalize().unwrap())
         );
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 
     #[test]
@@ -1472,10 +1497,21 @@ mod get_all_sessions_tests {
         handle.manage(GroupState::new());
 
         {
-            let state = handle.state::<SearchIndexState>();
-            let mut guard = state.sessions.write().unwrap();
-            guard.insert("a".to_string(), codex_session("a", 100));
-            guard.insert("b".to_string(), codex_session("b", 200));
+            // get_all_sessions now reads from the SQLite store, so seed there.
+            let mgr = crate::parsers::cache::get_cache_manager();
+            let mut conn = mgr.open_db().unwrap();
+            let entries: Vec<crate::parsers::cache::CacheEntry> =
+                [codex_session("a", 100), codex_session("b", 200)]
+                    .into_iter()
+                    .map(|s| crate::parsers::cache::CacheEntry {
+                        file_path: s.file_path.clone(),
+                        last_modified: 0,
+                        size: 0,
+                        hash: s.id.clone(),
+                        session: s,
+                    })
+                    .collect();
+            crate::parsers::store::save_source(&mut conn, "codex", &entries).unwrap();
         }
 
         let result = tauri::async_runtime::block_on(get_all_sessions(handle.clone())).unwrap();
@@ -1492,7 +1528,5 @@ mod get_all_sessions_tests {
         );
         // cwd is None, so workspace_name stays None.
         assert!(result.iter().all(|s| s.workspace_name.is_none()));
-
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }

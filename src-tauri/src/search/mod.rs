@@ -111,8 +111,10 @@ pub struct IndexingProgress {
     pub current_source: String,
 }
 
+/// Process-wide coordination for indexing. The session data itself lives in the SQLite
+/// store (`parsers::store`); this holds only the rebuild flags, progress, and the
+/// short-lived status TTL cache — there is no in-memory copy of the corpus.
 pub struct SearchIndexState {
-    pub sessions: RwLock<HashMap<String, crate::models::Session>>,
     pub last_progress: RwLock<Option<IndexingProgress>>,
     pub is_rebuilding: std::sync::atomic::AtomicBool,
     pub has_rebuilt: std::sync::atomic::AtomicBool,
@@ -129,39 +131,12 @@ impl Default for SearchIndexState {
 impl SearchIndexState {
     pub fn new() -> Self {
         Self {
-            sessions: RwLock::new(HashMap::new()),
             last_progress: RwLock::new(None),
             is_rebuilding: std::sync::atomic::AtomicBool::new(false),
             has_rebuilt: std::sync::atomic::AtomicBool::new(false),
             app_handle: RwLock::new(None),
             status_ttl_cache: RwLock::new(HashMap::new()),
         }
-    }
-
-    pub fn load_cached_sessions(&self) {
-        let start = std::time::Instant::now();
-        let sources = crate::parsers::get_sources_list();
-        let mut session_map = HashMap::new();
-
-        let cache_mgr = crate::parsers::cache::get_cache_manager();
-        for source in sources {
-            if source.is_available() {
-                let cache = cache_mgr.load_cache(source.id());
-                for entry in cache.into_values() {
-                    session_map.insert(entry.session.id.clone(), entry.session);
-                }
-            }
-        }
-
-        let count = session_map.len();
-        if let Ok(mut guard) = self.sessions.write() {
-            *guard = session_map;
-        }
-        crate::log_info!(
-            "[SearchIndexState] Loaded {} cached sessions in {:?}",
-            count,
-            start.elapsed()
-        );
     }
 
     pub async fn rebuild<R: tauri::Runtime>(
@@ -205,9 +180,12 @@ impl SearchIndexState {
 
         emit_progress("start", 0.0, "Initializing search index...");
 
+        // Each source's parse writes the SQLite store directly (via end_scan), which is
+        // the single source of truth for reads. Deletion is completeness-gated inside
+        // end_scan, so an incomplete scan preserves that source's sessions. There is no
+        // separate in-memory index to merge into any more — the rebuild just reparses.
         let parse_start = std::time::Instant::now();
         let sources = crate::parsers::get_sources_list();
-        let mut all_sessions = Vec::new();
 
         let available_sources: Vec<_> = sources.iter().filter(|s| s.is_available()).collect();
         let total_sources = available_sources.len() as f32;
@@ -219,7 +197,14 @@ impl SearchIndexState {
             emit_progress("parsing", pct, source.display_name());
 
             let source_start = std::time::Instant::now();
-            all_sessions.extend(source.parse_all_sessions().await);
+            let scan = source.parse_all_sessions().await;
+            if !scan.complete {
+                crate::log_warn!(
+                    "[rebuild] Scan of source '{}' did not complete; its stored sessions \
+                     are preserved rather than treated as deleted.",
+                    source.id()
+                );
+            }
             crate::log_info!(
                 "[rebuild] Parsed source '{}' in {:?}",
                 source.id(),
@@ -229,174 +214,98 @@ impl SearchIndexState {
         }
         crate::log_info!("[rebuild] Total parsing time: {:?}", parse_start.elapsed());
 
-        let mut session_map = HashMap::new();
-        for session in all_sessions {
-            session_map.insert(session.id.clone(), session);
-        }
-
-        let existing_sessions: Option<HashMap<String, crate::models::Session>> = {
-            if let Ok(guard) = self.sessions.read() {
-                Some(guard.clone())
-            } else {
-                None
-            }
-        };
-
-        if let Ok(mut sessions_guard) = self.sessions.write() {
-            match &existing_sessions {
-                Some(snapshot) => {
-                    let (merged, _, _) =
-                        merge_rebuilt_sessions(session_map, &sessions_guard, snapshot);
-                    *sessions_guard = merged;
-                }
-                None => {
-                    *sessions_guard = session_map;
-                }
-            }
-        }
-
         emit_progress("complete", 1.0, "Index rebuild complete.");
         crate::log_info!("[rebuild] Total rebuild time: {:?}", total_start.elapsed());
         self.has_rebuilt
             .store(true, std::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
-
-    pub async fn update_session(&self, session: crate::models::Session) -> Result<(), String> {
-        let needs_update = {
-            if let Ok(sessions_guard) = self.sessions.read() {
-                if let Some(existing) = sessions_guard.get(&session.id) {
-                    existing != &session
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
-        };
-
-        if !needs_update {
-            return Ok(());
-        }
-
-        if let Ok(mut sessions_guard) = self.sessions.write() {
-            sessions_guard.insert(session.id.clone(), session.clone());
-        }
-        if let Some(ref status) = session.status {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .map(|d| d.as_millis() as i64)
-                .unwrap_or(0);
-            if let Ok(mut ttl_guard) = self.status_ttl_cache.write() {
-                ttl_guard.insert(session.id.clone(), (status.clone(), now));
-            }
-        }
-
-        Ok(())
-    }
 }
 
-/// Merges a rebuild's freshly computed session map back over the live index instead of
-/// wholesale-replacing it.
+/// Runs a lexical search directly against the SQLite store, streaming sessions in batches
+/// so the whole corpus is never held in memory at once.
 ///
-/// `rebuilt` is what this rebuild produced, `live` is the current index, and `snapshot` is `live`
-/// as it was when the (potentially long) embedding pass began. A plain `*live = rebuilt` would
-/// drop any `update_session` that ran concurrently during that pass. Instead:
-///   - a live entry that differs from the snapshot — or is absent from it — was changed or inserted
-///     concurrently, so it wins over this rebuild's older view;
-///   - a snapshot entry now missing from live was deleted concurrently, so it is dropped.
-///
-/// Returns the merged map plus the ids that were preserved / deleted, so the embeddings map can be
-/// reconciled the same way.
-fn merge_rebuilt_sessions(
-    rebuilt: HashMap<String, crate::models::Session>,
-    live: &HashMap<String, crate::models::Session>,
-    snapshot: &HashMap<String, crate::models::Session>,
-) -> (
-    HashMap<String, crate::models::Session>,
-    Vec<String>,
-    Vec<String>,
-) {
-    let mut merged = rebuilt;
-    let mut preserved = Vec::new();
-    let mut deleted = Vec::new();
+/// Produces byte-identical results to [`lexical::lexical_search`] over the same sessions —
+/// it reuses the exact same query compilation and per-session scoring — but reads from the
+/// store instead of the in-memory index. This is what lets the in-memory corpus be dropped:
+/// the RAM cost of a search is now one batch, and only matches are retained. Every current
+/// feature (substring, regex, case-sensitivity, whole-word, multi-term AND) is preserved,
+/// because the matcher is unchanged; only the source of the sessions moved.
+pub fn search_store(
+    conn: &rusqlite::Connection,
+    query: &str,
+    filter: &SearchFilter,
+) -> rusqlite::Result<Vec<SearchResult>> {
+    /// Sessions loaded per keyset page. Large enough to amortize query overhead, small
+    /// enough that peak memory is a slice of the corpus rather than all of it.
+    const BATCH: i64 = 512;
 
-    for (id, live_session) in live {
-        if snapshot.get(id) != Some(live_session) {
-            merged.insert(id.clone(), live_session.clone());
-            preserved.push(id.clone());
+    let is_empty_query = query.trim().is_empty();
+    let regexes = if is_empty_query {
+        Vec::new()
+    } else {
+        let rx = lexical::build_query_regexes(query, filter);
+        if rx.is_empty() {
+            // An unparseable / all-stopword query matches nothing, same as lexical_search.
+            return Ok(Vec::new());
         }
-    }
-    for id in snapshot.keys() {
-        if !live.contains_key(id) {
-            merged.remove(id);
-            deleted.push(id.clone());
+        rx
+    };
+
+    let mut results: Vec<SearchResult> = Vec::new();
+    crate::parsers::store::for_each_session(conn, BATCH, |session| {
+        if is_empty_query {
+            // Blank query = "list everything that passes the filter", mirroring the empty
+            // branch of lexical_search (score 1.0, no matched turns).
+            if filter.matches(&session) {
+                results.push(SearchResult {
+                    session,
+                    matched_turn_indexes: Vec::new(),
+                    score: 1.0,
+                });
+            }
+        } else if let Some(result) = lexical::score_session(&session, &regexes, filter) {
+            results.push(result);
         }
+    })?;
+
+    if is_empty_query {
+        results.sort_by_key(|r| std::cmp::Reverse(r.session.updated_at));
+    } else {
+        lexical::sort_results(&mut results);
     }
-    (merged, preserved, deleted)
+    Ok(results)
 }
 
 #[cfg(test)]
-mod update_session_tests {
-    use super::SearchIndexState;
+mod sqlite_search_tests {
+    use super::{search_store, SearchFilter};
     use crate::models::{Session, Turn};
+    use crate::parsers::cache::CacheEntry;
 
-    fn session_with_turns(id: &str, turns: usize) -> Session {
-        Session {
-            id: id.to_string(),
-            source_id: "codex".to_string(),
-            file_path: format!("/tmp/{id}.jsonl"),
+    fn turn(u: &str, a: &str) -> Turn {
+        Turn {
+            turn_id: format!("{u}-{a}"),
+            user_message: u.to_string(),
+            assistant_message: a.to_string(),
             timestamp: 0,
-            updated_at: 1,
-            cwd: None,
-            thread_name: Some("thread".to_string()),
-            turns: (0..turns)
-                .map(|i| Turn {
-                    turn_id: format!("{id}_{i}"),
-                    user_message: format!("u{i}"),
-                    assistant_message: format!("a{i}"),
-                    timestamp: 0,
-                    input_tokens: None,
-                    output_tokens: None,
-                    extra_data: std::collections::HashMap::new(),
-                    images: None,
-                })
-                .collect(),
-            is_archived: false,
-            is_pinned: false,
-            summary: None,
-            snippet: None,
-            workspace_name: None,
-            status: None,
-            is_deleted: false,
+            input_tokens: None,
+            output_tokens: None,
+            extra_data: std::collections::HashMap::new(),
+            images: None,
         }
     }
 
-    #[test]
-    fn populates_in_memory_session() {
-        let state = SearchIndexState::new();
-        tauri::async_runtime::block_on(state.update_session(session_with_turns("s1", 2))).unwrap();
-
-        assert!(state.sessions.read().unwrap().contains_key("s1"));
-    }
-}
-
-#[cfg(test)]
-mod rebuild_merge_tests {
-    use super::merge_rebuilt_sessions;
-    use crate::models::Session;
-    use std::collections::HashMap;
-
-    fn sess(id: &str, updated_at: i64) -> Session {
+    fn session(id: &str, source: &str, updated_at: i64, thread: &str, turns: Vec<Turn>) -> Session {
         Session {
             id: id.to_string(),
-            source_id: "codex".to_string(),
-            file_path: String::new(),
+            source_id: source.to_string(),
+            file_path: format!("/p/{id}.jsonl"),
             timestamp: 0,
             updated_at,
-            cwd: None,
-            thread_name: None,
-            turns: Vec::new(),
+            cwd: Some("/work/project".to_string()),
+            thread_name: Some(thread.to_string()),
+            turns,
             is_archived: false,
             is_pinned: false,
             summary: None,
@@ -407,59 +316,129 @@ mod rebuild_merge_tests {
         }
     }
 
-    fn map(entries: Vec<Session>) -> HashMap<String, Session> {
-        entries.into_iter().map(|s| (s.id.clone(), s)).collect()
+    fn entry(s: &Session) -> CacheEntry {
+        CacheEntry {
+            file_path: s.file_path.clone(),
+            last_modified: 0,
+            size: 0,
+            hash: s.id.clone(),
+            session: s.clone(),
+        }
     }
 
-    /// A concurrent update, insert, and delete during the embedding pass must survive the rebuild
-    /// writeback rather than being clobbered by the rebuild's older snapshot.
-    #[test]
-    fn preserves_concurrent_changes_and_honors_deletes() {
-        let snapshot = map(vec![sess("a", 1), sess("b", 1), sess("c", 1)]);
-        // During the pass: b was updated, c was deleted, d was inserted.
-        let live = map(vec![sess("a", 1), sess("b", 2), sess("d", 1)]);
-        // What the rebuild computed (its older view, ~= snapshot).
-        let rebuilt = map(vec![sess("a", 1), sess("b", 1), sess("c", 1)]);
-
-        let (merged, mut preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
-
-        assert_eq!(
-            merged.get("a").unwrap().updated_at,
-            1,
-            "unchanged session keeps rebuild value"
-        );
-        assert_eq!(
-            merged.get("b").unwrap().updated_at,
-            2,
-            "concurrent update must be preserved"
-        );
-        assert!(
-            !merged.contains_key("c"),
-            "concurrently deleted session must be dropped"
-        );
-        assert_eq!(
-            merged.get("d").unwrap().updated_at,
-            1,
-            "concurrent insert must be preserved"
-        );
-
-        preserved.sort();
-        assert_eq!(preserved, vec!["b".to_string(), "d".to_string()]);
-        assert_eq!(deleted, vec!["c".to_string()]);
+    /// A representative corpus with distinct `updated_at` values (so the (score, updated_at)
+    /// sort has no ties to make the comparison order-dependent), spread across two sources.
+    fn corpus() -> Vec<Session> {
+        vec![
+            session(
+                "a",
+                "codex",
+                100,
+                "Rayon parallel search",
+                vec![turn(
+                    "how do I use rayon",
+                    "use rayon::prelude and par_iter",
+                )],
+            ),
+            session(
+                "b",
+                "codex",
+                200,
+                "Crayons and colors",
+                vec![turn("my kid loves crayons", "crayons are waxy")],
+            ),
+            session(
+                "c",
+                "claude",
+                300,
+                "SQLite migration",
+                vec![
+                    turn("migrate the cache to sqlite", "use rusqlite with WAL"),
+                    turn("what about rayon here", "rayon is unrelated to sqlite"),
+                ],
+            ),
+            session(
+                "d",
+                "claude",
+                400,
+                "Unrelated thread",
+                vec![turn("nothing to match", "still nothing")],
+            ),
+        ]
     }
 
-    /// With no concurrent activity, the rebuild's fresh result is used verbatim.
+    /// A helper key that captures everything the frontend depends on: which sessions
+    /// matched, in what order, with what score and matched-turn indexes.
+    fn key(results: &[super::SearchResult]) -> Vec<(String, f32, Vec<usize>)> {
+        results
+            .iter()
+            .map(|r| {
+                (
+                    r.session.id.clone(),
+                    r.score,
+                    r.matched_turn_indexes.clone(),
+                )
+            })
+            .collect()
+    }
+
+    /// The core Phase 2 guarantee: searching the SQLite store returns exactly what searching
+    /// the in-memory index would, for every kind of query — substring, multi-term, regex,
+    /// case-sensitive, whole-word — so dropping the in-memory corpus changes nothing a user
+    /// can observe.
     #[test]
-    fn no_concurrency_uses_rebuild_result() {
-        let snapshot = map(vec![sess("a", 1), sess("b", 1)]);
-        let live = snapshot.clone();
-        let rebuilt = map(vec![sess("a", 5), sess("b", 5)]); // rebuild refreshed both
+    fn sqlite_search_matches_in_memory_search() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = temp.path().join("t.db");
+        let mut conn = crate::parsers::store::open(&db).unwrap();
 
-        let (merged, preserved, deleted) = merge_rebuilt_sessions(rebuilt, &live, &snapshot);
+        let sessions = corpus();
+        for source in ["codex", "claude"] {
+            let entries: Vec<CacheEntry> = sessions
+                .iter()
+                .filter(|s| s.source_id == source)
+                .map(entry)
+                .collect();
+            crate::parsers::store::save_source(&mut conn, source, &entries).unwrap();
+        }
 
-        assert_eq!(merged.get("a").unwrap().updated_at, 5);
-        assert_eq!(merged.get("b").unwrap().updated_at, 5);
-        assert!(preserved.is_empty());
-        assert!(deleted.is_empty());
+        let cases: Vec<(&str, SearchFilter)> = vec![
+            ("rayon", SearchFilter::default()),
+            ("crayons", SearchFilter::default()),
+            ("sqlite rayon", SearchFilter::default()), // multi-term AND
+            (
+                "Rayon",
+                SearchFilter {
+                    match_case: true,
+                    ..Default::default()
+                },
+            ),
+            (
+                "rayon",
+                SearchFilter {
+                    whole_word: true,
+                    ..Default::default()
+                },
+            ),
+            (
+                "ray.n",
+                SearchFilter {
+                    use_regex: true,
+                    ..Default::default()
+                },
+            ),
+            ("zzz-no-match", SearchFilter::default()),
+            ("", SearchFilter::default()), // blank = list all
+        ];
+
+        for (query, filter) in cases {
+            let in_memory = crate::search::lexical::lexical_search(sessions.iter(), query, &filter);
+            let from_store = search_store(&conn, query, &filter).unwrap();
+            assert_eq!(
+                key(&from_store),
+                key(&in_memory),
+                "SQLite and in-memory search disagree for query {query:?}"
+            );
+        }
     }
 }

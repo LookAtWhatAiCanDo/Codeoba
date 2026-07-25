@@ -20,13 +20,43 @@ pub fn get_home_dir() -> std::path::PathBuf {
     if let Ok(mock_home) = std::env::var("CODEOBA_MOCK_HOME") {
         return std::path::PathBuf::from(mock_home);
     }
-    if let Ok(home) = std::env::var("HOME") {
-        return std::path::PathBuf::from(home);
+
+    // Safety net for test builds: NEVER fall through to the user's real home directory.
+    // Tests isolate ~/.codeoba by setting the process-global CODEOBA_MOCK_HOME, but under
+    // parallel execution another test can transiently clear it, and with the SQLite store a
+    // single stray write — or a clear_all_caches — against the real ~/.codeoba/cache would
+    // clobber real user data (this actually happened: a run wiped the live sessions.db). A
+    // miss here routes to a throwaway temp dir instead, so a test can only ever damage
+    // scratch state.
+    #[cfg(test)]
+    return test_home_fallback();
+
+    #[cfg(not(test))]
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            return std::path::PathBuf::from(home);
+        }
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            return std::path::PathBuf::from(userprofile);
+        }
+        dirs::home_dir().unwrap_or_default()
     }
-    if let Ok(userprofile) = std::env::var("USERPROFILE") {
-        return std::path::PathBuf::from(userprofile);
-    }
-    dirs::home_dir().unwrap_or_default()
+}
+
+/// A per-process throwaway home used only in test builds when `CODEOBA_MOCK_HOME` is unset,
+/// so a test that races the env var lands in scratch space instead of the real `~`.
+#[cfg(test)]
+fn test_home_fallback() -> std::path::PathBuf {
+    use std::sync::OnceLock;
+    static FALLBACK: OnceLock<std::path::PathBuf> = OnceLock::new();
+    FALLBACK
+        .get_or_init(|| {
+            let dir =
+                std::env::temp_dir().join(format!("codeoba-test-home-{}", std::process::id()));
+            let _ = std::fs::create_dir_all(&dir);
+            dir
+        })
+        .clone()
 }
 
 use tauri::Manager;
@@ -163,6 +193,12 @@ pub fn run() {
             if model_dir.exists() {
                 let _ = std::fs::remove_dir_all(&model_dir);
             }
+
+            // Drop the pre-SQLite per-source `cache_*.json` files. They are superseded by
+            // the session store and nothing reads them, but they survive an upgrade and
+            // are large (95 MB on the author's machine). Previously only `clear_all_caches`
+            // removed them, which also wipes `sessions.db` and forces a full re-index.
+            crate::parsers::cache::get_cache_manager().remove_legacy_json_caches();
 
             let handle = app.handle().clone();
 
@@ -335,28 +371,15 @@ pub fn run() {
                 }
             }
 
-            // Load cached sessions in background thread on startup
-            let handle_clone = handle.clone();
-            std::thread::spawn(move || {
-                tauri::async_runtime::block_on(async move {
-                    let state = handle_clone.state::<search::SearchIndexState>();
-
-                    // Load cached sessions in the background
-                    state.load_cached_sessions();
-
-                    let progress = search::IndexingProgress {
-                        step: "complete".to_string(),
-                        progress: 1.0,
-                        current_source: "Cache".to_string(),
-                    };
-                    if let Ok(mut guard) = state.last_progress.write() {
-                        *guard = Some(progress.clone());
-                    }
-                    use tauri::Emitter;
-                    let _ = handle_clone.emit("indexing-progress", progress);
-                });
-            });
-
+            // No startup preload: sessions live in the SQLite store and are read on demand
+            // (get_all_sessions / search / get_session), which the frontend already calls
+            // once on mount for an instant first paint. The frontend then triggers the
+            // startup rebuild, whose real progress events drive the refresh to fresh data.
+            //
+            // This used to emit a fake `indexing-progress {step:"complete"}` here — a
+            // leftover from when startup loaded a cache into an in-memory index. That fake
+            // "complete" raced the real rebuild's refresh (an extra, uncontrolled refetch
+            // from a background thread), so the list intermittently kept last-run data.
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

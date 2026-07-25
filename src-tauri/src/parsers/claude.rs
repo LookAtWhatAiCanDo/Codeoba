@@ -106,16 +106,20 @@ impl SourceAdapter for ClaudeSource {
         self.parse_session_impl(file_path).await
     }
 
-    async fn parse_all_sessions(&self) -> Vec<Session> {
+    async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
         let base_dir = self.get_base_dir();
-        if !base_dir.exists() || !base_dir.is_dir() {
-            return Vec::new();
+        if !crate::parsers::cache::source_root_readable(&base_dir) {
+            // Root gone or unreadable: authoritative "source has no sessions", so its
+            // cached sessions are marked deleted (soft; hard only under prune) rather than
+            // preserved. A deeper read error below is different -- it only makes the scan
+            // partial and preserves.
+            return crate::parsers::cache::get_cache_manager().scan_absent_source(self.id());
         }
 
         crate::parsers::cache::get_cache_manager().start_scan(self.id());
 
         let mut paths = Vec::new();
-        self.find_jsonl_files(
+        let complete = self.find_jsonl_files(
             &base_dir,
             RECURSION_START_DEPTH,
             CLAUDE_LOGS_MAX_DEPTH,
@@ -129,34 +133,43 @@ impl SourceAdapter for ClaudeSource {
             }
         }
 
-        crate::parsers::cache::get_cache_manager().end_scan(self.id())
+        crate::parsers::cache::get_cache_manager().end_scan(self.id(), complete)
     }
 }
 
 impl ClaudeSource {
     // Helper function to recursively collect JSONL files down to the specified max depth.
+    /// Returns false if any directory could not be read, so the caller can tell a
+    /// genuinely empty tree from one it failed to enumerate.
     fn find_jsonl_files(
         &self,
         dir: &Path,
         depth: usize,
         max_depth: usize,
         paths: &mut Vec<PathBuf>,
-    ) {
+    ) -> bool {
         if depth > max_depth {
-            return;
+            return true;
         }
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    self.find_jsonl_files(&path, depth + 1, max_depth, paths);
-                } else if path.is_file()
-                    && path.extension().and_then(|s| s.to_str()) == Some("jsonl")
-                {
-                    paths.push(path);
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(e) => {
+                crate::log_warn!("[claude] Could not read {}: {}", dir.display(), e);
+                return false;
+            }
+        };
+        let mut complete = true;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if !self.find_jsonl_files(&path, depth + 1, max_depth, paths) {
+                    complete = false;
                 }
+            } else if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
+                paths.push(path);
             }
         }
+        complete
     }
 
     fn get_base_dir(&self) -> PathBuf {

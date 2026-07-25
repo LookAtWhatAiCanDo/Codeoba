@@ -156,7 +156,11 @@ where
     std::env::set_var("USERPROFILE", temp_dir.path());
     std::env::set_var("APPDATA", temp_dir.path().join("AppData/Roaming"));
     std::env::set_var("LOCALAPPDATA", temp_dir.path().join("AppData/Local"));
-    std::env::remove_var("CODEOBA_MOCK_HOME");
+    // Isolate via CODEOBA_MOCK_HOME, the single home-override signal get_home_dir honors in
+    // test builds. (This used to set only HOME and *remove* CODEOBA_MOCK_HOME, which left
+    // two competing isolation styles: tests that leaked to the real HOME could clobber the
+    // real ~/.codeoba/cache — with the SQLite store, catastrophically.)
+    std::env::set_var("CODEOBA_MOCK_HOME", temp_dir.path());
 
     // Clear any previous global cache references before mock execution
     crate::parsers::cache::get_cache_manager().clear_in_memory_caches();
@@ -186,10 +190,10 @@ where
     } else {
         std::env::remove_var("LOCALAPPDATA");
     }
+    // Restore a prior value if there was one; otherwise leave whatever temp home is
+    // currently set. Never unset it -- see the commit that removed the remove_var calls.
     if let Some(mh) = original_mock_home {
         std::env::set_var("CODEOBA_MOCK_HOME", mh);
-    } else {
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
@@ -707,7 +711,7 @@ fn test_cursor_sqlite_parsing() {
             }
 
             let source = CursorSource::new();
-            let sessions = source.parse_all_sessions().await;
+            let sessions = source.parse_all_sessions().await.sessions;
 
             assert_eq!(sessions.len(), 1);
             let s = &sessions[0];
@@ -978,21 +982,6 @@ fn test_lexical_search_engine_filters() {
     assert_eq!(archived_results[0].session.id, "session-archived");
 }
 
-#[test]
-fn test_print_actual_cache_loads() {
-    let state = crate::search::SearchIndexState::new();
-    state.load_cached_sessions();
-    let guard = state.sessions.read().unwrap();
-    println!("ACTUAL LOADED SESSIONS COUNT: {}", guard.len());
-    let mut by_source = std::collections::HashMap::new();
-    for s in guard.values() {
-        *by_source.entry(s.source_id.clone()).or_insert(0) += 1;
-    }
-    for (source, count) in by_source {
-        println!("  Source: {}, Count: {}", source, count);
-    }
-}
-
 fn create_mock_cursor_logs(mock_home: &std::path::Path) {
     let cursor_dir = if cfg!(target_os = "windows") {
         mock_home.join("AppData/Roaming/Cursor/User")
@@ -1196,8 +1185,8 @@ fn test_hybrid_telemetry_validation_harness() {
             let cursor_source = CursorSource::new();
             let claude_source = ClaudeSource;
 
-            let cursor_sessions = cursor_source.parse_all_sessions().await;
-            let claude_sessions = claude_source.parse_all_sessions().await;
+            let cursor_sessions = cursor_source.parse_all_sessions().await.sessions;
+            let claude_sessions = claude_source.parse_all_sessions().await.sessions;
 
             assert_eq!(cursor_sessions.len(), 2);
             let c1 = cursor_sessions
@@ -1283,7 +1272,6 @@ fn test_hybrid_tokenizer_calibration() {
     let original_mock_home = std::env::var_os("CODEOBA_MOCK_HOME");
 
     std::env::set_var("HOME", temp_dir.path());
-    std::env::remove_var("CODEOBA_MOCK_HOME");
 
     crate::tokenizer::clear_custom_tokenizers_cache();
 
@@ -1300,10 +1288,10 @@ fn test_hybrid_tokenizer_calibration() {
     } else {
         std::env::remove_var("HOME");
     }
+    // Restore a prior value if there was one; otherwise leave whatever temp home is
+    // currently set. Never unset it -- see the commit that removed the remove_var calls.
     if let Some(mh) = original_mock_home {
         std::env::set_var("CODEOBA_MOCK_HOME", mh);
-    } else {
-        std::env::remove_var("CODEOBA_MOCK_HOME");
     }
 }
 
@@ -1468,7 +1456,7 @@ fn test_cache_orphan_preservation() {
             let source_id = "test_preservation_source";
             cache_mgr.clear_all_caches();
 
-            let session = Session {
+            let session_template = Session {
                 id: "preserved-session".to_string(),
                 source_id: source_id.to_string(),
                 file_path: "/path/to/old_file.jsonl".to_string(),
@@ -1502,19 +1490,47 @@ fn test_cache_orphan_preservation() {
                 1000,
                 100,
                 "",
-                session,
+                session_template.clone(),
             );
 
             // Start scan (this loads from disk cache into memory cache AND initializes seen_paths as empty)
             cache_mgr.start_scan(source_id);
 
+            // The scan must observe at least one file for its "what did I not see?"
+            // conclusion to be trustworthy. A scan that sees NOTHING is treated as a
+            // failed scan and deliberately preserves the cache untouched (see
+            // cache::scan_lifecycle_tests::scan_that_saw_nothing_preserves_cache), so
+            // seeing a live file here is what makes old_file.jsonl a genuine orphan.
+            let mut live_session = session_template.clone();
+            live_session.id = "live-session".to_string();
+            live_session.file_path = "/path/to/live_file.jsonl".to_string();
+            cache_mgr.put_cached_session(
+                source_id,
+                "/path/to/live_file.jsonl",
+                2000,
+                100,
+                "",
+                live_session,
+            );
+
             // End scan (this cleans up orphans that were not seen during this scan)
-            let sessions = cache_mgr.end_scan(source_id);
-            assert_eq!(sessions.len(), 1);
-            assert_eq!(sessions[0].id, "preserved-session");
+            let sessions = cache_mgr.end_scan(source_id, true).sessions;
+            assert_eq!(sessions.len(), 2);
+            let orphan = sessions
+                .iter()
+                .find(|s| s.id == "preserved-session")
+                .expect("orphan session should still be present");
+            let live = sessions
+                .iter()
+                .find(|s| s.id == "live-session")
+                .expect("live session should be present");
             assert!(
-                sessions[0].is_deleted,
+                orphan.is_deleted,
                 "Preserved orphan session should have is_deleted set to true"
+            );
+            assert!(
+                !live.is_deleted,
+                "A session seen during the scan must not be marked deleted"
             );
 
             // Verify it is NOT pruned since turns is not empty
