@@ -240,7 +240,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
   const numBlocks = createMemo(() => {
     if (props.startBlockIndex === undefined) return 100000;
-    const blocks = splitIntoLogicalBlocks(props.content);
+    const blocks = splitIntoLogicalBlocks(props.content, t);
     let count = 0;
     for (const rawBlock of blocks) {
       if (/^[-*_]{3,}$/.test(rawBlock)) continue;
@@ -955,7 +955,8 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
 
     // Check if active item is a table header block vs data row
     const isHeaderBlock =
-      currentItem.text.startsWith("Table headers:") || currentItem.text.startsWith("Table:");
+      currentItem.text.startsWith(t("readAloud.speech.tableHeadersPrefix")) ||
+      currentItem.text.startsWith("Table:");
 
     // Try text-similarity matching first (highly robust against off-by-one formatting/tag gaps)
     const cleanSpeakText = currentItem.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");

@@ -34,7 +34,7 @@ export interface SessionCardProps {
 export const SessionCard = (props: SessionCardProps) => {
   const { t } = useI18n();
   const speech = useSpeech();
-  const title = createMemo(() => props.session.threadName || "Untitled Session");
+  const title = createMemo(() => props.session.threadName || t("common.untitledSession"));
   const models = createMemo(() => getSessionModels(props.session));
   const durationMs = createMemo(() => getSessionComputeTimeMs(props.session));
   const tokensCount = createMemo(() => getSessionTokensCount(props.session));

@@ -1,5 +1,6 @@
 import { createSignal, createMemo, createEffect, For, Show } from "solid-js";
 import { ChevronDown, ChevronRight, Cpu } from "lucide-solid";
+import { useI18n } from "../../../i18n/i18n";
 import { MessageToolPart } from "../../../utils/messageParser";
 import { checkTextMatch } from "../../../utils/highlighter";
 import { ToolOutputBlock } from "./ToolOutputBlock";
@@ -20,6 +21,7 @@ export interface WorkedForBlockProps {
 }
 
 export const WorkedForBlock = (props: WorkedForBlockProps) => {
+  const { t } = useI18n();
   const matchesSearch = createMemo(() => {
     const q = props.searchQuery;
     if (!q || q.trim() === "") return false;
@@ -50,9 +52,14 @@ export const WorkedForBlock = (props: WorkedForBlockProps) => {
     }
   });
 
-  const title = createMemo(() => {
-    return `Worked (${props.tools.length} tool execution${props.tools.length > 1 ? "s" : ""})`;
-  });
+  const title = createMemo(() =>
+    // Two static keys (not a composed `worked.${n}`) so both stay greppable per the
+    // i18n guideline; English pluralizes at 1, other locales fall back to English until
+    // translated. Count is interpolated via {count}.
+    t(props.tools.length === 1 ? "detailPane.workedOne" : "detailPane.workedMany", {
+      count: props.tools.length,
+    })
+  );
 
   return (
     <div class="border border-border/40 rounded-2xl overflow-hidden bg-background/40 my-3">

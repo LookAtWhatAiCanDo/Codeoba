@@ -48,11 +48,44 @@ export function sanitizeBlockForSpeech(text: string): string {
   return clean.trim();
 }
 
-function translateSymbols(text: string): string {
+/**
+ * Translator for the spoken-text helpers below.
+ *
+ * These are module-level pure functions (also imported by MarkdownRenderer and
+ * AssistantMessageRenderer), so they cannot reach the i18n context themselves. Callers
+ * that have a `t` pass it in; the parameter is optional and falls back to English, so
+ * existing call sites keep compiling and behave exactly as before.
+ */
+export type SpeechTranslator = (key: string, params?: Record<string, string | number>) => string;
+
+/** English fallback used when a caller has no i18n context to hand in. */
+const EN_SPEECH: Record<string, string> = {
+  "readAloud.speech.yes": "Yes, ",
+  "readAloud.speech.no": "No, ",
+  "readAloud.speech.tableHeadersPrefix": "Table headers:",
+  "readAloud.speech.rowPrefix": "Row {index}, ",
+  "readAloud.speech.tableIntro": "Table with {rows} and {columns}.",
+  "readAloud.speech.rowOne": "1 row",
+  "readAloud.speech.rowMany": "{count} rows",
+  "readAloud.speech.columnOne": "1 column",
+  "readAloud.speech.columnMany": "{count} columns",
+};
+
+const defaultT: SpeechTranslator = (key, params) => {
+  let val = EN_SPEECH[key] ?? key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      val = val.split(`{${k}}`).join(String(v));
+    }
+  }
+  return val;
+};
+
+function translateSymbols(text: string, t: SpeechTranslator = defaultT): string {
   let s = text;
   // Replace checkmarks and crosses with clear phonemizable words
-  s = s.replace(/[\u274C\u2716\u2718]\s*/g, "No, "); // ❌ ✖ ✘
-  s = s.replace(/[\u2705\u2713\u2714]\s*/g, "Yes, "); // ✅ ✓ ✔
+  s = s.replace(/[\u274C\u2716\u2718]\s*/g, t("readAloud.speech.no")); // ❌ ✖ ✘
+  s = s.replace(/[\u2705\u2713\u2714]\s*/g, t("readAloud.speech.yes")); // ✅ ✓ ✔
   s = s.replace(/[-_]{2,}/g, " ");
   // Clean up any double punctuation from replacement
   s = s.replace(/,\s*,/g, ",");
@@ -89,20 +122,21 @@ export function formatTableLineForSpeech(
   cells: string[],
   headers: string[],
   isHeader: boolean,
-  rowIndex?: number
+  rowIndex?: number,
+  t: SpeechTranslator = defaultT
 ): string {
-  const cleanCells = cells.map((c) => sanitizeBlockForSpeech(c)).map(translateSymbols);
-  const cleanHeaders = headers.map((h) => sanitizeBlockForSpeech(h)).map(translateSymbols);
+  const cleanCells = cells.map((c) => translateSymbols(sanitizeBlockForSpeech(c), t));
+  const cleanHeaders = headers.map((h) => translateSymbols(sanitizeBlockForSpeech(h), t));
 
   if (isHeader) {
     const validHeaders = cleanCells.filter((c) => c.length > 0);
     if (validHeaders.length === 0) return "";
-    return `Table headers: ${validHeaders.join(", ")}.`;
+    return `${t("readAloud.speech.tableHeadersPrefix")} ${validHeaders.join(", ")}.`;
   }
 
   if (cleanCells.length === 0) return "";
 
-  const prefix = rowIndex !== undefined ? `Row ${rowIndex}, ` : "";
+  const prefix = rowIndex !== undefined ? t("readAloud.speech.rowPrefix", { index: rowIndex }) : "";
 
   if (cleanHeaders.length >= cleanCells.length && cleanHeaders.length > 0) {
     const parts: string[] = [];
@@ -123,14 +157,25 @@ export function formatTableLineForSpeech(
   return prefix + cleanCells.filter((c) => c.length > 0).join(". ") + ".";
 }
 
-export function formatTableIntro(rowCount: number, colCount: number): string {
-  const rStr = rowCount === 1 ? "1 row" : `${rowCount} rows`;
-  const cStr = colCount === 1 ? "1 column" : `${colCount} columns`;
-  return `Table with ${rStr} and ${cStr}.`;
+export function formatTableIntro(
+  rowCount: number,
+  colCount: number,
+  t: SpeechTranslator = defaultT
+): string {
+  // Two static keys per number (not a composed key) so every key stays greppable.
+  const rStr =
+    rowCount === 1
+      ? t("readAloud.speech.rowOne")
+      : t("readAloud.speech.rowMany", { count: rowCount });
+  const cStr =
+    colCount === 1
+      ? t("readAloud.speech.columnOne")
+      : t("readAloud.speech.columnMany", { count: colCount });
+  return t("readAloud.speech.tableIntro", { rows: rStr, columns: cStr });
 }
 
 // Split narrative text into logical block-level chunks (newlines and HTML tags)
-export function splitIntoLogicalBlocks(text: string): string[] {
+export function splitIntoLogicalBlocks(text: string, t: SpeechTranslator = defaultT): string[] {
   // First, strip multi-line markdown code blocks from the raw narrative texts
   let clean = text.replace(/```[\s\S]*?```/g, "");
 
@@ -174,8 +219,8 @@ export function splitIntoLogicalBlocks(text: string): string[] {
         // Emit structural table intro block
         const intro =
           rowCount > 0
-            ? formatTableIntro(rowCount, colCount)
-            : formatTableLineForSpeech(headerCells, headerCells, true);
+            ? formatTableIntro(rowCount, colCount, t)
+            : formatTableLineForSpeech(headerCells, headerCells, true, undefined, t);
 
         if (intro) {
           resultBlocks.push(intro);
@@ -183,7 +228,7 @@ export function splitIntoLogicalBlocks(text: string): string[] {
 
         // Emit data row blocks with Row N index prefix
         for (let r = 0; r < dataRows.length; r++) {
-          const dataBlock = formatTableLineForSpeech(dataRows[r], headerCells, false, r + 1);
+          const dataBlock = formatTableLineForSpeech(dataRows[r], headerCells, false, r + 1, t);
           if (dataBlock.length > 0) {
             resultBlocks.push(dataBlock);
           }
@@ -199,7 +244,7 @@ export function splitIntoLogicalBlocks(text: string): string[] {
 }
 
 // Helper to extract clean high-level speech items from a session
-export function extractSpeechItems(session: Session): SpeechItem[] {
+export function extractSpeechItems(session: Session, t: SpeechTranslator = defaultT): SpeechItem[] {
   const items: SpeechItem[] = [];
   if (!session.turns) return items;
 
@@ -209,7 +254,7 @@ export function extractSpeechItems(session: Session): SpeechItem[] {
 
     // 1. Process user prompt message blocks
     if (turn.userMessage) {
-      const userBlocks = splitIntoLogicalBlocks(turn.userMessage);
+      const userBlocks = splitIntoLogicalBlocks(turn.userMessage, t);
       let userBlockIndex = 0;
       for (const rawBlock of userBlocks) {
         if (/^[-*_]{3,}$/.test(rawBlock)) continue;
@@ -236,7 +281,7 @@ export function extractSpeechItems(session: Session): SpeechItem[] {
         .map((part) => part.content)
         .join("\n");
 
-      const assistantBlocks = splitIntoLogicalBlocks(narrativeTexts);
+      const assistantBlocks = splitIntoLogicalBlocks(narrativeTexts, t);
       let assistantBlockIndex = 0;
       for (const rawBlock of assistantBlocks) {
         if (/^[-*_]{3,}$/.test(rawBlock)) continue;
@@ -423,7 +468,7 @@ export function useSpeech() {
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentItem.text,
-        artist: currentItem.sessionTitle || "Untitled Session",
+        artist: currentItem.sessionTitle || t("common.untitledSession"),
         album: "Codeoba Read Aloud",
       });
       navigator.mediaSession.playbackState = "playing";
@@ -443,7 +488,7 @@ export function useSpeech() {
 
     invoke("update_playback_metadata", {
       title: currentItem.text,
-      artist: currentItem.sessionTitle || "Untitled Session",
+      artist: currentItem.sessionTitle || t("common.untitledSession"),
       isPlaying: true,
     }).catch((err) => {
       console.error("[TTS] Failed to update playback metadata:", err);
@@ -601,7 +646,7 @@ export function useSpeech() {
         const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
         invoke("update_playback_metadata", {
           title: currentItem ? currentItem.text : "",
-          artist: currentItem ? currentItem.sessionTitle || "Untitled Session" : "",
+          artist: currentItem ? currentItem.sessionTitle || t("common.untitledSession") : "",
           isPlaying: true,
         }).catch((err) => {
           console.error("[TTS] Failed to update playback metadata:", err);
@@ -617,7 +662,7 @@ export function useSpeech() {
         const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
         invoke("update_playback_metadata", {
           title: currentItem ? currentItem.text : "",
-          artist: currentItem ? currentItem.sessionTitle || "Untitled Session" : "",
+          artist: currentItem ? currentItem.sessionTitle || t("common.untitledSession") : "",
           isPlaying: false,
         }).catch((err) => {
           console.error("[TTS] Failed to update playback metadata:", err);
@@ -684,7 +729,7 @@ export function useSpeech() {
             filePath: session.filePath,
           });
           if (fullSession) {
-            initialCount = extractSpeechItems(fullSession).length;
+            initialCount = extractSpeechItems(fullSession, t).length;
           }
         } catch (e) {
           console.error("Failed to load session for read aloud count initialization", e);
@@ -698,7 +743,7 @@ export function useSpeech() {
     const state = readAloudSessionStates.get(session.id);
     if (!state) return;
 
-    const allItems = extractSpeechItems(session);
+    const allItems = extractSpeechItems(session, t);
     if (allItems.length > state.lastSentenceCount) {
       const newItems = allItems.slice(state.lastSentenceCount);
       const currentList = sentences();
@@ -722,7 +767,7 @@ export function useSpeech() {
           text: item.text,
           timestamp: item.timestamp,
           sessionId: session.id,
-          sessionTitle: session.threadName || "Untitled Session",
+          sessionTitle: session.threadName || t("common.untitledSession"),
         });
       });
 
@@ -806,10 +851,10 @@ export function useSpeech() {
       if (!fullSession) return;
 
       // 2. Extract speech items for the entire session
-      const allSessionItems = extractSpeechItems(fullSession).map((item) => ({
+      const allSessionItems = extractSpeechItems(fullSession, t).map((item) => ({
         ...item,
         sessionId: fullSession.id,
-        sessionTitle: fullSession.threadName || "Untitled Session",
+        sessionTitle: fullSession.threadName || t("common.untitledSession"),
       }));
 
       // 3. Find starting item using direct O(1) blockIndex lookup

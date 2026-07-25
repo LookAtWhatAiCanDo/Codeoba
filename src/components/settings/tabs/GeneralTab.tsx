@@ -286,7 +286,7 @@ export const GeneralTab = (props: GeneralTabProps) => {
             <textarea
               value={props.excludedPaths}
               onInput={(e) => props.onExcludedPathsChange(e.currentTarget.value)}
-              placeholder="e.g. node_modules, dist, temp, .git"
+              placeholder={t("settings.general.excludedPathsPlaceholder")}
               class="w-full bg-background border border-border/80 rounded-xl p-3 text-xs text-text-primary focus:outline-none focus:border-accent font-mono resize-none h-32 placeholder:text-text-secondary/30 leading-normal"
             />
           </div>

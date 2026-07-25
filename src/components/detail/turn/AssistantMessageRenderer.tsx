@@ -1,6 +1,7 @@
 import { createMemo, For } from "solid-js";
 import { MarkdownRenderer } from "../../MarkdownRenderer";
 import { parseAssistantMessage, MessageToolPart } from "../../../utils/messageParser";
+import { useI18n } from "../../../i18n/i18n";
 import { splitIntoLogicalBlocks, sanitizeBlockForSpeech } from "../../../utils/useSpeech";
 import { WorkedForBlock } from "./WorkedForBlock";
 
@@ -24,6 +25,7 @@ export interface AssistantMessageRendererProps {
 }
 
 export const AssistantMessageRenderer = (props: AssistantMessageRendererProps) => {
+  const { t } = useI18n();
   const parts = createMemo(() => parseAssistantMessage(props.message));
 
   const groupedParts = createMemo(() => {
@@ -36,7 +38,7 @@ export const AssistantMessageRenderer = (props: AssistantMessageRendererProps) =
     let currentBlockCount = 0;
 
     const getBlockCount = (text: string) => {
-      const blocks = splitIntoLogicalBlocks(text);
+      const blocks = splitIntoLogicalBlocks(text, t);
       let count = 0;
       for (const rawBlock of blocks) {
         if (/^[-*_]{3,}$/.test(rawBlock)) continue;

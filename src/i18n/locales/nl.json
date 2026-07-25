@@ -87,9 +87,19 @@
     "confirmClearHistory": "Weet u zeker dat u uw gehele geschiedenis van voorgelezen tekst wilt wissen? Deze actie kan niet ongedaan gemaakt worden.",
     "noSpokenHistory": "Nog geen geschiedenis van gesproken tekst.",
     "time": "Tijd",
-    "side": "Zijde"
+    "side": "Zijde",
+    "removeFromHistory": "Uit geschiedenis verwijderen",
+    "syncToTranscript": "Synchroniseren met transcript",
+    "avgValue": "Gem.: {value}"
   },
   "detailPane": {
+    "workedOne": "Uitgevoerd ({count} tooluitvoering)",
+    "workedMany": "Uitgevoerd ({count} tooluitvoeringen)",
+    "search": {
+      "previousMatch": "Vorige overeenkomst (Shift+Enter)",
+      "nextMatch": "Volgende overeenkomst (Enter)",
+      "close": "Sluiten (Esc)"
+    },
     "noSelection": "Geen gesprek geselecteerd",
     "selectSession": "Selecteer een sessie uit de zijbalk om details te bekijken.",
     "pin": "Vastpinnen",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Mermaid-diagram renderen...",
     "mermaidFailed": "Mermaid-diagram renderen mislukt:",
     "mermaidShowOriginal": "Originele code tonen",
-    "mermaidShowDiagram": "Diagram tonen"
+    "mermaidShowDiagram": "Diagram tonen",
+    "moreActions": "Meer acties"
   },
   "fileViewer": {
     "title": "Bestandsviewer",
@@ -226,7 +237,8 @@
       "excludedPaths": "Uitgesloten paden",
       "excludedPathsDesc": "Uitsluitingen (door komma's of nieuwe regels gescheiden). Overeenkomstige mappen of bestanden worden genegeerd in gespreklijsten.",
       "fontSize": "Lettergrootte",
-      "fontSizeDesc": "Pas de basislettergrootte aan voor de transcriptie van het gesprek."
+      "fontSizeDesc": "Pas de basislettergrootte aan voor de transcriptie van het gesprek.",
+      "excludedPathsPlaceholder": "bijv. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Agenten",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "bijv. src",
       "pronunciationsPlaceholderReplacement": "bijv. source",
       "pronunciationsAdd": "Regel toevoegen",
-      "pronunciationsReset": "Regels herstellen"
+      "pronunciationsReset": "Regels herstellen",
+      "testVoiceFailed": "Kan systeemstem niet afspelen. Controleer de configuratie van je spraaksynthesizer."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "Sessie voorlezen",
     "stopReading": "Voorlezen stoppen",
     "playFromHere": "Vanaf hier voorlezen",
-    "sessionTransition": "Sessie {sessionTitle}. {text}"
+    "sessionTransition": "Sessie {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Ja, ",
+      "no": "Nee, ",
+      "tableHeadersPrefix": "Tabelkoppen:",
+      "rowPrefix": "Rij {index}, ",
+      "tableIntro": "Tabel met {rows} en {columns}.",
+      "rowOne": "1 rij",
+      "rowMany": "{count} rijen",
+      "columnOne": "1 kolom",
+      "columnMany": "{count} kolommen"
+    }
   }
 }

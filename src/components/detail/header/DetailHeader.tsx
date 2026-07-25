@@ -400,7 +400,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
               setShowWorkspaceDropdown(false);
               window.dispatchEvent(new CustomEvent("close-context-menus"));
             }}
-            title="More actions"
+            title={t("detailPane.moreActions")}
             class="p-2 bg-surface hover:bg-surface/80 border border-border/80 rounded-xl text-text-secondary hover:text-text-primary transition-all flex items-center justify-center cursor-pointer"
           >
             <MoreVertical class="w-3.5 h-3.5" />

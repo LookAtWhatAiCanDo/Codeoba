@@ -87,9 +87,19 @@
     "confirmClearHistory": "您确定要清除所有已朗读的文本历史记录吗？此操作无法撤销。",
     "noSpokenHistory": "暂无已朗读的文本历史记录。",
     "time": "时间",
-    "side": "角色"
+    "side": "角色",
+    "removeFromHistory": "从历史记录中移除",
+    "syncToTranscript": "同步到转录",
+    "avgValue": "平均：{value}"
   },
   "detailPane": {
+    "workedOne": "已执行（{count} 次工具调用）",
+    "workedMany": "已执行（{count} 次工具调用）",
+    "search": {
+      "previousMatch": "上一个匹配 (Shift+Enter)",
+      "nextMatch": "下一个匹配 (Enter)",
+      "close": "关闭 (Esc)"
+    },
     "noSelection": "未选择对话",
     "selectSession": "从侧边栏选择一个会话以查看详情。",
     "pin": "置顶",
@@ -135,7 +145,8 @@
     "mermaidRendering": "正在渲染 Mermaid 图表...",
     "mermaidFailed": "渲染 Mermaid 图表失败:",
     "mermaidShowOriginal": "显示原始代码",
-    "mermaidShowDiagram": "显示图表"
+    "mermaidShowDiagram": "显示图表",
+    "moreActions": "更多操作"
   },
   "fileViewer": {
     "title": "文件查看器",
@@ -226,7 +237,8 @@
       "excludedPaths": "排除路径",
       "excludedPathsDesc": "排除项（以逗号或换行符分隔）。匹配的目录或文件将在对话列表中被忽略。",
       "fontSize": "字体大小",
-      "fontSizeDesc": "调整对话记录的基准字体大小。"
+      "fontSizeDesc": "调整对话记录的基准字体大小。",
+      "excludedPathsPlaceholder": "例如：node_modules、dist、temp、.git"
     },
     "agents": {
       "tab": "智能体",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "例如 src",
       "pronunciationsPlaceholderReplacement": "例如 source",
       "pronunciationsAdd": "添加规则",
-      "pronunciationsReset": "重置规则"
+      "pronunciationsReset": "重置规则",
+      "testVoiceFailed": "无法播放系统语音。请检查系统语音合成器配置。"
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "朗读会话",
     "stopReading": "停止朗读",
     "playFromHere": "从这里开始朗读",
-    "sessionTransition": "会话 {sessionTitle}。{text}"
+    "sessionTransition": "会话 {sessionTitle}。{text}",
+    "speech": {
+      "yes": "是，",
+      "no": "否，",
+      "tableHeadersPrefix": "表格标题：",
+      "rowPrefix": "第 {index} 行，",
+      "tableIntro": "包含 {rows} 和 {columns} 的表格。",
+      "rowOne": "1 行",
+      "rowMany": "{count} 行",
+      "columnOne": "1 列",
+      "columnMany": "{count} 列"
+    }
   }
 }

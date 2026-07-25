@@ -87,9 +87,19 @@
     "confirmClearHistory": "Are you sure you want to clear your entire spoken text read aloud history? This action cannot be undone.",
     "noSpokenHistory": "No spoken text history yet.",
     "time": "Time",
-    "side": "Side"
+    "side": "Side",
+    "removeFromHistory": "Remove from history",
+    "syncToTranscript": "Sync to transcript",
+    "avgValue": "Avg: {value}"
   },
   "detailPane": {
+    "workedOne": "Worked ({count} tool execution)",
+    "workedMany": "Worked ({count} tool executions)",
+    "search": {
+      "previousMatch": "Previous Match (Shift+Enter)",
+      "nextMatch": "Next Match (Enter)",
+      "close": "Close (Esc)"
+    },
     "noSelection": "No conversation selected",
     "selectSession": "Select a session from the sidebar to view details.",
     "pin": "Pin",
@@ -139,7 +149,8 @@
     "mermaidRendering": "Rendering Mermaid diagram...",
     "mermaidFailed": "Failed to render Mermaid diagram:",
     "mermaidShowOriginal": "Show original code",
-    "mermaidShowDiagram": "Show diagram"
+    "mermaidShowDiagram": "Show diagram",
+    "moreActions": "More actions"
   },
   "fileViewer": {
     "title": "File Viewer",
@@ -230,7 +241,8 @@
       "excludedPaths": "Excluded Paths",
       "excludedPathsDesc": "Exclusions (comma- or newline-separated). Matching directories or files will be ignored in conversation lists.",
       "fontSize": "Font Size",
-      "fontSizeDesc": "Adjust the base font size for the conversation transcript."
+      "fontSizeDesc": "Adjust the base font size for the conversation transcript.",
+      "excludedPathsPlaceholder": "e.g. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Agents",
@@ -316,7 +328,8 @@
       "pronunciationsPlaceholderWord": "e.g., src",
       "pronunciationsPlaceholderReplacement": "e.g., source",
       "pronunciationsAdd": "Add Override",
-      "pronunciationsReset": "Reset Mappings"
+      "pronunciationsReset": "Reset Mappings",
+      "testVoiceFailed": "Failed to play system voice. Please check your system speech synthesizer configuration."
     }
   },
   "updater": {
@@ -459,6 +472,17 @@
     "readSessionAloud": "Read Session Aloud",
     "stopReading": "Stop Reading",
     "playFromHere": "Read Aloud from here",
-    "sessionTransition": "Session {sessionTitle}. {text}"
+    "sessionTransition": "Session {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Yes, ",
+      "no": "No, ",
+      "tableHeadersPrefix": "Table headers:",
+      "rowPrefix": "Row {index}, ",
+      "tableIntro": "Table with {rows} and {columns}.",
+      "rowOne": "1 row",
+      "rowMany": "{count} rows",
+      "columnOne": "1 column",
+      "columnMany": "{count} columns"
+    }
   }
 }

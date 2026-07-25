@@ -87,9 +87,19 @@
     "confirmClearHistory": "Вы уверены, что хотите очистить всю историю чтения вслух? Это действие невозможно отменить.",
     "noSpokenHistory": "История озвученного текста отсутствует.",
     "time": "Время",
-    "side": "Сторона"
+    "side": "Сторона",
+    "removeFromHistory": "Удалить из истории",
+    "syncToTranscript": "Синхронизировать с расшифровкой",
+    "avgValue": "Сред.: {value}"
   },
   "detailPane": {
+    "workedOne": "Выполнено ({count} запуск инструмента)",
+    "workedMany": "Выполнено ({count} запусков инструментов)",
+    "search": {
+      "previousMatch": "Предыдущее совпадение (Shift+Enter)",
+      "nextMatch": "Следующее совпадение (Enter)",
+      "close": "Закрыть (Esc)"
+    },
     "noSelection": "Беседа не выбрана",
     "selectSession": "Выберите сеанс на боковой панели для просмотра деталей.",
     "pin": "Закрепить",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Отрисовка диаграммы Mermaid...",
     "mermaidFailed": "Не удалось отрисовать диаграмму Mermaid:",
     "mermaidShowOriginal": "Показать исходный код",
-    "mermaidShowDiagram": "Показать диаграмму"
+    "mermaidShowDiagram": "Показать диаграмму",
+    "moreActions": "Другие действия"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",
@@ -226,7 +237,8 @@
       "excludedPaths": "Исключенные пути",
       "excludedPathsDesc": "Исключения (разделенные запятыми или переносами строк). Совпадающие папки или файлы будут игнорироваться в списках диалогов.",
       "fontSize": "Размер шрифта",
-      "fontSizeDesc": "Настройка базового размера шрифта для расшифровки беседы."
+      "fontSizeDesc": "Настройка базового размера шрифта для расшифровки беседы.",
+      "excludedPathsPlaceholder": "напр. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Агенты",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "напр. src",
       "pronunciationsPlaceholderReplacement": "напр. source",
       "pronunciationsAdd": "Добавить правило",
-      "pronunciationsReset": "Сбросить правила"
+      "pronunciationsReset": "Сбросить правила",
+      "testVoiceFailed": "Не удалось воспроизвести системный голос. Проверьте настройки синтезатора речи в системе."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "Прочитать сеанс вслух",
     "stopReading": "Остановить чтение",
     "playFromHere": "Читать вслух отсюда",
-    "sessionTransition": "Сессия {sessionTitle}. {text}"
+    "sessionTransition": "Сессия {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Да, ",
+      "no": "Нет, ",
+      "tableHeadersPrefix": "Заголовки таблицы:",
+      "rowPrefix": "Строка {index}, ",
+      "tableIntro": "Таблица: {rows} и {columns}.",
+      "rowOne": "1 строка",
+      "rowMany": "{count} строк",
+      "columnOne": "1 столбец",
+      "columnMany": "{count} столбцов"
+    }
   }
 }

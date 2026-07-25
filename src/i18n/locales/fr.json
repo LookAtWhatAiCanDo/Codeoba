@@ -87,9 +87,19 @@
     "confirmClearHistory": "Êtes-vous sûr de vouloir effacer tout votre historique de texte lu à haute voix ? Cette action est irréversible.",
     "noSpokenHistory": "Pas encore d'historique de texte parlé.",
     "time": "Heure",
-    "side": "Côté"
+    "side": "Côté",
+    "removeFromHistory": "Retirer de l'historique",
+    "syncToTranscript": "Synchroniser avec la transcription",
+    "avgValue": "Moy. : {value}"
   },
   "detailPane": {
+    "workedOne": "Exécuté ({count} exécution d'outil)",
+    "workedMany": "Exécuté ({count} exécutions d'outils)",
+    "search": {
+      "previousMatch": "Correspondance précédente (Shift+Enter)",
+      "nextMatch": "Correspondance suivante (Enter)",
+      "close": "Fermer (Esc)"
+    },
     "noSelection": "Aucune conversation sélectionnée",
     "selectSession": "Sélectionnez une session dans la barre latérale pour afficher les détails.",
     "pin": "Épingler",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Rendu du diagramme Mermaid...",
     "mermaidFailed": "Échec du rendu du diagramme Mermaid :",
     "mermaidShowOriginal": "Afficher le code d'origine",
-    "mermaidShowDiagram": "Afficher le diagramme"
+    "mermaidShowDiagram": "Afficher le diagramme",
+    "moreActions": "Plus d'actions"
   },
   "fileViewer": {
     "title": "Visionneuse de fichiers",
@@ -226,7 +237,8 @@
       "excludedPaths": "Chemins exclus",
       "excludedPathsDesc": "Exclusions (séparées par des virgules ou des sauts de ligne). Les répertoires ou fichiers correspondants seront ignorés dans les listes de conversation.",
       "fontSize": "Taille de la police",
-      "fontSizeDesc": "Ajustez la taille de police de base pour la transcription de la conversation."
+      "fontSizeDesc": "Ajustez la taille de police de base pour la transcription de la conversation.",
+      "excludedPathsPlaceholder": "p. ex. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Agents",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "ex. src",
       "pronunciationsPlaceholderReplacement": "ex. source",
       "pronunciationsAdd": "Ajouter une règle",
-      "pronunciationsReset": "Réinitialiser les règles"
+      "pronunciationsReset": "Réinitialiser les règles",
+      "testVoiceFailed": "Impossible de lire la voix du système. Veuillez vérifier la configuration de votre synthétiseur vocal."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "Lire la session à haute voix",
     "stopReading": "Arrêter la lecture",
     "playFromHere": "Lire à haute voix à partir d'ici",
-    "sessionTransition": "Session {sessionTitle}. {text}"
+    "sessionTransition": "Session {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Oui, ",
+      "no": "Non, ",
+      "tableHeadersPrefix": "En-têtes du tableau :",
+      "rowPrefix": "Ligne {index}, ",
+      "tableIntro": "Tableau avec {rows} et {columns}.",
+      "rowOne": "1 ligne",
+      "rowMany": "{count} lignes",
+      "columnOne": "1 colonne",
+      "columnMany": "{count} colonnes"
+    }
   }
 }

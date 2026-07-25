@@ -87,9 +87,19 @@
     "confirmClearHistory": "هل أنت متأكد من رغبتك في مسح سجل قراءة النص بصوت عالٍ بالكامل؟ لا يمكن التراجع عن هذا الإجراء.",
     "noSpokenHistory": "لا يوجد سجل نصوص منطوقة بعد.",
     "time": "الوقت",
-    "side": "الجانب"
+    "side": "الجانب",
+    "removeFromHistory": "إزالة من السجل",
+    "syncToTranscript": "المزامنة مع النص",
+    "avgValue": "المتوسط: {value}"
   },
   "detailPane": {
+    "workedOne": "تم التنفيذ ({count} تنفيذ أداة)",
+    "workedMany": "تم التنفيذ ({count} عمليات تنفيذ أدوات)",
+    "search": {
+      "previousMatch": "التطابق السابق (Shift+Enter)",
+      "nextMatch": "التطابق التالي (Enter)",
+      "close": "إغلاق (Esc)"
+    },
     "noSelection": "لم يتم تحديد محادثة",
     "selectSession": "اختر جلسة من الشريط الجانبي لعرض التفاصيل.",
     "pin": "تثبيت",
@@ -135,7 +145,8 @@
     "mermaidRendering": "جاري رسم مخطط Mermaid...",
     "mermaidFailed": "فشل رسم مخطط Mermaid:",
     "mermaidShowOriginal": "عرض الكود الأصلي",
-    "mermaidShowDiagram": "عرض المخطط"
+    "mermaidShowDiagram": "عرض المخطط",
+    "moreActions": "إجراءات أخرى"
   },
   "fileViewer": {
     "title": "عارض الملفات",
@@ -226,7 +237,8 @@
       "excludedPaths": "المسارات المستبعدة",
       "excludedPathsDesc": "الاستثناءات (مفصولة بفواصل أو سطور جديدة). سيتم تجاهل المجلدات أو الملفات المطابقة في قوائم المحادثة.",
       "fontSize": "حجم الخط",
-      "fontSizeDesc": "ضبط حجم الخط الأساسي لنسخة المحادثة."
+      "fontSizeDesc": "ضبط حجم الخط الأساسي لنسخة المحادثة.",
+      "excludedPathsPlaceholder": "مثال: node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "الوكلاء",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "مثال: src",
       "pronunciationsPlaceholderReplacement": "مثال: source",
       "pronunciationsAdd": "إضافة قاعدة",
-      "pronunciationsReset": "إعادة تعيين القواعد"
+      "pronunciationsReset": "إعادة تعيين القواعد",
+      "testVoiceFailed": "تعذر تشغيل صوت النظام. يرجى التحقق من إعدادات مُركِّب الكلام في نظامك."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "قراءة الجلسة بصوت عالٍ",
     "stopReading": "إيقاف القراءة",
     "playFromHere": "اقرأ بصوت عالٍ من هنا",
-    "sessionTransition": "الجلسة {sessionTitle}. {text}"
+    "sessionTransition": "الجلسة {sessionTitle}. {text}",
+    "speech": {
+      "yes": "نعم، ",
+      "no": "لا، ",
+      "tableHeadersPrefix": "عناوين الجدول:",
+      "rowPrefix": "الصف {index}، ",
+      "tableIntro": "جدول يحتوي على {rows} و{columns}.",
+      "rowOne": "صف واحد",
+      "rowMany": "{count} صفوف",
+      "columnOne": "عمود واحد",
+      "columnMany": "{count} أعمدة"
+    }
   }
 }

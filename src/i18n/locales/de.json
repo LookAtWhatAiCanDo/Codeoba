@@ -87,9 +87,19 @@
     "confirmClearHistory": "Sind Sie sicher, dass Sie Ihren gesamten Verlauf der vorgelesenen Texte löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
     "noSpokenHistory": "Noch kein gesprochener Textverlauf vorhanden.",
     "time": "Zeit",
-    "side": "Seite"
+    "side": "Seite",
+    "removeFromHistory": "Aus Verlauf entfernen",
+    "syncToTranscript": "Mit Transkript synchronisieren",
+    "avgValue": "Ø: {value}"
   },
   "detailPane": {
+    "workedOne": "Ausgeführt ({count} Tool-Ausführung)",
+    "workedMany": "Ausgeführt ({count} Tool-Ausführungen)",
+    "search": {
+      "previousMatch": "Vorheriger Treffer (Shift+Enter)",
+      "nextMatch": "Nächster Treffer (Enter)",
+      "close": "Schließen (Esc)"
+    },
     "noSelection": "Keine Unterhaltung ausgewählt",
     "selectSession": "Wählen Sie eine Sitzung aus der Seitenleiste, um Details anzuzeigen.",
     "pin": "Anheften",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Mermaid-Diagramm wird gerendert...",
     "mermaidFailed": "Fehler beim Rendern des Mermaid-Diagramms:",
     "mermaidShowOriginal": "Originalcode anzeigen",
-    "mermaidShowDiagram": "Diagramm anzeigen"
+    "mermaidShowDiagram": "Diagramm anzeigen",
+    "moreActions": "Weitere Aktionen"
   },
   "fileViewer": {
     "title": "Dateibetrachter",
@@ -226,7 +237,8 @@
       "excludedPaths": "Ausgeschlossene Pfade",
       "excludedPathsDesc": "Ausschlüsse (durch Komma oder Zeilenumbruch getrennt). Übereinstimmende Verzeichnisse oder Dateien werden in Konversationslisten ignoriert.",
       "fontSize": "Schriftgröße",
-      "fontSizeDesc": "Passen Sie die Standardschriftgröße für das Konversationsprotokoll an."
+      "fontSizeDesc": "Passen Sie die Standardschriftgröße für das Konversationsprotokoll an.",
+      "excludedPathsPlaceholder": "z. B. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Agenten",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "z. B. src",
       "pronunciationsPlaceholderReplacement": "z. B. source",
       "pronunciationsAdd": "Regel hinzufügen",
-      "pronunciationsReset": "Regeln zurücksetzen"
+      "pronunciationsReset": "Regeln zurücksetzen",
+      "testVoiceFailed": "Systemstimme konnte nicht wiedergegeben werden. Bitte prüfen Sie die Konfiguration Ihrer Sprachsynthese."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "Sitzung vorlesen",
     "stopReading": "Vorlesen stoppen",
     "playFromHere": "Von hier an vorlesen",
-    "sessionTransition": "Sitzung {sessionTitle}. {text}"
+    "sessionTransition": "Sitzung {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Ja, ",
+      "no": "Nein, ",
+      "tableHeadersPrefix": "Tabellenüberschriften:",
+      "rowPrefix": "Zeile {index}, ",
+      "tableIntro": "Tabelle mit {rows} und {columns}.",
+      "rowOne": "1 Zeile",
+      "rowMany": "{count} Zeilen",
+      "columnOne": "1 Spalte",
+      "columnMany": "{count} Spalten"
+    }
   }
 }

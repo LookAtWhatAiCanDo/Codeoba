@@ -133,9 +133,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
       await speech.speakDirectText(saying, speaker);
     } catch (err) {
       console.error("[TTS] Test voice failed:", err);
-      alert(
-        "Failed to play system voice. Please check your system speech synthesizer configuration."
-      );
+      alert(t("settings.readAloud.testVoiceFailed"));
     }
   };
 

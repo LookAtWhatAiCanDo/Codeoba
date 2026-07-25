@@ -426,8 +426,10 @@ export const Dashboard = (props: DashboardProps) => {
               value={formatDuration(stats().totalCompactionTimeMs)}
               subtitle={
                 stats().totalCompactions > 0
-                  ? `Avg: ${(stats().totalCompactionTimeMs / stats().totalCompactions / 1000).toFixed(2)}s`
-                  : "Avg: 0s"
+                  ? t("dashboard.avgValue", {
+                      value: `${(stats().totalCompactionTimeMs / stats().totalCompactions / 1000).toFixed(2)}s`,
+                    })
+                  : t("dashboard.avgValue", { value: "0s" })
               }
               icon={<RefreshCw class="w-5 h-5" />}
             />
@@ -692,7 +694,7 @@ export const Dashboard = (props: DashboardProps) => {
                                     speech.removeSentence(item.globalIndex);
                                   }}
                                   class="text-text-secondary/40 hover:text-red-500 p-1 rounded-lg hover:bg-red-500/10 opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer inline-flex items-center justify-center"
-                                  title="Remove from history"
+                                  title={t("dashboard.removeFromHistory")}
                                 >
                                   <X class="w-3.5 h-3.5" />
                                 </button>
@@ -711,7 +713,7 @@ export const Dashboard = (props: DashboardProps) => {
                                     }
                                   }}
                                   class="text-text-secondary/40 hover:text-accent p-1 rounded-lg hover:bg-accent/10 opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer inline-flex items-center justify-center"
-                                  title="Sync to transcript"
+                                  title={t("dashboard.syncToTranscript")}
                                 >
                                   <Locate class="w-3.5 h-3.5" />
                                 </button>

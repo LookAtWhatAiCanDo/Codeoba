@@ -87,9 +87,19 @@
     "confirmClearHistory": "¿Está seguro de que desea borrar todo el historial de texto leído en voz alta? Esta acción no se puede deshacer.",
     "noSpokenHistory": "Aún no hay historial de texto hablado.",
     "time": "Hora",
-    "side": "Lado"
+    "side": "Lado",
+    "removeFromHistory": "Quitar del historial",
+    "syncToTranscript": "Sincronizar con la transcripción",
+    "avgValue": "Prom.: {value}"
   },
   "detailPane": {
+    "workedOne": "Ejecutado ({count} ejecución de herramienta)",
+    "workedMany": "Ejecutado ({count} ejecuciones de herramienta)",
+    "search": {
+      "previousMatch": "Coincidencia anterior (Shift+Enter)",
+      "nextMatch": "Coincidencia siguiente (Enter)",
+      "close": "Cerrar (Esc)"
+    },
     "noSelection": "Ninguna conversación seleccionada",
     "selectSession": "Seleccione una sesión de la barra lateral para ver los detalles.",
     "pin": "Fijar",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Renderizando diagrama de Mermaid...",
     "mermaidFailed": "Error al renderizar el diagrama de Mermaid:",
     "mermaidShowOriginal": "Mostrar código original",
-    "mermaidShowDiagram": "Mostrar diagrama"
+    "mermaidShowDiagram": "Mostrar diagrama",
+    "moreActions": "Más acciones"
   },
   "fileViewer": {
     "title": "Visor de archivos",
@@ -226,7 +237,8 @@
       "excludedPaths": "Rutas excluidas",
       "excludedPathsDesc": "Exclusiones (separadas por comas o saltos de línea). Los directorios o archivos coincidentes se ignorarán en las listas de conversación.",
       "fontSize": "Tamaño de fuente",
-      "fontSizeDesc": "Ajuste el tamaño de fuente base para la transcripción de la conversación."
+      "fontSizeDesc": "Ajuste el tamaño de fuente base para la transcripción de la conversación.",
+      "excludedPathsPlaceholder": "p. ej. node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "Agentes",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "ej. src",
       "pronunciationsPlaceholderReplacement": "ej. source",
       "pronunciationsAdd": "Añadir regla",
-      "pronunciationsReset": "Restablecer reglas"
+      "pronunciationsReset": "Restablecer reglas",
+      "testVoiceFailed": "No se pudo reproducir la voz del sistema. Comprueba la configuración del sintetizador de voz de tu sistema."
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "Leer sesión en voz alta",
     "stopReading": "Detener lectura",
     "playFromHere": "Leer en voz alta desde aquí",
-    "sessionTransition": "Sesión {sessionTitle}. {text}"
+    "sessionTransition": "Sesión {sessionTitle}. {text}",
+    "speech": {
+      "yes": "Sí, ",
+      "no": "No, ",
+      "tableHeadersPrefix": "Encabezados de tabla:",
+      "rowPrefix": "Fila {index}, ",
+      "tableIntro": "Tabla con {rows} y {columns}.",
+      "rowOne": "1 fila",
+      "rowMany": "{count} filas",
+      "columnOne": "1 columna",
+      "columnMany": "{count} columnas"
+    }
   }
 }

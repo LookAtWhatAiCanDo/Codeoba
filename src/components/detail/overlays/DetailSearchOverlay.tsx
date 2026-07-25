@@ -57,7 +57,7 @@ export const DetailSearchOverlay = (props: DetailSearchOverlayProps) => {
                 props.onClose();
               }
             }}
-            placeholder="Find in session..."
+            placeholder={t("menu.find.findDetail")}
             class="w-[200px] bg-background/50 border border-border/60 focus:border-accent text-text-primary pl-8 pr-16 py-1.5 text-xs rounded-lg outline-none transition-all placeholder:text-text-secondary/40 h-[30px]"
           />
 
@@ -86,7 +86,7 @@ export const DetailSearchOverlay = (props: DetailSearchOverlayProps) => {
         <div class="flex items-center gap-0.5 border-l border-border/60 pl-1">
           <button
             onClick={() => props.navigateToMatch(props.activeMatchIndex - 1)}
-            title="Previous Match (Shift+Enter)"
+            title={t("detailPane.search.previousMatch")}
             class="p-1 hover:bg-surface/80 hover:text-text-primary text-text-secondary/70 rounded transition-all cursor-pointer disabled:opacity-40"
             disabled={props.matchesCount === 0}
           >
@@ -94,7 +94,7 @@ export const DetailSearchOverlay = (props: DetailSearchOverlayProps) => {
           </button>
           <button
             onClick={() => props.navigateToMatch(props.activeMatchIndex + 1)}
-            title="Next Match (Enter)"
+            title={t("detailPane.search.nextMatch")}
             class="p-1 hover:bg-surface/80 hover:text-text-primary text-text-secondary/70 rounded transition-all cursor-pointer disabled:opacity-40"
             disabled={props.matchesCount === 0}
           >
@@ -156,7 +156,7 @@ export const DetailSearchOverlay = (props: DetailSearchOverlayProps) => {
         {/* Close Button */}
         <button
           onClick={props.onClose}
-          title="Close (Esc)"
+          title={t("detailPane.search.close")}
           class="p-1 hover:bg-surface/80 hover:text-red-400 text-text-secondary/60 rounded transition-all border-l border-border/60 pl-1.5 cursor-pointer"
         >
           <X class="w-3.5 h-3.5" />

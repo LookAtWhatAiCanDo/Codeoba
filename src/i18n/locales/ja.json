@@ -87,9 +87,19 @@
     "confirmClearHistory": "読み上げられたテキストの履歴をすべてクリアしてもよろしいですか？この操作は取り消せません。",
     "noSpokenHistory": "発話されたテキストの履歴はまだありません。",
     "time": "時間",
-    "side": "送信元"
+    "side": "送信元",
+    "removeFromHistory": "履歴から削除",
+    "syncToTranscript": "トランスクリプトに同期",
+    "avgValue": "平均: {value}"
   },
   "detailPane": {
+    "workedOne": "実行済み（ツール実行 {count} 回）",
+    "workedMany": "実行済み（ツール実行 {count} 回）",
+    "search": {
+      "previousMatch": "前の一致 (Shift+Enter)",
+      "nextMatch": "次の一致 (Enter)",
+      "close": "閉じる (Esc)"
+    },
     "noSelection": "会話が選択されていません",
     "selectSession": "サイドバーからセッションを選択して詳細を表示します。",
     "pin": "ピン留め",
@@ -135,7 +145,8 @@
     "mermaidRendering": "Mermaidダイアグラムを描画中...",
     "mermaidFailed": "Mermaidダイアグラムの描画に失敗しました:",
     "mermaidShowOriginal": "元のコードを表示",
-    "mermaidShowDiagram": "ダイアグラムを表示"
+    "mermaidShowDiagram": "ダイアグラムを表示",
+    "moreActions": "その他の操作"
   },
   "fileViewer": {
     "title": "ファイルビューア",
@@ -226,7 +237,8 @@
       "excludedPaths": "除外するパス",
       "excludedPathsDesc": "除外設定（カンマまたは改行区切り）。一致するディレクトリやファイルは会話一覧から無視されます。",
       "fontSize": "フォントサイズ",
-      "fontSizeDesc": "会話履歴のベースフォントサイズを調整します。"
+      "fontSizeDesc": "会話履歴のベースフォントサイズを調整します。",
+      "excludedPathsPlaceholder": "例: node_modules, dist, temp, .git"
     },
     "agents": {
       "tab": "エージェント",
@@ -311,7 +323,8 @@
       "pronunciationsPlaceholderWord": "例: src",
       "pronunciationsPlaceholderReplacement": "例: source",
       "pronunciationsAdd": "ルールを追加",
-      "pronunciationsReset": "ルールをリセット"
+      "pronunciationsReset": "ルールをリセット",
+      "testVoiceFailed": "システム音声を再生できませんでした。システムの音声合成の設定を確認してください。"
     }
   },
   "updater": {
@@ -453,6 +466,17 @@
     "readSessionAloud": "セッションを読み上げる",
     "stopReading": "読み上げを停止",
     "playFromHere": "ここから朗読",
-    "sessionTransition": "セッション {sessionTitle}。{text}"
+    "sessionTransition": "セッション {sessionTitle}。{text}",
+    "speech": {
+      "yes": "はい、",
+      "no": "いいえ、",
+      "tableHeadersPrefix": "表の見出し:",
+      "rowPrefix": "{index} 行目、",
+      "tableIntro": "{rows}、{columns} の表。",
+      "rowOne": "1 行",
+      "rowMany": "{count} 行",
+      "columnOne": "1 列",
+      "columnMany": "{count} 列"
+    }
   }
 }
