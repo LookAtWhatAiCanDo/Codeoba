@@ -146,7 +146,9 @@
     "mermaidFailed": "Mermaidダイアグラムの描画に失敗しました:",
     "mermaidShowOriginal": "元のコードを表示",
     "mermaidShowDiagram": "ダイアグラムを表示",
-    "moreActions": "その他の操作"
+    "moreActions": "その他の操作",
+    "imageAttachment": "画像の添付ファイル",
+    "enlargedImage": "拡大画像"
   },
   "fileViewer": {
     "title": "ファイルビューア",

@@ -146,7 +146,9 @@
     "mermaidFailed": "Не удалось отрисовать диаграмму Mermaid:",
     "mermaidShowOriginal": "Показать исходный код",
     "mermaidShowDiagram": "Показать диаграмму",
-    "moreActions": "Другие действия"
+    "moreActions": "Другие действия",
+    "imageAttachment": "Вложенное изображение",
+    "enlargedImage": "Увеличенное изображение"
   },
   "fileViewer": {
     "title": "Просмотрщик файлов",

@@ -109,6 +109,7 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
                             <div class="relative group max-w-[200px] rounded-xl overflow-hidden border border-border/50 bg-background/50 hover:shadow-md transition-all duration-200">
                               <img
                                 src={src()}
+                                alt={t("detailPane.imageAttachment")}
                                 class="max-h-40 max-w-full object-contain cursor-zoom-in hover:scale-[1.02] transition-all duration-200"
                                 onClick={() => props.onImageClick({ path: image.path, src: src() })}
                                 onContextMenu={(e) =>

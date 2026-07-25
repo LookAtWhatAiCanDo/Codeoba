@@ -7,30 +7,19 @@ export interface SessionMetadataPanelProps {
   session: Session;
   loadTime: string | null;
   formatFullDate: (timestamp: number) => string;
+  /** Resolved from backend SourceMetadata by the parent; never derived with CSS casing. */
+  sourceLabel: string;
 }
-
-// Brand display names for each source id, mirroring the backend `display_name()` so the
-// panel matches the sidebar. A static map (not CSS `capitalize`, which mis-cases in some
-// locales, and not a composed key) per the i18n guideline; unknown ids render as-is.
-const SOURCE_DISPLAY_NAMES: Record<string, string> = {
-  claude: "Claude Code",
-  cursor: "Cursor",
-  antigravity: "Antigravity",
-  antigravity_ide: "Antigravity IDE",
-  copilot: "GitHub Copilot",
-  codex: "OpenAI Codex",
-};
 
 export const SessionMetadataPanel = (props: SessionMetadataPanelProps) => {
   const { t } = useI18n();
-  const sourceLabel = () => SOURCE_DISPLAY_NAMES[props.session.sourceId] ?? props.session.sourceId;
 
   return (
     <div class="p-4 bg-surface/30 border border-border/40 rounded-2xl flex flex-wrap gap-y-3 gap-x-6 text-xs text-text-secondary/70">
       <div class="flex items-center gap-1.5">
         <Bookmark class="w-3.5 h-3.5 text-accent" />
         <span class="font-semibold text-text-primary">{t("settings.agents.tab")}:</span>
-        <span>{sourceLabel()}</span>
+        <span>{props.sourceLabel}</span>
       </div>
       <div class="flex items-center gap-1.5">
         <Clock class="w-3.5 h-3.5 text-accent" />

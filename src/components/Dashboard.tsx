@@ -1,5 +1,6 @@
 import { createSignal, createMemo, createEffect, For, Show, Switch, Match } from "solid-js";
 import { useI18n } from "../i18n/i18n";
+import { getSourceDisplayName } from "../utils/sourceLabels";
 import {
   formatNumberWithSetting,
   formatDateWithSetting,
@@ -22,11 +23,12 @@ import {
   AlertTriangle,
 } from "lucide-solid";
 import { getSessionComputeTimeMs, formatSpeed, formatDuration } from "../utils/sessionMetrics";
-import { Session, DashboardTab } from "../types";
+import { Session, DashboardTab, SourceMetadata } from "../types";
 import { useSpeech } from "../utils/useSpeech";
 
 interface DashboardProps {
   sessions: Session[];
+  sources: SourceMetadata[];
   numberFormat?: string;
   dateFormat?: string;
   timeFormat?: string;
@@ -554,7 +556,9 @@ export const Dashboard = (props: DashboardProps) => {
                         <Layers class="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 class="text-sm font-bold text-text-primary capitalize">{source}</h4>
+                        <h4 class="text-sm font-bold text-text-primary">
+                          {getSourceDisplayName(props.sources, source)}
+                        </h4>
                         <span class="text-xs text-text-secondary">{t("settings.agents.desc")}</span>
                       </div>
                     </div>
@@ -779,7 +783,7 @@ export const Dashboard = (props: DashboardProps) => {
                               class="px-4 py-1 select-none cursor-pointer whitespace-nowrap w-px"
                             >
                               <span
-                                class={`inline-block px-2 py-0.5 text-[0.625rem] rounded font-sans font-bold uppercase tracking-wider ${
+                                class={`inline-block px-2 py-0.5 text-[0.625rem] rounded font-sans font-bold tracking-wider ${
                                   item.speaker === "user"
                                     ? "bg-accent/15 text-accent border border-accent/30"
                                     : "bg-surface/80 text-text-secondary border border-border/50"

@@ -146,7 +146,9 @@
     "mermaidFailed": "Impossibile eseguire il rendering del diagramma Mermaid:",
     "mermaidShowOriginal": "Mostra codice originale",
     "mermaidShowDiagram": "Mostra diagramma",
-    "moreActions": "Altre azioni"
+    "moreActions": "Altre azioni",
+    "imageAttachment": "Immagine allegata",
+    "enlargedImage": "Immagine ingrandita"
   },
   "fileViewer": {
     "title": "Visualizzatore file",

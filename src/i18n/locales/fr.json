@@ -146,7 +146,9 @@
     "mermaidFailed": "Échec du rendu du diagramme Mermaid :",
     "mermaidShowOriginal": "Afficher le code d'origine",
     "mermaidShowDiagram": "Afficher le diagramme",
-    "moreActions": "Plus d'actions"
+    "moreActions": "Plus d'actions",
+    "imageAttachment": "Image jointe",
+    "enlargedImage": "Image agrandie"
   },
   "fileViewer": {
     "title": "Visionneuse de fichiers",

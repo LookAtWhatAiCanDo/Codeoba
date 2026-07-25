@@ -30,6 +30,7 @@ import { useAutoUpdater } from "./hooks/useAutoUpdater";
 
 import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
+import { getSourceDisplayName } from "./utils/sourceLabels";
 import "./App.css";
 
 function App() {
@@ -1730,10 +1731,7 @@ function App() {
     });
   };
 
-  const getSourceDisplayNameById = (id: string) => {
-    const found = sources().find((s) => s.id === id);
-    return found ? found.displayName : id;
-  };
+  const getSourceDisplayNameById = (id: string) => getSourceDisplayName(sources(), id);
 
   const handleToggleDetectedSource = (sourceId: string) => {
     setDetectedSources((prev) => ({
@@ -1894,6 +1892,7 @@ function App() {
                   fallback={
                     <Dashboard
                       sessions={filteredSessions()}
+                      sources={sources()}
                       numberFormat={numberFormat()}
                       dateFormat={dateFormat()}
                       timeFormat={timeFormat()}
@@ -1924,6 +1923,7 @@ function App() {
             >
               <DetailPane
                 session={selectedSession()}
+                sources={sources()}
                 activeDeeplink={activeDeeplink()}
                 onClearDeeplink={() => setActiveDeeplink(null)}
                 onCopyPath={handleCopyPath}

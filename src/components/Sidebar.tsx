@@ -1,5 +1,6 @@
 import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup } from "solid-js";
 import { useI18n } from "../i18n/i18n";
+import { getSourceDisplayName } from "../utils/sourceLabels";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import {
   Folder,
@@ -160,10 +161,8 @@ export const Sidebar = (props: SidebarProps) => {
     }
   };
 
-  const getSourceLabel = (sourceId: string): string => {
-    const s = props.sources.find((src) => src.id === sourceId);
-    return s ? s.displayName : sourceId;
-  };
+  const getSourceLabel = (sourceId: string): string =>
+    getSourceDisplayName(props.sources, sourceId);
 
   // Sorting
   const [sortBy, setSortBy] = createSignal<string>("updated");

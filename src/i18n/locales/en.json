@@ -150,7 +150,9 @@
     "mermaidFailed": "Failed to render Mermaid diagram:",
     "mermaidShowOriginal": "Show original code",
     "mermaidShowDiagram": "Show diagram",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "imageAttachment": "Image attachment",
+    "enlargedImage": "Enlarged image"
   },
   "fileViewer": {
     "title": "File Viewer",

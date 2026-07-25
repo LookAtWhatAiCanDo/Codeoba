@@ -146,7 +146,9 @@
     "mermaidFailed": "Mermaid-diagram renderen mislukt:",
     "mermaidShowOriginal": "Originele code tonen",
     "mermaidShowDiagram": "Diagram tonen",
-    "moreActions": "Meer acties"
+    "moreActions": "Meer acties",
+    "imageAttachment": "Afbeeldingsbijlage",
+    "enlargedImage": "Vergrote afbeelding"
   },
   "fileViewer": {
     "title": "Bestandsviewer",

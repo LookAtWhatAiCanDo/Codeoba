@@ -146,7 +146,9 @@
     "mermaidFailed": "Mermaid 다이어그램 렌더링 실패:",
     "mermaidShowOriginal": "원본 코드 표시",
     "mermaidShowDiagram": "다이어그램 표시",
-    "moreActions": "추가 작업"
+    "moreActions": "추가 작업",
+    "imageAttachment": "이미지 첨부 파일",
+    "enlargedImage": "확대된 이미지"
   },
   "fileViewer": {
     "title": "파일 뷰어",

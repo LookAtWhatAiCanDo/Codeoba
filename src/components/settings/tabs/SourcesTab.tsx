@@ -1,4 +1,5 @@
 import { For, Show } from "solid-js";
+import { getSourceDisplayName } from "../../../utils/sourceLabels";
 import { Trash2, AlertTriangle } from "lucide-solid";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../../../i18n/i18n";
@@ -21,8 +22,7 @@ export const SourcesTab = (props: SourcesTabProps) => {
   const getDeletingSourceDisplayName = () => {
     const id = props.deletingSourceId;
     if (!id) return "";
-    const found = props.sources?.find((s) => s.id === id);
-    return found ? found.displayName : id;
+    return getSourceDisplayName(props.sources ?? [], id);
   };
 
   return (

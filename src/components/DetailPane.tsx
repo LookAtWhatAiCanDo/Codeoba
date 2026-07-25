@@ -2,7 +2,7 @@ import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid
 import { useI18n } from "../i18n/i18n";
 import { useSpeech } from "../utils/useSpeech";
 import { useContextMenuPosition } from "../utils/contextMenu";
-import { Session } from "../types";
+import { Session, SourceMetadata } from "../types";
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 
 // Sub-component and Hook imports
@@ -12,6 +12,7 @@ import { DetailSearchOverlay } from "./detail/overlays/DetailSearchOverlay";
 import { DateTimelineOverlay, DateMilestone } from "./detail/overlays/DateTimelineOverlay";
 import { DetailContextMenu, ContextMenuState } from "./detail/overlays/DetailContextMenu";
 import { LightboxOverlay, LightboxImage } from "./detail/overlays/LightboxOverlay";
+import { getSourceDisplayName } from "../utils/sourceLabels";
 import { SessionMetadataPanel } from "./detail/meta/SessionMetadataPanel";
 import { SessionSummaryCard } from "./detail/meta/SessionSummaryCard";
 import { DetailSkeleton } from "./detail/meta/DetailSkeleton";
@@ -23,6 +24,7 @@ import { useDetailScroll } from "./detail/hooks/useDetailScroll";
 
 export interface DetailPaneProps {
   session: Session | null;
+  sources: SourceMetadata[];
   onCopyPath: (path: string) => void;
   loadTime: string | null;
   isLoading: boolean;
@@ -420,6 +422,7 @@ export const DetailPane = (props: DetailPaneProps) => {
               {/* Session Metadata Panel */}
               <SessionMetadataPanel
                 session={props.session!}
+                sourceLabel={getSourceDisplayName(props.sources, props.session!.sourceId)}
                 loadTime={props.loadTime}
                 formatFullDate={formatFullDate}
               />

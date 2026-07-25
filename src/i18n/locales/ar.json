@@ -146,7 +146,9 @@
     "mermaidFailed": "فشل رسم مخطط Mermaid:",
     "mermaidShowOriginal": "عرض الكود الأصلي",
     "mermaidShowDiagram": "عرض المخطط",
-    "moreActions": "إجراءات أخرى"
+    "moreActions": "إجراءات أخرى",
+    "imageAttachment": "صورة مرفقة",
+    "enlargedImage": "صورة مكبّرة"
   },
   "fileViewer": {
     "title": "عارض الملفات",
