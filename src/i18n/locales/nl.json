@@ -17,7 +17,10 @@
     "untitled": "Naamloos",
     "untitledSession": "Naamloze sessie",
     "localWorkspace": "Lokale werkruimte",
-    "noSnippet": "Geen fragmenttekst."
+    "noSnippet": "Geen fragmenttekst.",
+    "confirm": "Bevestigen",
+    "edit": "Bewerken",
+    "clearAll": "Alles wisken"
   },
   "sidebar": {
     "title": "Sessies",
@@ -52,7 +55,8 @@
     "wholeWord": "Heel woord (\\b)",
     "useRegex": "Reguliere expressie gebruiken (.*)",
     "multiline": "Multi-regel omschakelen (\\n)",
-    "deleteHistory": "Verwijderen uit geschiedenis"
+    "deleteHistory": "Verwijderen uit geschiedenis",
+    "recentSearches": "Recente zoekopdrachten"
   },
   "dashboard": {
     "globalStats": "Globale statistieken",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Regel toevoegen",
       "pronunciationsReset": "Regels herstellen",
       "testVoiceFailed": "Kan systeemstem niet afspelen. Controleer de configuratie van je spraaksynthesizer."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Authenticatietoken ontbreekt. Log opnieuw in.",
+        "licenseInactive": "Abonnementslicentie is inactief of verlopen.",
+        "clientBuildFailed": "Fout bij het maken van HTTP-client: {error}",
+        "manifestFetchFailed": "Fout bij het ophalen van updatemanifest: {error}",
+        "manifestServerError": "Updateserver heeft een fout geretourneerd (status {status}).",
+        "manifestParseFailed": "Fout bij het verwerken van updatemanifest: {error}",
+        "wasmDownloadFailed": "Fout bij downloaden van component: {error}",
+        "wasmServerError": "Componentserver heeft een fout geretourneerd (status {status}).",
+        "wasmReadBodyFailed": "Fout bij het lezen van responsgegevens van component: {error}",
+        "integrityFailed": "Integriteitscontrole van component mislukt. Het gedownloade bestand is mogelijk beschadigd.",
+        "signatureFailed": "Verificatie van digitale handtekening van component mislukt.",
+        "dirCreateFailed": "Fout bij het maken van lokale opslagmap: {error}",
+        "fileWriteFailed": "Fout bij het schrijven van componentbestand naar schijf: {error}",
+        "manifestSerializeFailed": "Fout bij het serialiseren van manifestcache: {error}",
+        "manifestWriteFailed": "Fout bij het schrijven van manifestcache naar schijf: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Groep vastpinnen",
     "unpinGroup": "Groep losmaken",
     "renameGroup": "Groep hernoemen",
-    "deleteGroup": "Groep verwijderen"
+    "deleteGroup": "Groep verwijderen",
+    "noTagsAvailable": "Geen tags beschikbaar"
   },
   "feedback": {
     "title": "Feedback verzenden",

@@ -13,6 +13,31 @@ export interface ThemeTabProps {
   onCustomThemeChange?: (val: any) => void;
 }
 
+const THEME_NAME_TRANSLATION_KEYS: Record<string, string> = {
+  themeObsidian: "settings.general.themeObsidian",
+  themeNordicFrost: "settings.general.themeNordicFrost",
+  themeEmeraldForest: "settings.general.themeEmeraldForest",
+  themeSunsetCopper: "settings.general.themeSunsetCopper",
+  themeRoyalAmethyst: "settings.general.themeRoyalAmethyst",
+  themeDracula: "settings.general.themeDracula",
+  themeCyberpunk: "settings.general.themeCyberpunk",
+  themeMonochrome: "settings.general.themeMonochrome",
+  themeCustom: "settings.general.themeCustom",
+  themeQuartz: "settings.general.themeQuartz",
+  themeGlacier: "settings.general.themeGlacier",
+  themeMint: "settings.general.themeMint",
+  themeAmber: "settings.general.themeAmber",
+  themeLavender: "settings.general.themeLavender",
+  themePastel: "settings.general.themePastel",
+  themeNeon: "settings.general.themeNeon",
+  themePaper: "settings.general.themePaper",
+};
+
+const getThemeName = (t: (key: string) => string, nameKey: string): string => {
+  const fullKey = THEME_NAME_TRANSLATION_KEYS[nameKey];
+  return fullKey ? t(fullKey) : nameKey;
+};
+
 export const ThemeTab = (props: ThemeTabProps) => {
   const { t } = useI18n();
 
@@ -136,10 +161,10 @@ export const ThemeTab = (props: ThemeTabProps) => {
             <span class="text-xs font-semibold text-accent">
               {props.theme === "custom"
                 ? t("settings.general.themeCustom")
-                : t(
-                    "settings.general." +
-                      (activeThemesList().find((tTheme) => tTheme.id === props.theme)?.nameKey ||
-                        props.theme)
+                : getThemeName(
+                    t,
+                    activeThemesList().find((tTheme) => tTheme.id === props.theme)?.nameKey ||
+                      props.theme
                   )}
             </span>
           </div>
@@ -152,7 +177,7 @@ export const ThemeTab = (props: ThemeTabProps) => {
                     themeItem.id === "custom"
                       ? t("settings.general.themeCustom")
                       : t("settings.general.themeSwitchTo", {
-                          name: t("settings.general." + themeItem.nameKey),
+                          name: getThemeName(t, themeItem.nameKey),
                         })
                   }
                   class={`w-5 h-5 rounded-full border cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-150 ${themeItem.color} ${

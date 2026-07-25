@@ -17,7 +17,10 @@
     "untitled": "Unbenannt",
     "untitledSession": "Unbenannte Sitzung",
     "localWorkspace": "Lokaler Arbeitsbereich",
-    "noSnippet": "Kein Snippet-Text."
+    "noSnippet": "Kein Snippet-Text.",
+    "confirm": "Bestätigen",
+    "edit": "Bearbeiten",
+    "clearAll": "Alles löschen"
   },
   "sidebar": {
     "title": "Sitzungen",
@@ -52,7 +55,8 @@
     "wholeWord": "Ganzes Wort (\\b)",
     "useRegex": "Regulären Ausdruck verwenden (.*)",
     "multiline": "Mehrzeilig umschalten (\\n)",
-    "deleteHistory": "Aus Verlauf löschen"
+    "deleteHistory": "Aus Verlauf löschen",
+    "recentSearches": "Letzte Suchanfragen"
   },
   "dashboard": {
     "globalStats": "Globale Statistiken",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Regel hinzufügen",
       "pronunciationsReset": "Regeln zurücksetzen",
       "testVoiceFailed": "Systemstimme konnte nicht wiedergegeben werden. Bitte prüfen Sie die Konfiguration Ihrer Sprachsynthese."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Authentifizierungstoken fehlt. Bitte melden Sie sich erneut an.",
+        "licenseInactive": "Abonnement-Lizenz ist inaktiv oder abgelaufen.",
+        "clientBuildFailed": "Fehler beim Erstellen des HTTP-Clients: {error}",
+        "manifestFetchFailed": "Fehler beim Abrufen des Update-Manifests: {error}",
+        "manifestServerError": "Der Update-Server hat einen Fehler zurückgegeben (Status {status}).",
+        "manifestParseFailed": "Fehler beim Parsen des Update-Manifests: {error}",
+        "wasmDownloadFailed": "Fehler beim Herunterladen der Komponente: {error}",
+        "wasmServerError": "Der Komponentenserver hat einen Fehler zurückgegeben (Status {status}).",
+        "wasmReadBodyFailed": "Fehler beim Lesen der Antwortdaten der Komponente: {error}",
+        "integrityFailed": "Integritätsprüfung der Komponente fehlgeschlagen. Die heruntergeladene Datei ist möglicherweise beschädigt.",
+        "signatureFailed": "Verifizierung der digitalen Signatur der Komponente fehlgeschlagen.",
+        "dirCreateFailed": "Fehler beim Erstellen des lokalen Speicherverzeichnisses: {error}",
+        "fileWriteFailed": "Fehler beim Schreiben der Komponentendatei auf die Festplatte: {error}",
+        "manifestSerializeFailed": "Fehler beim Serialisieren des Manifest-Caches: {error}",
+        "manifestWriteFailed": "Fehler beim Schreiben des Manifest-Caches auf die Festplatte: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Gruppe anheften",
     "unpinGroup": "Gruppe loslösen",
     "renameGroup": "Gruppe umbenennen",
-    "deleteGroup": "Gruppe löschen"
+    "deleteGroup": "Gruppe löschen",
+    "noTagsAvailable": "Keine Tags verfügbar"
   },
   "feedback": {
     "title": "Feedback senden",

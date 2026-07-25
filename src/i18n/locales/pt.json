@@ -17,7 +17,10 @@
     "untitled": "Sem título",
     "untitledSession": "Sessão sem título",
     "localWorkspace": "Espaço de trabalho local",
-    "noSnippet": "Nenhum fragmento de texto."
+    "noSnippet": "Nenhum fragmento de texto.",
+    "confirm": "Confirmar",
+    "edit": "Editar",
+    "clearAll": "Limpar tudo"
   },
   "sidebar": {
     "title": "Sessões",
@@ -52,7 +55,8 @@
     "wholeWord": "Palavra inteira (\\b)",
     "useRegex": "Usar expressão regular (.*)",
     "multiline": "Alternar multilinha (\\n)",
-    "deleteHistory": "Excluir do histórico"
+    "deleteHistory": "Excluir do histórico",
+    "recentSearches": "Pesquisas recentes"
   },
   "dashboard": {
     "globalStats": "Estatísticas globais",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Adicionar Regra",
       "pronunciationsReset": "Restaurar Regras",
       "testVoiceFailed": "Falha ao reproduzir a voz do sistema. Verifique a configuração do sintetizador de voz do sistema."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Token de autenticação ausente. Por favor, faça login novamente.",
+        "licenseInactive": "A licença de assinatura está inativa ou expirada.",
+        "clientBuildFailed": "Falha ao criar cliente HTTP: {error}",
+        "manifestFetchFailed": "Falha ao buscar manifesto de atualização: {error}",
+        "manifestServerError": "O servidor de atualização retornou um erro (status {status}).",
+        "manifestParseFailed": "Falha ao analisar manifesto de atualização: {error}",
+        "wasmDownloadFailed": "Falha ao baixar componente: {error}",
+        "wasmServerError": "O servidor do componente retornou um erro (status {status}).",
+        "wasmReadBodyFailed": "Falha ao ler os dados de resposta do componente: {error}",
+        "integrityFailed": "Falha na verificação de integridade do componente. O arquivo baixado pode estar corrompido.",
+        "signatureFailed": "Falha na verificação da assinatura digital do componente.",
+        "dirCreateFailed": "Falha ao criar diretório de armazenamento local: {error}",
+        "fileWriteFailed": "Falha ao gravar arquivo do componente no disco: {error}",
+        "manifestSerializeFailed": "Falha ao serializar cache do manifesto: {error}",
+        "manifestWriteFailed": "Falha ao gravar cache do manifesto no disco: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Fixar grupo",
     "unpinGroup": "Desafixar grupo",
     "renameGroup": "Renomear grupo",
-    "deleteGroup": "Excluir grupo"
+    "deleteGroup": "Excluir grupo",
+    "noTagsAvailable": "Nenhuma tag disponível"
   },
   "feedback": {
     "title": "Enviar feedback",

@@ -17,7 +17,10 @@
     "untitled": "Senza titolo",
     "untitledSession": "Sessione senza titolo",
     "localWorkspace": "Spazio di lavoro locale",
-    "noSnippet": "Nessun frammento di testo."
+    "noSnippet": "Nessun frammento di testo.",
+    "confirm": "Conferma",
+    "edit": "Modifica",
+    "clearAll": "Cancella tutto"
   },
   "sidebar": {
     "title": "Sessioni",
@@ -52,7 +55,8 @@
     "wholeWord": "Parola intera (\\b)",
     "useRegex": "Usa espressione regolare (.*)",
     "multiline": "Attiva/disattiva multilinea (\\n)",
-    "deleteHistory": "Elimina dalla cronologia"
+    "deleteHistory": "Elimina dalla cronologia",
+    "recentSearches": "Ricerche recenti"
   },
   "dashboard": {
     "globalStats": "Statistiche globali",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Aggiungi Regola",
       "pronunciationsReset": "Ripristina Regole",
       "testVoiceFailed": "Impossibile riprodurre la voce di sistema. Controlla la configurazione del sintetizzatore vocale del sistema."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Token di autenticazione mancante. Effettua nuovamente l'accesso.",
+        "licenseInactive": "La licenza di abbonamento è inattiva o scaduta.",
+        "clientBuildFailed": "Impossibile creare il client HTTP: {error}",
+        "manifestFetchFailed": "Impossibile recuperare il manifesto di aggiornamento: {error}",
+        "manifestServerError": "Il server di aggiornamento ha restituito un errore (stato {status}).",
+        "manifestParseFailed": "Impossibile analizzare il manifesto di aggiornamento: {error}",
+        "wasmDownloadFailed": "Impossibile scaricare il componente: {error}",
+        "wasmServerError": "Il server del componente ha restituito un errore (stato {status}).",
+        "wasmReadBodyFailed": "Impossibile leggere i dati di risposta del componente: {error}",
+        "integrityFailed": "Controllo di integrità del componente non riuscito. Il file scaricato potrebbe essere danneggiato.",
+        "signatureFailed": "Verifica della firma digitale del componente non riuscita.",
+        "dirCreateFailed": "Impossibile creare la directory di archiviazione locale: {error}",
+        "fileWriteFailed": "Impossibile scrivere il file del componente sul disco: {error}",
+        "manifestSerializeFailed": "Impossibile serializzare la cache del manifesto: {error}",
+        "manifestWriteFailed": "Impossibile scrivere la cache del manifesto sul disco: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Fissa gruppo",
     "unpinGroup": "Sblocca gruppo",
     "renameGroup": "Rinomina gruppo",
-    "deleteGroup": "Elimina gruppo"
+    "deleteGroup": "Elimina gruppo",
+    "noTagsAvailable": "Nessun tag disponibile"
   },
   "feedback": {
     "title": "Invia feedback",

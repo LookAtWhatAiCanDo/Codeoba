@@ -17,7 +17,10 @@
     "untitled": "無標題",
     "untitledSession": "無標題會話",
     "localWorkspace": "本地工作區",
-    "noSnippet": "無片段文字。"
+    "noSnippet": "無片段文字。",
+    "confirm": "確認",
+    "edit": "編輯",
+    "clearAll": "清除全部"
   },
   "sidebar": {
     "title": "工作階段",
@@ -52,7 +55,8 @@
     "wholeWord": "全字相符 (\\b)",
     "useRegex": "使用正規表示式 (.*)",
     "multiline": "切換多行 (\\n)",
-    "deleteHistory": "從歷史記錄中刪除"
+    "deleteHistory": "從歷史記錄中刪除",
+    "recentSearches": "最近搜尋"
   },
   "dashboard": {
     "globalStats": "全域統計",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "新增規則",
       "pronunciationsReset": "重設規則",
       "testVoiceFailed": "無法播放系統語音。請檢查系統語音合成器設定。"
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "缺少身分驗證權杖。請重新登入。",
+        "licenseInactive": "訂閱授權未啟用或已過期。",
+        "clientBuildFailed": "建置 HTTP 用戶端失敗: {error}",
+        "manifestFetchFailed": "擷取更新資訊清單失敗: {error}",
+        "manifestServerError": "更新伺服器傳回錯誤（狀態 {status}）。",
+        "manifestParseFailed": "剖析更新資訊清單失敗: {error}",
+        "wasmDownloadFailed": "下載元件失敗: {error}",
+        "wasmServerError": "元件伺服器傳回錯誤（狀態 {status}）。",
+        "wasmReadBodyFailed": "讀取元件回應資料失敗: {error}",
+        "integrityFailed": "元件完整性檢查失敗。下載的檔案可能已損壞。",
+        "signatureFailed": "元件數位簽章驗證失敗。",
+        "dirCreateFailed": "建立本機儲存目錄失敗: {error}",
+        "fileWriteFailed": "將元件檔案寫入磁碟失敗: {error}",
+        "manifestSerializeFailed": "序列化資訊清單快取失敗: {error}",
+        "manifestWriteFailed": "將資訊清單快取寫入磁碟失敗: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "置頂分組",
     "unpinGroup": "取消置頂分組",
     "renameGroup": "重新命名分組",
-    "deleteGroup": "刪除分組"
+    "deleteGroup": "刪除分組",
+    "noTagsAvailable": "無可用標籤"
   },
   "feedback": {
     "title": "傳送意見回饋",

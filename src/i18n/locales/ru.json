@@ -17,7 +17,10 @@
     "untitled": "Без названия",
     "untitledSession": "Сессия без названия",
     "localWorkspace": "Локальная рабочая область",
-    "noSnippet": "Нет текста фрагмента."
+    "noSnippet": "Нет текста фрагмента.",
+    "confirm": "Подтвердить",
+    "edit": "Редактировать",
+    "clearAll": "Очистить всё"
   },
   "sidebar": {
     "title": "Сессии",
@@ -52,7 +55,8 @@
     "wholeWord": "Слово целиком (\\b)",
     "useRegex": "Регулярное выражение (.*)",
     "multiline": "Многострочный режим (\\n)",
-    "deleteHistory": "Удалить из истории"
+    "deleteHistory": "Удалить из истории",
+    "recentSearches": "Недавние поиски"
   },
   "dashboard": {
     "globalStats": "Глобальная статистика",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Добавить правило",
       "pronunciationsReset": "Сбросить правила",
       "testVoiceFailed": "Не удалось воспроизвести системный голос. Проверьте настройки синтезатора речи в системе."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Отсутствует токен аутентификации. Пожалуйста, войдите снова.",
+        "licenseInactive": "Лицензия на подписку неактивна или истекла.",
+        "clientBuildFailed": "Не удалось создать HTTP-клиент: {error}",
+        "manifestFetchFailed": "Не удалось получить манифест обновления: {error}",
+        "manifestServerError": "Сервер обновлений вернул ошибку (статус {status}).",
+        "manifestParseFailed": "Не удалось распарсить манифест обновления: {error}",
+        "wasmDownloadFailed": "Не удалось загрузить компонент: {error}",
+        "wasmServerError": "Сервер компонентов вернул ошибку (статус {status}).",
+        "wasmReadBodyFailed": "Не удалось прочитать данные ответа компонента: {error}",
+        "integrityFailed": "Сбой проверки целостности компонента. Загруженный файл может быть поврежден.",
+        "signatureFailed": "Сбой проверки цифровой подписи компонента.",
+        "dirCreateFailed": "Не удалось создать каталог локального хранилища: {error}",
+        "fileWriteFailed": "Не удалось записать файл компонента на диск: {error}",
+        "manifestSerializeFailed": "Не удалось сериализовать кэш манифеста: {error}",
+        "manifestWriteFailed": "Не удалось записать кэш манифеста на диск: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Закрепить группу",
     "unpinGroup": "Открепить группу",
     "renameGroup": "Переименовать группу",
-    "deleteGroup": "Удалить группу"
+    "deleteGroup": "Удалить группу",
+    "noTagsAvailable": "Нет доступных тегов"
   },
   "feedback": {
     "title": "Отправить отзыв",

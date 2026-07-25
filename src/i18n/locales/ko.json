@@ -17,7 +17,10 @@
     "untitled": "제목 없음",
     "untitledSession": "제목 없는 세션",
     "localWorkspace": "로컬 작업 공간",
-    "noSnippet": "스니펫 텍스트가 없습니다."
+    "noSnippet": "스니펫 텍스트가 없습니다.",
+    "confirm": "확인",
+    "edit": "편집",
+    "clearAll": "모두 지우기"
   },
   "sidebar": {
     "title": "세션",
@@ -52,7 +55,8 @@
     "wholeWord": "단어 단위로 (\\b)",
     "useRegex": "정규식 사용 (.*)",
     "multiline": "여러 줄 토글 (\\n)",
-    "deleteHistory": "기록에서 삭제"
+    "deleteHistory": "기록에서 삭제",
+    "recentSearches": "최근 검색어"
   },
   "dashboard": {
     "globalStats": "전체 통계",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "규칙 추가",
       "pronunciationsReset": "규칙 초기화",
       "testVoiceFailed": "시스템 음성을 재생하지 못했습니다. 시스템 음성 합성기 설정을 확인하세요."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "인증 토큰이 없습니다. 다시 로그인해 주세요.",
+        "licenseInactive": "구독 라이선스가 비활성화되었거나 만료되었습니다.",
+        "clientBuildFailed": "HTTP 클라이언트를 생성하지 못했습니다: {error}",
+        "manifestFetchFailed": "업데이트 매니페스트를 가져오지 못했습니다: {error}",
+        "manifestServerError": "업데이트 서버가 오류를 반환했습니다 (상태 {status}).",
+        "manifestParseFailed": "업데이트 매니페스트를 구문 분석하지 못했습니다: {error}",
+        "wasmDownloadFailed": "구성 요소를 다운로드하지 못했습니다: {error}",
+        "wasmServerError": "구성 요소 서버가 오류를 반환했습니다 (상태 {status}).",
+        "wasmReadBodyFailed": "구성 요소 응답 데이터를 읽지 못했습니다: {error}",
+        "integrityFailed": "구성 요소 무결성 검사에 실패했습니다. 다운로드한 파일이 손상되었을 수 있습니다.",
+        "signatureFailed": "구성 요소 디지털 서명 검증에 실패했습니다.",
+        "dirCreateFailed": "로컬 저장소 디렉터리를 생성하지 못했습니다: {error}",
+        "fileWriteFailed": "구성 요소 파일을 디스크에 쓰지 못했습니다: {error}",
+        "manifestSerializeFailed": "매니페스트 캐시를 직렬화하지 못했습니다: {error}",
+        "manifestWriteFailed": "매니페스트 캐시를 디스크에 쓰지 못했습니다: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "그룹 고정",
     "unpinGroup": "그룹 고정 해제",
     "renameGroup": "그룹 이름 바꾸기",
-    "deleteGroup": "그룹 삭제"
+    "deleteGroup": "그룹 삭제",
+    "noTagsAvailable": "사용 가능한 태그 없음"
   },
   "feedback": {
     "title": "피드백 보내기",

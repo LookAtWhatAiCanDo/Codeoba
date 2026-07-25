@@ -17,7 +17,10 @@
     "untitled": "無題",
     "untitledSession": "無題のセッション",
     "localWorkspace": "ローカルワークスペース",
-    "noSnippet": "スニペットテキストはありません。"
+    "noSnippet": "スニペットテキストはありません。",
+    "confirm": "確認",
+    "edit": "編集",
+    "clearAll": "すべて消去"
   },
   "sidebar": {
     "title": "セッション",
@@ -52,7 +55,8 @@
     "wholeWord": "単語全体 (\\b)",
     "useRegex": "正規表現を使用 (.*)",
     "multiline": "複数行の切り替え (\\n)",
-    "deleteHistory": "履歴から削除"
+    "deleteHistory": "履歴から削除",
+    "recentSearches": "最近の検索"
   },
   "dashboard": {
     "globalStats": "グローバル統計",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "ルールを追加",
       "pronunciationsReset": "ルールをリセット",
       "testVoiceFailed": "システム音声を再生できませんでした。システムの音声合成の設定を確認してください。"
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "認証トークンが見つかりません。再度サインインしてください。",
+        "licenseInactive": "サブスクリプションライセンスが無効または期限切れです。",
+        "clientBuildFailed": "HTTPクライアントの構築に失敗しました: {error}",
+        "manifestFetchFailed": "更新マニフェストの取得に失敗しました: {error}",
+        "manifestServerError": "更新サーバーがエラーを返しました (ステータス {status})。",
+        "manifestParseFailed": "更新マニフェストの解析に失敗しました: {error}",
+        "wasmDownloadFailed": "コンポーネントのダウンロードに失敗しました: {error}",
+        "wasmServerError": "コンポーネントサーバーがエラーを返しました (ステータス {status})。",
+        "wasmReadBodyFailed": "コンポーネントの応答データの読み取りに失敗しました: {error}",
+        "integrityFailed": "コンポーネントの整合性チェックに失敗しました。ダウンロードしたファイルが破損している可能性があります。",
+        "signatureFailed": "コンポーネントのデジタル署名検証に失敗しました。",
+        "dirCreateFailed": "ローカルストレージディレクトリの作成に失敗しました: {error}",
+        "fileWriteFailed": "コンポーネントファイルのディスクへの書き込みに失敗しました: {error}",
+        "manifestSerializeFailed": "マニフェストキャッシュのシリアル化に失敗しました: {error}",
+        "manifestWriteFailed": "マニフェストキャッシュのディスクへの書き込みに失敗しました: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "グループをピン留め",
     "unpinGroup": "グループのピン留めを解除",
     "renameGroup": "グループ名を変更",
-    "deleteGroup": "グループを削除"
+    "deleteGroup": "グループを削除",
+    "noTagsAvailable": "利用可能なタグがありません"
   },
   "feedback": {
     "title": "フィードバックを送信",

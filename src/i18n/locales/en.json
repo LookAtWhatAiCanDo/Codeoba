@@ -17,7 +17,10 @@
     "untitled": "Untitled",
     "untitledSession": "Untitled Session",
     "localWorkspace": "Local Workspace",
-    "noSnippet": "No snippet text."
+    "noSnippet": "No snippet text.",
+    "confirm": "Confirm",
+    "edit": "Edit",
+    "clearAll": "Clear All"
   },
   "sidebar": {
     "title": "Sessions",
@@ -52,7 +55,8 @@
     "wholeWord": "Match Whole Word (\\b)",
     "useRegex": "Use Regular Expression (.*)",
     "multiline": "Toggle Multiline (\\n)",
-    "deleteHistory": "Delete from history"
+    "deleteHistory": "Delete from history",
+    "recentSearches": "Recent Searches"
   },
   "dashboard": {
     "globalStats": "Global Stats",
@@ -332,6 +336,25 @@
       "pronunciationsAdd": "Add Override",
       "pronunciationsReset": "Reset Mappings",
       "testVoiceFailed": "Failed to play system voice. Please check your system speech synthesizer configuration."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Authentication token missing. Please sign in again.",
+        "licenseInactive": "Subscription license is inactive or expired.",
+        "clientBuildFailed": "Failed to build HTTP client: {error}",
+        "manifestFetchFailed": "Failed to fetch update manifest: {error}",
+        "manifestServerError": "Update server returned an error (status {status}).",
+        "manifestParseFailed": "Failed to parse update manifest: {error}",
+        "wasmDownloadFailed": "Failed to download component payload: {error}",
+        "wasmServerError": "Component server returned an error (status {status}).",
+        "wasmReadBodyFailed": "Failed to read component response data: {error}",
+        "integrityFailed": "Component integrity check failed. The downloaded file may be corrupted.",
+        "signatureFailed": "Component digital signature verification failed.",
+        "dirCreateFailed": "Failed to create local storage directory: {error}",
+        "fileWriteFailed": "Failed to write component file to disk: {error}",
+        "manifestSerializeFailed": "Failed to serialize manifest cache: {error}",
+        "manifestWriteFailed": "Failed to write manifest cache to disk: {error}"
+      }
     }
   },
   "updater": {
@@ -372,7 +395,8 @@
     "pinGroup": "Pin Group",
     "unpinGroup": "Unpin Group",
     "renameGroup": "Rename Group",
-    "deleteGroup": "Delete Group"
+    "deleteGroup": "Delete Group",
+    "noTagsAvailable": "No tags available"
   },
   "feedback": {
     "title": "Send Feedback",

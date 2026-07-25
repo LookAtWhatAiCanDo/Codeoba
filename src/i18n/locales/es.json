@@ -17,7 +17,10 @@
     "untitled": "Sin título",
     "untitledSession": "Sesión sin título",
     "localWorkspace": "Espacio de trabajo local",
-    "noSnippet": "Sin texto de fragmento."
+    "noSnippet": "Sin texto de fragmento.",
+    "confirm": "Confirmar",
+    "edit": "Editar",
+    "clearAll": "Borrar todo"
   },
   "sidebar": {
     "title": "Sesiones",
@@ -52,7 +55,8 @@
     "wholeWord": "Palabra completa (\\b)",
     "useRegex": "Usar expresión regular (.*)",
     "multiline": "Alternar multilínea (\\n)",
-    "deleteHistory": "Eliminar del historial"
+    "deleteHistory": "Eliminar del historial",
+    "recentSearches": "Búsquedas recientes"
   },
   "dashboard": {
     "globalStats": "Estadísticas globales",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Añadir regla",
       "pronunciationsReset": "Restablecer reglas",
       "testVoiceFailed": "No se pudo reproducir la voz del sistema. Comprueba la configuración del sintetizador de voz de tu sistema."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Falta el token de autenticación. Inicie sesión de nuevo.",
+        "licenseInactive": "La licencia de suscripción está inactiva o ha caducado.",
+        "clientBuildFailed": "Error al crear el cliente HTTP: {error}",
+        "manifestFetchFailed": "Error al obtener el manifiesto de actualización: {error}",
+        "manifestServerError": "El servidor de actualización devolvió un error (estado {status}).",
+        "manifestParseFailed": "Error al analizar el manifiesto de actualización: {error}",
+        "wasmDownloadFailed": "Error al descargar el componente: {error}",
+        "wasmServerError": "El servidor de componentes devolvió un error (estado {status}).",
+        "wasmReadBodyFailed": "Error al leer los datos de respuesta del componente: {error}",
+        "integrityFailed": "Error en la verificación de integridad del componente. El archivo descargado puede estar dañado.",
+        "signatureFailed": "Error en la verificación de la firma digital del componente.",
+        "dirCreateFailed": "Error al crear el directorio de almacenamiento local: {error}",
+        "fileWriteFailed": "Error al escribir el archivo del componente en el disco: {error}",
+        "manifestSerializeFailed": "Error al serializar la caché del manifiesto: {error}",
+        "manifestWriteFailed": "Error al escribir la caché del manifiesto en el disco: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Fijar grupo",
     "unpinGroup": "Desfijar grupo",
     "renameGroup": "Renombrar grupo",
-    "deleteGroup": "Eliminar grupo"
+    "deleteGroup": "Eliminar grupo",
+    "noTagsAvailable": "No hay etiquetas disponibles"
   },
   "feedback": {
     "title": "Enviar comentarios",

@@ -17,7 +17,10 @@
     "untitled": "بلا عنوان",
     "untitledSession": "جلسة بلا عنوان",
     "localWorkspace": "مساحة العمل المحلية",
-    "noSnippet": "لا يوجد نص مقتطف."
+    "noSnippet": "لا يوجد نص مقتطف.",
+    "confirm": "تأكيد",
+    "edit": "تعديل",
+    "clearAll": "مسح الكل"
   },
   "sidebar": {
     "title": "الجلسات",
@@ -52,7 +55,8 @@
     "wholeWord": "كلمة بالكامل (\\b)",
     "useRegex": "تعبير نمطي (.*)",
     "multiline": "تبديل متعدد الأسطر (\\n)",
-    "deleteHistory": "حذف من السجل"
+    "deleteHistory": "حذف من السجل",
+    "recentSearches": "عمليات البحث الأخيرة"
   },
   "dashboard": {
     "globalStats": "الإحصائيات العامة",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "إضافة قاعدة",
       "pronunciationsReset": "إعادة تعيين القواعد",
       "testVoiceFailed": "تعذر تشغيل صوت النظام. يرجى التحقق من إعدادات مُركِّب الكلام في نظامك."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "رمز المصادقة مفقود. يرجى تسجيل الدخول مرة أخرى.",
+        "licenseInactive": "ترخيص الاشتراك غير نشط أو منتهي الصلاحية.",
+        "clientBuildFailed": "فشل في إنشاء عميل HTTP: {error}",
+        "manifestFetchFailed": "فشل في جلب بيان التحديث: {error}",
+        "manifestServerError": "أرجع خادم التحديث خطأ (الحالة {status}).",
+        "manifestParseFailed": "فشل في تحليل بيان التحديث: {error}",
+        "wasmDownloadFailed": "فشل في تنزيل المكون: {error}",
+        "wasmServerError": "أرجع خادم المكون خطأ (الحالة {status}).",
+        "wasmReadBodyFailed": "فشل في قراءة بيانات استجابة المكون: {error}",
+        "integrityFailed": "فشل فحص سلامة المكون. قد يكون الملف المُنزل تالفًا.",
+        "signatureFailed": "فشل التحقق من التوقيع الرقمي للمكون.",
+        "dirCreateFailed": "فشل في إنشاء دليل التخزين المحلي: {error}",
+        "fileWriteFailed": "فشل في كتابة ملف المكون على القرص: {error}",
+        "manifestSerializeFailed": "فشل في تسلسل ذاكرة التخزين المؤقت للبيان: {error}",
+        "manifestWriteFailed": "فشل في كتابة ذاكرة التخزين المؤقت للبيان على القرص: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "تثبيت المجموعة",
     "unpinGroup": "إلغاء تثبيت المجموعة",
     "renameGroup": "إعادة تسمية المجموعة",
-    "deleteGroup": "حذف المجموعة"
+    "deleteGroup": "حذف المجموعة",
+    "noTagsAvailable": "لا توجد علامات متاحة"
   },
   "feedback": {
     "title": "إرسال الملاحظات",

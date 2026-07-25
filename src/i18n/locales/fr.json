@@ -17,7 +17,10 @@
     "untitled": "Sans titre",
     "untitledSession": "Session sans titre",
     "localWorkspace": "Espace de travail local",
-    "noSnippet": "Aucun extrait de texte."
+    "noSnippet": "Aucun extrait de texte.",
+    "confirm": "Confirmer",
+    "edit": "Modifier",
+    "clearAll": "Tout effacer"
   },
   "sidebar": {
     "title": "Sessions",
@@ -52,7 +55,8 @@
     "wholeWord": "Mot entier (\\b)",
     "useRegex": "Utiliser une expression régulière (.*)",
     "multiline": "Basculer sur plusieurs lignes (\\n)",
-    "deleteHistory": "Supprimer de l'historique"
+    "deleteHistory": "Supprimer de l'historique",
+    "recentSearches": "Recherches récentes"
   },
   "dashboard": {
     "globalStats": "Statistiques globales",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "Ajouter une règle",
       "pronunciationsReset": "Réinitialiser les règles",
       "testVoiceFailed": "Impossible de lire la voix du système. Veuillez vérifier la configuration de votre synthétiseur vocal."
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "Jeton d'authentification manquant. Veuillez vous reconnecter.",
+        "licenseInactive": "La licence d'abonnement est inactive ou expirée.",
+        "clientBuildFailed": "Échec de la création du client HTTP : {error}",
+        "manifestFetchFailed": "Échec de la récupération du manifeste de mise à jour : {error}",
+        "manifestServerError": "Le serveur de mise à jour a renvoyé une erreur (statut {status}).",
+        "manifestParseFailed": "Échec de l'analyse du manifeste de mise à jour : {error}",
+        "wasmDownloadFailed": "Échec du téléchargement du composant : {error}",
+        "wasmServerError": "Le serveur de composants a renvoyé une erreur (statut {status}).",
+        "wasmReadBodyFailed": "Échec de la lecture des données de réponse du composant : {error}",
+        "integrityFailed": "Échec de la vérification de l'intégrité du composant. Le fichier téléchargé est peut-être corrompu.",
+        "signatureFailed": "Échec de la vérification de la signature numérique du composant.",
+        "dirCreateFailed": "Échec de la création du répertoire de stockage local : {error}",
+        "fileWriteFailed": "Échec de l'écriture du fichier de composant sur le disque : {error}",
+        "manifestSerializeFailed": "Échec de la sérialisation du cache du manifeste : {error}",
+        "manifestWriteFailed": "Échec de l'écriture du cache du manifeste sur le disque : {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "Épingler le groupe",
     "unpinGroup": "Désépincler le groupe",
     "renameGroup": "Renommer le groupe",
-    "deleteGroup": "Supprimer le groupe"
+    "deleteGroup": "Supprimer le groupe",
+    "noTagsAvailable": "Aucun tag disponible"
   },
   "feedback": {
     "title": "Envoyer des commentaires",

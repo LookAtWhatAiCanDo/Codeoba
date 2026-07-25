@@ -17,7 +17,10 @@
     "untitled": "无标题",
     "untitledSession": "无标题会话",
     "localWorkspace": "本地工作区",
-    "noSnippet": "无片段文本。"
+    "noSnippet": "无片段文本。",
+    "confirm": "确认",
+    "edit": "编辑",
+    "clearAll": "清除全部"
   },
   "sidebar": {
     "title": "会话",
@@ -52,7 +55,8 @@
     "wholeWord": "全字匹配 (\\b)",
     "useRegex": "使用正则表达式 (.*)",
     "multiline": "切换多行 (\\n)",
-    "deleteHistory": "从历史记录中删除"
+    "deleteHistory": "从历史记录中删除",
+    "recentSearches": "最近搜索"
   },
   "dashboard": {
     "globalStats": "全局统计",
@@ -327,6 +331,25 @@
       "pronunciationsAdd": "添加规则",
       "pronunciationsReset": "重置规则",
       "testVoiceFailed": "无法播放系统语音。请检查系统语音合成器配置。"
+    },
+    "subscription": {
+      "errors": {
+        "tokenMissing": "缺少身份验证令牌。请重新登录。",
+        "licenseInactive": "订阅许可证未激活或已过期。",
+        "clientBuildFailed": "构建 HTTP 客户端失败: {error}",
+        "manifestFetchFailed": "获取更新清单失败: {error}",
+        "manifestServerError": "更新服务器返回错误（状态 {status}）。",
+        "manifestParseFailed": "解析更新清单失败: {error}",
+        "wasmDownloadFailed": "下载组件失败: {error}",
+        "wasmServerError": "组件服务器返回错误（状态 {status}）。",
+        "wasmReadBodyFailed": "读取组件响应数据失败: {error}",
+        "integrityFailed": "组件完整性检查失败。下载的文件可能已损坏。",
+        "signatureFailed": "组件数字签名验证失败。",
+        "dirCreateFailed": "创建本地存储目录失败: {error}",
+        "fileWriteFailed": "将组件文件写入磁盘失败: {error}",
+        "manifestSerializeFailed": "序列化清单缓存失败: {error}",
+        "manifestWriteFailed": "将清单缓存写入磁盘失败: {error}"
+      }
     }
   },
   "updater": {
@@ -366,7 +389,8 @@
     "pinGroup": "置顶分组",
     "unpinGroup": "取消置顶分组",
     "renameGroup": "重命名分组",
-    "deleteGroup": "删除分组"
+    "deleteGroup": "删除分组",
+    "noTagsAvailable": "无可用标签"
   },
   "feedback": {
     "title": "发送反馈",
