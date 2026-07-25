@@ -150,8 +150,10 @@ pub async fn get_all_sessions<R: tauri::Runtime>(
             .open_db()
             .ok_or_else(|| AppErrorPayload::new(ERR_SESSION_READ_LOCK))?;
         let mut out = Vec::new();
-        crate::parsers::store::for_each_session(&conn, 512, |s| out.push(s.to_lightweight()))
-            .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
+        crate::parsers::store::for_each_session_list_payload(&conn, 512, |s| {
+            out.push(s.to_lightweight())
+        })
+        .map_err(|e| AppErrorPayload::with_msg(ERR_SESSION_READ_LOCK, e.to_string()))?;
         out
     };
 
@@ -247,7 +249,7 @@ pub fn compute_session_statuses<R: tauri::Runtime>(
             .open_db()
             .ok_or_else(|| "session store unavailable".to_string())?;
         let mut probes = Vec::new();
-        crate::parsers::store::for_each_session(&conn, 512, |s| {
+        crate::parsers::store::for_each_session_list_payload(&conn, 512, |s| {
             // Same recompute policy as get_all_sessions: antigravity/claude have
             // dynamic statuses; other sources keep their parse-time status.
             let is_dynamic = s.source_id == "antigravity"

@@ -375,6 +375,137 @@ pub fn count_sessions(conn: &Connection) -> rusqlite::Result<i64> {
 /// callers score/collect each session and drop it. Pagination is keyset (`row_id > last`),
 /// so it stays O(n) rather than degrading like `OFFSET`. Turns for a page are fetched by the
 /// same `row_id` range that bounds the page, avoiding a per-session query.
+/// Like [`for_each_session`], but does not read the message text of turns that nobody will
+/// look at.
+///
+/// The list payload (`Session::to_lightweight`) strips every turn's text before it crosses
+/// the IPC boundary, yet the read still pulled all of it off disk first — megabytes of
+/// transcript loaded solely to be discarded on the next line. That defeated at the storage
+/// layer what the slim DTO won at the transport layer.
+///
+/// The *last* turn's text is still loaded, because it is not actually discarded: it is what
+/// `to_lightweight` derives the sidebar snippet from when `snippet` is NULL (which it is for
+/// every real session), and what `resolve_session_status` inspects to decide whether the
+/// final turn was answered. Everything earlier comes back with empty message strings and
+/// full structure (timestamps, token counts, `extra_data`), which is all the frontend sorts
+/// on.
+///
+/// Use [`for_each_session`] when the text genuinely matters — search does.
+pub fn for_each_session_list_payload(
+    conn: &Connection,
+    batch_size: i64,
+    mut f: impl FnMut(Session),
+) -> rusqlite::Result<()> {
+    let mut session_stmt = conn.prepare(
+        "SELECT row_id, id, source_id, file_path, timestamp, updated_at, cwd, thread_name, \
+         is_archived, is_pinned, is_deleted, status, workspace_name, snippet, summary_json \
+         FROM sessions WHERE row_id > ?1 ORDER BY row_id LIMIT ?2",
+    )?;
+    // Deliberately omits user_message/assistant_message — that is the whole point.
+    let mut turn_stmt = conn.prepare(
+        "SELECT session_row_id, turn_id, timestamp, input_tokens, output_tokens, \
+         extra_data_json FROM turns \
+         WHERE session_row_id > ?1 AND session_row_id <= ?2 ORDER BY session_row_id, turn_index",
+    )?;
+    // One row per session: the text of its final turn.
+    let mut last_text_stmt = conn.prepare(
+        "SELECT t.session_row_id, t.user_message, t.assistant_message FROM turns t \
+         JOIN (SELECT session_row_id, MAX(turn_index) AS mx FROM turns \
+               WHERE session_row_id > ?1 AND session_row_id <= ?2 GROUP BY session_row_id) m \
+           ON m.session_row_id = t.session_row_id AND m.mx = t.turn_index",
+    )?;
+
+    let mut prev: i64 = 0;
+    loop {
+        let mut page: Vec<(i64, Session)> = Vec::new();
+        let rows = session_stmt.query_map(params![prev, batch_size], |r| {
+            let row_id: i64 = r.get(0)?;
+            let summary_json: Option<String> = r.get(14)?;
+            let session = Session {
+                id: r.get(1)?,
+                source_id: r.get(2)?,
+                file_path: r.get(3)?,
+                timestamp: r.get(4)?,
+                updated_at: r.get(5)?,
+                cwd: r.get(6)?,
+                thread_name: r.get(7)?,
+                turns: Vec::new(),
+                is_archived: r.get::<_, i64>(8)? != 0,
+                is_pinned: r.get::<_, i64>(9)? != 0,
+                summary: summary_json
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok()),
+                snippet: r.get(13)?,
+                workspace_name: r.get(12)?,
+                status: r.get(11)?,
+                is_deleted: r.get::<_, i64>(10)? != 0,
+            };
+            Ok((row_id, session))
+        })?;
+        for row in rows {
+            page.push(row?);
+        }
+        if page.is_empty() {
+            break;
+        }
+        let page_len = page.len() as i64;
+        let new_prev = page.last().map(|(id, _)| *id).unwrap_or(prev);
+
+        let mut turns_by_row: HashMap<i64, Vec<Turn>> = HashMap::new();
+        let turn_rows = turn_stmt.query_map(params![prev, new_prev], |r| {
+            let row_id: i64 = r.get(0)?;
+            let extra_json: Option<String> = r.get(5)?;
+            let turn = Turn {
+                turn_id: r.get(1)?,
+                user_message: String::new(),
+                assistant_message: String::new(),
+                timestamp: r.get(2)?,
+                input_tokens: r.get(3)?,
+                output_tokens: r.get(4)?,
+                extra_data: extra_json
+                    .as_deref()
+                    .and_then(|s| serde_json::from_str(s).ok())
+                    .unwrap_or_default(),
+                images: None,
+            };
+            Ok((row_id, turn))
+        })?;
+        for row in turn_rows {
+            let (row_id, turn) = row?;
+            turns_by_row.entry(row_id).or_default().push(turn);
+        }
+
+        // Refill the final turn's text so snippet/status derivation still works.
+        let last_rows = last_text_stmt.query_map(params![prev, new_prev], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?;
+        for row in last_rows {
+            let (row_id, user_message, assistant_message) = row?;
+            if let Some(last) = turns_by_row.get_mut(&row_id).and_then(|v| v.last_mut()) {
+                last.user_message = user_message;
+                last.assistant_message = assistant_message;
+            }
+        }
+
+        for (row_id, mut session) in page {
+            if let Some(turns) = turns_by_row.remove(&row_id) {
+                session.turns = turns;
+            }
+            f(session);
+        }
+
+        prev = new_prev;
+        if page_len < batch_size {
+            break;
+        }
+    }
+    Ok(())
+}
+
 pub fn for_each_session(
     conn: &Connection,
     batch_size: i64,
@@ -644,6 +775,35 @@ mod tests {
         c.pragma_update(None, "foreign_keys", "ON").unwrap();
         c.execute_batch(SCHEMA).unwrap();
         c
+    }
+
+    /// The list-payload read must be indistinguishable from the full read once the payload
+    /// is actually built.
+    ///
+    /// `for_each_session_list_payload` skips the message text of every turn but the last, so
+    /// the only thing keeping it honest is that `to_lightweight` strips that text anyway.
+    /// Asserting on the post-`to_lightweight` values (not the raw rows) is the point: it
+    /// pins the *observable* result, so if `to_lightweight` ever starts consuming text this
+    /// optimization silently dropped, this test fails instead of the sidebar quietly losing
+    /// its snippets.
+    #[test]
+    fn list_payload_read_matches_the_full_read_after_to_lightweight() {
+        let mut c = conn();
+        let mut entry = full_entry();
+        entry.session.snippet = None; // real sessions store NULL; snippet is derived
+        save_source(&mut c, "codex", std::slice::from_ref(&entry)).unwrap();
+
+        let mut full = Vec::new();
+        for_each_session(&c, 2, |s| full.push(s.to_lightweight())).unwrap();
+        let mut light = Vec::new();
+        for_each_session_list_payload(&c, 2, |s| light.push(s.to_lightweight())).unwrap();
+
+        assert_eq!(full, light, "list payload diverged from the full read");
+        // Guard the specific thing the optimization risks: the derived snippet.
+        assert!(
+            light[0].snippet.as_deref().is_some_and(|s| !s.is_empty()),
+            "snippet must still be derived from the last turn"
+        );
     }
 
     /// A title-only change must be visible in the fingerprint the watcher diffs.
