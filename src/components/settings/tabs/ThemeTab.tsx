@@ -93,19 +93,19 @@ export const ThemeTab = (props: ThemeTabProps) => {
       surfaceL = 8 + Math.floor(Math.random() * 6);
       accent1S = 70 + Math.floor(Math.random() * 25);
       accent1L = 50 + Math.floor(Math.random() * 15);
-      accent2S = 60 + Math.floor(Math.random() * 30);
-      accent2L = 55 + Math.floor(Math.random() * 11);
-    } else {
-      bgS = 10 + Math.floor(Math.random() * 10);
-      bgL = 93 + Math.floor(Math.random() * 4);
-      surfaceL = 97 + Math.floor(Math.random() * 4);
-      accent1S = 75 + Math.floor(Math.random() * 20);
-      accent1L = 40 + Math.floor(Math.random() * 15);
       accent2S = 65 + Math.floor(Math.random() * 25);
-      accent2L = 35 + Math.floor(Math.random() * 15);
+      accent2L = 55 + Math.floor(Math.random() * 15);
+    } else {
+      bgS = 15 + Math.floor(Math.random() * 25);
+      bgL = 94 + Math.floor(Math.random() * 5);
+      surfaceL = 88 + Math.floor(Math.random() * 6);
+      accent1S = 60 + Math.floor(Math.random() * 30);
+      accent1L = 35 + Math.floor(Math.random() * 15);
+      accent2S = 55 + Math.floor(Math.random() * 30);
+      accent2L = 40 + Math.floor(Math.random() * 15);
     }
 
-    const rolled = {
+    const newCustom = {
       bg: { h: bgH, s: bgS, l: bgL },
       surface: { h: bgH, s: bgS, l: surfaceL },
       accent1: { h: h1, s: accent1S, l: accent1L },
@@ -113,13 +113,13 @@ export const ThemeTab = (props: ThemeTabProps) => {
     };
 
     const keyPrefix = isDarkMode ? "dark" : "light";
-    Object.entries(rolled).forEach(([colorKey, colorVal]) => {
+    Object.entries(newCustom).forEach(([colorKey, colorVal]) => {
       localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-h`, String(colorVal.h));
       localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-s`, String(colorVal.s));
       localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-l`, String(colorVal.l));
     });
 
-    props.onCustomThemeChange(rolled);
+    props.onCustomThemeChange(newCustom);
   };
 
   return (
