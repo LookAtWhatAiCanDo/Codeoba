@@ -11,6 +11,7 @@ export interface UpdatesTabProps {
   appVersion: string;
   checkingUpdates: boolean;
   updateCheckResult: string | null;
+  updateCheckStatus?: "ok" | "error" | null;
   onCheckUpdates: () => void;
 }
 
@@ -76,13 +77,8 @@ export const UpdatesTab = (props: UpdatesTabProps) => {
               <div
                 class="text-[0.6875rem] font-semibold"
                 classList={{
-                  "text-red-400":
-                    props.updateCheckResult?.startsWith("Error") ||
-                    props.updateCheckResult?.startsWith("Failed"),
-                  "text-emerald-400": !(
-                    props.updateCheckResult?.startsWith("Error") ||
-                    props.updateCheckResult?.startsWith("Failed")
-                  ),
+                  "text-red-400": props.updateCheckStatus === "error",
+                  "text-emerald-400": props.updateCheckStatus !== "error",
                 }}
               >
                 {props.updateCheckResult}

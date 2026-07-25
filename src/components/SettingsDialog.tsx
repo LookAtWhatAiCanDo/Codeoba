@@ -24,6 +24,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const [deletingSourceId, setDeletingSourceId] = createSignal<string | null>(null);
   const [checkingUpdates, setCheckingUpdates] = createSignal(false);
   const [updateCheckResult, setUpdateCheckResult] = createSignal<string | null>(null);
+  const [updateCheckStatus, setUpdateCheckStatus] = createSignal<"ok" | "error" | null>(null);
   const [updaterActive, setUpdaterActive] = createSignal(false);
   const [appVersion, setAppVersion] = createSignal("0.1.0");
 
@@ -361,6 +362,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   const handleCheckUpdates = async () => {
     setCheckingUpdates(true);
     setUpdateCheckResult(null);
+    setUpdateCheckStatus(null);
     try {
       await invoke("set_menu_item_text", {
         id: "check-updates",
@@ -381,17 +383,20 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           `Settings: Update check successful. Found newer version: v${update.version} (released on ${update.date || "unknown date"})`
         );
         setUpdateCheckResult(t("settings.updates.updateFound", { version: update.version }));
+        setUpdateCheckStatus("ok");
         if (props.onUpdateAvailable) {
           props.onUpdateAvailable(update);
         }
       } else {
         logFE("info", "Settings: Update check successful. The application is up to date.");
         setUpdateCheckResult(t("settings.updates.upToDate"));
+        setUpdateCheckStatus("ok");
       }
     } catch (err: any) {
       logFE("error", `Settings: Update check failed. Error details: ${err}`);
       setCheckingUpdates(false);
       setUpdateCheckResult(t("settings.updates.error", { error: String(err) }));
+      setUpdateCheckStatus("error");
 
       try {
         logFE("info", "Settings: Attempting diagnostic connection to find root cause...");
@@ -624,6 +629,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
               appVersion={appVersion()}
               checkingUpdates={checkingUpdates()}
               updateCheckResult={updateCheckResult()}
+              updateCheckStatus={updateCheckStatus()}
               onCheckUpdates={props.onCheckUpdates || handleCheckUpdates}
             />
           </div>
