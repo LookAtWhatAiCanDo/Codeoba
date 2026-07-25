@@ -364,10 +364,25 @@ pub async fn get_session<R: tauri::Runtime>(
 
     let state = app_handle.state::<SearchIndexState>();
 
-    let stored = crate::parsers::cache::get_cache_manager()
-        .open_db()
-        .and_then(|c| crate::parsers::store::get_session_by_path(&c, &source_id, &file_path).ok())
-        .flatten();
+    // A read failure here falls through to re-parsing the file, which is the right
+    // degradation -- but log it, because silently taking the slow path is how a corrupt or
+    // locked database hides in plain sight while every session load pays for it.
+    let stored = match crate::parsers::cache::get_cache_manager().open_db() {
+        Some(c) => match crate::parsers::store::get_session_by_path(&c, &source_id, &file_path) {
+            Ok(found) => found,
+            Err(_e) => {
+                crate::log_error!(
+                    "[get_session] Store read failed for {}/{}: {}. Falling back to parsing \
+                     the file.",
+                    source_id,
+                    file_path,
+                    _e
+                );
+                None
+            }
+        },
+        None => None,
+    };
 
     if let Some(mut session) = stored {
         if session.workspace_name.is_none() && session.cwd.is_some() {
