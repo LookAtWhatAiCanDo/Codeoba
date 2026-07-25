@@ -116,13 +116,13 @@ CREATE TABLE IF NOT EXISTS turns (
 /// The blob itself is never logged: it holds transcript content, and this app is local-first
 /// precisely so that content stays out of places like log files. The column name plus serde's
 /// own line/column position is enough to identify the row and the damage.
-fn parse_json_column<T: serde::de::DeserializeOwned>(raw: &str, column: &str) -> Option<T> {
+fn parse_json_column<T: serde::de::DeserializeOwned>(raw: &str, _column: &str) -> Option<T> {
     match serde_json::from_str(raw) {
         Ok(value) => Some(value),
         Err(_e) => {
             crate::log_debug!(
                 "[store] Ignoring malformed {} ({} bytes): {}",
-                column,
+                _column,
                 raw.len(),
                 _e
             );
