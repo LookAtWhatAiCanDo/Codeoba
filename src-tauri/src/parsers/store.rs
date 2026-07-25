@@ -31,6 +31,13 @@ pub fn open(path: &std::path::Path) -> rusqlite::Result<Connection> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "synchronous", "NORMAL")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
+    // WAL lets readers run alongside a writer, but still permits only ONE writer at a time,
+    // and sources are reindexed on independent tasks (`spawn_reindex_source`), so two
+    // sources finishing a scan together do contend. Without a busy timeout the loser gets
+    // SQLITE_BUSY immediately, `save_cache` logs it and drops the entire scan result — a
+    // whole source silently fails to persist and reappears only after the next successful
+    // scan. Wait instead; the writes are short.
+    conn.busy_timeout(std::time::Duration::from_secs(5))?;
 
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
     if version != SCHEMA_VERSION {
