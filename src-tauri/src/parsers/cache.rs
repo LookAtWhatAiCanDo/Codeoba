@@ -237,13 +237,26 @@ impl SessionCacheManager {
         }
     }
 
-    fn save_cache(&self, source_id: &str, entries: Vec<CacheEntry>) {
+    /// Persists `entries` as the full contents of `source_id`. Returns whether the write
+    /// actually landed.
+    ///
+    /// The boolean matters: `end_scan` used to report `ScanResult::complete` unconditionally,
+    /// so a failed write produced a scan that *claimed* to be authoritative while the store
+    /// still held the previous contents. Everything downstream trusts `complete` — it is what
+    /// licenses absence-driven deletion — so a silent write failure could license conclusions
+    /// drawn from data that was never written.
+    #[must_use]
+    fn save_cache(&self, source_id: &str, entries: Vec<CacheEntry>) -> bool {
         let mut conn = match self.open_db() {
             Some(c) => c,
-            None => return,
+            None => return false,
         };
-        if let Err(e) = crate::parsers::store::save_source(&mut conn, source_id, &entries) {
-            crate::log_error!("[cache] Failed to save sessions for '{}': {}", source_id, e);
+        match crate::parsers::store::save_source(&mut conn, source_id, &entries) {
+            Ok(()) => true,
+            Err(e) => {
+                crate::log_error!("[cache] Failed to save sessions for '{}': {}", source_id, e);
+                false
+            }
         }
     }
 
@@ -436,7 +449,7 @@ impl SessionCacheManager {
         if !loaded_and_saved {
             let mut cache_map = self.load_cache(source_id);
             cache_map.insert(file_path.to_string(), entry);
-            self.save_cache(source_id, cache_map.into_values().collect());
+            let _ = self.save_cache(source_id, cache_map.into_values().collect());
         }
         if let Ok(mut seen_guard) = self.seen_paths.lock() {
             if let Some(set) = seen_guard.get_mut(source_id) {
@@ -561,7 +574,7 @@ impl SessionCacheManager {
             cache_map.values().cloned().collect::<Vec<CacheEntry>>()
         };
 
-        self.save_cache(source_id, entries_to_save.clone());
+        let persisted = self.save_cache(source_id, entries_to_save.clone());
 
         let _hits = if let Ok(guard) = self.hit_counter.lock() {
             guard.get(source_id).cloned().unwrap_or(0)
@@ -595,12 +608,24 @@ impl SessionCacheManager {
             seen_guard.remove(source_id);
         }
 
-        ScanResult::complete(
-            entries_to_save
-                .into_iter()
-                .map(|entry| entry.session)
-                .collect(),
-        )
+        let sessions: Vec<Session> = entries_to_save
+            .into_iter()
+            .map(|entry| entry.session)
+            .collect();
+
+        if persisted {
+            ScanResult::complete(sessions)
+        } else {
+            // The walk finished, but the store still holds the pre-scan contents, so this
+            // scan is not authoritative: reporting `complete` here would license the caller
+            // to delete sessions on the strength of data that was never written.
+            crate::log_warn!(
+                "[cache] Scan for '{}' enumerated fully but could not be persisted; \
+                 reporting partial so deletion detection is skipped.",
+                source_id
+            );
+            ScanResult::partial(sessions)
+        }
     }
 }
 
