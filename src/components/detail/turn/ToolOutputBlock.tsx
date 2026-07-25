@@ -51,13 +51,7 @@ export const ToolOutputBlock = (props: ToolOutputBlockProps) => {
 
   const getToolMeta = () => {
     const type = props.tool.toolType.toLowerCase();
-    const content = props.tool.content.toLowerCase();
-
-    const isError =
-      content.includes("error:") ||
-      content.includes("failed with") ||
-      content.includes("exit code:") ||
-      content.includes("invalid tool call");
+    const isError = /error:|failed with|exit code:|invalid tool call/i.test(props.tool.content);
     const isEdit =
       type.includes("edit") ||
       type.includes("write") ||
