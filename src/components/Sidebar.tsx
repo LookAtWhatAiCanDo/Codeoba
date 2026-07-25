@@ -170,10 +170,24 @@ export const Sidebar = (props: SidebarProps) => {
   const [sortAscending, setSortAscending] = createSignal<boolean>(false);
 
   const effectiveSortBy = createMemo(() => {
-    if (props.searchResults !== null) {
-      return sortBy() === "updated" ? "relevance" : sortBy();
+    if (props.searchResults === null && sortBy() === "relevance") {
+      return "updated";
     }
     return sortBy();
+  });
+
+  createEffect((prevIsSearching?: boolean) => {
+    const isSearching = props.searchResults !== null;
+    if (prevIsSearching === false && isSearching) {
+      if (sortBy() === "updated") {
+        setSortBy("relevance");
+      }
+    } else if (prevIsSearching === true && !isSearching) {
+      if (sortBy() === "relevance") {
+        setSortBy("updated");
+      }
+    }
+    return isSearching;
   });
 
   const availableDimensions = createMemo(() => {
