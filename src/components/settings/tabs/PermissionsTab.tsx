@@ -18,6 +18,19 @@ export interface PermissionsTabProps {
 export const PermissionsTab = (props: PermissionsTabProps) => {
   const { t } = useI18n();
 
+  const formatDecision = (decision: string) => {
+    switch (decision) {
+      case "allow":
+        return t("settings.agents.allow");
+      case "deny":
+        return t("settings.agents.deny");
+      case "ask":
+        return t("settings.agents.ask");
+      default:
+        return decision;
+    }
+  };
+
   return (
     <Show when={props.activeCategory === "permissions"}>
       {/* Path Permissions Tab */}
@@ -59,13 +72,13 @@ export const PermissionsTab = (props: PermissionsTabProps) => {
                       <span>
                         {t("fileViewer.title")}:{" "}
                         <span class={p.preview === "allow" ? "text-accent font-semibold" : ""}>
-                          {p.preview}
+                          {formatDecision(p.preview)}
                         </span>
                       </span>
                       <span>
                         {t("settings.permissions.external")}:{" "}
                         <span class={p.external === "allow" ? "text-accent font-semibold" : ""}>
-                          {p.external}
+                          {formatDecision(p.external)}
                         </span>
                       </span>
                     </div>
