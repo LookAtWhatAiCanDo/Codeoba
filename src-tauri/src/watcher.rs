@@ -120,6 +120,34 @@ fn is_directory_not_empty(path: &Path) -> bool {
     }
 }
 
+/// Reads the store fingerprint of every session in `source_id`, or `None` if the read failed.
+///
+/// Deliberately NOT `unwrap_or_default()`. An empty map and a failed read are the same value
+/// but opposite facts, and [`reindex_source_and_emit`] turns the difference into
+/// `session-deleted` for every session it cannot see — so defaulting a transient SQLite
+/// error to "empty" would wipe an entire source from the sidebar. This is the same ambiguity
+/// [`ScanResult`](crate::parsers::cache::ScanResult) exists to forbid, one layer up.
+fn read_session_states(
+    mgr: &crate::parsers::cache::SessionCacheManager,
+    source_id: &str,
+    phase: &str,
+) -> Option<HashMap<String, crate::parsers::store::SessionState>> {
+    let conn = mgr.open_db()?;
+    match crate::parsers::store::session_states(&conn, source_id) {
+        Ok(states) => Some(states),
+        Err(_e) => {
+            crate::log_error!(
+                "[reindex] Could not read {} state for '{}': {}. Skipping event emission \
+                 so nothing is reported deleted on the strength of an unreadable store.",
+                phase,
+                source_id,
+                _e
+            );
+            None
+        }
+    }
+}
+
 /// Reparses `source_id` off disk (the store is authoritative and the parse writes it) and
 /// emits exactly the live events implied by what changed.
 ///
@@ -134,17 +162,21 @@ fn is_directory_not_empty(path: &Path) -> bool {
 /// read failure — leaves the store unchanged (`end_scan` is completeness-gated), so
 /// `after == before` and nothing is spuriously deleted. This replaces the old
 /// update_session + reconcile_source pair, which diffed against a separate in-memory index.
+///
+/// If either fingerprint read fails, this returns without emitting anything at all. The
+/// store itself is already correct (the parse wrote it); only the notifications are skipped,
+/// and the next scan reconciles. That is strictly better than the alternative of treating an
+/// unreadable store as an empty one, which would announce every session in the source as
+/// deleted.
 async fn reindex_source_and_emit<R: tauri::Runtime>(
     app_handle: &tauri::AppHandle<R>,
     source_id: &str,
 ) {
-    use crate::parsers::store;
     let mgr = crate::parsers::cache::get_cache_manager();
 
-    let before = mgr
-        .open_db()
-        .and_then(|c| store::session_states(&c, source_id).ok())
-        .unwrap_or_default();
+    let Some(before) = read_session_states(mgr, source_id, "pre-scan") else {
+        return;
+    };
 
     let sources = get_sources_list();
     let src = match sources.iter().find(|s| s.id() == source_id) {
@@ -153,10 +185,9 @@ async fn reindex_source_and_emit<R: tauri::Runtime>(
     };
     let scan = src.parse_all_sessions().await;
 
-    let after = mgr
-        .open_db()
-        .and_then(|c| store::session_states(&c, source_id).ok())
-        .unwrap_or_default();
+    let Some(after) = read_session_states(mgr, source_id, "post-scan") else {
+        return;
+    };
 
     // Full session objects, keyed by id, for the session-updated payload.
     let scan_map: HashMap<String, crate::models::Session> = scan
@@ -324,10 +355,23 @@ pub fn check_and_restore_watched_paths<R: tauri::Runtime>(app_handle: &tauri::Ap
             // inline removal produced, but funneled through a single, completeness-gated
             // authority so a *present* directory whose scan merely came back short can
             // never wipe the source. DO NOT recreate the watch here.
-            let has_sessions = crate::parsers::cache::get_cache_manager()
-                .open_db()
-                .and_then(|c| crate::parsers::store::source_has_sessions(&c, &source_id).ok())
-                .unwrap_or(false);
+            // A read failure defaults to false, which merely skips the rescan trigger --
+            // the conservative direction -- but log it so it is not mistaken for "this
+            // source genuinely has no sessions".
+            let has_sessions = match crate::parsers::cache::get_cache_manager().open_db() {
+                Some(c) => match crate::parsers::store::source_has_sessions(&c, &source_id) {
+                    Ok(has) => has,
+                    Err(_e) => {
+                        crate::log_error!(
+                            "[watcher] Could not check whether '{}' has stored sessions: {}",
+                            source_id,
+                            _e
+                        );
+                        false
+                    }
+                },
+                None => false,
+            };
 
             if stored_ino.is_some() || has_sessions {
                 crate::log_info!(
@@ -725,6 +769,44 @@ mod watcher_tests {
     use crate::models::{Session, Turn};
     use crate::parsers::SourceAdapter;
     use crate::search::SearchIndexState;
+
+    /// An unreadable store must NOT be reported as an empty one.
+    ///
+    /// `reindex_source_and_emit` derives `session-deleted` from ids present in the pre-scan
+    /// fingerprint and absent from the post-scan one. These reads used to end in
+    /// `.ok().unwrap_or_default()`, so a transient SQLite failure produced an empty map —
+    /// which the diff reads as "every session in this source is gone" and announces the
+    /// whole source as deleted. That is the exact inference `ScanResult`'s completeness
+    /// gating exists to forbid, reintroduced one layer above it.
+    ///
+    /// Failure is induced by dropping the `sessions` table: `open` only recreates the schema
+    /// on a `user_version` mismatch, so the connection opens fine and the query is what
+    /// fails — the same shape as corruption or a lock timeout, without needing either.
+    #[test]
+    fn unreadable_store_yields_none_rather_than_an_empty_state_map() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("CODEOBA_MOCK_HOME", temp.path());
+        let mgr = crate::parsers::cache::get_cache_manager();
+        mgr.clear_in_memory_caches();
+
+        // A healthy store reads as an (empty) map -- Some, not None.
+        assert!(
+            read_session_states(mgr, "claude", "pre-scan").is_some(),
+            "a readable store must produce a state map"
+        );
+
+        mgr.open_db()
+            .unwrap()
+            .execute_batch("DROP TABLE turns; DROP TABLE sessions;")
+            .unwrap();
+
+        assert!(
+            read_session_states(mgr, "claude", "pre-scan").is_none(),
+            "an unreadable store must be None, never an empty map: the caller would \
+             otherwise emit session-deleted for every session in the source"
+        );
+    }
 
     /// Seeds a session into the SQLite store (which is now the index). Requires
     /// CODEOBA_MOCK_HOME to point at the test's temp home.
