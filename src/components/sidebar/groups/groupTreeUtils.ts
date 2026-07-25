@@ -73,6 +73,8 @@ export function buildGroupTree(
           containsPinnedSessions: false,
         };
         currentLevel.push(node);
+      } else {
+        currentFullName = node.fullName;
       }
 
       if (i === parts.length - 1) {
