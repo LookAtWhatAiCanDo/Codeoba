@@ -68,22 +68,40 @@ impl SourceAdapter for ClaudeSource {
     }
 
     fn get_watch_paths(&self) -> Vec<String> {
-        self.get_default_log_paths()
+        vec![
+            self.get_base_dir().to_string_lossy().to_string(),
+            self.get_app_support_dir().to_string_lossy().to_string(),
+        ]
     }
 
     fn get_watch_file_filter(&self) -> Option<fn(&str) -> bool> {
         Some(|path_str| {
-            if !path_str.ends_with(".jsonl") {
-                return false;
+            if path_str.ends_with(".jsonl") {
+                let path = Path::new(path_str);
+                let home = crate::parsers::get_home_dir();
+                let base_dir = home.join(".claude/projects");
+                if let Ok(rel_path) = path.strip_prefix(&base_dir) {
+                    return rel_path.components().count() <= CLAUDE_LOGS_MAX_DEPTH;
+                }
+            } else if path_str.ends_with(".json") {
+                let home = crate::parsers::get_home_dir();
+                let app_dir = if cfg!(target_os = "macos") {
+                    home.join("Library/Application Support/Claude")
+                } else if cfg!(target_os = "windows") {
+                    if let Ok(app_data) = std::env::var("APPDATA") {
+                        PathBuf::from(app_data).join("Claude")
+                    } else {
+                        home.join("AppData/Roaming/Claude")
+                    }
+                } else {
+                    home.join(".config/Claude")
+                };
+                let path = Path::new(path_str);
+                if path.starts_with(&app_dir) {
+                    return true;
+                }
             }
-            let path = Path::new(path_str);
-            let home = crate::parsers::get_home_dir();
-            let base_dir = home.join(".claude/projects");
-            if let Ok(rel_path) = path.strip_prefix(&base_dir) {
-                rel_path.components().count() <= CLAUDE_LOGS_MAX_DEPTH
-            } else {
-                false
-            }
+            false
         })
     }
 
@@ -105,7 +123,7 @@ impl SourceAdapter for ClaudeSource {
     }
 
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
-        self.parse_session_impl(file_path).await
+        self.parse_session_impl(file_path, None).await
     }
 
     async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
@@ -128,9 +146,14 @@ impl SourceAdapter for ClaudeSource {
             &mut paths,
         );
 
+        let archived_map = self.load_archived_session_map();
+
         let mut sessions = Vec::new();
         for path in paths {
-            if let Some(session) = self.parse_session(&path.to_string_lossy()).await {
+            if let Some(session) = self
+                .parse_session_impl(&path.to_string_lossy(), Some(&archived_map))
+                .await
+            {
                 sessions.push(session);
             }
         }
@@ -179,7 +202,82 @@ impl ClaudeSource {
         home.join(".claude/projects")
     }
 
-    async fn parse_session_impl(&self, file_path: &str) -> Option<Session> {
+    fn get_app_support_dir(&self) -> PathBuf {
+        let home = crate::parsers::get_home_dir();
+        if cfg!(target_os = "macos") {
+            home.join("Library/Application Support/Claude")
+        } else if cfg!(target_os = "windows") {
+            if let Ok(app_data) = std::env::var("APPDATA") {
+                PathBuf::from(app_data).join("Claude")
+            } else {
+                home.join("AppData/Roaming/Claude")
+            }
+        } else {
+            home.join(".config/Claude")
+        }
+    }
+
+    pub fn load_archived_session_map(&self) -> HashMap<String, bool> {
+        let mut archived_map = HashMap::new();
+        let app_dir = self.get_app_support_dir();
+        let target_subdirs = ["claude-code-sessions", "local-agent-mode-sessions"];
+        for subdir in &target_subdirs {
+            let dir = app_dir.join(subdir);
+            if dir.exists() && dir.is_dir() {
+                self.scan_dir_for_session_metadata(&dir, &mut archived_map);
+            }
+        }
+        archived_map
+    }
+
+    fn scan_dir_for_session_metadata(&self, dir: &Path, archived_map: &mut HashMap<String, bool>) {
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                self.scan_dir_for_session_metadata(&path, archived_map);
+            } else if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(obj) = val.as_object() {
+                            let is_archived = obj
+                                .get("isArchived")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false);
+                            if let Some(cli_id) = obj.get("cliSessionId").and_then(|v| v.as_str()) {
+                                archived_map.insert(cli_id.to_string(), is_archived);
+                            }
+                            if let Some(s_id) = obj.get("sessionId").and_then(|v| v.as_str()) {
+                                archived_map.insert(s_id.to_string(), is_archived);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn resolve_is_archived(
+        &self,
+        session_id: &str,
+        archived_map: Option<&HashMap<String, bool>>,
+    ) -> bool {
+        if let Some(map) = archived_map {
+            map.get(session_id).copied().unwrap_or(false)
+        } else {
+            let map = self.load_archived_session_map();
+            map.get(session_id).copied().unwrap_or(false)
+        }
+    }
+
+    async fn parse_session_impl(
+        &self,
+        file_path: &str,
+        archived_map: Option<&HashMap<String, bool>>,
+    ) -> Option<Session> {
         let path = Path::new(file_path);
         let file = File::open(path).ok()?;
         let metadata = file.metadata().ok()?;
@@ -190,6 +288,22 @@ impl ClaudeSource {
         if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
             .get_cached_session_for_file(self.id(), file_path, last_modified, size)
         {
+            let current_archived = self.resolve_is_archived(&cached.id, archived_map);
+            let archived_changed = cached.is_archived != current_archived;
+            if archived_changed {
+                cached.is_archived = current_archived;
+                crate::parsers::cache::get_cache_manager().put_cached_session(
+                    self.id(),
+                    file_path,
+                    last_modified,
+                    size,
+                    "",
+                    cached.clone(),
+                );
+            } else {
+                cached.is_archived = current_archived;
+            }
+
             // Re-resolve status dynamically to ensure it is not stale
             cached.status = crate::models::resolve_session_status(
                 self.id(),
@@ -602,6 +716,8 @@ impl ClaudeSource {
         let status =
             crate::models::resolve_session_status(self.id(), &session_id, file_path, &turns, &cwd);
 
+        let is_archived = self.resolve_is_archived(&session_id, archived_map);
+
         let session = Session {
             id: session_id,
             source_id: self.id().to_string(),
@@ -611,7 +727,7 @@ impl ClaudeSource {
             cwd,
             thread_name: Some(clean_thread_name),
             turns,
-            is_archived: false,
+            is_archived,
             is_pinned: false,
             summary: None,
             snippet: None,

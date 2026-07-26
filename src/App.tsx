@@ -758,6 +758,24 @@ function App() {
             return list;
           });
 
+          if (searchResults() !== null) {
+            setSearchResults((prev) => {
+              if (!prev) return null;
+              return prev
+                .filter((r) => !deletes.has(r.session.id))
+                .map((r) => {
+                  const u = updates.get(r.session.id);
+                  if (u) {
+                    return {
+                      ...r,
+                      session: { ...r.session, ...u },
+                    };
+                  }
+                  return r;
+                });
+            });
+          }
+
           // The detail pane is driven ONLY by the full-turn channel. Payloads on
           // the list channel are lightweight (earlier turns have blanked
           // messages), so feeding one to the open conversation would visibly wipe

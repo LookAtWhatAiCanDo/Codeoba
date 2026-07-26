@@ -598,6 +598,67 @@ fn test_codex_archived_parsing() {
 }
 
 #[test]
+fn test_claude_archived_parsing() {
+    tauri::async_runtime::block_on(async {
+        with_mock_home(|mock_home| async move {
+            let projects_dir = mock_home.join(".claude/projects/test-proj");
+            fs::create_dir_all(&projects_dir).unwrap();
+
+            let session_id = "test-claude-session-123";
+            let transcript_file = projects_dir.join(format!("{}.jsonl", session_id));
+            fs::write(
+                &transcript_file,
+                format!(
+                    r#"{{"type":"user","timestamp":"2026-05-20T02:00:00Z","sessionId":"{}","message":{{"role":"user","content":"Hello Claude"}}}}
+{{"type":"assistant","timestamp":"2026-05-20T02:01:00Z","sessionId":"{}","message":{{"role":"assistant","content":"Hello!"}}}}
+"#,
+                    session_id, session_id
+                ),
+            )
+            .unwrap();
+
+            let app_support_dir = if cfg!(target_os = "macos") {
+                mock_home.join("Library/Application Support/Claude/claude-code-sessions")
+            } else if cfg!(target_os = "windows") {
+                mock_home.join("AppData/Roaming/Claude/claude-code-sessions")
+            } else {
+                mock_home.join(".config/Claude/claude-code-sessions")
+            };
+            fs::create_dir_all(&app_support_dir).unwrap();
+
+            let metadata_file = app_support_dir.join("local_session_1.json");
+
+            // Initially not archived
+            fs::write(
+                &metadata_file,
+                format!(
+                    r#"{{"sessionId":"local_1","cliSessionId":"{}","isArchived":false}}"#,
+                    session_id
+                ),
+            )
+            .unwrap();
+
+            let source = ClaudeSource;
+            let session1 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
+            assert!(!session1.is_archived);
+
+            // Now mark as archived in metadata
+            fs::write(
+                &metadata_file,
+                format!(
+                    r#"{{"sessionId":"local_1","cliSessionId":"{}","isArchived":true}}"#,
+                    session_id
+                ),
+            )
+            .unwrap();
+
+            let session2 = source.parse_session(&transcript_file.to_string_lossy()).await.unwrap();
+            assert!(session2.is_archived);
+        }).await;
+    });
+}
+
+#[test]
 fn test_antigravity_tool_tags_edge_cases() {
     tauri::async_runtime::block_on(async {
         let temp_file = tempfile::NamedTempFile::new().unwrap();

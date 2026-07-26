@@ -665,7 +665,8 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                             || file_path.ends_with(".pb")
                             || file_path.ends_with(".pbtxt")
                             || file_path.ends_with("session_index.jsonl")
-                            || file_path.ends_with("workspace.yaml");
+                            || file_path.ends_with("workspace.yaml")
+                            || file_path.ends_with(".json");
 
                         let path_obj = Path::new(&file_path);
                         let is_dir = path_obj.is_dir();
