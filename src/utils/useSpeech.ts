@@ -1,4 +1,4 @@
-import { createSignal, createMemo } from "solid-js";
+import { createSignal, createMemo, onCleanup } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Session } from "../types";
@@ -371,6 +371,12 @@ export function applyPronunciations(text: string): string {
 }
 
 const [sentences, setSentences] = createSignal<SpeechItem[]>([]);
+const [lastRemovedItem, setLastRemovedItem] = createSignal<{
+  item: SpeechItem;
+  originalIndex: number;
+} | null>(null);
+let undoTimeoutId: any = null;
+
 const [currentSentenceIndex, setCurrentSentenceIndex] = createSignal(-1);
 const [isPlaying, setIsPlaying] = createSignal(false);
 const [isPaused, setIsPaused] = createSignal(false);
@@ -793,6 +799,19 @@ export function useSpeech() {
     const targetIdx = list.findIndex((s) => s.globalIndex === index);
     if (targetIdx === -1) return;
 
+    const itemToRemove = list[targetIdx]!;
+
+    if (undoTimeoutId) {
+      clearTimeout(undoTimeoutId);
+      undoTimeoutId = null;
+    }
+
+    setLastRemovedItem({ item: itemToRemove, originalIndex: targetIdx });
+    undoTimeoutId = setTimeout(() => {
+      setLastRemovedItem(null);
+      undoTimeoutId = null;
+    }, 10000);
+
     // If removing the active sentence, skip or stop
     if (currentSentenceIndex() === index) {
       if (list.length <= 1) {
@@ -825,6 +844,61 @@ export function useSpeech() {
 
     setSentences(reindexed);
   };
+
+  const undoRemoveSentence = () => {
+    const removed = lastRemovedItem();
+    if (!removed) return;
+
+    if (undoTimeoutId) {
+      clearTimeout(undoTimeoutId);
+      undoTimeoutId = null;
+    }
+
+    const list = sentences();
+    const insertIdx = Math.min(removed.originalIndex, list.length);
+    const updated = [...list];
+    updated.splice(insertIdx, 0, removed.item);
+
+    const reindexed = updated.map((item, idx) => ({
+      ...item,
+      globalIndex: idx,
+    }));
+
+    setSentences(reindexed);
+    setLastRemovedItem(null);
+  };
+
+  const clearUndo = () => {
+    if (undoTimeoutId) {
+      clearTimeout(undoTimeoutId);
+      undoTimeoutId = null;
+    }
+    setLastRemovedItem(null);
+  };
+
+  if (typeof window !== "undefined") {
+    const handleGlobalUndoKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "z" &&
+        !e.shiftKey &&
+        lastRemovedItem() !== null
+      ) {
+        const target = e.target as HTMLElement | null;
+        const isInput =
+          target &&
+          (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+        if (isInput) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        undoRemoveSentence();
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalUndoKeyDown);
+    onCleanup(() => window.removeEventListener("keydown", handleGlobalUndoKeyDown));
+  }
 
   const playFromHere = async (
     sessionId: string,
@@ -1010,6 +1084,9 @@ export function useSpeech() {
     clearReadAloudHistory,
     speakDirectText,
     removeSentence,
+    lastRemovedItem,
+    undoRemoveSentence,
+    clearUndo,
     setLanguage,
   };
 }

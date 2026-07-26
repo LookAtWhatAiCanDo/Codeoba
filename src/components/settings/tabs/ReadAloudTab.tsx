@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
-import { Play, Edit2, Trash2, Check, X } from "lucide-solid";
+import { Play, Edit2, Check, X } from "lucide-solid";
 import { useI18n } from "../../../i18n/i18n";
 import { useSpeech } from "../../../utils/useSpeech";
 import { Category } from "../types";
@@ -314,7 +314,7 @@ export const ReadAloudTab = (props: ReadAloudTabProps) => {
                               class="text-text-secondary/50 hover:text-red-500 transition-colors p-1"
                               title={t("common.delete")}
                             >
-                              <Trash2 class="w-3.5 h-3.5" />
+                              <X class="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </>

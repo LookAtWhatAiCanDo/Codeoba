@@ -20,7 +20,9 @@
     "noSnippet": "無片段文字。",
     "confirm": "確認",
     "edit": "編輯",
-    "clearAll": "清除全部"
+    "clearAll": "清除全部",
+    "undo": "復原",
+    "dismiss": "關閉"
   },
   "sidebar": {
     "title": "工作階段",
@@ -504,6 +506,9 @@
       "rowMany": "{count} 列",
       "columnOne": "1 欄",
       "columnMany": "{count} 欄"
+    },
+    "toast": {
+      "itemRemoved": "已移除項目"
     }
   }
 }

@@ -20,7 +20,9 @@
     "noSnippet": "스니펫 텍스트가 없습니다.",
     "confirm": "확인",
     "edit": "편집",
-    "clearAll": "모두 지우기"
+    "clearAll": "모두 지우기",
+    "undo": "실행 취소",
+    "dismiss": "닫기"
   },
   "sidebar": {
     "title": "세션",
@@ -504,6 +506,9 @@
       "rowMany": "{count}행",
       "columnOne": "1열",
       "columnMany": "{count}열"
+    },
+    "toast": {
+      "itemRemoved": "항목이 삭제됨"
     }
   }
 }

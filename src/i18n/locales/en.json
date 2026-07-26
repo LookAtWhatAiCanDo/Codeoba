@@ -20,7 +20,9 @@
     "noSnippet": "No snippet text.",
     "confirm": "Confirm",
     "edit": "Edit",
-    "clearAll": "Clear All"
+    "clearAll": "Clear All",
+    "undo": "Undo",
+    "dismiss": "Dismiss"
   },
   "sidebar": {
     "title": "Sessions",
@@ -510,6 +512,9 @@
       "rowMany": "{count} rows",
       "columnOne": "1 column",
       "columnMany": "{count} columns"
+    },
+    "toast": {
+      "itemRemoved": "Item removed"
     }
   }
 }

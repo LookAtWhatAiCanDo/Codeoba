@@ -20,7 +20,9 @@
     "noSnippet": "无片段文本。",
     "confirm": "确认",
     "edit": "编辑",
-    "clearAll": "清除全部"
+    "clearAll": "清除全部",
+    "undo": "撤销",
+    "dismiss": "关闭"
   },
   "sidebar": {
     "title": "会话",
@@ -504,6 +506,9 @@
       "rowMany": "{count} 行",
       "columnOne": "1 列",
       "columnMany": "{count} 列"
+    },
+    "toast": {
+      "itemRemoved": "已移除项目"
     }
   }
 }

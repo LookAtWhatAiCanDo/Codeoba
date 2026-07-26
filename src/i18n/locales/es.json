@@ -20,7 +20,9 @@
     "noSnippet": "Sin texto de fragmento.",
     "confirm": "Confirmar",
     "edit": "Editar",
-    "clearAll": "Borrar todo"
+    "clearAll": "Borrar todo",
+    "undo": "Deshacer",
+    "dismiss": "Descartar"
   },
   "sidebar": {
     "title": "Sesiones",
@@ -504,6 +506,9 @@
       "rowMany": "{count} filas",
       "columnOne": "1 columna",
       "columnMany": "{count} columnas"
+    },
+    "toast": {
+      "itemRemoved": "Elemento eliminado"
     }
   }
 }

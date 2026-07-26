@@ -20,7 +20,9 @@
     "noSnippet": "Нет текста фрагмента.",
     "confirm": "Подтвердить",
     "edit": "Редактировать",
-    "clearAll": "Очистить всё"
+    "clearAll": "Очистить всё",
+    "undo": "Отменить",
+    "dismiss": "Закрыть"
   },
   "sidebar": {
     "title": "Сессии",
@@ -504,6 +506,9 @@
       "rowMany": "{count} строк",
       "columnOne": "1 столбец",
       "columnMany": "{count} столбцов"
+    },
+    "toast": {
+      "itemRemoved": "Элемент удален"
     }
   }
 }

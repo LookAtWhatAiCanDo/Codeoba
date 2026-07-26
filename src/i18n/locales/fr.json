@@ -20,7 +20,9 @@
     "noSnippet": "Aucun extrait de texte.",
     "confirm": "Confirmer",
     "edit": "Modifier",
-    "clearAll": "Tout effacer"
+    "clearAll": "Tout effacer",
+    "undo": "Annuler",
+    "dismiss": "Fermer"
   },
   "sidebar": {
     "title": "Sessions",
@@ -504,6 +506,9 @@
       "rowMany": "{count} lignes",
       "columnOne": "1 colonne",
       "columnMany": "{count} colonnes"
+    },
+    "toast": {
+      "itemRemoved": "Élément supprimé"
     }
   }
 }

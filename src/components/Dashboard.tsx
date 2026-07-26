@@ -19,6 +19,7 @@ import {
   Pause,
   Trash2,
   X,
+  Undo2,
   Locate,
   AlertTriangle,
 } from "lucide-solid";
@@ -812,6 +813,42 @@ export const Dashboard = (props: DashboardProps) => {
           </div>
         </Match>
       </Switch>
+
+      {/* Floating Undo Delete Toast for Read Aloud */}
+      <Show when={speech.lastRemovedItem()}>
+        {(removed) => (
+          <div class="fixed bottom-6 right-6 z-[1000] bg-surface border border-accent/40 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
+            <div class="text-xs text-text-primary flex flex-col gap-0.5 max-w-[200px] min-w-0">
+              <span class="font-bold text-accent">{t("readAloud.toast.itemRemoved")}</span>
+              <span class="text-[0.7rem] text-text-secondary/80 truncate">
+                "
+                {removed().item.text.length > 30
+                  ? removed().item.text.slice(0, 30) + "…"
+                  : removed().item.text}
+                "
+              </span>
+            </div>
+            <button
+              onClick={() => speech.undoRemoveSentence()}
+              title={t("common.undo")}
+              class="bg-accent hover:bg-accent-hover text-accent-text font-bold text-xs px-3 py-1.5 rounded-xl shadow-sm cursor-pointer transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <Undo2 class="w-3.5 h-3.5" />
+              <span>{t("common.undo")}</span>
+              <kbd class="text-[0.625rem] font-mono font-bold bg-accent-text/20 px-1 py-0.5 rounded">
+                ⌘Z
+              </kbd>
+            </button>
+            <button
+              onClick={() => speech.clearUndo()}
+              class="text-text-secondary/60 hover:text-text-primary p-1 cursor-pointer"
+              title={t("common.dismiss")}
+            >
+              <X class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </Show>
     </div>
   );
 };

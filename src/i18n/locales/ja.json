@@ -20,7 +20,9 @@
     "noSnippet": "スニペットテキストはありません。",
     "confirm": "確認",
     "edit": "編集",
-    "clearAll": "すべて消去"
+    "clearAll": "すべて消去",
+    "undo": "元に戻す",
+    "dismiss": "閉じる"
   },
   "sidebar": {
     "title": "セッション",
@@ -504,6 +506,9 @@
       "rowMany": "{count} 行",
       "columnOne": "1 列",
       "columnMany": "{count} 列"
+    },
+    "toast": {
+      "itemRemoved": "項目を削除しました"
     }
   }
 }

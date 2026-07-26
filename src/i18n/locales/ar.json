@@ -20,7 +20,9 @@
     "noSnippet": "لا يوجد نص مقتطف.",
     "confirm": "تأكيد",
     "edit": "تعديل",
-    "clearAll": "مسح الكل"
+    "clearAll": "مسح الكل",
+    "undo": "تراجع",
+    "dismiss": "تجاهل"
   },
   "sidebar": {
     "title": "الجلسات",
@@ -504,6 +506,9 @@
       "rowMany": "{count} صفوف",
       "columnOne": "عمود واحد",
       "columnMany": "{count} أعمدة"
+    },
+    "toast": {
+      "itemRemoved": "تمت إزالة العنصر"
     }
   }
 }

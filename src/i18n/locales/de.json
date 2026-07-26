@@ -20,7 +20,9 @@
     "noSnippet": "Kein Snippet-Text.",
     "confirm": "Bestätigen",
     "edit": "Bearbeiten",
-    "clearAll": "Alles löschen"
+    "clearAll": "Alles löschen",
+    "undo": "Rückgängig",
+    "dismiss": "Schließen"
   },
   "sidebar": {
     "title": "Sitzungen",
@@ -504,6 +506,9 @@
       "rowMany": "{count} Zeilen",
       "columnOne": "1 Spalte",
       "columnMany": "{count} Spalten"
+    },
+    "toast": {
+      "itemRemoved": "Element entfernt"
     }
   }
 }

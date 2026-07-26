@@ -20,7 +20,9 @@
     "noSnippet": "Geen fragmenttekst.",
     "confirm": "Bevestigen",
     "edit": "Bewerken",
-    "clearAll": "Alles wisken"
+    "clearAll": "Alles wisken",
+    "undo": "Ongedaan maken",
+    "dismiss": "Sluiten"
   },
   "sidebar": {
     "title": "Sessies",
@@ -504,6 +506,9 @@
       "rowMany": "{count} rijen",
       "columnOne": "1 kolom",
       "columnMany": "{count} kolommen"
+    },
+    "toast": {
+      "itemRemoved": "Item verwijderd"
     }
   }
 }
