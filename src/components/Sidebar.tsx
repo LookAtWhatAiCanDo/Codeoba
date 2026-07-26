@@ -616,9 +616,6 @@ export const Sidebar = (props: SidebarProps) => {
     }
   };
 
-  const [isSettled, setIsSettled] = createSignal(true);
-  let settleRaf: number | null = null;
-
   createEffect(() => {
     // Track search query, search results, and list items
     listItems();
@@ -626,19 +623,7 @@ export const Sidebar = (props: SidebarProps) => {
     props.searchResults;
 
     clearSizeCache();
-    setIsSettled(false);
     virtualizer.measure();
-
-    if (settleRaf) cancelAnimationFrame(settleRaf);
-    settleRaf = requestAnimationFrame(() => {
-      settleRaf = requestAnimationFrame(() => {
-        setIsSettled(true);
-      });
-    });
-  });
-
-  onCleanup(() => {
-    if (settleRaf) cancelAnimationFrame(settleRaf);
   });
 
   // Keyboard Navigation
@@ -1105,7 +1090,7 @@ export const Sidebar = (props: SidebarProps) => {
         class="flex-grow overflow-y-auto min-h-0 px-3 pb-3 outline-none"
       >
         <Show
-          when={!props.isSearchLoading && isSettled()}
+          when={!props.isSearchLoading}
           fallback={
             <div class="flex flex-col items-center justify-center p-12 text-center text-text-secondary gap-3 my-auto">
               <ActiveSpinner class="w-6 h-6 text-accent" />
