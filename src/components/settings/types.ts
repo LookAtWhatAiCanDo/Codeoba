@@ -61,31 +61,37 @@ export interface CustomThemeConfig {
   accent2: CustomThemeColor;
 }
 
+export interface GeneralSettings {
+  dateFormat: string;
+  timeFormat: string;
+  showSeconds: boolean;
+  numberFormat?: string;
+  excludedPaths: string;
+  indexSubagents: boolean;
+  fontSize: number;
+  parserMode?: string;
+  cacheEnabled?: boolean;
+  pruneDeleted?: boolean;
+}
+
+export interface ThemeSettings {
+  theme: string;
+  appearance: string;
+  customTheme?: CustomThemeConfig;
+}
+
 export interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  theme: string;
-  onThemeChange: (theme: string) => void;
-  appearance: string;
-  onAppearanceChange: (val: string) => void;
+  generalSettings: GeneralSettings;
+  onUpdateGeneralSetting: <K extends keyof GeneralSettings>(
+    key: K,
+    value: GeneralSettings[K]
+  ) => void;
+  themeSettings: ThemeSettings;
+  onUpdateThemeSetting: <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) => void;
   sources: SourceMetadata[];
   onRefreshSources: () => void;
   onUpdateAvailable?: (update: any) => void;
-  dateFormat: string;
-  onDateFormatChange: (val: string) => void;
-  timeFormat: string;
-  onTimeFormatChange: (val: string) => void;
-  showSeconds: boolean;
-  onShowSecondsChange: (val: boolean) => void;
-  numberFormat?: string;
-  onNumberFormatChange: (val: string) => void;
-  excludedPaths: string;
-  onExcludedPathsChange: (val: string) => void;
-  indexSubagents: boolean;
-  onIndexSubagentsChange: (val: boolean) => void;
-  customTheme?: CustomThemeConfig;
-  onCustomThemeChange?: (val: any) => void;
   onCheckUpdates?: () => void;
-  fontSize: number;
-  onFontSizeChange: (val: number) => void;
 }

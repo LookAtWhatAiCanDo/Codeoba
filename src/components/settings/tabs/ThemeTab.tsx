@@ -1,16 +1,12 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
 import { Shuffle } from "lucide-solid";
 import { useI18n } from "../../../i18n/i18n";
-import { Category, DARK_THEMES, LIGHT_THEMES, CustomThemeConfig, CustomThemeColor } from "../types";
+import { Category, ThemeSettings, DARK_THEMES, LIGHT_THEMES, CustomThemeColor } from "../types";
 
 export interface ThemeTabProps {
   activeCategory: Category;
-  theme: string;
-  onThemeChange: (theme: string) => void;
-  appearance: string;
-  onAppearanceChange: (val: string) => void;
-  customTheme?: CustomThemeConfig;
-  onCustomThemeChange?: (val: any) => void;
+  settings: ThemeSettings;
+  onUpdateSetting: <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) => void;
 }
 
 const THEME_NAME_TRANSLATION_KEYS: Record<string, string> = {
@@ -41,9 +37,16 @@ const getThemeName = (t: (key: string) => string, nameKey: string): string => {
 export const ThemeTab = (props: ThemeTabProps) => {
   const { t } = useI18n();
 
+  const theme = () => props.settings.theme;
+  const onThemeChange = (t: string) => props.onUpdateSetting("theme", t);
+  const appearance = () => props.settings.appearance;
+  const onAppearanceChange = (a: string) => props.onUpdateSetting("appearance", a);
+  const customTheme = () => props.settings.customTheme;
+  const onCustomThemeChange = (c: any) => props.onUpdateSetting("customTheme", c);
+
   const systemIsDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
   const currentMode = () =>
-    props.appearance === "system" ? (systemIsDark() ? "dark" : "light") : props.appearance;
+    appearance() === "system" ? (systemIsDark() ? "dark" : "light") : appearance();
   const activeThemesList = () => (currentMode() === "dark" ? DARK_THEMES : LIGHT_THEMES);
 
   // Custom Theme HSL Adjusters
@@ -51,9 +54,9 @@ export const ThemeTab = (props: ThemeTabProps) => {
 
   const activeColorHsl = createMemo<CustomThemeColor>(() => {
     const key = activeColorIndex();
-    if (!props.customTheme) return { h: 0, s: 0, l: 0 };
+    if (!customTheme()) return { h: 0, s: 0, l: 0 };
     return (
-      (props.customTheme as any)[key] || {
+      (customTheme() as any)[key] || {
         h: 0,
         s: 0,
         l: 0,
@@ -62,22 +65,22 @@ export const ThemeTab = (props: ThemeTabProps) => {
   });
 
   const handleSliderChange = (part: "h" | "s" | "l", val: number) => {
-    if (!props.customTheme || !props.onCustomThemeChange) return;
+    if (!customTheme() || !onCustomThemeChange) return;
     const isDarkMode = currentMode() === "dark";
     const keyPrefix = isDarkMode ? "dark" : "light";
     const key = activeColorIndex();
     const currentHSL = { ...activeColorHsl(), [part]: val };
     const updatedCustom = {
-      ...props.customTheme,
+      ...customTheme(),
       [key]: currentHSL,
     };
 
     localStorage.setItem(`codeoba-custom-${keyPrefix}-${key}-${part}`, String(val));
-    props.onCustomThemeChange(updatedCustom);
+    onCustomThemeChange(updatedCustom);
   };
 
   const handleRollTheme = () => {
-    if (!props.onCustomThemeChange) return;
+    if (!onCustomThemeChange) return;
 
     const isDarkMode = currentMode() === "dark";
 
@@ -119,7 +122,7 @@ export const ThemeTab = (props: ThemeTabProps) => {
       localStorage.setItem(`codeoba-custom-${keyPrefix}-${colorKey}-l`, String(colorVal.l));
     });
 
-    props.onCustomThemeChange(newCustom);
+    onCustomThemeChange(newCustom);
   };
 
   return (
@@ -139,8 +142,8 @@ export const ThemeTab = (props: ThemeTabProps) => {
             </p>
           </div>
           <select
-            value={props.appearance}
-            onChange={(e) => props.onAppearanceChange(e.currentTarget.value)}
+            value={appearance()}
+            onChange={(e) => onAppearanceChange(e.currentTarget.value)}
             class="bg-background border border-border/80 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent font-medium cursor-pointer"
           >
             <option value="dark">{t("settings.general.appearanceDark")}</option>
@@ -159,12 +162,11 @@ export const ThemeTab = (props: ThemeTabProps) => {
               </p>
             </div>
             <span class="text-xs font-semibold text-accent">
-              {props.theme === "custom"
+              {theme() === "custom"
                 ? t("settings.general.themeCustom")
                 : getThemeName(
                     t,
-                    activeThemesList().find((tTheme) => tTheme.id === props.theme)?.nameKey ||
-                      props.theme
+                    activeThemesList().find((tTheme) => tTheme.id === theme())?.nameKey || theme()
                   )}
             </span>
           </div>
@@ -172,7 +174,7 @@ export const ThemeTab = (props: ThemeTabProps) => {
             <For each={activeThemesList()}>
               {(themeItem) => (
                 <button
-                  onClick={() => props.onThemeChange(themeItem.id)}
+                  onClick={() => onThemeChange(themeItem.id)}
                   title={
                     themeItem.id === "custom"
                       ? t("settings.general.themeCustom")
@@ -181,7 +183,7 @@ export const ThemeTab = (props: ThemeTabProps) => {
                         })
                   }
                   class={`w-5 h-5 rounded-full border cursor-pointer hover:scale-110 hover:shadow-md transition-all duration-150 ${themeItem.color} ${
-                    props.theme === themeItem.id
+                    theme() === themeItem.id
                       ? "scale-105 ring-2 ring-accent ring-offset-2 ring-offset-background"
                       : ""
                   }`}
@@ -192,7 +194,7 @@ export const ThemeTab = (props: ThemeTabProps) => {
         </div>
 
         {/* Custom HSL Theme Editor */}
-        <Show when={props.theme === "custom"}>
+        <Show when={theme() === "custom"}>
           <div class="bg-surface/30 border border-border/50 rounded-2xl py-3 px-4 space-y-4 animate-in fade-in duration-200">
             <div class="flex items-center justify-between">
               <div>
@@ -218,22 +220,22 @@ export const ThemeTab = (props: ThemeTabProps) => {
                   {
                     key: "bg",
                     label: t("settings.general.customThemeBg"),
-                    color: props.customTheme?.bg,
+                    color: customTheme()?.bg,
                   },
                   {
                     key: "surface",
                     label: t("settings.general.customThemeSurface"),
-                    color: props.customTheme?.surface,
+                    color: customTheme()?.surface,
                   },
                   {
                     key: "accent1",
                     label: t("settings.general.customThemeAccent1"),
-                    color: props.customTheme?.accent1,
+                    color: customTheme()?.accent1,
                   },
                   {
                     key: "accent2",
                     label: t("settings.general.customThemeAccent2"),
-                    color: props.customTheme?.accent2,
+                    color: customTheme()?.accent2,
                   },
                 ]}
               >

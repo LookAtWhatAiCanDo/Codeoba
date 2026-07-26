@@ -21,6 +21,26 @@ pub mod store;
 #[allow(clippy::string_slice)]
 mod tests;
 
+pub(crate) fn escape_tool_tags(text: &str) -> String {
+    text.replace("[[[TOOL", "\\[\\[\\[TOOL")
+        .replace("[[[/TOOL", "\\[\\[\\[/TOOL")
+}
+
+pub(crate) fn parse_rfc3339_to_millis(text: &str) -> Option<i64> {
+    chrono::DateTime::parse_from_rfc3339(text)
+        .ok()
+        .map(|dt| dt.timestamp_millis())
+}
+
+pub(crate) fn file_last_modified_millis(path: impl AsRef<Path>) -> i64 {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
 pub trait SourceAdapter: Send + Sync {
     fn id(&self) -> &str;
     fn display_name(&self) -> &str;

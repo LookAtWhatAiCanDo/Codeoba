@@ -1,9 +1,9 @@
 use crate::models::{Session, Turn};
-use crate::parsers::SourceAdapter;
+use crate::parsers::{file_last_modified_millis, parse_rfc3339_to_millis, SourceAdapter};
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 pub struct CodexSource {
     session_title_map: std::sync::RwLock<HashMap<String, String>>,
@@ -31,17 +31,7 @@ impl CodexSource {
 
     fn get_session_title(&self, session_id: &str) -> String {
         let index_file = self.get_base_dir().join("session_index.jsonl");
-        let current_modified = if index_file.exists() && index_file.is_file() {
-            index_file
-                .metadata()
-                .and_then(|m| m.modified())
-                .ok()
-                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                .map(|d| d.as_millis() as i64)
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        let current_modified = file_last_modified_millis(&index_file);
 
         let last_mod = {
             *self
@@ -187,12 +177,8 @@ impl SourceAdapter for CodexSource {
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
         let path = Path::new(file_path);
         let metadata = path.metadata().ok()?;
-        let last_modified = metadata
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
+        let last_modified = file_last_modified_millis(path);
+
         let size = metadata.len() as i64;
 
         let cache_modified = last_modified;
@@ -261,10 +247,7 @@ impl SourceAdapter for CodexSource {
                 };
                 let step_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("");
                 let timestamp_str = obj.get("timestamp").and_then(|v| v.as_str());
-                let timestamp = timestamp_str
-                    .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                    .map(|dt| dt.timestamp_millis())
-                    .unwrap_or(0);
+                let timestamp = timestamp_str.and_then(parse_rfc3339_to_millis).unwrap_or(0);
 
                 let payload = match obj.get("payload").and_then(|v| v.as_object()) {
                     Some(p) => p,

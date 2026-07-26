@@ -31,6 +31,12 @@ pub fn save_fallback_config(config: &HashMap<String, String>) {
     }
 }
 
+pub fn mutate_config<F: FnOnce(&mut HashMap<String, String>)>(f: F) {
+    let mut config = load_fallback_config();
+    f(&mut config);
+    save_fallback_config(&config);
+}
+
 /// Retrieves a setting value associated with the specified key.
 pub fn get_secret(key: &str) -> Option<String> {
     let config = load_fallback_config();
@@ -39,21 +45,20 @@ pub fn get_secret(key: &str) -> Option<String> {
 
 /// Stores a setting value associated with the specified key. If value is None, key is deleted.
 pub fn put_secret(key: &str, value: Option<&str>) {
-    let mut config = load_fallback_config();
-    if let Some(val) = value {
-        config.insert(key.to_string(), val.to_string());
-    } else {
-        config.remove(key);
-    }
-    save_fallback_config(&config);
+    mutate_config(|config| {
+        if let Some(val) = value {
+            config.insert(key.to_string(), val.to_string());
+        } else {
+            config.remove(key);
+        }
+    });
 }
 
 /// Deletes a setting value associated with the specified key.
 pub fn delete_secret(key: &str) {
-    let mut config = load_fallback_config();
-    if config.remove(key).is_some() {
-        save_fallback_config(&config);
-    }
+    mutate_config(|config| {
+        config.remove(key);
+    });
 }
 
 pub fn get_pinned_sessions() -> Vec<String> {
@@ -67,27 +72,27 @@ pub fn get_pinned_sessions() -> Vec<String> {
 }
 
 pub fn save_pinned_sessions(ids: &[String]) {
-    let mut config = load_fallback_config();
     if let Ok(json) = serde_json::to_string(ids) {
-        config.insert("pinned_sessions".to_string(), json);
-        save_fallback_config(&config);
+        mutate_config(|config| {
+            config.insert("pinned_sessions".to_string(), json);
+        });
     }
 }
 
 pub fn save_theme_settings(appearance: &str, dark_theme: &str, light_theme: &str) {
-    let mut config = load_fallback_config();
-    config.insert("appearance".to_string(), appearance.to_string());
-    config.insert("dark_theme".to_string(), dark_theme.to_string());
-    config.insert("light_theme".to_string(), light_theme.to_string());
-    save_fallback_config(&config);
+    mutate_config(|config| {
+        config.insert("appearance".to_string(), appearance.to_string());
+        config.insert("dark_theme".to_string(), dark_theme.to_string());
+        config.insert("light_theme".to_string(), light_theme.to_string());
+    });
 }
 
 pub fn save_custom_theme_bg(mode: &str, h: i32, s: i32, l: i32) {
-    let mut config = load_fallback_config();
-    config.insert(format!("custom_{}_bg_h", mode), h.to_string());
-    config.insert(format!("custom_{}_bg_s", mode), s.to_string());
-    config.insert(format!("custom_{}_bg_l", mode), l.to_string());
-    save_fallback_config(&config);
+    mutate_config(|config| {
+        config.insert(format!("custom_{}_bg_h", mode), h.to_string());
+        config.insert(format!("custom_{}_bg_s", mode), s.to_string());
+        config.insert(format!("custom_{}_bg_l", mode), l.to_string());
+    });
 }
 
 pub fn get_index_subagents_setting() -> bool {
@@ -99,7 +104,7 @@ pub fn get_index_subagents_setting() -> bool {
 }
 
 pub fn save_index_subagents_setting(enabled: bool) {
-    let mut config = load_fallback_config();
-    config.insert("index_subagents".to_string(), enabled.to_string());
-    save_fallback_config(&config);
+    mutate_config(|config| {
+        config.insert("index_subagents".to_string(), enabled.to_string());
+    });
 }

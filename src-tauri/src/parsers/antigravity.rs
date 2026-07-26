@@ -1,11 +1,11 @@
 #![allow(clippy::indexing_slicing, clippy::expect_used)]
 use crate::models::{Session, Turn};
-use crate::parsers::SourceAdapter;
+use crate::parsers::{file_last_modified_millis, parse_rfc3339_to_millis, SourceAdapter};
+
 use rusqlite::{Connection, OpenFlags};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 pub struct AntigravitySource {
     variant: crate::parsers::ParserVariant,
@@ -151,17 +151,7 @@ impl AntigravitySource {
         }
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
-        let current_modified = if pb_file.exists() && pb_file.is_file() {
-            pb_file
-                .metadata()
-                .and_then(|m| m.modified())
-                .ok()
-                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                .map(|d| d.as_millis() as i64)
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        let current_modified = file_last_modified_millis(&pb_file);
 
         let last_mod = {
             *self
@@ -487,10 +477,7 @@ fn remove_surrounding_quotes(s: &str) -> &str {
     }
 }
 
-fn escape_tool_tags(text: &str) -> String {
-    text.replace("[[[TOOL", "\\[\\[\\[TOOL")
-        .replace("[[[/TOOL", "\\[\\[\\[/TOOL")
-}
+use super::escape_tool_tags;
 
 fn format_tool_entry(
     tool_type: &str,
@@ -739,8 +726,7 @@ fn load_jsonl_uncompacted_map(path: &Path) -> HashMap<(bool, i64), String> {
             let source = obj.get("source").and_then(|v| v.as_str()).unwrap_or("");
             let created_at_str = obj.get("created_at").and_then(|v| v.as_str());
             let timestamp = created_at_str
-                .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                .map(|dt| dt.timestamp_millis())
+                .and_then(parse_rfc3339_to_millis)
                 .unwrap_or(0);
 
             let content = obj.get("content").and_then(|v| v.as_str()).unwrap_or("");
@@ -1154,12 +1140,8 @@ impl SourceAdapter for AntigravitySource {
         }
 
         let metadata = path.metadata().ok()?;
-        let last_modified = metadata
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
+        let last_modified = file_last_modified_millis(path);
+
         let size = metadata.len() as i64;
 
         let mut cache_modified = last_modified;
@@ -1170,12 +1152,7 @@ impl SourceAdapter for AntigravitySource {
             .join(format!("annotations/{}.pbtxt", session_id));
         if annotation_file.exists() && annotation_file.is_file() {
             if let Ok(anno_meta) = annotation_file.metadata() {
-                let anno_modified = anno_meta
-                    .modified()
-                    .ok()
-                    .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                    .map(|d| d.as_millis() as i64)
-                    .unwrap_or(0);
+                let anno_modified = file_last_modified_millis(&annotation_file);
                 cache_modified += anno_modified;
                 cache_size += anno_meta.len() as i64;
             }
@@ -1271,8 +1248,7 @@ impl SourceAdapter for AntigravitySource {
                 let source = obj.get("source").and_then(|v| v.as_str()).unwrap_or("");
                 let created_at_str = obj.get("created_at").and_then(|v| v.as_str());
                 let timestamp = created_at_str
-                    .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                    .map(|dt| dt.timestamp_millis())
+                    .and_then(parse_rfc3339_to_millis)
                     .unwrap_or(0);
 
                 let content = obj.get("content").and_then(|v| v.as_str()).unwrap_or("");
@@ -1963,17 +1939,8 @@ impl SourceAdapter for AntigravitySource {
         }
 
         let pb_file = self.get_variant_dir().join("agyhub_summaries_proto.pb");
-        let current_modified = if pb_file.exists() && pb_file.is_file() {
-            pb_file
-                .metadata()
-                .and_then(|m| m.modified())
-                .ok()
-                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-                .map(|d| d.as_millis() as i64)
-                .unwrap_or(0)
-        } else {
-            0
-        };
+        let current_modified = file_last_modified_millis(&pb_file);
+
         {
             // Acquire in the same order as get_session_title (antigravity_title_map before
             // last_pb_file_modified). The reverse order here caused an AB-BA deadlock once the

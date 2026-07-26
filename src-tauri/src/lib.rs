@@ -103,28 +103,8 @@ pub fn validate_updater_config(pubkey: &str, endpoints: &[String]) -> bool {
     }
 }
 
-pub struct MediaControlsState(pub std::sync::Mutex<Option<souvlaki::MediaControls>>);
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-#[allow(clippy::expect_used)]
-pub fn run() {
-    // Delete the window state file preemptively before the Tauri builder or plugins initialize
-    if std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset") {
-        if let Some(mut path) = dirs::data_dir() {
-            path = path
-                .join("com.whataicando.codeoba")
-                .join(".window-state.json");
-            if path.exists() {
-                let _ = std::fs::remove_file(&path);
-                crate::log_info!("Pre-emptively deleted window state file: {:?}", path);
-            }
-        }
-    }
-
-    let context = tauri::generate_context!();
-
-    // Check if the updater is active from configuration and passes validation
-    let updater_active = if let Some(updater_config) = context.config().plugins.0.get("updater") {
+pub fn is_updater_active_for_config(config: &tauri::Config) -> bool {
+    if let Some(updater_config) = config.plugins.0.get("updater") {
         let active = updater_config
             .get("active")
             .and_then(|v| v.as_bool())
@@ -150,7 +130,31 @@ pub fn run() {
         }
     } else {
         false
-    };
+    }
+}
+
+pub struct MediaControlsState(pub std::sync::Mutex<Option<souvlaki::MediaControls>>);
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[allow(clippy::expect_used)]
+pub fn run() {
+    // Delete the window state file preemptively before the Tauri builder or plugins initialize
+    if std::env::args().any(|arg| arg == "--reset-window" || arg == "--reset") {
+        if let Some(mut path) = dirs::data_dir() {
+            path = path
+                .join("com.whataicando.codeoba")
+                .join(".window-state.json");
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
+                crate::log_info!("Pre-emptively deleted window state file: {:?}", path);
+            }
+        }
+    }
+
+    let context = tauri::generate_context!();
+
+    // Check if the updater is active from configuration and passes validation
+    let updater_active = is_updater_active_for_config(context.config());
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {

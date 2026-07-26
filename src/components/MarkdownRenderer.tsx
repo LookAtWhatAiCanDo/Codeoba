@@ -18,6 +18,8 @@ import "prismjs/components/prism-markdown";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import DOMPurify from "dompurify";
 import { highlightContainer } from "../utils/highlighter";
+import { isExternalWebUrl } from "../utils/urlUtils";
+
 import { invoke } from "@tauri-apps/api/core";
 import { useSpeech, splitIntoLogicalBlocks, sanitizeBlockForSpeech } from "../utils/useSpeech";
 
@@ -739,12 +741,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
             detail: { href },
           });
           window.dispatchEvent(event);
-        } else if (
-          href.startsWith("http:") ||
-          href.startsWith("https:") ||
-          href.startsWith("mailto:") ||
-          href.startsWith("tel:")
-        ) {
+        } else if (isExternalWebUrl(href)) {
           e.preventDefault();
           logFE("info", `MarkdownRenderer: Intercepted external link click: ${href}`);
           openUrl(href).catch((err) => {

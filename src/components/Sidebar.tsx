@@ -1,7 +1,8 @@
 import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup } from "solid-js";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { useI18n } from "../i18n/i18n";
-import { getSourceDisplayName } from "../utils/sourceLabels";
+import { getSourceDisplayName, getSourceStyle } from "../utils/sourceLabels";
+
 import { formatDateWithSetting, formatTimeWithSetting } from "../utils/format";
 import {
   Folder,
@@ -147,23 +148,6 @@ export const Sidebar = (props: SidebarProps) => {
   });
 
   // Source Helpers
-  const getSourceStyle = (sourceId: string): string => {
-    switch (sourceId.toLowerCase()) {
-      case "claude":
-        return "bg-amber-500/10 text-amber-500 border-amber-500/30";
-      case "antigravity":
-        return "bg-cyan-500/10 text-cyan-500 border-cyan-500/30";
-      case "cursor":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/30";
-      case "copilot":
-        return "bg-purple-500/10 text-purple-500 border-purple-500/30";
-      case "codex":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/30";
-      default:
-        return "bg-surface text-text-secondary border-border/40";
-    }
-  };
-
   const getSourceLabel = (sourceId: string): string =>
     getSourceDisplayName(props.sources, sourceId);
 

@@ -15,3 +15,23 @@ export function getSourceDisplayName(sources: SourceMetadata[], sourceId: string
   const found = sources.find((s) => s.id === sourceId);
   return found ? found.displayName : sourceId;
 }
+
+/**
+ * Returns consistent Tailwind badge color/border styles for source badges.
+ */
+export function getSourceStyle(sourceId: string): string {
+  switch (sourceId.toLowerCase()) {
+    case "claude":
+      return "bg-amber-500/10 text-amber-500 border-amber-500/30";
+    case "antigravity":
+      return "bg-cyan-500/10 text-cyan-500 border-cyan-500/30";
+    case "cursor":
+      return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    case "copilot":
+      return "bg-purple-500/10 text-purple-500 border-purple-500/30";
+    case "codex":
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/30";
+    default:
+      return "bg-surface text-text-secondary border-border/40";
+  }
+}

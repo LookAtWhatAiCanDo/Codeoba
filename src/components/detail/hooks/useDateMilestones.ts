@@ -1,12 +1,8 @@
 import { createMemo, Accessor } from "solid-js";
 import { formatDateWithSetting, formatTimeWithSetting } from "../../../utils/format";
-import { Session } from "../../../types";
+import { Session, DateMilestone } from "../../../types";
 
-export interface DateMilestone {
-  label: string;
-  index: number;
-  turnId: string;
-}
+export type { DateMilestone };
 
 export const useDateMilestones = (
   session: Accessor<Session | null>,

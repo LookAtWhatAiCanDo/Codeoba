@@ -20,6 +20,7 @@ import { Dashboard } from "./components/Dashboard";
 import { TitleBar } from "./components/TitleBar";
 import GroupDetailsView from "./components/GroupDetailsView";
 import { AppModalsCoordinator } from "./components/app/AppModalsCoordinator";
+import { GeneralSettings, ThemeSettings } from "./components/settings/types";
 
 import { logFE } from "./utils/logger";
 import { useI18n } from "./i18n/i18n";
@@ -27,6 +28,7 @@ import { getLocalizedAppError } from "./utils/errorHelper";
 import { useSpeech } from "./utils/useSpeech";
 import { useAppTheme, getLuminanceFromHsl } from "./hooks/useAppTheme";
 import { useAutoUpdater } from "./hooks/useAutoUpdater";
+import { getStorageBool, getStorageFloat, getStorageJson, getStorageString } from "./utils/storage";
 
 import { Layers, AlertCircle } from "lucide-solid";
 import { Session, SearchResult, SourceMetadata, ArchivalFilter, DashboardTab } from "./types";
@@ -96,24 +98,20 @@ function App() {
   const hasDetectedSources = () => Object.keys(detectedSources()).length > 0;
 
   const [dateFormat, setDateFormat] = createSignal(
-    localStorage.getItem("codeoba-date-format") || "system"
+    getStorageString("codeoba-date-format", "system")
   );
   const [timeFormat, setTimeFormat] = createSignal(
-    localStorage.getItem("codeoba-time-format") || "system"
+    getStorageString("codeoba-time-format", "system")
   );
-  const [showSeconds, setShowSeconds] = createSignal(
-    localStorage.getItem("codeoba-show-seconds") === "true"
-  );
+  const [showSeconds, setShowSeconds] = createSignal(getStorageBool("codeoba-show-seconds", false));
   const [numberFormat, setNumberFormat] = createSignal(
-    localStorage.getItem("codeoba-number-format") || "system"
+    getStorageString("codeoba-number-format", "system")
   );
   const [excludedPaths, setExcludedPaths] = createSignal(
-    localStorage.getItem("codeoba-excluded-paths") || ""
+    getStorageString("codeoba-excluded-paths", "")
   );
   const [indexSubagents, setIndexSubagents] = createSignal(false);
-  const [fontSize, setFontSize] = createSignal(
-    parseInt(localStorage.getItem("codeoba-font-size") || "15", 10)
-  );
+  const [fontSize, setFontSize] = createSignal(getStorageFloat("codeoba-font-size", 15));
 
   const handleFontSizeChange = (val: number) => {
     setFontSize(val);
@@ -157,6 +155,72 @@ function App() {
   const handleNumberFormatChange = (val: string) => {
     setNumberFormat(val);
     localStorage.setItem("codeoba-number-format", val);
+  };
+
+  const generalSettings = createMemo<GeneralSettings>(() => ({
+    dateFormat: dateFormat(),
+    timeFormat: timeFormat(),
+    showSeconds: showSeconds(),
+    numberFormat: numberFormat(),
+    excludedPaths: excludedPaths(),
+    indexSubagents: indexSubagents(),
+    fontSize: fontSize(),
+  }));
+
+  const handleUpdateGeneralSetting = <K extends keyof GeneralSettings>(
+    key: K,
+    value: GeneralSettings[K]
+  ) => {
+    switch (key) {
+      case "dateFormat":
+        handleDateFormatChange(value as string);
+        break;
+      case "timeFormat":
+        handleTimeFormatChange(value as string);
+        break;
+      case "showSeconds":
+        handleShowSecondsChange(value as boolean);
+        break;
+      case "numberFormat":
+        handleNumberFormatChange(value as string);
+        break;
+      case "excludedPaths":
+        handleExcludedPathsChange(value as string);
+        break;
+      case "indexSubagents":
+        handleIndexSubagentsChange(value as boolean);
+        break;
+      case "fontSize":
+        handleFontSizeChange(value as number);
+        break;
+    }
+  };
+
+  const themeSettings = createMemo<ThemeSettings>(() => ({
+    theme: theme(),
+    appearance: appearance(),
+    customTheme: currentCustomTheme(),
+  }));
+
+  const handleUpdateThemeSetting = <K extends keyof ThemeSettings>(
+    key: K,
+    value: ThemeSettings[K]
+  ) => {
+    switch (key) {
+      case "theme":
+        if (activeColorMode() === "dark") {
+          setDarkTheme(value as string);
+        } else {
+          setLightTheme(value as string);
+        }
+        break;
+      case "appearance":
+        setAppearance(value as string);
+        break;
+      case "customTheme":
+        handleCustomThemeChange(value);
+        break;
+    }
   };
 
   const [navHistory, setNavHistory] = createSignal<string[]>(["dashboard"]);
@@ -214,24 +278,20 @@ function App() {
   } | null>(null);
 
   const [matchCase, setMatchCase] = createSignal(
-    localStorage.getItem("codeoba-search-match-case") === "true"
+    getStorageBool("codeoba-search-match-case", false)
   );
   const [wholeWord, setWholeWord] = createSignal(
-    localStorage.getItem("codeoba-search-whole-word") === "true"
+    getStorageBool("codeoba-search-whole-word", false)
   );
-  const [useRegex, setUseRegex] = createSignal(
-    localStorage.getItem("codeoba-search-use-regex") === "true"
-  );
-  const [multiline, setMultiline] = createSignal(
-    localStorage.getItem("codeoba-search-multiline") === "true"
-  );
+  const [useRegex, setUseRegex] = createSignal(getStorageBool("codeoba-search-use-regex", false));
+  const [multiline, setMultiline] = createSignal(getStorageBool("codeoba-search-multiline", false));
 
   const [groups, setGroups] = createSignal<any[]>([]);
   const [activeGroupFilter, setActiveGroupFilter] = createSignal<string | null>(
-    localStorage.getItem("codeoba-active-group-filter") || null
+    getStorageString("codeoba-active-group-filter", "") || null
   );
   const [pinnedSessionIds, setPinnedSessionIds] = createSignal<Set<string>>(
-    new Set(JSON.parse(localStorage.getItem("codeoba-pinned-sessions") || "[]"))
+    new Set(getStorageJson<string[]>("codeoba-pinned-sessions", []))
   );
 
   createEffect(() => {
@@ -1981,18 +2041,10 @@ function App() {
       <AppModalsCoordinator
         showSettings={showSettings()}
         onCloseSettings={handleCloseSettings}
-        theme={theme()}
-        onThemeChange={(newTheme) => {
-          if (activeColorMode() === "dark") {
-            setDarkTheme(newTheme);
-          } else {
-            setLightTheme(newTheme);
-          }
-        }}
-        appearance={appearance()}
-        onAppearanceChange={setAppearance}
-        currentCustomTheme={currentCustomTheme()}
-        onCustomThemeChange={handleCustomThemeChange}
+        generalSettings={generalSettings()}
+        onUpdateGeneralSetting={handleUpdateGeneralSetting}
+        themeSettings={themeSettings()}
+        onUpdateThemeSetting={handleUpdateThemeSetting}
         sources={sources()}
         onRefreshSources={() => {
           invoke<SourceMetadata[]>("get_sources").then((metadata) => {
@@ -2008,26 +2060,13 @@ function App() {
               console.error("Failed to load prune_deleted_sessions setting:", err);
             });
         }}
-        dateFormat={dateFormat()}
-        onDateFormatChange={handleDateFormatChange}
-        timeFormat={timeFormat()}
-        onTimeFormatChange={handleTimeFormatChange}
-        showSeconds={showSeconds()}
-        onShowSecondsChange={handleShowSecondsChange}
-        numberFormat={numberFormat()}
-        onNumberFormatChange={handleNumberFormatChange}
-        excludedPaths={excludedPaths()}
-        onExcludedPathsChange={handleExcludedPathsChange}
-        indexSubagents={indexSubagents()}
-        onIndexSubagentsChange={handleIndexSubagentsChange}
         onUpdateAvailable={(update) => {
           setUpdateManifest(update);
           setShowUpdateModal(true);
         }}
         triggerManualUpdateCheck={triggerManualUpdateCheck}
-        fontSize={fontSize()}
-        onFontSizeChange={handleFontSizeChange}
         selectedSession={selectedSession()}
+
         showConsentModal={showConsentModal()}
         onConsentDecision={handleConsentDecision}
         showUpdateModal={showUpdateModal()}

@@ -1,12 +1,8 @@
 import { For, Show } from "solid-js";
 import { logFE } from "../../../utils/logger";
-import { Session } from "../../../types";
+import { Session, DateMilestone } from "../../../types";
 
-export interface DateMilestone {
-  label: string;
-  index: number;
-  turnId: string;
-}
+export type { DateMilestone };
 
 export interface DateTimelineOverlayProps {
   session: Session | null;

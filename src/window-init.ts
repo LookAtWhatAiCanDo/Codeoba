@@ -1,6 +1,7 @@
 import { getCurrentWindow, LogicalSize, LogicalPosition } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { logFE } from "./utils/logger";
+import { isExternalWebUrl } from "./utils/urlUtils";
 
 (async () => {
   const appWindow = getCurrentWindow();
@@ -119,28 +120,21 @@ import { logFE } from "./utils/logger";
     const anchor = target.closest("a");
     if (anchor) {
       const href = anchor.getAttribute("href");
-      if (href) {
-        if (
-          href.startsWith("http:") ||
-          href.startsWith("https:") ||
-          href.startsWith("mailto:") ||
-          href.startsWith("tel:")
-        ) {
-          e.preventDefault();
-          logFE("info", `Global Link Interceptor: Intercepted click to external URL: ${href}`);
-          import("@tauri-apps/plugin-opener")
-            .then(({ openUrl }) => {
-              openUrl(href).catch((err) => {
-                logFE("error", `Global Link Interceptor: Failed to open external link: ${err}`);
-              });
-            })
-            .catch((err) => {
-              logFE(
-                "error",
-                `Global Link Interceptor: Failed to load @tauri-apps/plugin-opener: ${err}`
-              );
+      if (href && isExternalWebUrl(href)) {
+        e.preventDefault();
+        logFE("info", `Global Link Interceptor: Intercepted click to external URL: ${href}`);
+        import("@tauri-apps/plugin-opener")
+          .then(({ openUrl }) => {
+            openUrl(href).catch((err) => {
+              logFE("error", `Global Link Interceptor: Failed to open external link: ${err}`);
             });
-        }
+          })
+          .catch((err) => {
+            logFE(
+              "error",
+              `Global Link Interceptor: Failed to load @tauri-apps/plugin-opener: ${err}`
+            );
+          });
       }
     }
   });

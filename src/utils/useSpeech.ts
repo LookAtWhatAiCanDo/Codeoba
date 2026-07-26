@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Session } from "../types";
 import { parseAssistantMessage } from "./messageParser";
-import { useI18n } from "../i18n/i18n";
+import { useI18n, formatTemplate } from "../i18n/i18n";
+import { getStorageFloat } from "./storage";
 
 export interface SpeechItem {
   globalIndex: number;
@@ -72,13 +73,8 @@ const EN_SPEECH: Record<string, string> = {
 };
 
 const defaultT: SpeechTranslator = (key, params) => {
-  let val = EN_SPEECH[key] ?? key;
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      val = val.split(`{${k}}`).join(String(v));
-    }
-  }
-  return val;
+  const val = EN_SPEECH[key] ?? key;
+  return formatTemplate(val, params);
 };
 
 function translateSymbols(text: string, t: SpeechTranslator = defaultT): string {
@@ -533,17 +529,9 @@ export function useSpeech() {
       }
 
       // Load speed rate and pitch settings from localStorage for the specific speaker
-      if (speaker === "user") {
-        const savedRate = localStorage.getItem("codeoba-tts-rate-user");
-        if (savedRate) utterance.rate = parseFloat(savedRate);
-        const savedPitch = localStorage.getItem("codeoba-tts-pitch-user");
-        if (savedPitch) utterance.pitch = parseFloat(savedPitch);
-      } else {
-        const savedRate = localStorage.getItem("codeoba-tts-rate-assistant");
-        if (savedRate) utterance.rate = parseFloat(savedRate);
-        const savedPitch = localStorage.getItem("codeoba-tts-pitch-assistant");
-        if (savedPitch) utterance.pitch = parseFloat(savedPitch);
-      }
+      const prefix = speaker === "user" ? "user" : "assistant";
+      utterance.rate = getStorageFloat(`codeoba-tts-rate-${prefix}`, 1.0);
+      utterance.pitch = getStorageFloat(`codeoba-tts-pitch-${prefix}`, 1.0);
 
       utterance.onend = () => {
         if (activeUtterance === utterance) {

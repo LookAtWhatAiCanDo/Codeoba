@@ -1,9 +1,9 @@
 use crate::models::{Session, Turn};
-use crate::parsers::SourceAdapter;
+use crate::parsers::{file_last_modified_millis, parse_rfc3339_to_millis, SourceAdapter};
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 pub struct CopilotSource;
 
@@ -40,10 +40,7 @@ fn clean(text: &str) -> String {
     cleaned.trim().to_string()
 }
 
-fn escape_tool_tags(text: &str) -> String {
-    text.replace("[[[TOOL", "\\[\\[\\[TOOL")
-        .replace("[[[/TOOL", "\\[\\[\\[/TOOL")
-}
+use super::escape_tool_tags;
 
 struct ToolStartInfo {
     tool_name: String,
@@ -119,12 +116,8 @@ impl SourceAdapter for CopilotSource {
         }
 
         let metadata = path.metadata().ok()?;
-        let last_modified = metadata
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
+        let last_modified = file_last_modified_millis(path);
+
         let size = metadata.len() as i64;
 
         if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
@@ -202,8 +195,7 @@ impl SourceAdapter for CopilotSource {
                 let event_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("");
                 let timestamp_str = obj.get("timestamp").and_then(|v| v.as_str());
                 let timestamp = timestamp_str
-                    .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                    .map(|dt| dt.timestamp_millis())
+                    .and_then(parse_rfc3339_to_millis)
                     .unwrap_or(last_modified);
 
                 let data = match obj.get("data").and_then(|v| v.as_object()) {

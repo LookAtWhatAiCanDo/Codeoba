@@ -69,6 +69,37 @@ pub struct Session {
 }
 
 impl Session {
+    pub fn new(
+        id: impl Into<String>,
+        source_id: impl Into<String>,
+        file_path: impl Into<String>,
+        timestamp: i64,
+        turns: Vec<Turn>,
+    ) -> Self {
+        let ts = if timestamp != 0 {
+            timestamp
+        } else {
+            turns.last().map(|t| t.timestamp).unwrap_or(0)
+        };
+        Self {
+            id: id.into(),
+            source_id: source_id.into(),
+            file_path: file_path.into(),
+            timestamp: ts,
+            updated_at: ts,
+            cwd: None,
+            thread_name: None,
+            turns,
+            is_archived: false,
+            is_pinned: false,
+            summary: None,
+            snippet: None,
+            workspace_name: None,
+            status: None,
+            is_deleted: false,
+        }
+    }
+
     /// A list-payload copy of this session: metadata + a 100-char `snippet`, with turn
     /// *message text* stripped. The sidebar renders only a title, timestamp, and snippet, so
     /// shipping every turn's full text (the last turn alone was ~8.8 MB across the corpus)

@@ -61,3 +61,28 @@ export enum DashboardTab {
   Groups = "groups",
   ReadAloud = "read-aloud",
 }
+
+export interface GroupTask {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  associatedSessionId?: string | null;
+}
+
+export interface ConversationGroup {
+  name: string;
+  description: string;
+  status: string;
+  sessionIds: string[];
+  tasks: GroupTask[];
+  pastWorkSummary: string;
+  isPinned: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DateMilestone {
+  label: string;
+  index: number;
+  turnId: string;
+}

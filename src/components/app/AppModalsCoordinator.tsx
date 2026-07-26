@@ -9,36 +9,25 @@ import { SourceDetectedModal } from "../SourceDetectedModal";
 import FeedbackDialog from "../FeedbackDialog";
 import { Session, SourceMetadata } from "../../types";
 
+import { GeneralSettings, ThemeSettings } from "../settings/types";
+
 export interface AppModalsCoordinatorProps {
   showSettings: boolean;
   onCloseSettings: () => void;
-  theme: string;
-  onThemeChange: (t: string) => void;
-  appearance: string;
-  onAppearanceChange: (a: string) => void;
-  currentCustomTheme: any;
-  onCustomThemeChange: (c: any) => void;
+  generalSettings: GeneralSettings;
+  onUpdateGeneralSetting: <K extends keyof GeneralSettings>(
+    key: K,
+    value: GeneralSettings[K]
+  ) => void;
+  themeSettings: ThemeSettings;
+  onUpdateThemeSetting: <K extends keyof ThemeSettings>(key: K, value: ThemeSettings[K]) => void;
   sources: SourceMetadata[];
   onRefreshSources: () => void;
-  dateFormat: string;
-  onDateFormatChange: (val: string) => void;
-  timeFormat: string;
-  onTimeFormatChange: (val: string) => void;
-  showSeconds: boolean;
-  onShowSecondsChange: (val: boolean) => void;
-  numberFormat: string;
-  onNumberFormatChange: (val: string) => void;
-  excludedPaths: string;
-  onExcludedPathsChange: (val: string) => void;
-  indexSubagents: boolean;
-  onIndexSubagentsChange: (val: boolean) => void;
   onUpdateAvailable: (update: any) => void;
   triggerManualUpdateCheck: () => void;
-  fontSize: number;
-  onFontSizeChange: (val: number) => void;
   selectedSession: Session | null;
   showConsentModal: boolean;
-  onConsentDecision: (consented: boolean) => void;
+  onConsentDecision: (allowed: boolean) => void;
   showUpdateModal: boolean;
   updateManifest: any;
   isUpdating: boolean;
@@ -50,6 +39,7 @@ export interface AppModalsCoordinatorProps {
   checkingStatus: "checking" | "upToDate" | "error";
   checkingErrorMsg: string | null;
   onCloseCheckingModal: () => void;
+
   hasDetectedSources: boolean;
   detectedSources: Record<string, boolean>;
   onToggleDetectedSource: (sourceId: string) => void;
@@ -72,30 +62,14 @@ export const AppModalsCoordinator = (props: AppModalsCoordinatorProps) => {
       <SettingsDialog
         isOpen={props.showSettings}
         onClose={props.onCloseSettings}
-        theme={props.theme}
-        onThemeChange={props.onThemeChange}
-        appearance={props.appearance}
-        onAppearanceChange={props.onAppearanceChange}
-        customTheme={props.currentCustomTheme}
-        onCustomThemeChange={props.onCustomThemeChange}
+        generalSettings={props.generalSettings}
+        onUpdateGeneralSetting={props.onUpdateGeneralSetting}
+        themeSettings={props.themeSettings}
+        onUpdateThemeSetting={props.onUpdateThemeSetting}
         sources={props.sources}
         onRefreshSources={props.onRefreshSources}
-        dateFormat={props.dateFormat}
-        onDateFormatChange={props.onDateFormatChange}
-        timeFormat={props.timeFormat}
-        onTimeFormatChange={props.onTimeFormatChange}
-        showSeconds={props.showSeconds}
-        onShowSecondsChange={props.onShowSecondsChange}
-        numberFormat={props.numberFormat}
-        onNumberFormatChange={props.onNumberFormatChange}
-        excludedPaths={props.excludedPaths}
-        onExcludedPathsChange={props.onExcludedPathsChange}
-        indexSubagents={props.indexSubagents}
-        onIndexSubagentsChange={props.onIndexSubagentsChange}
         onUpdateAvailable={props.onUpdateAvailable}
         onCheckUpdates={props.triggerManualUpdateCheck}
-        fontSize={props.fontSize}
-        onFontSizeChange={props.onFontSizeChange}
       />
 
       {/* File Viewer Dialog */}

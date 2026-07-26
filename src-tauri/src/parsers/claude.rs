@@ -1,10 +1,12 @@
 use crate::models::{Session, Turn};
-use crate::parsers::{is_executable_installed, SourceAdapter};
+use crate::parsers::{
+    file_last_modified_millis, is_executable_installed, parse_rfc3339_to_millis, SourceAdapter,
+};
+
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 /// The maximum depth to traverse when searching for Claude Code transcripts.
 /// Capping traversal depth is a critical performance, safety, and correctness guard:
@@ -181,12 +183,8 @@ impl ClaudeSource {
         let path = Path::new(file_path);
         let file = File::open(path).ok()?;
         let metadata = file.metadata().ok()?;
-        let last_modified = metadata
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(0);
+        let last_modified = file_last_modified_millis(path);
+
         let size = metadata.len() as i64;
 
         if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
@@ -233,8 +231,7 @@ impl ClaudeSource {
                     let timestamp = obj
                         .get("timestamp")
                         .and_then(|v| v.as_str())
-                        .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
-                        .map(|dt| dt.timestamp_millis())
+                        .and_then(parse_rfc3339_to_millis)
                         .unwrap_or(0);
 
                     if let Some(sid) = obj.get("sessionId").and_then(|v| v.as_str()) {

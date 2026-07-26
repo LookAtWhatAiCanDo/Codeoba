@@ -7,6 +7,12 @@ import { logFE } from "../utils/logger";
 import { useI18n } from "../i18n/i18n";
 import { getLocalizedAppError } from "../utils/errorHelper";
 import { useSpeech, DEFAULT_PRONUNCIATIONS } from "../utils/useSpeech";
+import {
+  getStorageBool,
+  getStorageFloat,
+  getStorageJson,
+  getStorageString,
+} from "../utils/storage";
 
 import { Category, SettingsDialogProps } from "./settings/types";
 import { SettingsNav } from "./settings/SettingsNav";
@@ -46,13 +52,13 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
 
   // General Settings
   const [cacheEnabled, setCacheEnabled] = createSignal(
-    localStorage.getItem("codeoba-cache-enabled") !== "false"
+    getStorageBool("codeoba-cache-enabled", true)
   );
   const [autoUpdateEnabled, setAutoUpdateEnabled] = createSignal(
-    localStorage.getItem("codeoba-auto-update") !== "false"
+    getStorageBool("codeoba-auto-update", true)
   );
   const [parserMode, setParserMode] = createSignal(
-    localStorage.getItem("codeoba-parser-mode") || "standard"
+    getStorageString("codeoba-parser-mode", "standard")
   );
   const [pruneDeleted, setPruneDeleted] = createSignal(false);
 
@@ -62,7 +68,7 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
   // Source decisions (mock list stored in localStorage)
   const [sourceDecisions, setSourceDecisions] = createSignal<
     Record<string, "allow" | "deny" | "ask">
-  >(JSON.parse(localStorage.getItem("codeoba-source-decisions") || "{}"));
+  >(getStorageJson("codeoba-source-decisions", {}));
 
   const speech = useSpeech();
 
@@ -263,32 +269,14 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-    setSelectedAssistantVoiceName(localStorage.getItem("codeoba-tts-voice-assistant") || "");
-    setSelectedUserVoiceName(localStorage.getItem("codeoba-tts-voice-user") || "");
-    setAssistantSpeechRate(
-      localStorage.getItem("codeoba-tts-rate-assistant")
-        ? parseFloat(localStorage.getItem("codeoba-tts-rate-assistant")!)
-        : 1.0
-    );
-    setAssistantSpeechPitch(
-      localStorage.getItem("codeoba-tts-pitch-assistant")
-        ? parseFloat(localStorage.getItem("codeoba-tts-pitch-assistant")!)
-        : 1.0
-    );
-    setUserSpeechRate(
-      localStorage.getItem("codeoba-tts-rate-user")
-        ? parseFloat(localStorage.getItem("codeoba-tts-rate-user")!)
-        : 1.0
-    );
-    setUserSpeechPitch(
-      localStorage.getItem("codeoba-tts-pitch-user")
-        ? parseFloat(localStorage.getItem("codeoba-tts-pitch-user")!)
-        : 1.0
-    );
+    setSelectedAssistantVoiceName(getStorageString("codeoba-tts-voice-assistant"));
+    setSelectedUserVoiceName(getStorageString("codeoba-tts-voice-user"));
+    setAssistantSpeechRate(getStorageFloat("codeoba-tts-rate-assistant", 1.0));
+    setAssistantSpeechPitch(getStorageFloat("codeoba-tts-pitch-assistant", 1.0));
+    setUserSpeechRate(getStorageFloat("codeoba-tts-rate-user", 1.0));
+    setUserSpeechPitch(getStorageFloat("codeoba-tts-pitch-user", 1.0));
     loadRules();
-    setTestText(
-      localStorage.getItem("codeoba-tts-test-text") || t("settings.readAloud.testSaying")
-    );
+    setTestText(getStorageString("codeoba-tts-test-text", t("settings.readAloud.testSaying")));
   });
 
   const refreshPermissions = async () => {
@@ -533,36 +521,20 @@ export const SettingsDialog = (props: SettingsDialogProps) => {
           <div class="flex-grow h-full flex flex-col p-6 pt-8 overflow-y-auto min-w-0">
             <GeneralTab
               activeCategory={activeCategory()}
+              settings={props.generalSettings}
+              onUpdateSetting={props.onUpdateGeneralSetting}
               cacheEnabled={cacheEnabled()}
               onToggleCache={handleToggleCache}
               pruneDeleted={pruneDeleted()}
               onTogglePruneDeleted={handleTogglePruneDeleted}
-              fontSize={props.fontSize}
-              onFontSizeChange={props.onFontSizeChange}
               parserMode={parserMode()}
               onParserModeChange={handleParserModeChange}
-              dateFormat={props.dateFormat}
-              onDateFormatChange={props.onDateFormatChange}
-              timeFormat={props.timeFormat}
-              onTimeFormatChange={props.onTimeFormatChange}
-              showSeconds={props.showSeconds}
-              onShowSecondsChange={props.onShowSecondsChange}
-              numberFormat={props.numberFormat}
-              onNumberFormatChange={props.onNumberFormatChange}
-              excludedPaths={props.excludedPaths}
-              onExcludedPathsChange={props.onExcludedPathsChange}
-              indexSubagents={props.indexSubagents}
-              onIndexSubagentsChange={props.onIndexSubagentsChange}
             />
 
             <ThemeTab
               activeCategory={activeCategory()}
-              theme={props.theme}
-              onThemeChange={props.onThemeChange}
-              appearance={props.appearance}
-              onAppearanceChange={props.onAppearanceChange}
-              customTheme={props.customTheme}
-              onCustomThemeChange={props.onCustomThemeChange}
+              settings={props.themeSettings}
+              onUpdateSetting={props.onUpdateThemeSetting}
             />
 
             <ReadAloudTab

@@ -86,6 +86,18 @@ interface I18nContextProps {
   t: (key: string, params?: Record<string, string | number>) => string;
 }
 
+export function formatTemplate(str: string, params?: Record<string, string | number>): string {
+  if (!params) return str;
+  let val = str;
+  for (const [k, v] of Object.entries(params)) {
+    // Literal split/join instead of RegExp: the key is not escaped (a metacharacter would
+    // corrupt the pattern or throw), and String replacement via .replace() would interpret
+    // `$` sequences in the value. split/join matches and inserts both verbatim.
+    val = val.split(`{${k}}`).join(String(v));
+  }
+  return val;
+}
+
 const I18nContext = createContext<I18nContextProps>();
 
 export function I18nProvider(props: { children: JSX.Element }) {
@@ -158,15 +170,7 @@ export function I18nProvider(props: { children: JSX.Element }) {
 
     if (val === key) return key;
 
-    if (params) {
-      for (const [k, v] of Object.entries(params)) {
-        // Literal split/join instead of RegExp: the key is not escaped (a metacharacter would
-        // corrupt the pattern or throw), and String replacement via .replace() would interpret
-        // `$` sequences in the value. split/join matches and inserts both verbatim.
-        val = val.split(`{${k}}`).join(String(v));
-      }
-    }
-    return val;
+    return formatTemplate(val, params);
   };
 
   return (

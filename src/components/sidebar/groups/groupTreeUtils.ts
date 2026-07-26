@@ -1,23 +1,6 @@
-import { Session } from "../../../types";
+import { Session, GroupTask, ConversationGroup } from "../../../types";
 
-export interface GroupTask {
-  id: string;
-  title: string;
-  isCompleted: boolean;
-  associatedSessionId: string | null;
-}
-
-export interface ConversationGroup {
-  name: string;
-  description: string;
-  status: string;
-  sessionIds: string[];
-  tasks: GroupTask[];
-  pastWorkSummary: string;
-  isPinned: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
+export type { GroupTask, ConversationGroup };
 
 export interface GroupTreeNode {
   segment: string;

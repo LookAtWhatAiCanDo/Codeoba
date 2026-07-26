@@ -26,6 +26,13 @@
 - Never use `write_to_file` with `Overwrite: true` to modify existing files larger than 300 lines.
 - Always use `replace_file_content` or `multi_replace_file_content` with explicit `StartLine` and `EndLine` ranges so unaffected code is never touched or lost during context window compression.
 
+### Directive 5: Zero Code Duplication & Search-Before-Implement (Anti-Slop Boundary)
+- **Search Before Writing**: Before writing any new helper function, string formatter, regex pattern, type interface, struct default, or IPC wrapper, search the codebase (`src/` and `src-tauri/src/`) to check if equivalent logic or types already exist. Reuse or extend existing utilities instead of writing local duplicates.
+- **Centralized Interface Definitions**: Never re-declare local TypeScript interfaces for domain objects or component structures (e.g., `Group`, `GroupTask`, `DateMilestone`, `Session`). All shared domain interfaces must be exported from `src/types.ts` or dedicated module `types.ts` files.
+- **No Individual Prop-Drilling Chains**: Do not pass individual state properties and individual `on<Prop>Change` callbacks down multi-tier component trees (`App` → `AppModalsCoordinator` → `SettingsDialog` → Tabs). Always group domain settings into consolidated objects (`GeneralSettings`, `ThemeSettings`) with generic updaters or context hooks.
+- **Reusable Utility Helpers**: Never duplicate string manipulation or validation routines (e.g., template variable interpolation `val.split('{${k}}')`, external URL protocol checks `href.startsWith("http:")`, date formatting) across files. Place shared logic in `src/utils/` (frontend) or shared modules (backend).
+- **Rust Struct Constructors & Defaults**: Never manually spell out repeated multi-line struct defaults (e.g., `Session { images: None, is_archived: false, ... }`) across multiple call sites or tests. Provide and use constructor methods (`Session::new`) or `Default` trait implementations.
+
 ---
 
 Welcome! You are an AI coding assistant working on the Tauri migration of **Codeoba**—a platform-agnostic, zero-external-dependency, 100% local search application that indexes, monitors, and searches conversation transcripts across Claude Code, Google Antigravity, Cursor, OpenAI Codex, and GitHub Copilot.

@@ -1,26 +1,7 @@
 import { createSignal, createMemo, createEffect, For, Show } from "solid-js";
 import { useI18n } from "../i18n/i18n";
 import { Folder, Plus, Trash2, Play, CheckCircle2, Pause } from "lucide-solid";
-import { Session } from "../types";
-
-interface GroupTask {
-  id: string;
-  title: string;
-  isCompleted: boolean;
-  associatedSessionId?: string | null;
-}
-
-interface ConversationGroup {
-  name: string;
-  description: string;
-  status: string;
-  sessionIds: string[];
-  tasks: GroupTask[];
-  pastWorkSummary: string;
-  isPinned: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
+import { Session, GroupTask, ConversationGroup } from "../types";
 
 interface GroupDetailsViewProps {
   groupName: string;
