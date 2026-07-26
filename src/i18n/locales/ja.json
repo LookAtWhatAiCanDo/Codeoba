@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "セッション",
     "searchPlaceholder": "会話を検索...",
+    "searching": "会話を検索中...",
     "forceRebuild": "インデックスの強制再構築",
     "filters": "検索フィルター",
     "agents": "エージェント",

@@ -17,6 +17,7 @@ import {
 import { Session, SearchResult, SourceMetadata, ArchivalFilter } from "../types";
 import { useContextMenuPosition } from "../utils/contextMenu";
 import { useSpeech } from "../utils/useSpeech";
+import { ActiveSpinner } from "../utils/sessionStatus";
 import {
   GroupTask,
   ConversationGroup,
@@ -52,6 +53,7 @@ interface ListItem {
 export interface SidebarProps {
   sessions: Session[];
   searchResults: SearchResult[] | null;
+  isSearchLoading?: boolean;
   selectedSessionId: string | null;
   loadingSessionId: string | null;
   onSelectSession: (session: Session) => void;
@@ -601,9 +603,58 @@ export const Sidebar = (props: SidebarProps) => {
       return listItems().length;
     },
     getScrollElement: () => scrollEl(),
-    estimateSize: () => 96,
+    estimateSize: (index) => {
+      const item = listItems()[index];
+      if (!item) return 192;
+      const snippetText = getSessionSnippet(item.session, item.matchedTurns);
+      const titleText = item.session.threadName || "";
+      const titleLines = Math.min(Math.max(1, Math.ceil(titleText.length / 35)), 2);
+      let height = 150 + (titleLines - 1) * 20;
+      if (snippetText && snippetText.trim().length > 0) {
+        const charLen = snippetText.length;
+        const snippetLines = Math.min(Math.max(1, Math.ceil(charLen / 40)), 2);
+        height += 16 + snippetLines * 18;
+      }
+      return height;
+    },
     overscan: 8,
     getItemKey: (index) => listItems()[index]?.session.id ?? index,
+  });
+
+  const clearSizeCache = () => {
+    try {
+      const v = virtualizer as any;
+      if (v && v.itemSizeCache && typeof v.itemSizeCache.clear === "function") {
+        v.itemSizeCache.clear();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const [isSettled, setIsSettled] = createSignal(true);
+  let settleRaf: number | null = null;
+
+  createEffect(() => {
+    // Track search query, search results, and list items
+    listItems();
+    props.searchQuery;
+    props.searchResults;
+
+    clearSizeCache();
+    setIsSettled(false);
+    virtualizer.measure();
+
+    if (settleRaf) cancelAnimationFrame(settleRaf);
+    settleRaf = requestAnimationFrame(() => {
+      settleRaf = requestAnimationFrame(() => {
+        setIsSettled(true);
+      });
+    });
+  });
+
+  onCleanup(() => {
+    if (settleRaf) cancelAnimationFrame(settleRaf);
   });
 
   // Keyboard Navigation
@@ -1070,82 +1121,118 @@ export const Sidebar = (props: SidebarProps) => {
         class="flex-grow overflow-y-auto min-h-0 px-3 pb-3 outline-none"
       >
         <Show
-          when={listItems().length > 0}
+          when={!props.isSearchLoading && isSettled()}
           fallback={
-            <div class="p-8 text-center text-text-secondary text-sm">
-              {t("groups.noMatchingSessions")}
+            <div class="flex flex-col items-center justify-center p-12 text-center text-text-secondary gap-3 my-auto">
+              <ActiveSpinner class="w-6 h-6 text-accent" />
+              <div class="text-sm font-medium text-text-primary/80">{t("sidebar.searching")}</div>
             </div>
           }
         >
-          {/* Sizer: total scroll height; rows are absolutely positioned within it. */}
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              position: "relative",
-              width: "100%",
-            }}
+          <Show
+            when={listItems().length > 0}
+            fallback={
+              <div class="p-8 text-center text-text-secondary text-sm">
+                {t("groups.noMatchingSessions")}
+              </div>
+            }
           >
-            <For each={virtualizer.getVirtualItems()}>
-              {(virtualRow) => {
-                const item = createMemo(() => listItems()[virtualRow.index]);
-                const session = createMemo(() => item()?.session);
-                const isSelected = createMemo(() => props.selectedSessionId === session()?.id);
-                const isHighlighted = createMemo(() => highlightedIndex() === virtualRow.index);
-                const snippet = createMemo(() =>
-                  session() ? getSessionSnippet(session()!, item()?.matchedTurns) : ""
-                );
-                const sessionTimesText = createMemo(() => {
-                  const s = session();
-                  return s ? formatSessionTimes(s.timestamp, s.updatedAt) : "";
-                });
-
-                return (
-                  <Show when={session()}>
-                    <div
-                      data-index={virtualRow.index}
-                      // Measure only once the row is actually in the document. A manual
-                      // measureElement() call (no ResizeObserver entry) falls through to
-                      // `offsetHeight`, which is 0 for a detached node — and a row's FIRST
-                      // measurement is not cache-guarded, so a 0 gets written to
-                      // itemSizeCache and collapses every following row's offset, which
-                      // shows up as cards overlapping. onMount guarantees post-insertion,
-                      // and isConnected covers a row unmounted by fast scrolling before
-                      // the effect flushes. Re-measures afterwards come from the
-                      // virtualizer's own ResizeObserver, which guards isConnected itself.
-                      ref={(el) => onMount(() => el.isConnected && virtualizer.measureElement(el))}
-                      // pt-2.5 recreates the old inter-card gap (measured into the row height).
-                      class="pt-2.5"
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      <SessionCard
-                        session={session()!}
-                        isPinned={props.pinnedSessionIds.has(session()!.id)}
-                        isReadAloudActive={speech.isReadAloudActive(session()!.id)}
-                        isSelected={isSelected()}
-                        isHighlighted={isHighlighted()}
-                        isLoading={props.loadingSessionId === session()!.id}
-                        onSelect={props.onSelectSession}
-                        snippet={snippet()}
-                        sessionTimesText={sessionTimesText()}
-                        score={item()?.score}
-                        getSourceStyle={getSourceStyle}
-                        getSourceLabel={getSourceLabel}
-                        groups={props.groups}
-                        onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
-                        onTogglePin={props.onTogglePinSession}
-                      />
-                    </div>
-                  </Show>
-                );
+            {/* Sizer: total scroll height; rows are absolutely positioned within it. */}
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                position: "relative",
+                width: "100%",
               }}
-            </For>
-          </div>
+            >
+              <For each={virtualizer.getVirtualItems()}>
+                {(virtualRow) => {
+                  const item = createMemo(() => listItems()[virtualRow.index]);
+                  const session = createMemo(() => item()?.session);
+                  const isSelected = createMemo(() => props.selectedSessionId === session()?.id);
+                  const isHighlighted = createMemo(() => highlightedIndex() === virtualRow.index);
+                  const snippet = createMemo(() =>
+                    session() ? getSessionSnippet(session()!, item()?.matchedTurns) : ""
+                  );
+                  const sessionTimesText = createMemo(() => {
+                    const s = session();
+                    return s ? formatSessionTimes(s.timestamp, s.updatedAt) : "";
+                  });
+
+                  let rowEl: HTMLDivElement | undefined;
+
+                  createEffect(() => {
+                    // Track snippet & item changes so elements updated in-place by Solid's <For>
+                    // re-measure after DOM updates flush.
+                    snippet();
+                    item();
+                    if (rowEl && rowEl.isConnected) {
+                      queueMicrotask(() => {
+                        if (rowEl && rowEl.isConnected) {
+                          virtualizer.measureElement(rowEl);
+                        }
+                      });
+                    }
+                  });
+
+                  return (
+                    <Show when={session()}>
+                      <div
+                        data-index={virtualRow.index}
+                        // Measure only once the row is actually in the document. A manual
+                        // measureElement() call (no ResizeObserver entry) falls through to
+                        // `offsetHeight`, which is 0 for a detached node — and a row's FIRST
+                        // measurement is not cache-guarded, so a 0 gets written to
+                        // itemSizeCache and collapses every following row's offset, which
+                        // shows up as cards overlapping. onMount guarantees post-insertion,
+                        // and isConnected covers a row unmounted by fast scrolling before
+                        // the effect flushes. Re-measures afterwards come from the
+                        // virtualizer's own ResizeObserver, which guards isConnected itself.
+                        ref={(el) => {
+                          rowEl = el;
+                          onMount(() => {
+                            if (!el.isConnected) return;
+                            requestAnimationFrame(() => {
+                              if (el.isConnected) {
+                                virtualizer.measureElement(el);
+                              }
+                            });
+                          });
+                        }}
+                        // pt-2.5 recreates the old inter-card gap (measured into the row height).
+                        class="pt-2.5"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <SessionCard
+                          session={session()!}
+                          isPinned={props.pinnedSessionIds.has(session()!.id)}
+                          isReadAloudActive={speech.isReadAloudActive(session()!.id)}
+                          isSelected={isSelected()}
+                          isHighlighted={isHighlighted()}
+                          isLoading={props.loadingSessionId === session()!.id}
+                          onSelect={props.onSelectSession}
+                          snippet={snippet()}
+                          sessionTimesText={sessionTimesText()}
+                          score={item()?.score}
+                          getSourceStyle={getSourceStyle}
+                          getSourceLabel={getSourceLabel}
+                          groups={props.groups}
+                          onContextMenu={(e, s) => handleContextMenu(e, "session", s)}
+                          onTogglePin={props.onTogglePinSession}
+                        />
+                      </div>
+                    </Show>
+                  );
+                }}
+              </For>
+            </div>
+          </Show>
         </Show>
       </div>
 

@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "Sessions",
     "searchPlaceholder": "Search conversations...",
+    "searching": "Searching conversations...",
     "forceRebuild": "Force Rebuild Index",
     "filters": "Search Filters",
     "agents": "Agents",

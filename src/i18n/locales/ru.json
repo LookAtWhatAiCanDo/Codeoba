@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "Сессии",
     "searchPlaceholder": "Поиск бесед...",
+    "searching": "Поиск разговоров...",
     "forceRebuild": "Принудительно перестроить индекс",
     "filters": "Фильтры поиска",
     "agents": "Агенты",

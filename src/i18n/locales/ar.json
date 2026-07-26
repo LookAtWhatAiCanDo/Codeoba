@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "الجلسات",
     "searchPlaceholder": "البحث في المحادثات...",
+    "searching": "جاري البحث في المحادثات...",
     "forceRebuild": "فرض إعادة بناء الفهرس",
     "filters": "مرشحات البحث",
     "agents": "الوكلاء",

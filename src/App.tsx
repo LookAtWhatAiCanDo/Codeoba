@@ -165,6 +165,7 @@ function App() {
   const [sources, setSources] = createSignal<SourceMetadata[]>([]);
   const [sessions, setSessions] = createSignal<Session[]>([]);
   const [searchResults, setSearchResults] = createSignal<SearchResult[] | null>(null);
+  const [isSearchLoading, setIsSearchLoading] = createSignal(false);
   const [selectedSession, setSelectedSession] = createSignal<Session | null>(null);
   const speech = useSpeech();
   createEffect(() => {
@@ -1481,9 +1482,12 @@ function App() {
     useRegex();
 
     if (query.trim() === "") {
+      setIsSearchLoading(false);
       setSearchResults(null);
       return;
     }
+
+    setIsSearchLoading(true);
 
     const delayDebounce = setTimeout(() => {
       performSearch(query);
@@ -1518,6 +1522,8 @@ function App() {
     } catch (err: any) {
       logFE("error", `Search error: ${err}`);
       setErrorMsg(getLocalizedAppError(err, t));
+    } finally {
+      setIsSearchLoading(false);
     }
   };
 
@@ -1836,6 +1842,7 @@ function App() {
         <Sidebar
           sessions={sessions()}
           searchResults={searchResults()}
+          isSearchLoading={isSearchLoading()}
           selectedSessionId={selectedSession()?.id || null}
           loadingSessionId={loadingSessionId()}
           onSelectSession={handleSelectSession}

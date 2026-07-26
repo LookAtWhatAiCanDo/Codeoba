@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "Sessies",
     "searchPlaceholder": "Gesprekken zoeken...",
+    "searching": "Gesprekken zoeken...",
     "forceRebuild": "Index opnieuw opbouwen forceren",
     "filters": "Zoekfilters",
     "agents": "Agenten",

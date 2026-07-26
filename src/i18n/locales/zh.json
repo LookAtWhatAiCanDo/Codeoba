@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "会话",
     "searchPlaceholder": "搜索对话...",
+    "searching": "正在搜索对话...",
     "forceRebuild": "强制重建索引",
     "filters": "搜索过滤器",
     "agents": "智能体",

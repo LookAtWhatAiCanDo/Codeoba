@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "工作階段",
     "searchPlaceholder": "搜尋對話...",
+    "searching": "正在搜尋對話...",
     "forceRebuild": "強制重建索引",
     "filters": "搜尋篩選器",
     "agents": "代理",

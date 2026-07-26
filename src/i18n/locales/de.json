@@ -25,6 +25,7 @@
   "sidebar": {
     "title": "Sitzungen",
     "searchPlaceholder": "Unterhaltungen durchsuchen...",
+    "searching": "Gespräche werden durchsucht...",
     "forceRebuild": "Index neu erstellen erzwingen",
     "filters": "Suchfilter",
     "agents": "Agenten",
