@@ -1,5 +1,4 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
-import { invoke } from "@tauri-apps/api/core";
 import {
   Folder,
   FolderOpen,
@@ -15,10 +14,17 @@ import { useI18n } from "../../../i18n/i18n";
 import { useSpeech } from "../../../utils/useSpeech";
 import { getStatusBadge } from "../../../utils/sessionStatus";
 import { Session } from "../../../types";
+import { revealInFolder } from "../../../services/tauriBridge";
+import { getStorageItem, setStorageItem } from "../../../utils/storage";
 
 export interface DetailHeaderProps {
   session: Session;
   onCopyPath: (path: string) => void;
+  onPinSession?: () => void;
+  onDeleteSession?: () => void;
+  onToggleSummary?: () => void;
+  isPinned?: boolean;
+  showSummary?: boolean;
   groups?: any[];
   pinnedSessionIds?: Set<string>;
   onTogglePinSession?: (sessionId: string) => void;
@@ -39,10 +45,10 @@ export const DetailHeader = (props: DetailHeaderProps) => {
   const [showSessionDropdown, setShowSessionDropdown] = createSignal(false);
 
   const [workspaceAction, setWorkspaceAction] = createSignal<"copy" | "show">(
-    (localStorage.getItem("codeoba-workspace-action") as "copy" | "show") || "copy"
+    getStorageItem("codeoba-workspace-action", "copy") as "copy" | "show"
   );
   const [sessionAction, setSessionAction] = createSignal<"copy" | "show">(
-    (localStorage.getItem("codeoba-session-action") as "copy" | "show") || "copy"
+    getStorageItem("codeoba-session-action", "copy") as "copy" | "show"
   );
 
   const getWorkspaceName = () => {
@@ -157,11 +163,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
                 if (workspaceAction() === "copy") {
                   handleCopyWorkspacePath();
                 } else {
-                  try {
-                    await invoke("reveal_in_folder", { path: props.session.cwd! });
-                  } catch (e) {
-                    console.error("Failed to reveal workspace path:", e);
-                  }
+                  await revealInFolder(props.session.cwd!);
                 }
               }}
               title={
@@ -208,7 +210,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
                   class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-colors flex items-center justify-between cursor-pointer"
                   onClick={() => {
                     setWorkspaceAction("copy");
-                    localStorage.setItem("codeoba-workspace-action", "copy");
+                    setStorageItem("codeoba-workspace-action", "copy");
                     setShowWorkspaceDropdown(false);
                   }}
                 >
@@ -224,7 +226,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
                   class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-colors flex items-center justify-between cursor-pointer"
                   onClick={() => {
                     setWorkspaceAction("show");
-                    localStorage.setItem("codeoba-workspace-action", "show");
+                    setStorageItem("codeoba-workspace-action", "show");
                     setShowWorkspaceDropdown(false);
                   }}
                 >
@@ -251,11 +253,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
               if (sessionAction() === "copy") {
                 handleCopyPath();
               } else {
-                try {
-                  await invoke("reveal_in_folder", { path: props.session.filePath });
-                } catch (e) {
-                  console.error("Failed to reveal session path:", e);
-                }
+                await revealInFolder(props.session.filePath);
               }
             }}
             title={
@@ -302,7 +300,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
                 class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-colors flex items-center justify-between cursor-pointer"
                 onClick={() => {
                   setSessionAction("copy");
-                  localStorage.setItem("codeoba-session-action", "copy");
+                  setStorageItem("codeoba-session-action", "copy");
                   setShowSessionDropdown(false);
                 }}
               >
@@ -318,7 +316,7 @@ export const DetailHeader = (props: DetailHeaderProps) => {
                 class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-colors flex items-center justify-between cursor-pointer"
                 onClick={() => {
                   setSessionAction("show");
-                  localStorage.setItem("codeoba-session-action", "show");
+                  setStorageItem("codeoba-session-action", "show");
                   setShowSessionDropdown(false);
                 }}
               >

@@ -1,6 +1,7 @@
 import { createSignal, Show, For } from "solid-js";
-import { X, Shield } from "lucide-solid";
+import { X, Shield, Type, Cpu, Layers, Library } from "lucide-solid";
 import { useI18n } from "../i18n/i18n";
+import { BaseModal } from "./common/BaseModal";
 
 // Import license texts directly from text resources at compile time
 import mitLicense from "../resources/licenses/mit.txt?raw";
@@ -176,166 +177,170 @@ export const LicensesDialog = (props: LicensesDialogProps) => {
     }
   };
 
-  return (
-    <Show when={props.isOpen}>
-      {/* Modal backdrop */}
-      <div
-        class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
-        onClick={() => props.onClose()}
-      >
-        {/* Main Dialog card */}
-        <div
-          class="w-[1080px] h-[580px] bg-surface border border-border/80 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header Bar - Full Width spanning all columns */}
-          <div class="h-[60px] border-b border-border/60 flex items-center justify-between px-6 bg-background/30 flex-shrink-0">
-            <div class="flex items-center gap-2">
-              <Shield class="w-4 h-4 text-accent" />
-              <span class="font-bold text-text-primary tracking-wide text-sm">
-                {t("licenses.title")}
-              </span>
-            </div>
+  const handleOpenUrl = (url: string) => {
+    window.open(url, "_blank");
+  };
 
-            {/* Close button */}
+  return (
+    <BaseModal
+      isOpen={props.isOpen}
+      onClose={props.onClose}
+      class="w-[1080px] h-[580px] bg-surface border border-border/80 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200"
+    >
+      {/* Header Bar - Full Width spanning all columns */}
+      <div class="h-[60px] border-b border-border/60 flex items-center justify-between px-6 bg-background/30 flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <Shield class="w-4 h-4 text-accent" />
+          <span class="font-bold text-text-primary tracking-wide text-sm">
+            {t("licenses.title")}
+          </span>
+        </div>
+
+        {/* Close button */}
+        <button
+          onClick={() => props.onClose()}
+          class="p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+        >
+          <X class="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Three-Column Layout Container */}
+      <div class="flex flex-1 overflow-hidden min-h-0">
+        {/* Left Navigation Bar */}
+        <div class="w-[200px] border-r border-border/60 flex flex-col p-4 pt-5 gap-4 flex-shrink-0 bg-background/20">
+          <div class="flex flex-col gap-1">
             <button
-              onClick={() => props.onClose()}
-              class="p-1.5 bg-background hover:bg-surface border border-border/60 rounded-xl text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+              onClick={() => handleCategoryChange("fonts")}
+              class={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                activeCategory() === "fonts"
+                  ? "bg-accent/15 text-accent border border-accent/20"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface"
+              }`}
             >
-              <X class="w-4 h-4" />
+              <Type class="w-3.5 h-3.5" />
+              <span>Fonts</span>
+            </button>
+            <button
+              onClick={() => handleCategoryChange("models")}
+              class={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                activeCategory() === "models"
+                  ? "bg-accent/15 text-accent border border-accent/20"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface"
+              }`}
+            >
+              <Cpu class="w-3.5 h-3.5" />
+              <span>Models</span>
+            </button>
+            <button
+              onClick={() => handleCategoryChange("frameworks")}
+              class={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                activeCategory() === "frameworks"
+                  ? "bg-accent/15 text-accent border border-accent/20"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface"
+              }`}
+            >
+              <Layers class="w-3.5 h-3.5" />
+              <span>Frameworks</span>
+            </button>
+            <button
+              onClick={() => handleCategoryChange("libraries")}
+              class={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                activeCategory() === "libraries"
+                  ? "bg-accent/15 text-accent border border-accent/20"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface"
+              }`}
+            >
+              <Library class="w-3.5 h-3.5" />
+              <span>Libraries</span>
             </button>
           </div>
+        </div>
 
-          {/* Three-Column Layout Container */}
-          <div class="flex flex-1 overflow-hidden min-h-0">
-            {/* Left Navigation Bar */}
-            <div class="w-[200px] border-r border-border/60 flex flex-col p-4 pt-5 gap-4 flex-shrink-0 bg-background/20">
-              <div class="flex flex-col gap-1">
+        {/* Middle Column - Components List */}
+        <div class="w-[300px] border-r border-border/60 flex flex-col p-3 flex-shrink-0 bg-background/10">
+          <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1">
+            <For each={filteredComponents()}>
+              {(comp) => (
                 <button
-                  onClick={() => handleCategoryChange("fonts")}
-                  class={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    activeCategory() === "fonts"
-                      ? "bg-accent/15 text-accent"
-                      : "text-text-secondary hover:bg-surface/50 hover:text-text-primary"
+                  onClick={() => setSelectedCompId(comp.id)}
+                  class={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                    selectedCompId() === comp.id
+                      ? "bg-accent/10 border-accent/30 shadow-sm"
+                      : "bg-surface/40 border-border/40 hover:bg-surface/80 hover:border-border/80 text-text-secondary"
                   }`}
                 >
-                  {t("licenses.fonts")}
-                </button>
-                <button
-                  onClick={() => handleCategoryChange("models")}
-                  class={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    activeCategory() === "models"
-                      ? "bg-accent/15 text-accent"
-                      : "text-text-secondary hover:bg-surface/50 hover:text-text-primary"
-                  }`}
-                >
-                  {t("licenses.models")}
-                </button>
-                <button
-                  onClick={() => handleCategoryChange("frameworks")}
-                  class={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    activeCategory() === "frameworks"
-                      ? "bg-accent/15 text-accent"
-                      : "text-text-secondary hover:bg-surface/50 hover:text-text-primary"
-                  }`}
-                >
-                  {t("licenses.frameworks")}
-                </button>
-                <button
-                  onClick={() => handleCategoryChange("libraries")}
-                  class={`w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    activeCategory() === "libraries"
-                      ? "bg-accent/15 text-accent"
-                      : "text-text-secondary hover:bg-surface/50 hover:text-text-primary"
-                  }`}
-                >
-                  {t("licenses.libraries")}
-                </button>
-              </div>
-            </div>
-
-            {/* Middle List - Items in the active category */}
-            <div class="w-[220px] border-r border-border/60 flex flex-col p-4 pt-6 flex-shrink-0 bg-background/5">
-              <span class="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 px-2">
-                Components
-              </span>
-              <div class="flex flex-col gap-1 overflow-y-auto flex-1 pr-1 custom-scrollbar">
-                <For each={filteredComponents()}>
-                  {(comp) => (
-                    <button
-                      onClick={() => setSelectedCompId(comp.id)}
-                      class={`w-full text-left px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex flex-col gap-0.5 ${
-                        selectedCompId() === comp.id
-                          ? "bg-surface-elevated border border-border/40 shadow-sm"
-                          : "border border-transparent text-text-secondary hover:bg-surface-elevated/40 hover:text-text-primary"
+                  <div class="flex items-center justify-between gap-2">
+                    <span
+                      class={`font-semibold text-xs truncate ${
+                        selectedCompId() === comp.id ? "text-accent" : "text-text-primary"
                       }`}
                     >
-                      <span class="font-bold text-text-primary">{comp.name}</span>
-                      <span class="text-[10px] text-accent font-mono">{comp.licenseName}</span>
-                    </button>
-                  )}
-                </For>
-              </div>
-            </div>
-
-            {/* Right Detail Pane - Full license display */}
-            <div class="flex-1 flex flex-col p-6 pt-6 overflow-hidden">
-              <Show
-                when={activeComponent()}
-                fallback={
-                  <div class="flex-1 flex items-center justify-center text-text-secondary text-xs">
-                    Select a component to view details.
+                      {comp.name}
+                    </span>
                   </div>
-                }
-              >
-                {(comp) => (
-                  <div class="flex-1 flex flex-col overflow-hidden">
-                    {/* Package Metadata */}
-                    <div class="flex flex-col gap-1.5 mb-4">
-                      <h2 class="text-lg font-extrabold text-text-primary">{comp().name}</h2>
-                      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary">
-                        <div>
-                          Author:{" "}
-                          <span class="font-semibold text-text-primary">{comp().author}</span>
-                        </div>
-                        <div class="w-1 h-1 rounded-full bg-border" />
-                        <a
-                          href={comp().url}
-                          target="_blank"
-                          rel="noreferrer"
-                          class="text-accent hover:underline cursor-pointer"
-                        >
-                          Project Homepage
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    <div class="text-xs text-text-secondary leading-relaxed bg-background/30 border border-border/40 rounded-xl p-3.5 mb-4">
-                      {comp().description}
-                    </div>
-
-                    {/* Scrollable License Code Block */}
-                    <div class="flex-1 flex flex-col overflow-hidden min-h-0 bg-black/35 rounded-xl border border-border/40 relative">
-                      {/* Header bar of the code block to host the license name badge cleanly */}
-                      <div class="flex items-center justify-between px-4 py-2 border-b border-border/20 bg-black/20 select-none flex-shrink-0">
-                        <span class="text-[10px] uppercase tracking-wider font-bold text-accent font-mono">
-                          {comp().licenseName}
-                        </span>
-                      </div>
-                      <div class="flex-1 overflow-auto p-4 pt-3 select-text custom-scrollbar">
-                        <pre class="text-[11px] font-mono text-text-primary leading-relaxed whitespace-pre pr-2">
-                          {comp().licenseText}
-                        </pre>
-                      </div>
-                    </div>
+                  <div class="flex items-center justify-between text-[0.6875rem] text-text-secondary/70">
+                    <span>{comp.licenseName}</span>
+                    <Show when={comp.author}>
+                      <span class="truncate max-w-[120px]">{comp.author}</span>
+                    </Show>
                   </div>
-                )}
-              </Show>
-            </div>
+                </button>
+              )}
+            </For>
           </div>
         </div>
+
+        {/* Right Column - Detail Pane */}
+        <div class="flex-1 flex flex-col p-6 overflow-hidden min-h-0 bg-surface/20">
+          <Show when={activeComponent()}>
+            {(comp) => (
+              <div class="flex-1 flex flex-col overflow-hidden">
+                {/* Package Metadata */}
+                <div class="flex flex-col gap-1.5 mb-4">
+                  <h2 class="text-lg font-extrabold text-text-primary">{comp().name}</h2>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary">
+                    <div>
+                      Author: <span class="font-semibold text-text-primary">{comp().author}</span>
+                    </div>
+                    <div class="w-1 h-1 rounded-full bg-border" />
+                    <a
+                      href={comp().url}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenUrl(comp().url);
+                      }}
+                      class="text-accent hover:underline cursor-pointer"
+                    >
+                      Project Homepage
+                    </a>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div class="text-xs text-text-secondary leading-relaxed bg-background/30 border border-border/40 rounded-xl p-3.5 mb-4">
+                  {comp().description}
+                </div>
+
+                {/* Scrollable License Code Block */}
+                <div class="flex-1 flex flex-col overflow-hidden min-h-0 bg-black/35 rounded-xl border border-border/40 relative">
+                  {/* Header bar of the code block to host the license name badge cleanly */}
+                  <div class="flex items-center justify-between px-4 py-2 border-b border-border/20 bg-black/20 select-none flex-shrink-0">
+                    <span class="text-[10px] uppercase tracking-wider font-bold text-accent font-mono">
+                      {comp().licenseName}
+                    </span>
+                  </div>
+                  <div class="flex-1 overflow-auto p-4 pt-3 select-text custom-scrollbar">
+                    <pre class="text-[11px] font-mono text-text-primary leading-relaxed whitespace-pre pr-2">
+                      {comp().licenseText}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Show>
+        </div>
       </div>
-    </Show>
+    </BaseModal>
   );
 };

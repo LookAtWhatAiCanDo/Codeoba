@@ -11,11 +11,11 @@ import {
   HelpCircle,
   X,
 } from "lucide-solid";
-import { invoke } from "@tauri-apps/api/core";
 import { useI18n } from "../../../i18n/i18n";
 import { useSpeech } from "../../../utils/useSpeech";
 import { Session } from "../../../types";
 import { ConversationGroup, GroupTreeNode } from "../groups/groupTreeUtils";
+import { revealInFolder } from "../../../services/tauriBridge";
 
 export interface SidebarContextMenuProps {
   contextMenu: {
@@ -104,13 +104,7 @@ export const SidebarContextMenu = (props: SidebarContextMenuProps) => {
                         class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
                         onClick={async () => {
                           props.onClose();
-                          try {
-                            await invoke("reveal_in_folder", {
-                              path: session().filePath,
-                            });
-                          } catch (e) {
-                            console.error("Failed to reveal session file in folder", e);
-                          }
+                          await revealInFolder(session().filePath);
                         }}
                       >
                         <FolderOpen class="w-3.5 h-3.5" />
@@ -160,13 +154,7 @@ export const SidebarContextMenu = (props: SidebarContextMenuProps) => {
                           class="w-full text-left px-3 py-1.5 text-xs hover:bg-accent/10 hover:text-accent text-text-primary transition-all flex items-center gap-2 cursor-pointer"
                           onClick={async () => {
                             props.onClose();
-                            try {
-                              await invoke("reveal_in_folder", {
-                                path: session().cwd!,
-                              });
-                            } catch (e) {
-                              console.error("Failed to reveal workspace in folder", e);
-                            }
+                            await revealInFolder(session().cwd!);
                           }}
                         >
                           <FolderOpen class="w-3.5 h-3.5" />

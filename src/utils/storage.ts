@@ -32,6 +32,31 @@ export function getStorageFloat(key: string, fallback: number = 1.0): number {
   }
 }
 
+export function getStorageItem(key: string, fallback: string | null = null): string | null {
+  try {
+    const val = localStorage.getItem(key);
+    return val !== null ? val : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setStorageItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function removeStorageItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function getStorageJson<T>(key: string, fallback: T): T {
   try {
     const val = localStorage.getItem(key);

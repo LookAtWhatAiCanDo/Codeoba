@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Session } from "../types";
 import { parseAssistantMessage } from "./messageParser";
 import { useI18n, formatTemplate } from "../i18n/i18n";
-import { getStorageFloat } from "./storage";
+import { getStorageFloat, getStorageItem } from "./storage";
 
 export interface SpeechItem {
   globalIndex: number;
@@ -19,6 +19,40 @@ export interface SpeechItem {
 
 // Global active speechSynthesis utterance reference to avoid overlapping playbacks
 let activeUtterance: SpeechSynthesisUtterance | null = null;
+
+export function configureUtteranceVoiceAndRate(
+  utterance: SpeechSynthesisUtterance,
+  speaker: "assistant" | "user" = "assistant",
+  currentLanguage: string = "en"
+): void {
+  const savedVoiceName = getStorageItem(
+    speaker === "user" ? "codeoba-tts-voice-user" : "codeoba-tts-voice-assistant"
+  );
+  let voiceAssigned = false;
+  if (savedVoiceName && window.speechSynthesis) {
+    const voices = window.speechSynthesis.getVoices();
+    const matchedVoice = voices.find((v) => v.name === savedVoiceName);
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+      utterance.lang = matchedVoice.lang;
+      voiceAssigned = true;
+    }
+  }
+
+  if (!voiceAssigned) {
+    if (currentLanguage === "zh-TW") {
+      utterance.lang = "zh-TW";
+    } else if (currentLanguage === "zh") {
+      utterance.lang = "zh-CN";
+    } else {
+      utterance.lang = currentLanguage;
+    }
+  }
+
+  const prefix = speaker === "user" ? "user" : "assistant";
+  utterance.rate = getStorageFloat(`codeoba-tts-rate-${prefix}`, 1.0);
+  utterance.pitch = getStorageFloat(`codeoba-tts-pitch-${prefix}`, 1.0);
+}
 
 // Speech sanitation helper to strip markdown, inline code, bold/italics, blockquotes, list markers
 export function sanitizeBlockForSpeech(text: string): string {
@@ -500,38 +534,11 @@ export function useSpeech() {
       const processedText = applyPronunciations(textToSpeak);
       const utterance = new SpeechSynthesisUtterance(processedText);
 
-      // Load custom voice settings from localStorage if available
-      const speaker = currentItem.speaker || "assistant";
-      const savedVoiceName =
-        speaker === "user"
-          ? localStorage.getItem("codeoba-tts-voice-user")
-          : localStorage.getItem("codeoba-tts-voice-assistant");
-      let voiceAssigned = false;
-      if (savedVoiceName) {
-        const voices = window.speechSynthesis.getVoices();
-        const matchedVoice = voices.find((v) => v.name === savedVoiceName);
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
-          utterance.lang = matchedVoice.lang;
-          voiceAssigned = true;
-        }
-      }
-
-      if (!voiceAssigned) {
-        // Map locale
-        if (currentLanguage === "zh-TW") {
-          utterance.lang = "zh-TW";
-        } else if (currentLanguage === "zh") {
-          utterance.lang = "zh-CN";
-        } else {
-          utterance.lang = currentLanguage;
-        }
-      }
-
-      // Load speed rate and pitch settings from localStorage for the specific speaker
-      const prefix = speaker === "user" ? "user" : "assistant";
-      utterance.rate = getStorageFloat(`codeoba-tts-rate-${prefix}`, 1.0);
-      utterance.pitch = getStorageFloat(`codeoba-tts-pitch-${prefix}`, 1.0);
+      configureUtteranceVoiceAndRate(
+        utterance,
+        currentItem.speaker || "assistant",
+        currentLanguage
+      );
 
       utterance.onend = () => {
         if (activeUtterance === utterance) {
@@ -948,42 +955,7 @@ export function useSpeech() {
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const savedVoiceName =
-      speaker === "user"
-        ? localStorage.getItem("codeoba-tts-voice-user")
-        : localStorage.getItem("codeoba-tts-voice-assistant");
-    let voiceAssigned = false;
-    if (savedVoiceName) {
-      const voices = window.speechSynthesis.getVoices();
-      const matchedVoice = voices.find((v) => v.name === savedVoiceName);
-      if (matchedVoice) {
-        utterance.voice = matchedVoice;
-        utterance.lang = matchedVoice.lang;
-        voiceAssigned = true;
-      }
-    }
-
-    if (!voiceAssigned) {
-      if (currentLanguage === "zh-TW") {
-        utterance.lang = "zh-TW";
-      } else if (currentLanguage === "zh") {
-        utterance.lang = "zh-CN";
-      } else {
-        utterance.lang = currentLanguage;
-      }
-    }
-
-    if (speaker === "user") {
-      const savedRate = localStorage.getItem("codeoba-tts-rate-user");
-      if (savedRate) utterance.rate = parseFloat(savedRate);
-      const savedPitch = localStorage.getItem("codeoba-tts-pitch-user");
-      if (savedPitch) utterance.pitch = parseFloat(savedPitch);
-    } else {
-      const savedRate = localStorage.getItem("codeoba-tts-rate-assistant");
-      if (savedRate) utterance.rate = parseFloat(savedRate);
-      const savedPitch = localStorage.getItem("codeoba-tts-pitch-assistant");
-      if (savedPitch) utterance.pitch = parseFloat(savedPitch);
-    }
+    configureUtteranceVoiceAndRate(utterance, speaker, currentLanguage);
 
     setIsPlaying(true);
     setIsPaused(false);
