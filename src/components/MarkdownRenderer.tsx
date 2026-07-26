@@ -158,6 +158,8 @@ interface MarkdownRendererProps {
   sourceId?: string;
   filePath?: string;
   startBlockIndex?: number;
+  /** Which side of the turn this content belongs to (defaults to "assistant") */
+  speaker?: "assistant" | "user";
 }
 
 const wrapBrContent = (el: HTMLElement) => {
@@ -852,7 +854,7 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
             speech.playFromHere(sid, tid, text, {
               sourceId: props.sourceId || "",
               filePath: props.filePath || "",
-              speaker: "assistant",
+              speaker: props.speaker || "assistant",
               blockIndex,
             });
           }
@@ -890,10 +892,11 @@ export const MarkdownRenderer = (props: MarkdownRendererProps) => {
     if (idx < 0 || idx >= list.length) return;
     const currentItem = list[idx]!;
 
+    const ownSpeaker = props.speaker || "assistant";
     if (
       currentItem.sessionId !== props.sessionId ||
       currentItem.turnIndex !== props.turnIndex ||
-      (currentItem.speaker && currentItem.speaker !== "assistant")
+      (currentItem.speaker || "assistant") !== ownSpeaker
     ) {
       return;
     }

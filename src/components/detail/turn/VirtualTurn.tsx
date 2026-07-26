@@ -29,11 +29,16 @@ export interface VirtualTurnProps {
   onImageClick: (img: { path?: string; src: string }) => void;
   onImageContextMenu: (e: MouseEvent, path?: string, src?: string) => void;
   isActiveSpeechTurn?: boolean;
+  activeSpeechSpeaker?: "assistant" | "user";
 }
 
 export const VirtualTurn = (props: VirtualTurnProps) => {
   const { t } = useI18n();
   const turnKey = createMemo(() => props.turn.turnId || String(props.actualIndex));
+
+  // Outline only the bubble whose side is currently being spoken
+  const isSpeaking = (speaker: "assistant" | "user") =>
+    !!props.isActiveSpeechTurn && (props.activeSpeechSpeaker || "assistant") === speaker;
 
   return (
     <div
@@ -63,7 +68,11 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
               props.actualIndex
             )
           }
-          class="w-full bg-surface border border-border/50 p-4 rounded-2xl shadow-sm"
+          class={`w-full p-4 rounded-2xl shadow-sm transition-all duration-300 relative after:absolute after:inset-0 after:rounded-2xl after:pointer-events-none after:z-[11] ${
+            isSpeaking("user")
+              ? "bg-accent/5 shadow-md shadow-accent/15 after:border-2 after:border-accent"
+              : "bg-surface after:border after:border-border/50"
+          }`}
         >
           <Show
             when={props.turn.userMessage === "[Compacted Request]"}
@@ -79,6 +88,7 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
                   turnIndex={props.actualIndex}
                   sourceId={props.sourceId}
                   filePath={props.filePath}
+                  speaker="user"
                 />
                 <Show when={props.turn.images && props.turn.images.length > 0}>
                   <div class="flex flex-wrap gap-2.5 mt-3 pt-3 border-t border-border/30">
@@ -173,7 +183,7 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
         </div>
         <div
           class={`w-full p-5 rounded-2xl shadow-sm transition-all duration-300 relative after:absolute after:inset-0 after:rounded-2xl after:pointer-events-none after:z-[11] ${
-            props.isActiveSpeechTurn
+            isSpeaking("assistant")
               ? "bg-accent/5 shadow-md shadow-accent/15 after:border-2 after:border-accent"
               : "bg-accent-light/10 after:border after:border-accent/20"
           }`}

@@ -453,6 +453,7 @@ export const DetailPane = (props: DetailPaneProps) => {
                       speech.activeSessionId() === props.session!.id &&
                       speech.activeTurnIndex() === index()
                     }
+                    activeSpeechSpeaker={speech.activeSpeaker()}
                   />
                 )}
               </For>

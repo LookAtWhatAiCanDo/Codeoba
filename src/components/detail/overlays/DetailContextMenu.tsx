@@ -86,6 +86,20 @@ export const DetailContextMenu = (props: DetailContextMenuProps) => {
             }
           };
 
+          const handlePlayFromHere = () => {
+            const sid = context().sessionId;
+            const tid = context().turnIndex;
+            const text = context().clickedText || "";
+            if (sid !== undefined && tid !== undefined && props.session) {
+              speech.playFromHere(sid, tid, text, {
+                sourceId: props.session.sourceId,
+                filePath: props.session.filePath,
+                speaker: context().type === "user" ? "user" : "assistant",
+              });
+            }
+            props.setContextMenu(null);
+          };
+
           const handleShowInFolder = async () => {
             try {
               const path = context().imagePath || context().text;
@@ -190,18 +204,7 @@ export const DetailContextMenu = (props: DetailContextMenuProps) => {
                   <div class="h-[1px] bg-border/20 my-1" />
                   <button
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
-                    onClick={() => {
-                      const sid = context().sessionId;
-                      const tid = context().turnIndex;
-                      const text = context().clickedText || "";
-                      if (sid !== undefined && tid !== undefined && props.session) {
-                        speech.playFromHere(sid, tid, text, {
-                          sourceId: props.session.sourceId,
-                          filePath: props.session.filePath,
-                        });
-                      }
-                      props.setContextMenu(null);
-                    }}
+                    onClick={handlePlayFromHere}
                   >
                     <Volume2 class="w-3.5 h-3.5" />
                     <span>{t("readAloud.playFromHere")}</span>
@@ -251,18 +254,7 @@ export const DetailContextMenu = (props: DetailContextMenuProps) => {
                 <Show when={context().type === "assistant" || context().type === "user"}>
                   <button
                     class="w-full text-left px-3 py-2 hover:bg-accent/10 hover:text-accent transition-all flex items-center gap-2 cursor-pointer font-medium text-text-primary"
-                    onClick={() => {
-                      const sid = context().sessionId;
-                      const tid = context().turnIndex;
-                      const text = context().clickedText || "";
-                      if (sid !== undefined && tid !== undefined && props.session) {
-                        speech.playFromHere(sid, tid, text, {
-                          sourceId: props.session.sourceId,
-                          filePath: props.session.filePath,
-                        });
-                      }
-                      props.setContextMenu(null);
-                    }}
+                    onClick={handlePlayFromHere}
                   >
                     <Volume2 class="w-3.5 h-3.5" />
                     <span>{t("readAloud.playFromHere")}</span>

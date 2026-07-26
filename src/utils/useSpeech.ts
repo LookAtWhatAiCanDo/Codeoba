@@ -443,6 +443,15 @@ export function useSpeech() {
     return -1;
   });
 
+  const activeSpeaker = createMemo<"assistant" | "user" | undefined>(() => {
+    const list = sentences();
+    const idx = currentSentenceIndex();
+    if (idx >= 0 && idx < list.length) {
+      return list[idx]!.speaker || "assistant";
+    }
+    return undefined;
+  });
+
   const stop = () => {
     if (activeUtterance) {
       activeUtterance.onend = null;
@@ -982,6 +991,7 @@ export function useSpeech() {
         (item) =>
           item.sessionId === sessionId &&
           item.turnIndex === firstItem.turnIndex &&
+          item.speaker === firstItem.speaker &&
           item.blockIndex === firstItem.blockIndex
       );
 
@@ -1069,6 +1079,7 @@ export function useSpeech() {
     currentSentenceIndex,
     activeTurnIndex,
     activeSessionId,
+    activeSpeaker,
     sentences,
     pastHistory,
     futureHistory,
