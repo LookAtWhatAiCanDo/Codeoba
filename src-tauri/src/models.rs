@@ -347,9 +347,10 @@ fn parse_task_id(content: &str) -> Option<u32> {
 //     "active": the session is mid-turn either way, and for auto-approved
 //     commands no prompt was ever shown. (Distinguishing them requires
 //     process-table probing — deferred until it earns its complexity.)
-//   * `PLANNER_RESPONSE` without tool calls — the turn is finished (idle),
-//     unless a background task launched this turn has not reported completion
-//     (the agent wakes again when the task-finished message arrives).
+//   * `PLANNER_RESPONSE` without pending user prompt/command proposal — the turn is
+//     finished (idle), even if synchronous tools (e.g. `write_to_file`, `view_file`)
+//     were invoked in the step, unless a background task launched this turn has not
+//     reported completion (the agent wakes again when the task-finished message arrives).
 //   * `RUN_COMMAND` with status `RUNNING` — a background task launched
 //     ("…task id: <session>/task-N…"). The line stays `RUNNING` forever;
 //     completion arrives later as a `SYSTEM_MESSAGE` (`Task id "…/task-N"
@@ -664,7 +665,11 @@ fn ag_status_decision(info: &AgTranscriptInfo, agent_alive: bool) -> &'static st
         if asks_user {
             return "waiting";
         }
-        if info.last_tool_calls.is_empty() && !info.has_unfinished_task {
+        let proposes_cmd = info.last_tool_calls.iter().any(|n| n == "run_command");
+        if proposes_cmd {
+            return "active";
+        }
+        if !info.has_unfinished_task {
             return "idle";
         }
     }
@@ -1250,9 +1255,17 @@ mod antigravity_status_tests {
             super::ag_status_decision(&planner(&["run_command"], false), true),
             "active"
         );
-        // Turn over -> idle.
+        // Turn over (no tool calls or synchronous tool calls like write_to_file/view_file) -> idle.
         assert_eq!(
             super::ag_status_decision(&planner(&[], false), true),
+            "idle"
+        );
+        assert_eq!(
+            super::ag_status_decision(&planner(&["write_to_file"], false), true),
+            "idle"
+        );
+        assert_eq!(
+            super::ag_status_decision(&planner(&["view_file", "grep_search"], false), true),
             "idle"
         );
         // Turn "over" but a background task will wake the agent -> active.
