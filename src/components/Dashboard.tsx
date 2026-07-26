@@ -344,7 +344,7 @@ export const Dashboard = (props: DashboardProps) => {
         class="flex-grow min-h-0 min-w-0 flex flex-col overflow-y-auto px-8 pt-6 pb-6 space-y-6 outline-none"
       >
         {/* Overview Tabs Navigation */}
-        <div class="flex items-center justify-between max-w-xl flex-shrink-0 gap-4">
+        <div class="flex items-center justify-between w-full flex-shrink-0 gap-4">
           <div class="flex bg-surface p-1 rounded-xl border border-border/60 max-w-md flex-grow">
             <button
               onClick={() => setActiveTab(DashboardTab.Global)}
@@ -382,7 +382,7 @@ export const Dashboard = (props: DashboardProps) => {
         <Switch>
           <Match when={activeTab() === DashboardTab.Global}>
             {/* Global Stats Grid View */}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl flex-shrink-0">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
               <StatCard
                 title={t("dashboard.totalConversations")}
                 value={formatNumber(stats().totalConversations)}
@@ -440,7 +440,7 @@ export const Dashboard = (props: DashboardProps) => {
             </div>
 
             {/* Model Performance List */}
-            <div class="space-y-4 max-w-5xl">
+            <div class="space-y-4 w-full">
               <div class="flex items-center justify-between border-b border-border/40 pb-2 flex-shrink-0">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
                   {t("dashboard.topModels")}
@@ -545,11 +545,11 @@ export const Dashboard = (props: DashboardProps) => {
 
           <Match when={activeTab() === DashboardTab.Groups}>
             {/* Groups Dashboard View */}
-            <div class="space-y-4 max-w-4xl">
+            <div class="space-y-4 w-full">
               <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary">
                 {t("dashboard.agentStats")}
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
                 <For each={stats().sourceGroups}>
                   {([source, count]) => (
                     <div class="bg-surface border border-border/50 rounded-2xl p-5 flex items-center justify-between shadow-sm">
@@ -581,7 +581,7 @@ export const Dashboard = (props: DashboardProps) => {
 
           <Match when={activeTab() === DashboardTab.ReadAloud}>
             {/* Read Aloud Tab View */}
-            <div class="space-y-4 max-w-5xl flex-grow flex flex-col min-h-0">
+            <div class="space-y-4 w-full flex-grow flex flex-col min-h-0">
               <div class="flex items-center justify-between flex-shrink-0">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-text-secondary select-none">
                   {t("dashboard.readAloudHistory")}
