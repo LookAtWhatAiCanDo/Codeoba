@@ -41,6 +41,16 @@ const RotateCwClean = (props: { class?: string }) => (
 // Detect if running on macOS
 const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
 
+/**
+ * One box for every control in the navigation pill. It used to mix three sizes
+ * — 16px for the nav icons, 14px for the Read Aloud transport, 12px for stop —
+ * which left the row optically uneven even though all the glyphs were centered
+ * on the same line. Lucide draws its icons on a shared 24-unit grid with a
+ * common stroke width, so rendering them all at one size is what keeps their
+ * weight consistent; per-icon sizes are what break it.
+ */
+const PILL_ICON = "w-[16px] h-[16px]";
+
 interface TitleBarProps {
   selectedSession: Session | null;
   sidebarCollapsed: boolean;
@@ -89,8 +99,8 @@ export const TitleBar = (props: TitleBarProps) => {
         title={props.sidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
       >
-        <Show when={props.sidebarCollapsed} fallback={<PanelLeftClose class="w-[16px] h-[16px]" />}>
-          <PanelLeftOpen class="w-[16px] h-[16px]" />
+        <Show when={props.sidebarCollapsed} fallback={<PanelLeftClose class={PILL_ICON} />}>
+          <PanelLeftOpen class={PILL_ICON} />
         </Show>
       </button>
 
@@ -102,7 +112,7 @@ export const TitleBar = (props: TitleBarProps) => {
         title="Go Back"
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ArrowLeft class="w-[16px] h-[16px]" />
+        <ArrowLeft class={PILL_ICON} />
       </button>
 
       <button
@@ -111,7 +121,7 @@ export const TitleBar = (props: TitleBarProps) => {
         title="Go Forward"
         class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer disabled:opacity-20 disabled:pointer-events-none"
       >
-        <ArrowRight class="w-[16px] h-[16px]" />
+        <ArrowRight class={PILL_ICON} />
       </button>
 
       <button
@@ -123,12 +133,23 @@ export const TitleBar = (props: TitleBarProps) => {
             : "border-transparent text-text-secondary"
         }`}
       >
-        <Home class="w-[16px] h-[16px]" />
+        <Home class={PILL_ICON} />
       </button>
 
-      <div
-        class={`inline-flex items-center gap-1.5 transition-all ${props.isRebuilding ? "px-1.5" : ""}`}
-      >
+      {/*
+        Nothing in this group changes size between idle and rebuilding: the
+        progress slot below is always laid out, so starting a rebuild never
+        shifts the Read Aloud controls that follow. That also means the refresh
+        button never moves while it is spinning.
+
+        Explicit px rather than the rem-based gap-1.5/px-1.5: the root font
+        size is user-adjustable (App.tsx sets documentElement.style.fontSize,
+        default 15px), so 0.375rem lands on 5.625px and drags the spinning
+        icon a quarter of a device pixel off the grid, where the SVG
+        re-rasterizes about an off-grid center every frame. Every other offset
+        in this pill is already integer px for the same reason.
+      */}
+      <div class="inline-flex items-center" style={{ gap: "6px" }}>
         <button
           onClick={props.onRebuildIndex}
           disabled={props.isRebuilding || props.isLoading}
@@ -143,18 +164,43 @@ export const TitleBar = (props: TitleBarProps) => {
               : "hover:bg-surface hover:border-border/60 hover:text-text-primary text-text-secondary cursor-pointer"
           }`}
         >
-          <Show
-            when={props.isRebuilding || props.isLoading}
-            fallback={<RotateCwClean class="w-[16px] h-[16px]" />}
-          >
-            <RotateCwClean class="w-[16px] h-[16px] animate-spin origin-center" />
-          </Show>
+          {/*
+            One icon whose classes toggle, not two instances behind a <Show>:
+            swapping the element replaced the DOM node at the exact moment the
+            spin began, which promoted a fresh compositing layer mid-animation
+            and showed up as a hitch on the first frame. will-change keeps the
+            spinning icon on its own layer so it is rasterized once and rotated
+            as a texture rather than re-rasterized every frame.
+          */}
+          <RotateCwClean
+            class={`${PILL_ICON} ${
+              props.isRebuilding || props.isLoading
+                ? "animate-spin origin-center will-change-transform"
+                : ""
+            }`}
+          />
         </button>
-        <Show when={props.isRebuilding && props.indexingProgress}>
-          <span class="text-[10px] font-mono text-accent font-semibold select-none animate-pulse pr-1">
-            {Math.round(props.indexingProgress!.progress * 100)}%
+        {/*
+          Always laid out, never conditionally mounted — mounting it mid-rebuild
+          is what made the Read Aloud controls jump. Only the opacity changes.
+
+          28px is exact, not padded guesswork: "100%" measures 24px in JetBrains
+          Mono at 10px (6px/char), plus the 4px of trailing padding. Right
+          aligned so the "%" stays put as the number goes 5% -> 40% -> 100%.
+          The pulse lives on an inner element so the outer opacity can fade
+          independently of it.
+        */}
+        <span
+          class={`text-[10px] font-mono text-accent font-semibold select-none inline-flex justify-end transition-opacity duration-200 ${
+            props.isRebuilding && props.indexingProgress ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ width: "28px", "padding-right": "4px" }}
+          aria-hidden={!(props.isRebuilding && props.indexingProgress)}
+        >
+          <span class="animate-pulse">
+            {props.indexingProgress ? `${Math.round(props.indexingProgress.progress * 100)}%` : ""}
           </span>
-        </Show>
+        </span>
       </div>
 
       <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
@@ -164,10 +210,18 @@ export const TitleBar = (props: TitleBarProps) => {
           title={t("dashboard.readAloud")}
           class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
         >
-          <Volume2 class="w-[14px] h-[14px]" />
+          <Volume2 class={PILL_ICON} />
         </button>
+        {/*
+          flex items-center, not inline-block: as a block container this wrapper
+          put its inline-flex button on a text baseline, so the button's vertical
+          position came from the inherited line-height rather than from the row's
+          align-items. That sat prev/next 2px below volume/play/stop, and since
+          the strut scales with the user's font-size setting the gap widened as
+          the font grew. Centering here makes it depend on nothing but the row.
+        */}
         <div
-          class="relative inline-block"
+          class="relative flex items-center"
           onMouseEnter={() => setShowPrevDropdown(true)}
           onMouseLeave={() => setShowPrevDropdown(false)}
         >
@@ -176,7 +230,7 @@ export const TitleBar = (props: TitleBarProps) => {
             title={showPrevDropdown() ? "" : t("readAloud.speechPrev")}
             class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
           >
-            <SkipBack class="w-[14px] h-[14px]" />
+            <SkipBack class={PILL_ICON} />
           </button>
           <Show when={showPrevDropdown() && speech.pastHistory().length > 0}>
             <div class="absolute top-full left-0 pt-1 z-[9999]">
@@ -218,9 +272,9 @@ export const TitleBar = (props: TitleBarProps) => {
           class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
         >
           {speech.isPlaying() && !speech.isPaused() ? (
-            <Pause class="w-[14px] h-[14px]" />
+            <Pause class={PILL_ICON} />
           ) : (
-            <Play class="w-[14px] h-[14px]" />
+            <Play class={PILL_ICON} />
           )}
         </button>
 
@@ -229,11 +283,12 @@ export const TitleBar = (props: TitleBarProps) => {
           title={t("readAloud.speechStop")}
           class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
         >
-          <Square class="w-[12px] h-[12px]" />
+          <Square class={PILL_ICON} />
         </button>
 
+        {/* Same baseline-vs-centering fix as the prev-track wrapper above. */}
         <div
-          class="relative inline-block"
+          class="relative flex items-center"
           onMouseEnter={() => setShowNextDropdown(true)}
           onMouseLeave={() => setShowNextDropdown(false)}
         >
@@ -242,7 +297,7 @@ export const TitleBar = (props: TitleBarProps) => {
             title={showNextDropdown() ? "" : t("readAloud.speechNext")}
             class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
           >
-            <SkipForward class="w-[14px] h-[14px]" />
+            <SkipForward class={PILL_ICON} />
           </button>
           <Show when={showNextDropdown() && speech.futureHistory().length > 0}>
             <div class="absolute top-full right-0 pt-1 z-[9999]">
