@@ -14,6 +14,11 @@ export const BaseModal = (props: BaseModalProps) => {
   const closeOnEsc = () => props.closeOnEsc ?? true;
   const closeOnBackdrop = () => props.closeOnBackdropClick ?? true;
 
+  // A drag that starts inside the card (e.g. selecting text in a textarea) and ends over
+  // the backdrop fires the click on the backdrop, which would dismiss the dialog
+  // mid-selection. Only treat it as a backdrop click if the press also started there.
+  let pressStartedOnBackdrop = false;
+
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (props.isOpen && closeOnEsc() && e.key === "Escape") {
@@ -31,8 +36,11 @@ export const BaseModal = (props: BaseModalProps) => {
           props.backdropClass ||
           "fixed inset-0 bg-black/60 z-[999] flex items-center justify-center animate-in fade-in duration-200 backdrop-blur-sm"
         }
-        onClick={() => {
-          if (closeOnBackdrop()) {
+        onMouseDown={(e) => {
+          pressStartedOnBackdrop = e.target === e.currentTarget;
+        }}
+        onClick={(e) => {
+          if (closeOnBackdrop() && pressStartedOnBackdrop && e.target === e.currentTarget) {
             props.onClose();
           }
         }}
