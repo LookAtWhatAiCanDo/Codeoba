@@ -20,6 +20,28 @@ export interface SpeechItem {
 // Global active speechSynthesis utterance reference to avoid overlapping playbacks
 let activeUtterance: SpeechSynthesisUtterance | null = null;
 
+type PlaybackState = "playing" | "paused" | "stopped";
+
+/**
+ * Single writer for the system Now Playing state.
+ *
+ * Both publishers have to agree: `navigator.mediaSession` (WebKit's own bridge) and
+ * souvlaki write the same global `MPNowPlayingInfoCenter`, so they were previously able
+ * to disagree — stop() said "none" to one and "paused" to the other.
+ *
+ * "stopped" is what we owe macOS when the queue drains. Reporting "paused" instead left
+ * Codeoba sitting in the Now Playing slot forever, holding an empty-titled track.
+ */
+function publishPlaybackState(state: PlaybackState, title: string, artist: string): void {
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.playbackState = state === "stopped" ? "none" : state;
+  }
+
+  invoke("update_playback_metadata", { title, artist, playback: state }).catch((err) => {
+    console.error("[TTS] Failed to update playback metadata:", err);
+  });
+}
+
 export function configureUtteranceVoiceAndRate(
   utterance: SpeechSynthesisUtterance,
   speaker: "assistant" | "user" = "assistant",
@@ -390,12 +412,13 @@ let currentSentenceStartTime = 0;
 let lastSpokenSessionId: string | null = null;
 
 interface SpeechController {
+  /** Toggle — for the transport button and the OS "Toggle" command only. */
   play: (session?: Session, lang?: string) => void;
+  resume: () => void;
+  pause: () => void;
   stop: () => void;
   next: () => void;
   prev: () => void;
-  isPlaying: () => boolean;
-  isPaused: () => boolean;
 }
 
 let activeSpeechController: SpeechController | null = null;
@@ -467,17 +490,7 @@ export function useSpeech() {
     setCurrentSentenceIndex(-1);
     lastSpokenSessionId = null;
 
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.playbackState = "none";
-    }
-
-    invoke("update_playback_metadata", {
-      title: "",
-      artist: "",
-      isPlaying: false,
-    }).catch((err) => {
-      console.error("[TTS] Failed to update playback metadata:", err);
-    });
+    publishPlaybackState("stopped", "", "");
   };
 
   const playCurrent = () => {
@@ -516,28 +529,13 @@ export function useSpeech() {
         artist: currentItem.sessionTitle || t("common.untitledSession"),
         album: "Codeoba Read Aloud",
       });
-      navigator.mediaSession.playbackState = "playing";
-      navigator.mediaSession.setActionHandler("play", () => {
-        play();
-      });
-      navigator.mediaSession.setActionHandler("pause", () => {
-        play();
-      });
-      navigator.mediaSession.setActionHandler("nexttrack", () => {
-        next();
-      });
-      navigator.mediaSession.setActionHandler("previoustrack", () => {
-        prev();
-      });
     }
 
-    invoke("update_playback_metadata", {
-      title: currentItem.text,
-      artist: currentItem.sessionTitle || t("common.untitledSession"),
-      isPlaying: true,
-    }).catch((err) => {
-      console.error("[TTS] Failed to update playback metadata:", err);
-    });
+    publishPlaybackState(
+      "playing",
+      currentItem.text,
+      currentItem.sessionTitle || t("common.untitledSession")
+    );
 
     if (window.speechSynthesis) {
       if (activeUtterance) {
@@ -630,6 +628,61 @@ export function useSpeech() {
     return reindexed;
   };
 
+  /** Republishes whatever is at the cursor under a new playback state. */
+  const publishCurrentItem = (state: PlaybackState) => {
+    const list = sentences();
+    const idx = currentSentenceIndex();
+    const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
+    publishPlaybackState(
+      state,
+      currentItem ? currentItem.text : "",
+      currentItem ? currentItem.sessionTitle || t("common.untitledSession") : ""
+    );
+  };
+
+  /**
+   * Resume paused speech, or start the playlist when nothing is playing yet.
+   * Idempotent: an explicit resume while already speaking does nothing.
+   */
+  const resume = () => {
+    if (isPlaying()) {
+      if (!isPaused()) return;
+      setIsPaused(false);
+      if (window.speechSynthesis) window.speechSynthesis.resume();
+      publishCurrentItem("playing");
+      return;
+    }
+
+    const list = sentences();
+    if (list.length === 0) return;
+    const idx = currentSentenceIndex();
+    setCurrentSentenceIndex(idx >= 0 ? idx : 0);
+    playCurrent();
+  };
+
+  /** Pause in place. Idempotent: pausing when already paused or idle does nothing. */
+  const pauseSpeech = () => {
+    if (!isPlaying() || isPaused()) return;
+    setIsPaused(true);
+    if (window.speechSynthesis) window.speechSynthesis.pause();
+    publishCurrentItem("paused");
+  };
+
+  const togglePlayPause = () => {
+    if (isPlaying() && !isPaused()) {
+      pauseSpeech();
+    } else {
+      resume();
+    }
+  };
+
+  /**
+   * The transport button's action: enable Read Aloud for a session, or toggle.
+   *
+   * Explicit transport commands (media keys, Control Center) must call `resume` and
+   * `pauseSpeech` directly — routing them through a toggle inverts them whenever the
+   * OS and our own state disagree about what is playing.
+   */
   const play = (session?: Session, lang: string = "en") => {
     currentLanguage = lang;
 
@@ -643,49 +696,7 @@ export function useSpeech() {
       return;
     }
 
-    // Toggle play/pause
-    if (isPlaying()) {
-      if (isPaused()) {
-        setIsPaused(false);
-        if ("mediaSession" in navigator) {
-          navigator.mediaSession.playbackState = "playing";
-        }
-        if (window.speechSynthesis) window.speechSynthesis.resume();
-        const list = sentences();
-        const idx = currentSentenceIndex();
-        const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
-        invoke("update_playback_metadata", {
-          title: currentItem ? currentItem.text : "",
-          artist: currentItem ? currentItem.sessionTitle || t("common.untitledSession") : "",
-          isPlaying: true,
-        }).catch((err) => {
-          console.error("[TTS] Failed to update playback metadata:", err);
-        });
-      } else {
-        setIsPaused(true);
-        if ("mediaSession" in navigator) {
-          navigator.mediaSession.playbackState = "paused";
-        }
-        if (window.speechSynthesis) window.speechSynthesis.pause();
-        const list = sentences();
-        const idx = currentSentenceIndex();
-        const currentItem = idx >= 0 && idx < list.length ? list[idx] : null;
-        invoke("update_playback_metadata", {
-          title: currentItem ? currentItem.text : "",
-          artist: currentItem ? currentItem.sessionTitle || t("common.untitledSession") : "",
-          isPlaying: false,
-        }).catch((err) => {
-          console.error("[TTS] Failed to update playback metadata:", err);
-        });
-      }
-    } else {
-      const list = sentences();
-      if (list.length > 0) {
-        const idx = currentSentenceIndex();
-        setCurrentSentenceIndex(idx >= 0 ? idx : 0);
-        playCurrent();
-      }
-    }
+    togglePlayPause();
   };
 
   const next = () => {
@@ -1065,13 +1076,31 @@ export function useSpeech() {
 
   const controller: SpeechController = {
     play,
+    resume,
+    pause: pauseSpeech,
     stop,
     next,
     prev,
-    isPlaying,
-    isPaused,
   };
   activeSpeechController = controller;
+
+  // Registered once instead of on every spoken block: the handlers never vary, and
+  // `setActionHandler` overwrites rather than stacking, so the per-block re-registration
+  // was pure churn.
+  if ("mediaSession" in navigator) {
+    navigator.mediaSession.setActionHandler("play", () => {
+      resume();
+    });
+    navigator.mediaSession.setActionHandler("pause", () => {
+      pauseSpeech();
+    });
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      next();
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      prev();
+    });
+  }
 
   return {
     isPlaying,
@@ -1114,13 +1143,9 @@ if (typeof window !== "undefined") {
     if (action === "Toggle") {
       activeSpeechController.play();
     } else if (action === "Play") {
-      if (activeSpeechController.isPaused() || !activeSpeechController.isPlaying()) {
-        activeSpeechController.play();
-      }
+      activeSpeechController.resume();
     } else if (action === "Pause") {
-      if (activeSpeechController.isPlaying() && !activeSpeechController.isPaused()) {
-        activeSpeechController.play();
-      }
+      activeSpeechController.pause();
     } else if (action === "Next") {
       activeSpeechController.next();
     } else if (action === "Previous") {

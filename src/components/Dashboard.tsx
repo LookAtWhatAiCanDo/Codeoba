@@ -739,11 +739,7 @@ export const Dashboard = (props: DashboardProps) => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (isCurrent()) {
-                                        if (speech.isPlaying() && !speech.isPaused()) {
-                                          speech.play(); // pause
-                                        } else {
-                                          speech.play(); // resume
-                                        }
+                                        speech.play();
                                       } else {
                                         speech.goToIndex(item.globalIndex);
                                       }

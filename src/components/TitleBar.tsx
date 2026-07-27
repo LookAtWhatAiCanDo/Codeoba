@@ -256,9 +256,7 @@ export const TitleBar = (props: TitleBarProps) => {
 
         <button
           onClick={() => {
-            if (speech.isPlaying()) {
-              speech.play();
-            } else if (props.selectedSession) {
+            if (!speech.isPlaying() && props.selectedSession) {
               speech.play(props.selectedSession, locale());
             } else {
               speech.play();
