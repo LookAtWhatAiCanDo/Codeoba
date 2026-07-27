@@ -220,8 +220,48 @@ async fn reindex_source_and_emit<R: tauri::Runtime>(
     }
 }
 
+/// Whether fire-and-forget background work may be spawned.
+///
+/// Always true in a real build. In test builds it defaults to **false**, because a spawned
+/// task is the one thing `HOME_MUTEX` cannot contain: the mutex serializes test *bodies*,
+/// while a task outlives the body, re-reads `CODEOBA_MOCK_HOME` whenever it happens to run,
+/// and therefore resolves `get_home_dir()` to whichever test is active by then. It then
+/// scans and writes that test's store — and since `store::save_source` prunes by absence, a
+/// stale scan deletes rows the live test just seeded. That is the root of the flaky suite
+/// documented in AGENTS.md; narrowing the env-var window only ever moved it around.
+///
+/// Suppressing the spawn is sound for all but one of the current tests, which assert the
+/// *synchronous* contract (a missing directory is not recreated) and say so explicitly; the
+/// reconciliation the task performs is covered deterministically by
+/// `cache::scan_lifecycle_tests` and the `store` tests.
+///
+/// The exception is `test_antigravity_rename_watcher_sync`, which asserts on the reload the
+/// task performs and so must opt in. It shows the required shape: take a
+/// `BackgroundSpawnGuard` while holding `HOME_MUTEX`, and **join the work before releasing
+/// the lock** — via the handle [`handle_file_change`] returns, on the failing path as much as
+/// the passing one. Opting in without joining is not a weaker version of this; it is the
+/// original bug, since a task still in flight at unlock lands in the next test's store.
+///
+/// Every spawn that can reach [`reindex_source_and_emit`] must sit behind this gate. There
+/// are two: [`spawn_reindex_source`] and the debounced reload in [`handle_file_change`].
+#[cfg(test)]
+pub(crate) static BACKGROUND_SPAWN_ENABLED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(test)]
+fn background_spawn_enabled() -> bool {
+    BACKGROUND_SPAWN_ENABLED.load(Ordering::SeqCst)
+}
+
+#[cfg(not(test))]
+fn background_spawn_enabled() -> bool {
+    true
+}
+
 /// Fire-and-forget [`reindex_source_and_emit`] on the async runtime.
 fn spawn_reindex_source<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, source_id: String) {
+    if !background_spawn_enabled() {
+        return;
+    }
     let app_handle = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         reindex_source_and_emit(&app_handle, &source_id).await;
@@ -451,7 +491,9 @@ pub fn start_watcher<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Resu
                 // Filter for file writes, creations, or deletions
                 if is_relevant_event(&event.kind) {
                     for path in event.paths {
-                        handle_file_change(&handle_clone, &path);
+                        // Fire-and-forget here by design: the watcher thread must keep
+                        // draining events, not wait on a 500ms debounce.
+                        let _ = handle_file_change(&handle_clone, &path);
                     }
                 }
             }
@@ -602,7 +644,17 @@ fn compute_file_hash(path: &Path) -> Option<u64> {
     }
 }
 
-fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path: &Path) {
+/// Handles one filesystem event, debouncing and reindexing off-thread.
+///
+/// Returns the spawned task's handle so a caller that must not outlive the work can await it.
+/// Production ignores it (this is fire-and-forget by design); the tests use it to join before
+/// releasing `HOME_MUTEX`, which is the only way the debounced write cannot land in the next
+/// test's store. `None` means nothing was spawned — no source matched, or
+/// [`background_spawn_enabled`] is off.
+fn handle_file_change<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    path: &Path,
+) -> Option<tauri::async_runtime::JoinHandle<()>> {
     let path_str = path.to_string_lossy();
     let sources = get_sources_list();
 
@@ -635,10 +687,17 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
             };
 
             if gen == 0 {
-                return;
+                return None;
             }
 
-            tauri::async_runtime::spawn(async move {
+            // Same gate as `spawn_reindex_source`: this spawn reaches the identical
+            // `reindex_source_and_emit`, so leaving it ungated left the leak the switch
+            // exists to close wide open on this path.
+            if !background_spawn_enabled() {
+                return None;
+            }
+
+            return Some(tauri::async_runtime::spawn(async move {
                 // Sleep to debounce rapid sequential filesystem events (e.g. 500ms)
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
@@ -758,10 +817,10 @@ fn handle_file_change<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, path:
                         }
                     }
                 }
-            });
-            break;
+            }));
         }
     }
+    None
 }
 
 #[cfg(test)]
@@ -770,6 +829,32 @@ mod watcher_tests {
     use crate::models::{Session, Turn};
     use crate::parsers::SourceAdapter;
     use crate::search::SearchIndexState;
+
+    /// Opts the current test into background spawning, restoring the previous setting on drop.
+    ///
+    /// RAII rather than a bare `store(true)` / `store(false)` pair because the restore has to
+    /// survive a panic: an assertion failure between the two would otherwise leave the switch
+    /// on for every test that follows, quietly reopening the leak the switch exists to close —
+    /// and it would do so only on already-failing runs, which is the worst time to start
+    /// contaminating unrelated tests.
+    ///
+    /// Holding this is not sufficient on its own. A test that opts in must also await the work
+    /// it started (see [`handle_file_change`]'s returned handle) before releasing
+    /// `HOME_MUTEX`; the guard restores the flag, it cannot un-spawn a task still in flight.
+    struct BackgroundSpawnGuard(bool);
+
+    impl BackgroundSpawnGuard {
+        fn enable() -> Self {
+            let previous = BACKGROUND_SPAWN_ENABLED.swap(true, Ordering::SeqCst);
+            Self(previous)
+        }
+    }
+
+    impl Drop for BackgroundSpawnGuard {
+        fn drop(&mut self) {
+            BACKGROUND_SPAWN_ENABLED.store(self.0, Ordering::SeqCst);
+        }
+    }
 
     /// An unreadable store must NOT be reported as an empty one.
     ///
@@ -812,9 +897,12 @@ mod watcher_tests {
     /// Seeds a session into the SQLite store (which is now the index). Requires
     /// CODEOBA_MOCK_HOME to point at the test's temp home.
     fn seed_store(source_id: &str, session: Session) {
+        // `open_db` is documented to return None on failure (see cache.rs), so a bare
+        // unwrap here reports only "called Option::unwrap() on a None value" and makes the
+        // reader hunt the log for the real cause. Name it.
         let mut conn = crate::parsers::cache::get_cache_manager()
             .open_db()
-            .unwrap();
+            .expect("seed_store: could not open the session store (locked or unwritable?)");
         let entry = crate::parsers::cache::CacheEntry {
             file_path: session.file_path.clone(),
             last_modified: 0,
@@ -828,7 +916,7 @@ mod watcher_tests {
     fn store_contains(id: &str) -> bool {
         let conn = crate::parsers::cache::get_cache_manager()
             .open_db()
-            .unwrap();
+            .expect("store_contains: could not open the session store (locked or unwritable?)");
         conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?1)",
             [id],
@@ -838,6 +926,13 @@ mod watcher_tests {
         .unwrap_or(false)
     }
 
+    /// FLAKY (~1 run in 25-40; see "Known Flaky Test" in AGENTS.md).
+    /// Background work spawned by an EARLIER test outlives its body, resolves
+    /// `get_home_dir()` to whichever test is now active, and finishes a scan against this
+    /// test's database -- and `save_source` prunes by absence, deleting the row seeded here.
+    /// A red run is not automatically a regression: re-run, and confirm it fails in
+    /// isolation before investigating. Fix is a #[cfg(test)] spawn kill switch, not more
+    /// env-var juggling.
     #[test]
     fn test_missing_directory_is_not_recreated() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
@@ -928,12 +1023,13 @@ mod watcher_tests {
         check_and_restore_watched_paths(&app_handle);
 
         // Synchronous contract: the missing directory is NOT recreated. (A prior bug
-        // recreated it here.) The session-deletion behavior for a missing root is
-        // handled off-thread by spawn_rescan_and_reconcile -> scan_absent_source ->
-        // reconcile_source, and is unit-tested deterministically there
-        // (cache::scan_lifecycle_tests::absent_source_soft_deletes_cached_sessions and
-        // search::update_session_tests::reconcile_*), not asserted here where it races
-        // the spawned task.
+        // recreated it here.) The session-deletion behavior for a missing root is handled
+        // off-thread by spawn_reindex_source -> reindex_source_and_emit -> the adapter's
+        // scan, which returns cache::scan_absent_source when its root is gone; that path is
+        // unit-tested deterministically in
+        // cache::scan_lifecycle_tests::absent_source_soft_deletes_cached_sessions, not
+        // asserted here where it would race the spawned task (and, under the spawn gate,
+        // does not run at all).
         assert!(
             !codex_dir.exists(),
             "missing directory must not be recreated"
@@ -1078,6 +1174,9 @@ mod watcher_tests {
     #[test]
     fn test_antigravity_rename_watcher_sync() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        // The one test that genuinely asserts on spawned work, so it opts in -- and joins the
+        // task below before the lock is released. Declared after `_lock` so it drops first.
+        let _spawn_guard = BackgroundSpawnGuard::enable();
         let temp_home = tempfile::tempdir().unwrap();
         let original_home = std::env::var_os("HOME");
         std::env::set_var("HOME", temp_home.path());
@@ -1166,31 +1265,30 @@ mod watcher_tests {
             guard.insert(pb_file.to_string_lossy().to_string(), 1);
         }
 
-        handle_file_change(&app_handle, &pb_file);
+        let spawned = handle_file_change(&app_handle, &pb_file)
+            .expect("handle_file_change must spawn the reload while opted in");
 
-        // 6. Give the async reload handler a moment to execute, polling the store for the
-        //    reindexed title.
-        let mut title_updated = false;
-        for _ in 0..50 {
-            if let Some(conn) = crate::parsers::cache::get_cache_manager().open_db() {
-                let title: Option<String> = conn
-                    .query_row(
-                        "SELECT thread_name FROM sessions WHERE id = ?1",
-                        ["session-antigravity-123"],
-                        |r| r.get::<_, Option<String>>(0),
-                    )
-                    .ok()
-                    .flatten();
-                if title.as_deref() == Some("New Physics Title") {
-                    title_updated = true;
-                    break;
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
-        }
-        assert!(
-            title_updated,
-            "Session title was not updated to 'New Physics Title' in time"
+        // 6. Await the reload rather than polling for its side effect. Polling ended the test
+        //    on a timeout with the task still running, which then finished against whichever
+        //    home the *next* test had installed -- the exact leak this test's opt-in is
+        //    allowed to make, and only safe because it is joined here, inside HOME_MUTEX, on
+        //    the failing path as much as the passing one.
+        tauri::async_runtime::block_on(spawned).expect("the reload task must not panic");
+
+        let title: Option<String> = crate::parsers::cache::get_cache_manager()
+            .open_db()
+            .expect("session store must be readable after the reload")
+            .query_row(
+                "SELECT thread_name FROM sessions WHERE id = ?1",
+                ["session-antigravity-123"],
+                |r| r.get::<_, Option<String>>(0),
+            )
+            .ok()
+            .flatten();
+        assert_eq!(
+            title.as_deref(),
+            Some("New Physics Title"),
+            "the reload must have rewritten the session title"
         );
 
         if let Some(h) = original_home {

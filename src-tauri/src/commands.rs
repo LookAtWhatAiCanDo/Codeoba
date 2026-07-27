@@ -1283,22 +1283,40 @@ pub fn update_playback_metadata(
     state: tauri::State<'_, crate::MediaControlsState>,
     title: String,
     artist: String,
-    is_playing: bool,
+    playback: String,
 ) -> Result<(), AppErrorPayload> {
     crate::log_info!(
-        "[MediaControls] Updating metadata: title='{}', artist='{}', is_playing={}",
+        "[MediaControls] Updating metadata: title='{}', artist='{}', playback={}",
         title,
         artist,
-        is_playing
+        playback
     );
+
+    // Rejecting unknown states rather than defaulting keeps a frontend typo from silently
+    // parking the app in the wrong Now Playing state, which is hard to notice by ear.
+    let playback_state = match playback.as_str() {
+        "playing" => souvlaki::MediaPlayback::Playing { progress: None },
+        "paused" => souvlaki::MediaPlayback::Paused { progress: None },
+        "stopped" => souvlaki::MediaPlayback::Stopped,
+        other => {
+            return Err(AppErrorPayload::with_msg(
+                ERR_GENERIC,
+                format!("Unknown playback state: {other}"),
+            ))
+        }
+    };
+    let stopped = matches!(playback_state, souvlaki::MediaPlayback::Stopped);
+
     let mut guard = state.0.lock().map_err(|e| {
         AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to lock media controls: {e}"))
     })?;
 
     if let Some(ref mut controls) = *guard {
+        // A stopped player owns no track. Passing `None` clears the Now Playing entry;
+        // sending `Some("")` instead left an empty-titled track sitting in the slot.
         let metadata = souvlaki::MediaMetadata {
-            title: Some(&title),
-            artist: Some(&artist),
+            title: if stopped { None } else { Some(&title) },
+            artist: if stopped { None } else { Some(&artist) },
             album: None,
             cover_url: None,
             duration: None,
@@ -1307,12 +1325,7 @@ pub fn update_playback_metadata(
             AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to set media metadata: {e:?}"))
         })?;
 
-        let playback = if is_playing {
-            souvlaki::MediaPlayback::Playing { progress: None }
-        } else {
-            souvlaki::MediaPlayback::Paused { progress: None }
-        };
-        controls.set_playback(playback).map_err(|e| {
+        controls.set_playback(playback_state).map_err(|e| {
             AppErrorPayload::with_msg(ERR_GENERIC, format!("Failed to set playback status: {e:?}"))
         })?;
     } else {
@@ -1458,6 +1471,9 @@ mod get_all_sessions_tests {
 
     /// Guards the lock-scope reorder: enrichment (status/workspace) must still run after the
     /// read lock is released, and results must stay sorted by updated_at descending.
+    /// FLAKY (~1 run in 25-40; see "Known Flaky Test" in AGENTS.md). Shares the
+    /// process-global CODEOBA_MOCK_HOME with background work escaping other tests; a red
+    /// run here is not automatically a regression. Passes reliably in isolation.
     #[test]
     fn enriches_and_sorts_after_lock_release() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());

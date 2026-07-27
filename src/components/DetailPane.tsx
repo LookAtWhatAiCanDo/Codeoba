@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, createEffect, on, untrack, onMount, onCleanup, For, Show } from "solid-js";
 import { useI18n } from "../i18n/i18n";
 import { useSpeech } from "../utils/useSpeech";
 import { useContextMenuPosition } from "../utils/contextMenu";
@@ -22,6 +22,12 @@ import { useDetailSearch } from "./detail/hooks/useDetailSearch";
 import { useDateMilestones } from "./detail/hooks/useDateMilestones";
 import { useDetailScroll } from "./detail/hooks/useDetailScroll";
 
+// Deeplink jump timings: first re-center mid smooth-scroll, second once it has settled
+const DEEPLINK_RECENTER_MS = 250;
+const DEEPLINK_SETTLE_MS = 500;
+// Total run of the .deeplink-flash animation in App.css (0.42s x 3 iterations)
+const DEEPLINK_FLASH_MS = 1260;
+
 export interface DetailPaneProps {
   session: Session | null;
   sources: SourceMetadata[];
@@ -32,6 +38,7 @@ export interface DetailPaneProps {
     sessionId: string;
     turnIndex: number;
     clickedText?: string;
+    speaker?: "user" | "assistant";
   } | null;
   onClearDeeplink?: () => void;
   sidebarCollapsed?: boolean;
@@ -233,24 +240,88 @@ export const DetailPane = (props: DetailPaneProps) => {
     scrollHook.cleanupScrollObserver();
   });
 
-  // Reset pagination, search state, and scroll to bottom when session changes or reloads
-  createEffect(() => {
-    const session = props.session;
-    if (session) {
-      scrollHook.setScrollPercent(0);
-      scrollHook.setActiveTurnIdx(0);
-      searchHook.setShowDetailSearch(false);
-      searchHook.setDetailSearchQuery("");
-      searchHook.setActiveMatchIndex(0);
+  // Default resting position for a freshly opened session: pinned to the newest turn
+  const lockToBottom = () => {
+    scrollHook.setScrollLock(true);
+    scrollHook.resetMountedState();
+    scrollHook.scrollToBottom();
+  };
 
-      // Only lock scroll to bottom on session change if there is no active deeplink scroll
-      if (!props.activeDeeplink) {
-        scrollHook.setScrollLock(true);
-        scrollHook.resetMountedState();
-        scrollHook.scrollToBottom();
+  // Centers an element inside the scroll container. Uses rect deltas rather than offsetTop
+  // because the message bubbles are positioned, so offsetTop is bubble- not container-relative.
+  const centerInScrollContainer = (el: Element) => {
+    const container = scrollHook.getScrollContainerRef();
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    container.scrollTop +=
+      elRect.top - containerRect.top - (container.clientHeight - elRect.height) / 2;
+  };
+
+  const normalizeForMatch = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+  // Finds the paragraph-level block inside a turn that holds the spoken sentence, preferring
+  // the bubble belonging to the speaker the sentence came from.
+  const findDeeplinkTarget = (
+    turnEl: HTMLElement,
+    clickedText?: string,
+    speaker?: "user" | "assistant"
+  ): Element => {
+    const bubble = speaker ? turnEl.querySelector(`[data-speaker="${speaker}"]`) : null;
+    const scope = bubble || turnEl;
+
+    if (clickedText) {
+      const cleanClicked = normalizeForMatch(clickedText);
+      if (cleanClicked) {
+        const blocks = Array.from(
+          scope.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
+        );
+        const matchingEl = blocks.find((block) => {
+          const cleanBlockText = normalizeForMatch(block.textContent || "");
+          return (
+            cleanBlockText.length > 0 &&
+            (cleanBlockText.includes(cleanClicked) || cleanClicked.includes(cleanBlockText))
+          );
+        });
+        if (matchingEl) return matchingEl;
       }
     }
-  });
+
+    return bubble || turnEl;
+  };
+
+  // Flashes the arrived-at block amber a few times. Kept in sync with the
+  // .deeplink-flash animation in App.css (0.42s x 3).
+  const flashDeeplinkTarget = (el: Element) => {
+    el.classList.remove("deeplink-flash");
+    // Force a reflow so re-syncing to the same block restarts the animation
+    void (el as HTMLElement).offsetWidth;
+    el.classList.add("deeplink-flash");
+    setTimeout(() => el.classList.remove("deeplink-flash"), DEEPLINK_FLASH_MS);
+  };
+
+  // Reset pagination, search state, and scroll to bottom when session changes or reloads.
+  // Deliberately keyed on the session alone: reading props.activeDeeplink reactively here
+  // would re-run this (and re-pin to the bottom) the moment a deeplink jump clears itself.
+  createEffect(
+    on(
+      () => props.session,
+      (session) => {
+        if (!session) return;
+
+        scrollHook.setScrollPercent(0);
+        scrollHook.setActiveTurnIdx(0);
+        searchHook.setShowDetailSearch(false);
+        searchHook.setDetailSearchQuery("");
+        searchHook.setActiveMatchIndex(0);
+
+        // Only lock scroll to bottom on session change if there is no active deeplink scroll
+        if (!untrack(() => props.activeDeeplink)) {
+          lockToBottom();
+        }
+      }
+    )
+  );
 
   // Reactively execute pending deeplinks once target session has loaded
   createEffect(() => {
@@ -261,65 +332,56 @@ export const DetailPane = (props: DetailPaneProps) => {
     if (!session || session.id !== deeplink.sessionId) return;
 
     const turn = session.turns[deeplink.turnIndex];
-    if (!turn) return;
+    if (!turn) {
+      // Nothing to jump to: clear so a stale deeplink cannot suppress bottom-locking later,
+      // and fall back to the normal session-open position.
+      props.onClearDeeplink?.();
+      lockToBottom();
+      return;
+    }
 
+    const turnKey = turn.turnId || String(deeplink.turnIndex);
+    // Release the bottom lock and suppress scroll-lock reacquisition while the jump settles
     scrollHook.setScrollLock(false);
+    setIsJumping(true);
+
+    const findTurnEl = () =>
+      (document.getElementById(turnKey) ||
+        document.querySelector(`[data-turn-index="${deeplink.turnIndex}"]`)) as HTMLElement | null;
+
+    const jump = (turnEl: HTMLElement) => {
+      const target = findDeeplinkTarget(turnEl, deeplink.clickedText, deeplink.speaker);
+
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Re-center after late layout shifts (images, lazily rendered markdown)
+      setTimeout(() => centerInScrollContainer(target), DEEPLINK_RECENTER_MS);
+      setTimeout(() => {
+        // Final correction has landed, so the block is now parked where the user can see it flash
+        centerInScrollContainer(target);
+        flashDeeplinkTarget(target);
+      }, DEEPLINK_SETTLE_MS);
+      setTimeout(() => setIsJumping(false), DEEPLINK_SETTLE_MS + 300);
+
+      props.onClearDeeplink?.();
+    };
 
     setTimeout(() => {
-      const turnKey = turn.turnId || String(deeplink.turnIndex);
-      let el = document.getElementById(turnKey);
-      if (!el) {
-        el = document.querySelector(`[data-turn-index="${deeplink.turnIndex}"]`);
+      const turnEl = findTurnEl();
+      if (turnEl) {
+        jump(turnEl);
+        return;
       }
-
-      if (el) {
-        let scrolled = false;
-        const clickedText = deeplink.clickedText;
-
-        if (clickedText) {
-          const cleanClicked = clickedText.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-          if (cleanClicked) {
-            const blocks = Array.from(
-              el.querySelectorAll("p, li, blockquote, h1, h2, h3, h4, h5, h6")
-            );
-            const matchingEl = blocks.find((block) => {
-              const cleanBlockText =
-                block.textContent?.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") || "";
-              return cleanBlockText.includes(cleanClicked) || cleanClicked.includes(cleanBlockText);
-            });
-            if (matchingEl) {
-              matchingEl.scrollIntoView({ behavior: "smooth", block: "center" });
-              scrolled = true;
-            }
-          }
+      // Turn markup not committed yet: retry once, then give up and clear the deeplink
+      setTimeout(() => {
+        const retryEl = findTurnEl();
+        if (retryEl) {
+          jump(retryEl);
+        } else {
+          setIsJumping(false);
+          props.onClearDeeplink?.();
+          lockToBottom();
         }
-
-        if (!scrolled) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-
-        const assistantBubble = el.querySelector(".bg-accent\\/5, .bg-accent-light\\/10");
-        if (assistantBubble) {
-          assistantBubble.classList.add(
-            "ring-2",
-            "ring-accent",
-            "ring-offset-2",
-            "ring-offset-background",
-            "transition-all",
-            "duration-1000"
-          );
-          setTimeout(() => {
-            assistantBubble.classList.remove(
-              "ring-2",
-              "ring-accent",
-              "ring-offset-2",
-              "ring-offset-background"
-            );
-          }, 2500);
-        }
-
-        props.onClearDeeplink?.();
-      }
+      }, 400);
     }, 150);
   });
 

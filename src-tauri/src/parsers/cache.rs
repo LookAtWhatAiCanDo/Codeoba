@@ -409,6 +409,40 @@ impl SessionCacheManager {
         }
     }
 
+    /// Drops `file_path` from the cache outright, in memory and in SQLite.
+    ///
+    /// Distinct from the absence-based deletion in `end_scan`: that marks an entry
+    /// `is_deleted` because the file vanished from disk. This is for a file that still
+    /// exists but must stop producing a session of its own -- a Claude rewind-fork
+    /// ancestor, whose entire transcript was copied into a newer file. Leaving it to
+    /// `end_scan` would flag it deleted, which is a lie the sidebar can render.
+    pub fn evict_cached_file(&self, source_id: &str, file_path: &str) {
+        // A scan in flight owns the authoritative map; `end_scan` persists it wholesale,
+        // so removing the key here is enough to keep it out of SQLite too.
+        let mut scan_in_flight = false;
+        if let Ok(mut active_guard) = self.active_caches.lock() {
+            if let Some(map) = active_guard.get_mut(source_id) {
+                map.remove(file_path);
+                scan_in_flight = true;
+            }
+        }
+        // Outside a scan there is nothing to persist the removal for us, so rewrite the
+        // stored map directly -- otherwise the ancestor reappears on next launch when
+        // `load_cache` seeds the in-memory map from SQLite.
+        if !scan_in_flight {
+            let mut cache_map = self.load_cache(source_id);
+            if cache_map.remove(file_path).is_some() {
+                let _ = self.save_cache(source_id, cache_map.into_values().collect());
+            }
+        }
+        // Keep it out of `seen` so it cannot be resurrected as a live entry this scan.
+        if let Ok(mut seen_guard) = self.seen_paths.lock() {
+            if let Some(set) = seen_guard.get_mut(source_id) {
+                set.remove(file_path);
+            }
+        }
+    }
+
     pub fn put_cached_session(
         &self,
         source_id: &str,

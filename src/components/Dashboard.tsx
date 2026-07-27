@@ -37,7 +37,12 @@ interface DashboardProps {
   activeTab?: DashboardTab;
   onActiveTabChange?: (tab: DashboardTab) => void;
   onSelectSession?: (session: Session) => void;
-  onDeeplink?: (sessionId: string, turnIndex: number, clickedText?: string) => void;
+  onDeeplink?: (
+    sessionId: string,
+    turnIndex: number,
+    clickedText?: string,
+    speaker?: "user" | "assistant"
+  ) => void;
 }
 
 interface ModelItemStats {
@@ -717,7 +722,12 @@ export const Dashboard = (props: DashboardProps) => {
                                         props.onSelectSession(sess);
                                       }
                                       if (props.onDeeplink) {
-                                        props.onDeeplink(item.sessionId, item.turnIndex, item.text);
+                                        props.onDeeplink(
+                                          item.sessionId,
+                                          item.turnIndex,
+                                          item.text,
+                                          item.speaker
+                                        );
                                       }
                                     }}
                                     class="text-text-secondary/40 hover:text-accent p-1 rounded-lg hover:bg-accent/10 opacity-0 group-hover/row:opacity-100 transition-all cursor-pointer inline-flex items-center justify-center"
@@ -729,11 +739,7 @@ export const Dashboard = (props: DashboardProps) => {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (isCurrent()) {
-                                        if (speech.isPlaying() && !speech.isPaused()) {
-                                          speech.play(); // pause
-                                        } else {
-                                          speech.play(); // resume
-                                        }
+                                        speech.play();
                                       } else {
                                         speech.goToIndex(item.globalIndex);
                                       }
