@@ -158,16 +158,6 @@ export const TitleBar = (props: TitleBarProps) => {
       </div>
 
       <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
-
-      <button
-        onClick={props.onShowSettings}
-        title={t("settings.title")}
-        class="w-[30px] h-[30px] inline-flex items-center justify-center hover:bg-surface border border-transparent hover:border-border/60 hover:text-text-primary text-text-secondary rounded-lg transition-all cursor-pointer"
-      >
-        <Settings class="w-[16px] h-[16px]" />
-      </button>
-
-      <div class="bg-border/40" style={{ width: "1px", height: "16px", margin: "0 4px" }} />
       <div class="flex items-center" style={{ gap: "2px" }}>
         <button
           onClick={() => props.onGoToReadAloud?.()}
@@ -418,6 +408,19 @@ export const TitleBar = (props: TitleBarProps) => {
             </button>
           </div>
         </Show>
+        <button
+          onClick={props.onShowSettings}
+          title={t("settings.title")}
+          class="bg-surface/40 hover:bg-surface border border-border/60 hover:border-accent/40 rounded-xl text-text-secondary hover:text-accent transition-all cursor-pointer flex items-center justify-center pointer-events-auto"
+          style={{
+            width: "28px",
+            height: "28px",
+            padding: "6px",
+          }}
+        >
+          <Settings style={{ width: "14px", height: "14px" }} />
+        </button>
+
         <button
           onClick={handleOpenIssues}
           title={t("common.bugTracker")}
