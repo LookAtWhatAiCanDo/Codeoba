@@ -23,6 +23,41 @@ const RECURSION_START_DEPTH: usize = 1;
 
 pub struct ClaudeSource;
 
+/// One transcript file's identity within a rewind-fork family.
+struct FamilyMember {
+    path: String,
+    /// The session id this file reports (in-file `sessionId`, else the file stem). Claude's
+    /// metadata keys archive state by it -- but only ever for the newest member.
+    session_id: String,
+    /// Every message uuid in the file, in transcript order, used to prove the winner
+    /// really did inherit an ancestor's history before that ancestor is suppressed.
+    uuids: Vec<String>,
+    /// Timestamp of the last message; the family member with the greatest one is the
+    /// branch the user is actually on.
+    last_message: String,
+}
+
+/// The outcome of grouping a project directory's transcripts into fork families.
+#[derive(Default)]
+pub(crate) struct ForkFamilies {
+    /// Ancestor path -> the path of the family member that superseded it. Ancestors are
+    /// suppressed; the value lets the watcher redirect a single-file parse to the winner.
+    superseded: HashMap<String, String>,
+    /// Winner path -> every session id in its family, newest first. Archive state is
+    /// resolved across all of them.
+    family_ids: HashMap<String, Vec<String>>,
+}
+
+impl ForkFamilies {
+    pub(crate) fn superseded_by(&self, file_path: &str) -> Option<&str> {
+        self.superseded.get(file_path).map(|s| s.as_str())
+    }
+
+    fn ids_for(&self, file_path: &str) -> Option<&[String]> {
+        self.family_ids.get(file_path).map(|v| v.as_slice())
+    }
+}
+
 struct RawTurn {
     is_user: bool,
     text: String,
@@ -123,7 +158,19 @@ impl SourceAdapter for ClaudeSource {
     }
 
     async fn parse_session(&self, file_path: &str) -> Option<Session> {
-        self.parse_session_impl(file_path, None).await
+        // The watcher hands us one changed file. If it is a rewind-fork ancestor, the
+        // session the user actually sees lives in a sibling file, so parse that instead --
+        // returning the ancestor here would re-add the duplicate card the scan removed.
+        let families = self.scan_fork_families(&self.sibling_transcripts(file_path));
+        if let Some(winner) = families.superseded_by(file_path) {
+            let winner = winner.to_string();
+            crate::parsers::cache::get_cache_manager().evict_cached_file(self.id(), file_path);
+            let ids = families.ids_for(&winner).map(|s| s.to_vec());
+            return self.parse_session_impl(&winner, None, ids.as_deref()).await;
+        }
+        let ids = families.ids_for(file_path).map(|s| s.to_vec());
+        self.parse_session_impl(file_path, None, ids.as_deref())
+            .await
     }
 
     async fn parse_all_sessions(&self) -> crate::parsers::cache::ScanResult {
@@ -147,11 +194,20 @@ impl SourceAdapter for ClaudeSource {
         );
 
         let archived_map = self.load_archived_session_map();
+        let families = self.scan_fork_families(&paths);
 
         let mut sessions = Vec::new();
         for path in paths {
+            let path_str = path.to_string_lossy().to_string();
+            // A rewind-fork ancestor produces no session of its own: its entire transcript
+            // was copied into the newer member, which is parsed below in its own right.
+            if families.superseded_by(&path_str).is_some() {
+                crate::parsers::cache::get_cache_manager().evict_cached_file(self.id(), &path_str);
+                continue;
+            }
+            let ids = families.ids_for(&path_str).map(|s| s.to_vec());
             if let Some(session) = self
-                .parse_session_impl(&path.to_string_lossy(), Some(&archived_map))
+                .parse_session_impl(&path_str, Some(&archived_map), ids.as_deref())
                 .await
             {
                 sessions.push(session);
@@ -260,16 +316,243 @@ impl ClaudeSource {
         }
     }
 
+    /// The transcripts that could possibly share a fork family with `file_path`: its own
+    /// project directory only. A fork always lands beside its ancestor, so there is no
+    /// reason to re-walk the whole source tree on a single-file watcher event.
+    fn sibling_transcripts(&self, file_path: &str) -> Vec<PathBuf> {
+        let dir = match Path::new(file_path).parent() {
+            Some(d) => d,
+            None => return Vec::new(),
+        };
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return Vec::new(),
+        };
+        entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_file() && p.extension().and_then(|s| s.to_str()) == Some("jsonl"))
+            .collect()
+    }
+
+    /// Reads just far enough to learn a transcript's root message uuid: the first record
+    /// carrying `"parentUuid": null`. Cheap by design -- it stops on the first hit, so the
+    /// common case (no fork) costs a handful of lines per file rather than a full parse.
+    fn read_root_uuid(path: &Path) -> Option<String> {
+        let file = File::open(path).ok()?;
+        for line in BufReader::new(file).lines().map_while(Result::ok) {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let value = match serde_json::from_str::<serde_json::Value>(&line) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            let obj = match value.as_object() {
+                Some(o) => o,
+                None => continue,
+            };
+            // `uuid` present and `parentUuid` explicitly null marks the first message.
+            // Non-message bookkeeping lines (`custom-title`, `queue-operation`, `mode`)
+            // carry neither, and a compaction boundary is also parent-less but can only
+            // ever appear after the real root, so first-hit-wins is correct.
+            if obj.contains_key("parentUuid")
+                && obj.get("parentUuid").map(|v| v.is_null()).unwrap_or(false)
+            {
+                if let Some(u) = obj.get("uuid").and_then(|v| v.as_str()) {
+                    return Some(u.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    /// Collects every message uuid (in order) and the last message timestamp.
+    /// Only ever called for files already known to share a root with another file.
+    fn read_family_member(path: &Path) -> Option<FamilyMember> {
+        let file = File::open(path).ok()?;
+        let mut uuids = Vec::new();
+        let mut last_message = String::new();
+        // Mirror `parse_session_impl`: the in-file `sessionId` wins over the file stem, so
+        // the ids collected here are the same ones archive state is later looked up by.
+        // (Claude rewrites `sessionId` on every copied record, so a forked file reports its
+        // own id throughout, not the ancestor's.)
+        let mut session_id = path.file_stem()?.to_string_lossy().to_string();
+        for line in BufReader::new(file).lines().map_while(Result::ok) {
+            if line.trim().is_empty() {
+                continue;
+            }
+            if let Ok(serde_json::Value::Object(obj)) = serde_json::from_str(&line) {
+                if let Some(u) = obj.get("uuid").and_then(|v| v.as_str()) {
+                    uuids.push(u.to_string());
+                    if let Some(ts) = obj.get("timestamp").and_then(|v| v.as_str()) {
+                        if ts > last_message.as_str() {
+                            last_message = ts.to_string();
+                        }
+                    }
+                    if let Some(sid) = obj.get("sessionId").and_then(|v| v.as_str()) {
+                        session_id = sid.to_string();
+                    }
+                }
+            }
+        }
+        if uuids.is_empty() {
+            return None;
+        }
+        Some(FamilyMember {
+            path: path.to_string_lossy().to_string(),
+            session_id,
+            uuids,
+            last_message,
+        })
+    }
+
+    /// Groups transcripts into rewind-fork families and decides which member survives.
+    ///
+    /// Claude forks a session when the user rewinds to an earlier prompt (or resumes after
+    /// the app is quit mid-turn): it writes a NEW transcript file under a new session id
+    /// and copies the entire prior history into it verbatim. Both files then parse as
+    /// complete sessions with the same title and start time, so the sidebar shows what
+    /// looks like the same conversation twice.
+    ///
+    /// Worse, only the newest file is reachable from Claude's own metadata -- the
+    /// `local_*.json` record keys archive state by a single `cliSessionId`. Archiving in
+    /// Claude therefore hides the newest file and leaves every ancestor behind as a card
+    /// that no amount of archiving can ever dismiss.
+    ///
+    /// Because the fork copies the full history, the newest member already *is* the merged
+    /// session; nothing needs splicing. Ancestors are suppressed outright.
+    pub(crate) fn scan_fork_families(&self, paths: &[PathBuf]) -> ForkFamilies {
+        let mut families = ForkFamilies::default();
+
+        // Pass 1 -- cheap. Group by (project dir, root uuid). Anything unique here is an
+        // ordinary session and never gets read again.
+        let mut by_root: HashMap<(PathBuf, String), Vec<PathBuf>> = HashMap::new();
+        for path in paths {
+            if let Some(root) = Self::read_root_uuid(path) {
+                let dir = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+                by_root.entry((dir, root)).or_default().push(path.clone());
+            }
+        }
+
+        // Pass 2 -- only for the rare group with more than one file.
+        for ((_, root), group) in by_root {
+            if group.len() < 2 {
+                continue;
+            }
+            let mut members: Vec<FamilyMember> = group
+                .iter()
+                .filter_map(|p| Self::read_family_member(p))
+                .collect();
+            if members.len() < 2 {
+                continue;
+            }
+            // Newest last message wins: that is the branch the user is on. Ties break on
+            // path so the choice is deterministic across scans.
+            members.sort_by(|a, b| {
+                b.last_message
+                    .cmp(&a.last_message)
+                    .then_with(|| a.path.cmp(&b.path))
+            });
+
+            let (winner, ancestors) = match members.split_first() {
+                Some(split) => split,
+                None => continue,
+            };
+            let winner_uuids: std::collections::HashSet<&str> =
+                winner.uuids.iter().map(|s| s.as_str()).collect();
+
+            let mut ids = vec![winner.session_id.clone()];
+            let mut suppressed = Vec::new();
+            for ancestor in ancestors {
+                if !Self::winner_supersedes(&winner_uuids, ancestor) {
+                    crate::log_warn!(
+                        "[claude] {} shares root {} with {} but is not contained in it; \
+                         keeping both rather than hiding history.",
+                        ancestor.session_id,
+                        root,
+                        winner.session_id
+                    );
+                    continue;
+                }
+                ids.push(ancestor.session_id.clone());
+                suppressed.push(ancestor.path.clone());
+            }
+
+            if suppressed.is_empty() {
+                continue;
+            }
+            for path in suppressed {
+                families.superseded.insert(path, winner.path.clone());
+            }
+            families.family_ids.insert(winner.path.clone(), ids);
+        }
+
+        families
+    }
+
+    /// True when `ancestor` is safe to hide behind the winner: everything it holds is
+    /// either already in the winner, or belongs to one contiguous abandoned tail at the
+    /// end. A gap in the middle would mean the winner is missing history the ancestor
+    /// still has, so the ancestor keeps its own card.
+    fn winner_supersedes(
+        winner_uuids: &std::collections::HashSet<&str>,
+        ancestor: &FamilyMember,
+    ) -> bool {
+        let divergence = ancestor
+            .uuids
+            .iter()
+            .position(|u| !winner_uuids.contains(u.as_str()));
+        match divergence {
+            // Fully contained: a pure ancestor with no abandoned work at all.
+            None => true,
+            // Diverges at its very first record. The shared root is normally that record,
+            // so this only happens when the two files do not actually line up at the start
+            // (a truncated or rotated transcript). Not a copy; keep it.
+            Some(0) => false,
+            Some(i) => ancestor
+                .uuids
+                .get(i..)
+                .is_some_and(|tail| tail.iter().all(|u| !winner_uuids.contains(u.as_str()))),
+        }
+    }
+
     fn resolve_is_archived(
         &self,
         session_id: &str,
         archived_map: Option<&HashMap<String, bool>>,
     ) -> bool {
-        if let Some(map) = archived_map {
-            map.get(session_id).copied().unwrap_or(false)
-        } else {
-            let map = self.load_archived_session_map();
-            map.get(session_id).copied().unwrap_or(false)
+        self.resolve_is_archived_for_ids(
+            std::slice::from_ref(&session_id.to_string()),
+            archived_map,
+        )
+    }
+
+    /// Archive state for a whole fork family: archived if ANY member id is marked archived.
+    ///
+    /// Claude records archive state once per conversation, in a `local_*.json` whose
+    /// `cliSessionId` names only the newest transcript. Ancestors are named by nothing, so
+    /// looking each file up on its own id makes them permanently unarchivable -- archive
+    /// the conversation in Claude and the ancestor's card survives. Suppression already
+    /// hides ancestors, and the OR here means it stays correct even if a future Claude
+    /// points `cliSessionId` at a different member of the family.
+    ///
+    /// A missing id still means "not archived": transcripts written by the SDK
+    /// (`entrypoint: sdk-ts`) never get a desktop metadata record at all, and those are
+    /// genuinely unarchived rather than orphaned.
+    fn resolve_is_archived_for_ids(
+        &self,
+        session_ids: &[String],
+        archived_map: Option<&HashMap<String, bool>>,
+    ) -> bool {
+        let lookup = |map: &HashMap<String, bool>| {
+            session_ids
+                .iter()
+                .any(|id| map.get(id).copied().unwrap_or(false))
+        };
+        match archived_map {
+            Some(map) => lookup(map),
+            None => lookup(&self.load_archived_session_map()),
         }
     }
 
@@ -277,6 +560,7 @@ impl ClaudeSource {
         &self,
         file_path: &str,
         archived_map: Option<&HashMap<String, bool>>,
+        family_ids: Option<&[String]>,
     ) -> Option<Session> {
         let path = Path::new(file_path);
         let file = File::open(path).ok()?;
@@ -288,7 +572,10 @@ impl ClaudeSource {
         if let Some(mut cached) = crate::parsers::cache::get_cache_manager()
             .get_cached_session_for_file(self.id(), file_path, last_modified, size)
         {
-            let current_archived = self.resolve_is_archived(&cached.id, archived_map);
+            let current_archived = match family_ids {
+                Some(ids) => self.resolve_is_archived_for_ids(ids, archived_map),
+                None => self.resolve_is_archived(&cached.id, archived_map),
+            };
             let archived_changed = cached.is_archived != current_archived;
             if archived_changed {
                 cached.is_archived = current_archived;
@@ -737,7 +1024,10 @@ impl ClaudeSource {
         let status =
             crate::models::resolve_session_status(self.id(), &session_id, file_path, &turns, &cwd);
 
-        let is_archived = self.resolve_is_archived(&session_id, archived_map);
+        let is_archived = match family_ids {
+            Some(ids) => self.resolve_is_archived_for_ids(ids, archived_map),
+            None => self.resolve_is_archived(&session_id, archived_map),
+        };
 
         let session = Session {
             id: session_id,
@@ -843,5 +1133,491 @@ mod tests {
         } else {
             std::env::remove_var("HOME");
         }
+    }
+
+    /// Guards the temp `$HOME` swap so every fork test gets an isolated projects tree,
+    /// metadata dir, and session store.
+    struct MockHome {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        dir: tempfile::TempDir,
+        original: Option<std::ffi::OsString>,
+    }
+
+    impl MockHome {
+        fn new() -> Self {
+            let lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+            let dir = tempfile::tempdir().unwrap();
+            let original = std::env::var_os("HOME");
+            std::env::set_var("HOME", dir.path());
+            std::env::set_var(
+                "CODEOBA_MOCK_HOME",
+                dir.path().to_string_lossy().to_string(),
+            );
+            crate::parsers::cache::get_cache_manager().clear_in_memory_caches();
+            Self {
+                _lock: lock,
+                dir,
+                original,
+            }
+        }
+
+        fn project_dir(&self) -> PathBuf {
+            let dir = self.dir.path().join(".claude/projects/-tmp-demo");
+            std::fs::create_dir_all(&dir).unwrap();
+            dir
+        }
+
+        /// Writes the `local_*.json` record Claude uses to track a conversation. Note it
+        /// names exactly one transcript, via `cliSessionId` — that single-pointer shape is
+        /// the whole reason ancestors go stale.
+        fn write_claude_metadata(&self, cli_session_id: &str, is_archived: bool) {
+            let dir = self
+                .dir
+                .path()
+                .join("Library/Application Support/Claude/claude-code-sessions/w1");
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(
+                dir.join(format!("local_{cli_session_id}.json")),
+                format!(
+                    r#"{{"sessionId":"local_{cli_session_id}","cliSessionId":"{cli_session_id}","isArchived":{is_archived},"title":"Read Aloud deeplink scrolling issue"}}"#
+                ),
+            )
+            .unwrap();
+        }
+    }
+
+    impl Drop for MockHome {
+        fn drop(&mut self) {
+            match self.original.take() {
+                Some(h) => std::env::set_var("HOME", h),
+                None => std::env::remove_var("HOME"),
+            }
+            std::env::remove_var("CODEOBA_MOCK_HOME");
+        }
+    }
+
+    /// One transcript line. `sid` mirrors reality: Claude stamps every record with the id
+    /// of the file it lives in, rewriting it on the records it copies into a fork.
+    fn msg(
+        sid: &str,
+        uuid: &str,
+        parent: Option<&str>,
+        ts: &str,
+        role: &str,
+        text: &str,
+    ) -> String {
+        let parent = match parent {
+            Some(p) => format!("\"{p}\""),
+            None => "null".to_string(),
+        };
+        format!(
+            r#"{{"type":"{role}","uuid":"{uuid}","parentUuid":{parent},"timestamp":"{ts}","sessionId":"{sid}","cwd":"/tmp/demo","message":{{"role":"{role}","content":"{text}"}}}}"#
+        )
+    }
+
+    /// The shared history a fork copies verbatim, stamped with `sid`'s session id.
+    fn shared_history(sid: &str) -> String {
+        [
+            msg(sid, "u-root", None, "2026-07-27T00:37:43Z", "user", "start"),
+            msg(
+                sid,
+                "a-1",
+                Some("u-root"),
+                "2026-07-27T00:38:00Z",
+                "assistant",
+                "working",
+            ),
+        ]
+        .join("\n")
+    }
+
+    /// A rewind-fork must collapse to a single card, and that card must honour the archive
+    /// state Claude recorded against the newest transcript.
+    ///
+    /// Rewinding to an earlier prompt makes Claude write a NEW transcript under a new
+    /// session id with the entire prior history copied in verbatim. Parsed per-file, that
+    /// is two sessions with one title and one start time — the duplicate the user sees.
+    ///
+    /// The archive half is the sharper bug. Claude's `local_*.json` names only the newest
+    /// transcript in `cliSessionId`, so the ancestor is reachable from no metadata at all
+    /// and `unwrap_or(false)` made it permanently unarchivable: archive the conversation in
+    /// Claude and the ancestor's card stays on screen, looking like a session you know you
+    /// just archived.
+    #[test]
+    fn claude_rewind_fork_collapses_and_inherits_archive_state() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+        let old_id = "aaaaaaaa-0000-0000-0000-000000000000";
+        let new_id = "bbbbbbbb-0000-0000-0000-000000000000";
+
+        // Ancestor: shared history plus the abandoned tail left behind when the app was
+        // quit mid-turn.
+        let ancestor = project.join(format!("{old_id}.jsonl"));
+        std::fs::write(
+            &ancestor,
+            format!(
+                "{}\n{}\n",
+                shared_history(old_id),
+                msg(
+                    old_id,
+                    "u-abandoned",
+                    Some("a-1"),
+                    "2026-07-27T01:41:02Z",
+                    "user",
+                    "interrupted"
+                )
+            ),
+        )
+        .unwrap();
+
+        // Winner: the same history copied in, then the resubmitted prompt.
+        let winner = project.join(format!("{new_id}.jsonl"));
+        std::fs::write(
+            &winner,
+            format!(
+                "{}\n{}\n{}\n",
+                shared_history(new_id),
+                msg(
+                    new_id,
+                    "u-retry",
+                    Some("a-1"),
+                    "2026-07-27T01:41:46Z",
+                    "user",
+                    "retry"
+                ),
+                msg(
+                    new_id,
+                    "a-2",
+                    Some("u-retry"),
+                    "2026-07-27T01:48:19Z",
+                    "assistant",
+                    "done"
+                )
+            ),
+        )
+        .unwrap();
+
+        // Claude knows this conversation only by its newest transcript, and it is archived.
+        home.write_claude_metadata(new_id, true);
+
+        let src = ClaudeSource;
+        let result = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let live: Vec<_> = result.sessions.iter().filter(|s| !s.is_deleted).collect();
+
+        assert_eq!(
+            live.len(),
+            1,
+            "a rewind-fork family must yield one session, got {:?}",
+            live.iter().map(|s| &s.id).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            live[0].id, new_id,
+            "the newest member survives; it already holds the copied history"
+        );
+        assert_eq!(
+            live[0].turns.len(),
+            2,
+            "the surviving transcript keeps its own turns; the abandoned tail is not spliced in"
+        );
+        assert!(
+            live[0].is_archived,
+            "archiving in Claude must hide the whole family, not just the newest file"
+        );
+    }
+
+    /// The ancestor inherits archive state even when Claude's record points at it rather
+    /// than the newest file, because resolution ORs across the family.
+    #[test]
+    fn claude_fork_archive_resolves_from_any_member() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+        let old_id = "aaaaaaaa-1111-0000-0000-000000000000";
+        let new_id = "bbbbbbbb-1111-0000-0000-000000000000";
+
+        std::fs::write(
+            project.join(format!("{old_id}.jsonl")),
+            format!(
+                "{}\n{}\n",
+                shared_history(old_id),
+                msg(
+                    old_id,
+                    "u-old",
+                    Some("a-1"),
+                    "2026-07-27T00:40:00Z",
+                    "user",
+                    "old"
+                )
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            project.join(format!("{new_id}.jsonl")),
+            format!(
+                "{}\n{}\n",
+                shared_history(new_id),
+                msg(
+                    new_id,
+                    "u-new",
+                    Some("a-1"),
+                    "2026-07-27T01:00:00Z",
+                    "user",
+                    "new"
+                )
+            ),
+        )
+        .unwrap();
+
+        // Metadata points at the OLDER member, which suppression would otherwise discard.
+        home.write_claude_metadata(old_id, true);
+
+        let src = ClaudeSource;
+        let result = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let live: Vec<_> = result.sessions.iter().filter(|s| !s.is_deleted).collect();
+
+        assert_eq!(live.len(), 1, "still one card for the family");
+        assert!(
+            live[0].is_archived,
+            "an archive flag on ANY family member archives the surviving session"
+        );
+    }
+
+    /// Sessions that merely sit in the same project are not a family. Grouping keys on the
+    /// root message uuid, so unrelated transcripts must both survive — and neither may
+    /// inherit the other's archive state.
+    #[test]
+    fn claude_unrelated_sessions_are_not_a_fork_family() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+
+        let one = "cccccccc-0000-0000-0000-000000000000";
+        let two = "dddddddd-0000-0000-0000-000000000000";
+        std::fs::write(
+            project.join(format!("{one}.jsonl")),
+            format!(
+                "{}\n",
+                msg(
+                    one,
+                    "root-one",
+                    None,
+                    "2026-07-27T00:00:00Z",
+                    "user",
+                    "first"
+                )
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            project.join(format!("{two}.jsonl")),
+            format!(
+                "{}\n",
+                msg(
+                    two,
+                    "root-two",
+                    None,
+                    "2026-07-27T01:00:00Z",
+                    "user",
+                    "second"
+                )
+            ),
+        )
+        .unwrap();
+        home.write_claude_metadata(two, true);
+
+        let src = ClaudeSource;
+        let result = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let live: Vec<_> = result.sessions.iter().filter(|s| !s.is_deleted).collect();
+
+        assert_eq!(live.len(), 2, "distinct roots are distinct sessions");
+        let unarchived = live.iter().find(|s| s.id.starts_with("cccccccc")).unwrap();
+        assert!(
+            !unarchived.is_archived,
+            "archive state must not leak between unrelated sessions"
+        );
+    }
+
+    /// Suppression is only safe because a rewind-fork copies history forward. An ancestor
+    /// may be hidden when what the winner lacks is one contiguous abandoned tail — the work
+    /// the user rewound past. A HOLE in the middle is different: it means the winner is
+    /// missing history the ancestor still holds, and hiding the ancestor would destroy it.
+    /// Both cards survive in that case; a duplicate is the lesser failure.
+    ///
+    /// (Sharing only the root record is NOT such a case — that is an ordinary rewind to the
+    /// very first prompt, and it collapses like any other.)
+    #[test]
+    fn claude_fork_with_a_gap_in_copied_history_keeps_both() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+        let old_id = "eeeeeeee-0000-0000-0000-000000000000";
+        let new_id = "ffffffff-0000-0000-0000-000000000000";
+
+        // Ancestor holds root -> middle -> late.
+        std::fs::write(
+            project.join(format!("{old_id}.jsonl")),
+            format!(
+                "{}\n{}\n{}\n",
+                msg(
+                    old_id,
+                    "u-root",
+                    None,
+                    "2026-07-27T00:37:43Z",
+                    "user",
+                    "start"
+                ),
+                msg(
+                    old_id,
+                    "u-middle",
+                    Some("u-root"),
+                    "2026-07-27T00:50:00Z",
+                    "user",
+                    "middle"
+                ),
+                msg(
+                    old_id,
+                    "u-late",
+                    Some("u-middle"),
+                    "2026-07-27T00:55:00Z",
+                    "user",
+                    "late"
+                ),
+            ),
+        )
+        .unwrap();
+
+        // Winner skipped `u-middle` but kept `u-late`: not a clean tail, so not a copy.
+        std::fs::write(
+            project.join(format!("{new_id}.jsonl")),
+            format!(
+                "{}\n{}\n{}\n",
+                msg(
+                    new_id,
+                    "u-root",
+                    None,
+                    "2026-07-27T00:37:43Z",
+                    "user",
+                    "start"
+                ),
+                msg(
+                    new_id,
+                    "u-late",
+                    Some("u-root"),
+                    "2026-07-27T00:55:00Z",
+                    "user",
+                    "late"
+                ),
+                msg(
+                    new_id,
+                    "u-newer",
+                    Some("u-late"),
+                    "2026-07-27T01:50:00Z",
+                    "user",
+                    "newer"
+                ),
+            ),
+        )
+        .unwrap();
+
+        let src = ClaudeSource;
+        let result = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let live: Vec<_> = result.sessions.iter().filter(|s| !s.is_deleted).collect();
+
+        assert_eq!(
+            live.len(),
+            2,
+            "history missing from the middle of the winner must not be hidden"
+        );
+    }
+
+    /// The everyday case that must still collapse: rewinding all the way to the first
+    /// prompt, so the two files share only the root record.
+    #[test]
+    fn claude_rewind_to_the_first_prompt_still_collapses() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+        let old_id = "eeeeeeee-2222-0000-0000-000000000000";
+        let new_id = "ffffffff-2222-0000-0000-000000000000";
+        let root = |sid: &str| msg(sid, "u-root", None, "2026-07-27T00:37:43Z", "user", "start");
+
+        std::fs::write(
+            project.join(format!("{old_id}.jsonl")),
+            format!(
+                "{}\n{}\n",
+                root(old_id),
+                msg(
+                    old_id,
+                    "only-a",
+                    Some("u-root"),
+                    "2026-07-27T00:50:00Z",
+                    "user",
+                    "a"
+                )
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            project.join(format!("{new_id}.jsonl")),
+            format!(
+                "{}\n{}\n",
+                root(new_id),
+                msg(
+                    new_id,
+                    "only-b",
+                    Some("u-root"),
+                    "2026-07-27T01:50:00Z",
+                    "user",
+                    "b"
+                )
+            ),
+        )
+        .unwrap();
+
+        let src = ClaudeSource;
+        let result = tauri::async_runtime::block_on(async { src.parse_all_sessions().await });
+        let live: Vec<_> = result.sessions.iter().filter(|s| !s.is_deleted).collect();
+
+        assert_eq!(
+            live.len(),
+            1,
+            "a rewind to the first prompt is still one session"
+        );
+        assert_eq!(live[0].id, new_id, "the branch the user continued on wins");
+    }
+
+    /// The watcher parses one changed file. Touching an ancestor must resolve to the
+    /// surviving member instead of re-emitting the card the scan just removed.
+    #[test]
+    fn claude_watcher_redirects_an_ancestor_to_its_winner() {
+        let home = MockHome::new();
+        let project = home.project_dir();
+        let old_id = "11111111-aaaa-0000-0000-000000000000";
+        let new_id = "22222222-aaaa-0000-0000-000000000000";
+
+        let ancestor = project.join(format!("{old_id}.jsonl"));
+        std::fs::write(&ancestor, format!("{}\n", shared_history(old_id))).unwrap();
+        std::fs::write(
+            project.join(format!("{new_id}.jsonl")),
+            format!(
+                "{}\n{}\n",
+                shared_history(new_id),
+                msg(
+                    new_id,
+                    "u-new",
+                    Some("a-1"),
+                    "2026-07-27T01:00:00Z",
+                    "user",
+                    "new"
+                )
+            ),
+        )
+        .unwrap();
+
+        let src = ClaudeSource;
+        let path = ancestor.to_string_lossy().to_string();
+        let session =
+            tauri::async_runtime::block_on(async { src.parse_session(&path).await }).unwrap();
+
+        assert_eq!(
+            session.id, new_id,
+            "a watcher event on an ancestor must yield the surviving session"
+        );
     }
 }
