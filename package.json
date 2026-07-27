@@ -16,7 +16,7 @@
     "test:menu": "node scripts/test-menu-alignment.js",
     "format:fe": "prettier --write \"src/**/*.{ts,tsx,css,html}\"",
     "format:fe:check": "prettier --check \"src/**/*.{ts,tsx,css,html}\"",
-    "lint:fe": "eslint src",
+    "lint:fe": "eslint src --max-warnings=0",
     "format:be": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:be:check": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check",
     "clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --no-default-features -- -D warnings",

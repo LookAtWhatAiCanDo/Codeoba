@@ -385,7 +385,7 @@ export function applyPronunciations(text: string): string {
   for (const key of sortedKeys) {
     const replacement = rules[key];
     if (!key || typeof replacement !== "string") continue;
-    const escapedKey = key.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const escapedKey = key.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
     const regex = new RegExp(`\\b${escapedKey}\\b`, "gi");
     result = result.replace(regex, replacement);
   }

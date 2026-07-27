@@ -37,7 +37,7 @@ const massageMermaidCode = (code: string): string => {
       return `${simpleGraphMatch[1]}flowchart`;
     }
 
-    const match = line.match(/^(\s*)subgraph\s+([^"\[\]\r\n]+)$/i);
+    const match = line.match(/^(\s*)subgraph\s+([^"[\]\r\n]+)$/i);
     if (match) {
       const indent = match[1];
       const title = match[2].trim();
@@ -112,7 +112,7 @@ const massageMermaidCode = (code: string): string => {
       if (trimmed.toLowerCase().startsWith("direction ")) {
         currentStack[currentStack.length - 1].hasExplicitDirection = true;
       } else {
-        const nodeMatch = line.match(/^\s*([a-zA-Z0-9_-]+)\s*(?:\[|\(|\{|\(\(|>|\[\")/);
+        const nodeMatch = line.match(/^\s*([a-zA-Z0-9_-]+)\s*(?:\[|\(|\{|\(\(|>|\[")/);
         if (nodeMatch) {
           const nodeId = nodeMatch[1];
           currentStack[currentStack.length - 1].nodes.push(nodeId);
