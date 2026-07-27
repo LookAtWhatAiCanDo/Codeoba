@@ -275,6 +275,7 @@ function App() {
     sessionId: string;
     turnIndex: number;
     clickedText?: string;
+    speaker?: "user" | "assistant";
   } | null>(null);
 
   const [matchCase, setMatchCase] = createSignal(
@@ -2004,11 +2005,12 @@ function App() {
                       activeTab={dashboardTab()}
                       onActiveTabChange={setDashboardTab}
                       onSelectSession={handleSelectSession}
-                      onDeeplink={(sessId, turnIdx, text) =>
+                      onDeeplink={(sessId, turnIdx, text, speaker) =>
                         setActiveDeeplink({
                           sessionId: sessId,
                           turnIndex: turnIdx,
                           clickedText: text,
+                          speaker,
                         })
                       }
                     />

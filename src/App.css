@@ -753,6 +753,29 @@ pre[class*="language-"] {
   }
 }
 
+/* Deeplink arrival flash ("Sync to transcript" from the Read Aloud history).
+   Deliberately a fixed amber rather than var(--accent): accent already signals "now playing"
+   (see .speech-highlight), assistant bubbles are themselves accent-tinted, and some themes
+   have accents too muted to register as a flash. Amber matches the search-hit highlight.
+   Only the midpoint is declared so the block flashes from its own background and back.
+   Keep the 0.42s x 3 timing in sync with DEEPLINK_FLASH_MS in DetailPane.tsx. */
+@keyframes deeplink-flash {
+  50% {
+    background-color: rgba(250, 204, 21, 0.32);
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.6);
+  }
+}
+.deeplink-flash {
+  border-radius: 4px;
+  animation: deeplink-flash 0.42s ease-in-out 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .deeplink-flash {
+    animation: none;
+    background-color: rgba(250, 204, 21, 0.28);
+  }
+}
+
 /* Read Aloud Hover Play Button */
 .group-play-block {
   position: relative;

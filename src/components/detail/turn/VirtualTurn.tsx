@@ -59,6 +59,7 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
           </span>
         </div>
         <div
+          data-speaker="user"
           onContextMenu={(e) =>
             props.onContextMenu(
               e,
@@ -182,6 +183,7 @@ export const VirtualTurn = (props: VirtualTurnProps) => {
           </Show>
         </div>
         <div
+          data-speaker="assistant"
           class={`w-full p-5 rounded-2xl shadow-sm transition-all duration-300 relative after:absolute after:inset-0 after:rounded-2xl after:pointer-events-none after:z-[11] ${
             isSpeaking("assistant")
               ? "bg-accent/5 shadow-md shadow-accent/15 after:border-2 after:border-accent"
