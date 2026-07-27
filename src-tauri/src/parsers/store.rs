@@ -28,19 +28,58 @@ use std::collections::HashMap;
 /// title forever — the cache is keyed on mtime/size and those files never change again.
 const SCHEMA_VERSION: i64 = 2;
 
+/// How long `open` is willing to wait out another connection's write lock, both via SQLite's
+/// own busy handler and via the hand-rolled retry on the WAL conversion below.
+const BUSY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Whether an error is SQLite telling us another connection holds the lock — i.e. retrying
+/// later is the correct response, as opposed to a real failure.
+fn is_busy(e: &rusqlite::Error) -> bool {
+    matches!(
+        e,
+        rusqlite::Error::SqliteFailure(err, _)
+            if err.code == rusqlite::ErrorCode::DatabaseBusy
+                || err.code == rusqlite::ErrorCode::DatabaseLocked
+    )
+}
+
 /// Opens the database at `path`, applying pragmas and ensuring the schema exists.
 pub fn open(path: &std::path::Path) -> rusqlite::Result<Connection> {
     let conn = Connection::open(path)?;
-    conn.pragma_update(None, "journal_mode", "WAL")?;
-    conn.pragma_update(None, "synchronous", "NORMAL")?;
-    conn.pragma_update(None, "foreign_keys", "ON")?;
     // WAL lets readers run alongside a writer, but still permits only ONE writer at a time,
     // and sources are reindexed on independent tasks (`spawn_reindex_source`), so two
     // sources finishing a scan together do contend. Without a busy timeout the loser gets
     // SQLITE_BUSY immediately, `save_cache` logs it and drops the entire scan result — a
     // whole source silently fails to persist and reappears only after the next successful
     // scan. Wait instead; the writes are short.
-    conn.busy_timeout(std::time::Duration::from_secs(5))?;
+    //
+    // Installed before any other statement so that everything below — the schema rebuild in
+    // particular — is covered by it.
+    conn.busy_timeout(BUSY_TIMEOUT)?;
+
+    // Converting a rollback-journal database to WAL needs exclusive access, and SQLite does
+    // NOT run the busy handler for this pragma: a connection arriving while another holds a
+    // write lock gets SQLITE_BUSY back immediately, however long the busy timeout is. So the
+    // wait has to be hand-rolled. (Only the *conversion* is exposed. Once the store is WAL
+    // the pragma is a no-op and returns Ok even against a live writer, which is why this only
+    // ever bites on a freshly created store — exactly the case in tests, where every temp
+    // home starts with no database at all.)
+    //
+    // Failing here is not cosmetic: `open_db` reports it as `None`, and callers turn that
+    // into a whole source's scan silently not persisting.
+    let deadline = std::time::Instant::now() + BUSY_TIMEOUT;
+    loop {
+        match conn.pragma_update(None, "journal_mode", "WAL") {
+            Ok(()) => break,
+            Err(e) if is_busy(&e) && std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    conn.pragma_update(None, "synchronous", "NORMAL")?;
+    conn.pragma_update(None, "foreign_keys", "ON")?;
 
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
     if version != SCHEMA_VERSION {
@@ -808,6 +847,54 @@ mod tests {
         c.pragma_update(None, "foreign_keys", "ON").unwrap();
         c.execute_batch(SCHEMA).unwrap();
         c
+    }
+
+    /// `open` must wait out a concurrent writer, not fail.
+    ///
+    /// A second connection arriving while the first held a write lock on a not-yet-converted
+    /// store used to get SQLITE_BUSY from `journal_mode=WAL` — which `open_db` reports as
+    /// `None`, which `save_cache` turns into a whole source's scan silently failing to
+    /// persist (and which surfaced as an intermittent `unwrap` panic on a locked store in the
+    /// watcher tests, where every temp home starts with no database).
+    ///
+    /// Note that the busy *timeout* is not what makes this pass: SQLite does not run the busy
+    /// handler for a journal-mode conversion, so the retry loop is load-bearing. Keep the
+    /// blocker below in rollback-journal mode — against an already-WAL store the pragma is a
+    /// no-op that succeeds even with a writer live, and the test would pass vacuously.
+    #[test]
+    fn open_waits_for_a_concurrent_writer_instead_of_failing_busy() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("sessions.db");
+
+        // A plain (rollback-journal) connection holding a write lock. The delete -> WAL
+        // transition is what needs exclusive access, so this reproduces the first open
+        // against a store another process just created.
+        let blocker = Connection::open(&path).unwrap();
+        blocker
+            .execute_batch("CREATE TABLE t (x); BEGIN IMMEDIATE; INSERT INTO t VALUES (1);")
+            .unwrap();
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let releaser = std::thread::spawn(move || {
+            // Long enough that an un-waiting `open` cannot finish first by luck, short
+            // enough to stay well inside the 5s timeout.
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            blocker.execute_batch("COMMIT").unwrap();
+            let _ = tx.send(());
+        });
+
+        let opened = open(&path);
+        assert!(
+            opened.is_ok(),
+            "open must block on the writer and succeed, got {:?}",
+            opened.err()
+        );
+        assert!(
+            rx.try_recv().is_ok(),
+            "open returned before the writer released the lock, so it never contended \
+             for it — the test no longer proves anything"
+        );
+        releaser.join().unwrap();
     }
 
     /// The list-payload read must be indistinguishable from the full read once the payload

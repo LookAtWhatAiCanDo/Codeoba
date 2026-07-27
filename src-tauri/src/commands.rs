@@ -1471,6 +1471,9 @@ mod get_all_sessions_tests {
 
     /// Guards the lock-scope reorder: enrichment (status/workspace) must still run after the
     /// read lock is released, and results must stay sorted by updated_at descending.
+    /// FLAKY (~1 run in 25-40; see "Known Flaky Test" in AGENTS.md). Shares the
+    /// process-global CODEOBA_MOCK_HOME with background work escaping other tests; a red
+    /// run here is not automatically a regression. Passes reliably in isolation.
     #[test]
     fn enriches_and_sorts_after_lock_release() {
         let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());

@@ -214,6 +214,19 @@ When modifying the frontend web components, adhere to these styling guidelines:
 
 ---
 
+## 🧪 Formerly Flaky Rust Suite (fixed; here is the trap)
+
+**History:** `cargo test` used to fail roughly 1 run in 25–40, with the victim wandering between runs — observed: `watcher::watcher_tests::test_missing_directory_is_not_recreated` and `commands::get_all_sessions_tests::enriches_and_sorts_after_lock_release`. Both now pass; the cause below is closed. **Treat a red run as a real failure and investigate it.** If a wandering, passes-in-isolation victim ever reappears, this is the first place to look — but do not pre-emptively excuse a failure as "the known flake", because it is fixed.
+
+- **Cause.** Tests isolate `~/.codeoba` via the process-global `CODEOBA_MOCK_HOME`, guarded by `crate::HOME_MUTEX`. That mutex only serializes test *bodies*. The watcher tests start work that outlives the body — `notify` threads and tokio tasks reaching `reindex_source_and_emit` — and that work calls `get_home_dir()` whenever it happens to run, which by then resolves to whichever test is currently active. A stale scan for, say, `codex` therefore finishes against a *different* test's database, and `store::save_source` prunes by absence (`DELETE ... WHERE source_id = ? AND file_path NOT IN <this scan's set>`), deleting rows the live test just seeded. That is why `test_missing_directory_is_not_recreated` failed on `assert!(store_contains("codex-test"))` on the line immediately after `seed_store` succeeded.
+- **Two symptoms, one root.** (a) The seeded row vanishes — `assert!(store_contains(...))` fails on the line after `seed_store` succeeded, because a stale scan pruned it. (b) The store cannot be opened — `open_db()` returns `None` and a helper panics, logged as `database is locked`. Locking fixes address (b) only; (a) needs the spawn leak closed. Both are fixed, separately: (b) by the WAL-conversion retry in `store::open`, (a) by the spawn gate.
+- **What did not work.** Removing the 20 `std::env::remove_var("CODEOBA_MOCK_HOME")` cleanup calls so the variable is never unset. This changed nothing measurable (~1/25 → ~1/30, within noise) and arguably traded one failure mode for another: a stale task used to wander off to an unrelated fallback directory, and now writes into the live test's store instead.
+- **The fix.** `BACKGROUND_SPAWN_ENABLED` in `watcher.rs` — a `#[cfg(test)]` switch, default **false**. It gates *both* spawns that can reach `reindex_source_and_emit`: `spawn_reindex_source` and the debounced reload inside `handle_file_change`. Gating only the first is not enough — `test_antigravity_rename_watcher_sync` drives the second directly.
+- **Opting in.** One test does assert on the spawned work: `test_antigravity_rename_watcher_sync`. It takes a `BackgroundSpawnGuard` (RAII, restores the previous value on drop so a panicking assertion cannot leave the switch on for later tests) and then **joins the task before releasing `HOME_MUTEX`**, using the `JoinHandle` that `handle_file_change` returns. Copy that shape. Polling for the side effect instead is not an acceptable substitute: a poll that times out ends the test with the task still in flight, which is the original bug.
+- **If it returns.** Suspect a newly added `tauri::async_runtime::spawn` that is not behind `background_spawn_enabled()`, or a test that opts in without joining. The tell is always the same: a wandering victim that passes in isolation.
+
+---
+
 ## 🛠️ Common Cargo & NPM Development Commands
 
 - Install frontend packages: `npm install`
