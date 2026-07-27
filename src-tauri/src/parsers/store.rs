@@ -23,7 +23,10 @@ use std::collections::HashMap;
 /// Bumped only when the schema changes in a way that requires a rebuild. A fresh re-parse
 /// reseeds everything, so there is no data migration to write — a mismatch just means the
 /// tables are (re)created empty and the next scan repopulates them.
-const SCHEMA_VERSION: i64 = 1;
+/// v2: Claude titles now come from the transcript's `custom-title` lines. Existing rows
+/// were cached from an unchanged file, so without a rebuild they would keep their derived
+/// title forever — the cache is keyed on mtime/size and those files never change again.
+const SCHEMA_VERSION: i64 = 2;
 
 /// Opens the database at `path`, applying pragmas and ensuring the schema exists.
 pub fn open(path: &std::path::Path) -> rusqlite::Result<Connection> {

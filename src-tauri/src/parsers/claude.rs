@@ -326,6 +326,7 @@ impl ClaudeSource {
         let mut session_id = path.file_stem()?.to_string_lossy().to_string();
         let mut cwd: Option<String> = None;
         let mut slug: Option<String> = None;
+        let mut custom_title: Option<String> = None;
 
         for line_result in reader.lines() {
             let line = match line_result {
@@ -356,6 +357,20 @@ impl ClaudeSource {
                     }
                     if let Some(sl) = obj.get("slug").and_then(|v| v.as_str()) {
                         slug = Some(sl.to_string());
+                    }
+                    // Claude appends a `custom-title` line every time the session is
+                    // (re)named — by the agent itself or by the user renaming it in the
+                    // app — so the LAST one is the title Claude is currently showing.
+                    // Keep scanning rather than breaking early: later renames overwrite
+                    // earlier ones.
+                    if line_type == "custom-title" {
+                        if let Some(t) = obj.get("customTitle").and_then(|v| v.as_str()) {
+                            let t = t.trim();
+                            if !t.is_empty() {
+                                custom_title = Some(t.to_string());
+                            }
+                        }
+                        continue;
                     }
 
                     if line_type == "user" {
@@ -632,7 +647,13 @@ impl ClaudeSource {
             .map(|t| t.timestamp)
             .unwrap_or(last_modified);
 
-        let clean_thread_name = if let Some(ref s) = slug {
+        // Precedence: the title Claude itself displays wins over anything we derive.
+        // A `custom-title` line is appended to the transcript on every rename, so the
+        // file's mtime/size change invalidates the cache, this parse re-runs, and the
+        // new title reaches the sidebar through the normal `session-updated` path.
+        let clean_thread_name = if let Some(t) = custom_title {
+            t
+        } else if let Some(ref s) = slug {
             let home = crate::parsers::get_home_dir();
             let plan_file = home.join(format!(".claude/plans/{}.md", s));
             let raw_title = if plan_file.exists() && plan_file.is_file() {
@@ -746,5 +767,81 @@ impl ClaudeSource {
         );
 
         Some(session)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parsers::SourceAdapter;
+
+    /// Claude owns the title: it writes one `custom-title` line per rename (agent-generated
+    /// or user-typed) into the transcript, and the last one is what its own UI shows.
+    /// Deriving a title from the first prompt instead — which is all we did before — left
+    /// the sidebar permanently out of sync with Claude for every renamed session.
+    ///
+    /// The live half comes for free: the rename appends bytes, so the size/mtime cache key
+    /// changes, this parse re-runs, and `SessionState.thread_name` differs, which is what
+    /// makes the watcher emit `session-updated`.
+    #[test]
+    fn claude_custom_title_wins_and_tracks_renames() {
+        let _lock = crate::HOME_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let temp_home = tempfile::tempdir().unwrap();
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", temp_home.path());
+        std::env::set_var(
+            "CODEOBA_MOCK_HOME",
+            temp_home.path().to_string_lossy().to_string(),
+        );
+
+        let project_dir = temp_home.path().join(".claude/projects/-tmp-demo");
+        std::fs::create_dir_all(&project_dir).unwrap();
+        let transcript = project_dir.join("11111111-2222-3333-4444-555555555555.jsonl");
+        let user_line = r#"{"type":"user","sessionId":"s-1","cwd":"/tmp/demo","timestamp":"2026-07-26T18:00:00Z","message":{"role":"user","content":"Fix the varying padding between sidebar cards"}}"#;
+        std::fs::write(
+            &transcript,
+            format!(
+                "{}\n{}\n",
+                user_line,
+                r#"{"type":"custom-title","customTitle":"Sidebar card spacing inconsistency","sessionId":"s-1"}"#
+            ),
+        )
+        .unwrap();
+
+        let src = ClaudeSource;
+        let path = transcript.to_string_lossy().to_string();
+        let first =
+            tauri::async_runtime::block_on(async { src.parse_session(&path).await }).unwrap();
+        assert_eq!(
+            first.thread_name.as_deref(),
+            Some("Sidebar card spacing inconsistency"),
+            "the transcript's custom-title must beat the title derived from the first prompt"
+        );
+
+        // A rename appends another line; the newest one wins.
+        std::fs::write(
+            &transcript,
+            format!(
+                "{}\n{}\n{}\n",
+                user_line,
+                r#"{"type":"custom-title","customTitle":"Sidebar card spacing inconsistency","sessionId":"s-1"}"#,
+                r#"{"type":"custom-title","customTitle":"Virtual scroll card sizing","sessionId":"s-1"}"#
+            ),
+        )
+        .unwrap();
+
+        let renamed =
+            tauri::async_runtime::block_on(async { src.parse_session(&path).await }).unwrap();
+        assert_eq!(
+            renamed.thread_name.as_deref(),
+            Some("Virtual scroll card sizing"),
+            "the last custom-title line is the current title"
+        );
+
+        if let Some(h) = original_home {
+            std::env::set_var("HOME", h);
+        } else {
+            std::env::remove_var("HOME");
+        }
     }
 }
