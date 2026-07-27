@@ -356,14 +356,16 @@
     }
   },
   "updater": {
-    "title": "يتوفر تحديث جديد",
-    "description": "يتوفر إصدار جديد من Codeoba: v{version}",
-    "downloading": "جارٍ تنزيل التحديث: {progress}%",
-    "failed": "فشل التحديث: {error}",
-    "installing": "جارٍ تثبيت التحديث...",
-    "restart": "إعادة التشغيل الآن",
+    "availableTitle": "يتوفر تحديث للبرنامج",
+    "versionLabel": "الإصدار {version}",
+    "releaseNotes": "ملاحظات الإصدار:",
+    "noReleaseNotes": "لا تتوفر ملاحظات إصدار لهذا البناء.",
+    "remindMeLater": "تذكيري لاحقاً",
     "updateBtn": "التحديث الآن",
-    "later": "لاحقاً",
+    "downloadingTitle": "جاري تحميل التحديث...",
+    "installingProgress": "جاري إعداد ملفات التثبيت...",
+    "doNotClose": "جاري تحميل حزمة التحديث... يرجى عدم إغلاق التطبيق.",
+    "updateErrorTitle": "خطأ في التحديث",
     "consent": {
       "title": "إعدادات الخصوصية والتحديث",
       "subtitle": "موافقة تسليم التحديثات التلقائية",

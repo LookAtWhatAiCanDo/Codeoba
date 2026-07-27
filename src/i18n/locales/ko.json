@@ -356,14 +356,16 @@
     }
   },
   "updater": {
-    "title": "업데이트 가능",
-    "description": "새로운 Codeoba 버전이 출시되었습니다: v{version}",
-    "downloading": "업데이트 다운로드 중: {progress}%",
-    "failed": "업데이트 실패: {error}",
-    "installing": "업데이트 설치 중...",
-    "restart": "지금 재시작",
+    "availableTitle": "소프트웨어 업데이트 가능",
+    "versionLabel": "버전 {version}",
+    "releaseNotes": "릴리스 노트:",
+    "noReleaseNotes": "이 빌드에 대한 릴리스 노트가 없습니다.",
+    "remindMeLater": "나중에 알림",
     "updateBtn": "지금 업데이트",
-    "later": "나중에",
+    "downloadingTitle": "업데이트 다운로드 중...",
+    "installingProgress": "설치 파일 준비 중...",
+    "doNotClose": "업데이트 패키지 다운로드 중... 앱을 닫지 마세요.",
+    "updateErrorTitle": "업데이트 오류",
     "consent": {
       "title": "개인정보 보호 및 업데이트 설정",
       "subtitle": "자동 업데이트 제공 동의",

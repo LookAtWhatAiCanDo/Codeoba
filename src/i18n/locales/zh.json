@@ -356,14 +356,16 @@
     }
   },
   "updater": {
-    "title": "有可用更新",
-    "description": "Codeoba有新版本可用：v{version}",
-    "downloading": "正在下载更新：{progress}%",
-    "failed": "更新失败：{error}",
-    "installing": "正在安装更新...",
-    "restart": "立即重启",
+    "availableTitle": "有可用的软件更新",
+    "versionLabel": "版本 {version}",
+    "releaseNotes": "发行说明：",
+    "noReleaseNotes": "此版本没有发行说明。",
+    "remindMeLater": "稍后提醒",
     "updateBtn": "立即更新",
-    "later": "稍后",
+    "downloadingTitle": "正在下载更新...",
+    "installingProgress": "正在准备安装文件...",
+    "doNotClose": "正在下载更新包... 请勿关闭应用。",
+    "updateErrorTitle": "更新错误",
     "consent": {
       "title": "隐私与更新设置",
       "subtitle": "自动更新交付同意",

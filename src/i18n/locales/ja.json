@@ -356,14 +356,16 @@
     }
   },
   "updater": {
-    "title": "アップデートが利用可能です",
-    "description": "Codeobaの新しいバージョンが利用可能です：v{version}",
-    "downloading": "アップデートをダウンロード中: {progress}%",
-    "failed": "アップデートに失敗しました：{error}",
-    "installing": "アップデートをインストール中...",
-    "restart": "今すぐ再起動",
+    "availableTitle": "ソフトウェアの更新が利用可能です",
+    "versionLabel": "バージョン {version}",
+    "releaseNotes": "リリースノート:",
+    "noReleaseNotes": "このビルドのリリースノートはありません。",
+    "remindMeLater": "後で通知",
     "updateBtn": "今すぐアップデート",
-    "later": "後で",
+    "downloadingTitle": "更新をダウンロード中...",
+    "installingProgress": "インストールファイルを準備中...",
+    "doNotClose": "更新パッケージをダウンロード中... アプリを閉じないでください。",
+    "updateErrorTitle": "更新エラー",
     "consent": {
       "title": "プライバシーとアップデート設定",
       "subtitle": "自動アップデート提供に関する同意",

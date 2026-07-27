@@ -356,14 +356,16 @@
     }
   },
   "updater": {
-    "title": "Update beschikbaar",
-    "description": "Er is een nieuwe versie van Codeoba beschikbaar: v{version}",
-    "downloading": "Update downloaden: {progress}%",
-    "failed": "Update mislukt: {error}",
-    "installing": "Update installeren...",
-    "restart": "Nu herstarten",
+    "availableTitle": "Software-update beschikbaar",
+    "versionLabel": "Versie {version}",
+    "releaseNotes": "Uitgavenotities:",
+    "noReleaseNotes": "Geen uitgavenotities beschikbaar voor deze build.",
+    "remindMeLater": "Herinner mij later",
     "updateBtn": "Nu bijwerken",
-    "later": "Later",
+    "downloadingTitle": "Update downloaden...",
+    "installingProgress": "Installatiebestanden voorbereiden...",
+    "doNotClose": "Updatepakket downloaden... Sluit de app niet.",
+    "updateErrorTitle": "Updatefout",
     "consent": {
       "title": "Privacy- & Update-instellingen",
       "subtitle": "Toestemming voor Automatische Updatelevering",
