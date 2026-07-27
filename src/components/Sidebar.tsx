@@ -576,54 +576,61 @@ export const Sidebar = (props: SidebarProps) => {
     return items;
   });
 
+  // Pre-measure height guess for a row that has not been rendered yet. Mirrors SessionCard's
+  // box at the default 16px root size: the row's own top gap, the card's p-4 + 1px border,
+  // and the gap-2.5 stack of title / models / snippet / footer blocks. A row switches to its
+  // real measured height the moment it mounts, so this only has to be close enough that the
+  // scrollbar length and the first painted offsets do not visibly jump.
+  const estimateRowHeight = (item: ListItem | undefined) => {
+    const ROW_GAP = 10; // wrapper pt-2.5 — the visible gap between two cards
+    const CARD_FRAME = 34; // p-4 top+bottom + 1px border top+bottom
+    const BLOCK_GAPS = 30; // three gap-2.5 gaps between the card's four blocks
+    const TITLE_LINE = 19; // text-[0.84375rem] at leading-snug
+    const TIMES_LINE = 15; // gap-0.5 + the text-[0.625rem] timestamps line
+    const MODELS_LINE = 13; // text-[0.65625rem] models + speed line
+    const SNIPPET_LINE = 18; // text-xs at leading-normal
+    const FOOTER = 26; // mt-2 + the agent/status/stats line
+    const base = ROW_GAP + CARD_FRAME + BLOCK_GAPS + TIMES_LINE + MODELS_LINE + FOOTER;
+    // Both the title and the snippet are line-clamp-2.
+    const clampedLines = (text: string, charsPerLine: number) =>
+      Math.min(Math.max(1, Math.ceil(text.length / charsPerLine)), 2);
+    if (!item) return base + TITLE_LINE + SNIPPET_LINE;
+    return (
+      base +
+      clampedLines(item.session.threadName || "", 35) * TITLE_LINE +
+      clampedLines(getSessionSnippet(item.session, item.matchedTurns), 40) * SNIPPET_LINE
+    );
+  };
+
   // Virtualized session list: only the visible rows (plus a small overscan) are in the DOM,
   // so a corpus of thousands of sessions no longer builds thousands of cards. Rows are
   // variable height (title wraps to 2 lines, optional snippet), so heights are measured at
-  // runtime (`measureElement`) rather than assumed. `estimateSize` is only the pre-measure
-  // guess. Keyed by session id so a re-sort/filter reuses rows instead of remounting.
+  // runtime rather than assumed; `estimateRowHeight` is only the pre-measure guess.
   const [scrollEl, setScrollEl] = createSignal<HTMLDivElement | null>(null);
+
+  // A fresh key extractor per list revision. The virtualizer memoizes its measurements on
+  // this function's identity, so a re-sort/filter that leaves the count unchanged would
+  // otherwise keep the previous index -> session mapping and lay row N out at the height of
+  // whatever session used to sit at N — cards then drift apart or bunch up by exactly that
+  // difference. Rebuilding the mapping re-derives every offset from the size cache, which is
+  // keyed by session id and so survives reordering. This is deliberately NOT
+  // `virtualizer.measure()`: that clears the cache, dropping every row back onto its
+  // estimate until it happens to be re-measured, which is the same uneven-gap artifact.
+  const itemKeyForIndex = createMemo(() => {
+    const items = listItems();
+    return (index: number) => items[index]?.session.id ?? index;
+  });
+
   const virtualizer = createVirtualizer({
     get count() {
       return listItems().length;
     },
     getScrollElement: () => scrollEl(),
-    estimateSize: (index) => {
-      const item = listItems()[index];
-      if (!item) return 192;
-      const snippetText = getSessionSnippet(item.session, item.matchedTurns);
-      const titleText = item.session.threadName || "";
-      const titleLines = Math.min(Math.max(1, Math.ceil(titleText.length / 35)), 2);
-      let height = 150 + (titleLines - 1) * 20;
-      if (snippetText && snippetText.trim().length > 0) {
-        const charLen = snippetText.length;
-        const snippetLines = Math.min(Math.max(1, Math.ceil(charLen / 40)), 2);
-        height += 16 + snippetLines * 18;
-      }
-      return height;
-    },
+    estimateSize: (index) => estimateRowHeight(listItems()[index]),
     overscan: 8,
-    getItemKey: (index) => listItems()[index]?.session.id ?? index,
-  });
-
-  const clearSizeCache = () => {
-    try {
-      const v = virtualizer as any;
-      if (v && v.itemSizeCache && typeof v.itemSizeCache.clear === "function") {
-        v.itemSizeCache.clear();
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  createEffect(() => {
-    // Track search query, search results, and list items
-    listItems();
-    props.searchQuery;
-    props.searchResults;
-
-    clearSizeCache();
-    virtualizer.measure();
+    get getItemKey() {
+      return itemKeyForIndex();
+    },
   });
 
   // Keyboard Navigation
@@ -1130,17 +1137,27 @@ export const Sidebar = (props: SidebarProps) => {
 
                   let rowEl: HTMLDivElement | undefined;
 
+                  // Push the row's real height into the virtualizer. This reads the DOM
+                  // directly instead of going through measureElement(), which short-circuits
+                  // to the cached size whenever the key has already been measured — so after
+                  // a re-sort it would happily keep the previous session's height for this
+                  // row and leave a too-large or too-small gap under the card. isConnected
+                  // and the >0 check matter because a detached node reports 0, and a 0
+                  // written into the size cache collapses every following row's offset
+                  // (cards visibly overlapping).
+                  const measureRow = () => {
+                    if (rowEl && rowEl.isConnected && rowEl.offsetHeight > 0) {
+                      virtualizer.resizeItem(virtualRow.index, rowEl.offsetHeight);
+                    }
+                  };
+
                   createEffect(() => {
                     // Track snippet & item changes so elements updated in-place by Solid's <For>
                     // re-measure after DOM updates flush.
                     snippet();
                     item();
                     if (rowEl && rowEl.isConnected) {
-                      queueMicrotask(() => {
-                        if (rowEl && rowEl.isConnected) {
-                          virtualizer.measureElement(rowEl);
-                        }
-                      });
+                      queueMicrotask(measureRow);
                     }
                   });
 
@@ -1148,24 +1165,18 @@ export const Sidebar = (props: SidebarProps) => {
                     <Show when={session()}>
                       <div
                         data-index={virtualRow.index}
-                        // Measure only once the row is actually in the document. A manual
-                        // measureElement() call (no ResizeObserver entry) falls through to
-                        // `offsetHeight`, which is 0 for a detached node — and a row's FIRST
-                        // measurement is not cache-guarded, so a 0 gets written to
-                        // itemSizeCache and collapses every following row's offset, which
-                        // shows up as cards overlapping. onMount guarantees post-insertion,
-                        // and isConnected covers a row unmounted by fast scrolling before
-                        // the effect flushes. Re-measures afterwards come from the
-                        // virtualizer's own ResizeObserver, which guards isConnected itself.
+                        // Measure only once the row is actually in the document: a detached
+                        // node reports offsetHeight 0. onMount guarantees post-insertion and
+                        // the rAF lets the flex/wrap reflow settle first. measureElement()
+                        // registers the row with the virtualizer's ResizeObserver, so a later
+                        // reflow (sidebar resize, web font landing, status badge appearing)
+                        // re-measures it on its own; measureRow() supplies the actual height.
                         ref={(el) => {
                           rowEl = el;
                           onMount(() => {
                             if (!el.isConnected) return;
-                            requestAnimationFrame(() => {
-                              if (el.isConnected) {
-                                virtualizer.measureElement(el);
-                              }
-                            });
+                            virtualizer.measureElement(el);
+                            requestAnimationFrame(measureRow);
                           });
                         }}
                         // pt-2.5 recreates the old inter-card gap (measured into the row height).
